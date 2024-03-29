@@ -188,6 +188,10 @@ Distribution made possible with the following tools:
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+<!-- PAYPAL DONATE -->
+
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.me/jonRock3/5)
+
 <!-- MARKDOWN LINKS -->
 
 [disable UAC]: https://pureinfotech.com/disable-user-account-control-uac-windows-11/
