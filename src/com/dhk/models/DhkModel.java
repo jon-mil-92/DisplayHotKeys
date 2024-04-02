@@ -6,8 +6,11 @@ import com.dhk.io.SettingsManager;
 /**
  * This class is the primary model of Display Hot Keys. Each slot in the application is initialized here.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class DhkModel {
 	private ArrayList<Slot> slots;
@@ -35,8 +38,8 @@ public class DhkModel {
 				
 		// Add new hotkey slots to the array list of hotkey slots.
 		for (int i = 1; i <= maxNumOfSlots; i++) {
-			slots.add(new Slot(settings.getIniSlotDisplayMode(i), settings.getIniSlotDisplayScale(i), 
-					false, settings.getIniSlotHotKey(i)));
+			slots.add(new Slot(settings.getIniSlotDisplayMode(i), settings.getIniSlotScalingMode(i), 
+					settings.getIniSlotDisplayScale(i), false, settings.getIniSlotHotKey(i)));
 		}
 	}
 	

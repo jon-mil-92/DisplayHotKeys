@@ -115,9 +115,19 @@ Currently, Display Hot Keys only works with single-monitor configurations. If a 
 
 ### Selecting Display Settings
 
-1. Select a value in the "Display Mode" drop-down box for the hot key slot.
+1. Select a display mode value in the "Display Mode" drop-down box for the hot key slot.
 
-2. Select a value in the "Display Scale" drop-down box for the hot key slot.
+2. Select a scaling mode value in the "Scaling Mode" drop-down box for the hot key slot.
+
+	* Select "Preserve" to preserve the aspect ratio of the image.
+	
+	* Select "Stretched" to stretch the image to the edges of the panel.
+	
+	* Select "Centered" to center the image in the middle of the panel.
+
+3. Select a scaling percentage value in the "Display Scale" drop-down box for the hot key slot.
+
+**Note:** Use GPU Scaling in your display driver settings to ensure the display scaling mode does not get overridden by the monitor.
 
 ### Application Interaction
 
@@ -140,7 +150,7 @@ Currently, Display Hot Keys only works with single-monitor configurations. If a 
 ## Roadmap
 
 - [x] Release initial build
-- [ ] Add display scaling mode selection per hot key slot
+- [x] Add display scaling mode selection per hot key slot
 - [ ] Add multi-monitor support
 
 See [open issues] for a full list of proposed features (and known issues).
@@ -179,7 +189,7 @@ Jonathan Miller - jonRock1992@gmail.com
 
 * [Maven Compiler Plugin] · [Apache License 2.0]
 
-* [JIniFile]
+* [Ini4j] · [Apache License 2.0]
 
 Distribution made possible with the following tools:
 
@@ -203,7 +213,7 @@ Distribution made possible with the following tools:
 [Material Design Icons]: https://github.com/marella/material-design-icons
 [Apache Maven Assembly Plugin]: https://maven.apache.org/plugins/maven-assembly-plugin/index.html
 [Maven Compiler Plugin]: https://maven.apache.org/plugins/maven-compiler-plugin/index.html
-[JIniFile]: https://github.com/SubZane/JIniFile
+[Ini4j]: https://ini4j.sourceforge.net/
 [launch4j]: https://launch4j.sourceforge.net/index.html
 [Inno Setup]: https://jrsoftware.org/isinfo.php
 [MIT License]: https://mit-license.org

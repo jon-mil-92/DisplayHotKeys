@@ -24,8 +24,11 @@ import java.awt.event.MouseEvent;
  * functionality of changing hot keys. This class is also responsible for triggering hot key events once a hot key press
  * is detected.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class HotKeysController implements Controller, GlobalKeyListener {
 	private SettingsManager settings;
@@ -152,6 +155,7 @@ public class HotKeysController implements Controller, GlobalKeyListener {
 									Integer.toString(model.getSlot(i).getDisplayMode().getHeight()),
 									Integer.toString(model.getSlot(i).getDisplayMode().getBitDepth()), 
 									Integer.toString(model.getSlot(i).getDisplayMode().getRefreshRate()), 
+									Integer.toString(model.getSlot(i).getScalingMode()), 
 									Integer.toString(model.getSlot(i).getDisplayScale()));
 						}
 					}
@@ -251,6 +255,9 @@ public class HotKeysController implements Controller, GlobalKeyListener {
 			// Disable all display mode combo boxes while getting input from the user.
 			view.getSlot(i).getDisplayModes().setEnabled(false);
 			
+			// Disable all scaling mode combo boxes while getting input from the user.
+			view.getSlot(i).getScalingModes().setEnabled(false);
+			
 			// Disable all display scale combo boxes while getting input from the user.
 			view.getSlot(i).getDisplayScales().setEnabled(false);
 			
@@ -289,6 +296,9 @@ public class HotKeysController implements Controller, GlobalKeyListener {
 		for (int i = 0; i < model.getNumOfSlots(); i++) {
 			// Enable all display mode combo boxes after getting input from the user.
 			view.getSlot(i).getDisplayModes().setEnabled(true);
+			
+			// Enable all scaling mode combo boxes after getting input from the user.
+			view.getSlot(i).getScalingModes().setEnabled(true);
 					
 			// Enable all display scale combo boxes after getting input from the user.
 			view.getSlot(i).getDisplayScales().setEnabled(true);

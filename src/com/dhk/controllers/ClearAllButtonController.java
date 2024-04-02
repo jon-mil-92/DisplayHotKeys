@@ -13,10 +13,14 @@ import com.dhk.window.FrameUpdater;
 
 /**
  * This class controls the Clear All button. Listeners are added to the corresponding view component so that when the 
- * Clear All button is pressed, the display mode, display scale, and hot key for each slot is set to default.
+ * Clear All button is pressed, the display mode, scaling mode, display scale, and hot key for each slot is set to 
+ * default.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class ClearAllButtonController implements Controller {
 	private DhkModel model;

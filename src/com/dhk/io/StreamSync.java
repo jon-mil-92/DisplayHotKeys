@@ -6,8 +6,11 @@ import java.io.OutputStream;
 /**
  * This class takes the data from the given input stream and sends it to the given output stream.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 class StreamSync implements Runnable {
 	InputStream inputStream;

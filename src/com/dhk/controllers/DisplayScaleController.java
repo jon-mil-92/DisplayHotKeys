@@ -10,8 +10,11 @@ import com.dhk.ui.DhkView;
  * This class controls the Display Scale combo boxes. Listeners are added to the corresponding view components so that 
  * when a new display scale is selected from a Display Scale combo box, the model is updated.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class DisplayScaleController implements Controller {
 	private DhkView view;
@@ -60,12 +63,13 @@ public class DisplayScaleController implements Controller {
 	 * view.
 	 */
 	private void saveSlotDisplayScale(int slotIndex) {
+		// Get the slot's selected display scale from the view.
 		int selectedDisplayScale = (int)view.getSlot(slotIndex).getDisplayScales().getSelectedItem();
 		
-		// Update the new hotkey slot display scale in the model.
+		// Update the slot's display scale in the model.
 		model.getSlot(slotIndex).setDisplayScale(selectedDisplayScale);
 		
-		// Save the new slot one display mode in the settings ini file.
+		// Save the slot's display mode in the settings ini file.
 		settings.saveIniSlotDisplayScale(slotIndex + 1, selectedDisplayScale);
 	}
 }

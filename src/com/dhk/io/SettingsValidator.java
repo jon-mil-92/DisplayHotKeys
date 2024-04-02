@@ -6,6 +6,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import org.ini4j.Wini;
 import lc.kra.system.keyboard.event.GlobalKeyEvent;
 
 /**
@@ -13,12 +14,15 @@ import lc.kra.system.keyboard.event.GlobalKeyEvent;
  * either a positive integer or a boolean, and that it is in the correct range of valid values. If a property value 
  * fails validation, then it is reset to the default value.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class SettingsValidator {
 	SettingsManager settings;
-	private JIniFile ini;
+	private Wini ini;
 	private DisplayMode[] displayModes;
 	private ArrayList<Integer> validkeyCodes;
 	private RunOnStartupManager runOnStartupManager;
@@ -54,6 +58,7 @@ public class SettingsValidator {
 		validateDarkMode();
 		validateRunOnStartup();
 		validateDisplayModes();
+		validateScalingModes();
 		validateDisplayScales();
 		validateHotKeys();
 	}
@@ -96,10 +101,10 @@ public class SettingsValidator {
 	 */
 	private void validateNumOfSlots() {
 		// Get the string value for the numOfSlots property from the settings file.
-		String numOfSlots = ini.readString("Application", "numOfSlots", "");
+		String numOfSlots = ini.get("Application", "numOfSlots");
 		
-		// If the numOfSlots property value is not a positive integer, or it is not in the correct range...
-		if (!isPositiveInt(numOfSlots) || Integer.valueOf(numOfSlots) < 1 
+		// If the numOfSlots property value is null, not a positive integer, or not in the correct range...
+		if (numOfSlots == null || !isPositiveInt(numOfSlots) || Integer.valueOf(numOfSlots) < 1 
 				|| Integer.valueOf(numOfSlots) > settings.getMaxNumOfSlots()) {
 			// Reset the numOfSlots property to the default value.
 			settings.saveIniNumOfSlots(4);
@@ -107,12 +112,12 @@ public class SettingsValidator {
 	}
 	
 	/**
-	 * This method simply wraps the JIniFile update file method in a try/catch block.
+	 * This method simply wraps the Wini store method in a try/catch block.
 	 */
 	private void updateSettingsFile() {
 		// Try to write the new property values to settings file.
 		try {
-			ini.updateFile();
+			ini.store();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -168,10 +173,10 @@ public class SettingsValidator {
 	 */
 	private void validateDarkMode() {
 		// Get the string representation of the darkMode boolean value.
-		String darkMode = ini.readString("Application", "darkMode", "");
+		String darkMode = ini.get("Application", "darkMode");
 		
-		// If the value for the darkMode property is not a string representation of a boolean value...
-		if (!(darkMode.equals("false") || darkMode.equals("true"))) {
+		// If the darkMode property value is null or not a string representation of a boolean value...
+		if (darkMode == null || !(darkMode.equals("false") || darkMode.equals("true"))) {
 			// Reset the darkMode property to the default value.
 			settings.saveIniDarkMode(false);
 		}
@@ -183,10 +188,10 @@ public class SettingsValidator {
 	 */
 	private void validateRunOnStartup() {
 		// Get the string representation of the runOnStartup boolean value.
-		String runOnStartup = ini.readString("Application", "runOnStartup", "");
+		String runOnStartup = ini.get("Application", "runOnStartup");
 		
-		// If the value for the runOnStartup property is not a string representation of a boolean value...
-		if (!(runOnStartup.equals("false") || runOnStartup.equals("true"))) {
+		// If the runOnStartup property value is null or not a string representation of a boolean value...
+		if (runOnStartup == null || !(runOnStartup.equals("false") || runOnStartup.equals("true"))) {
 			// Reset the runOnStartup property to the default value.
 			settings.saveIniRunOnStartup(false);
 			
@@ -204,14 +209,16 @@ public class SettingsValidator {
 		// For each slot section in the settings file...
 		for (int i = 1; i <= settings.getMaxNumOfSlots(); i++) {
 			// Get the display mode properties for the current slot.
-			String width = ini.readString("Slot" + Integer.toString(i), "displayModeWidth", "");
-			String height = ini.readString("Slot" + Integer.toString(i), "displayModeHeight", "");
-			String bitDepth = ini.readString("Slot" + Integer.toString(i), "displayModeBitDepth", "");
-			String refreshRate = ini.readString("Slot" + Integer.toString(i), "displayModeRefreshRate", "");
+			String width = ini.get("Slot" + Integer.toString(i), "displayModeWidth");
+			String height = ini.get("Slot" + Integer.toString(i), "displayModeHeight");
+			String bitDepth = ini.get("Slot" + Integer.toString(i), "displayModeBitDepth");
+			String refreshRate = ini.get("Slot" + Integer.toString(i), "displayModeRefreshRate");
 			
-			// If all property values are positive integers...
-			if (isPositiveInt(width) && isPositiveInt(height) && isPositiveInt(bitDepth) 
-					&& isPositiveInt(refreshRate)) {
+			// If all display mode property values are not null and positive integers...
+			if ((width != null && isPositiveInt(width)) 
+					&& (height != null && isPositiveInt(height)) 
+					&& (bitDepth != null && isPositiveInt(bitDepth)) 
+					&& (refreshRate != null && isPositiveInt(refreshRate))) {
 				// Create a new display mode object with the values from the settings file.
 				DisplayMode displayMode = new DisplayMode(Integer.valueOf(width), Integer.valueOf(height), 
 						Integer.valueOf(bitDepth), Integer.valueOf(refreshRate));
@@ -222,7 +229,6 @@ public class SettingsValidator {
 					writeDefaultDisplayMode(i);
 				}
 			}
-			// Otherwise, if any of the display mode property values are not a positive integer...
 			else {
 				// Write the default display mode values to their corresponding properties in the settings file.
 				writeDefaultDisplayMode(i);
@@ -245,6 +251,28 @@ public class SettingsValidator {
 	}
 	
 	/**
+	 * This method validates the value for each scalingMode property from the settings file. If the value is not a 
+	 * valid value, then it writes the default value for the scalingMode property.
+	 */
+	private void validateScalingModes() {
+		// For each slot section in the settings file...
+		for (int i = 1; i <= settings.getMaxNumOfSlots(); i++) {
+			// An array of valid scaling mode values for the corresponding combo box.
+			String[] validScalingModes = {"0", "1", "2"};
+						
+			// Get the scaling mode for the current slot.
+			String scalingMode = ini.get("Slot" + Integer.toString(i), "scalingMode");
+			
+			// If the scalingMode property value is null, not a positive integer, or not in the valid array...
+			if (scalingMode == null || !isPositiveInt(scalingMode) 
+					|| !Arrays.asList(validScalingModes).contains(scalingMode)) {
+				// Reset the scalingMode property to the default value.
+				settings.saveIniSlotScalingMode(i, 0);
+			}
+		}
+	}
+	
+	/**
 	 * This method validates the value for each displayScale property from the settings file. If the value is not a 
 	 * valid value, then it writes the default value for the displayScale property.
 	 */
@@ -255,10 +283,11 @@ public class SettingsValidator {
 			String[] validDisplayScales = {"100", "125", "150", "175", "200", "225", "250", "300", "350"};
 						
 			// Get the display scale for the current slot.
-			String displayScale = ini.readString("Slot" + Integer.toString(i), "displayScale", "");
+			String displayScale = ini.get("Slot" + Integer.toString(i), "displayScale");
 			
-			// If the displayScalse property value is not a positive integer or it is not in the valid array...
-			if (!isPositiveInt(displayScale) || !Arrays.asList(validDisplayScales).contains(displayScale)) {
+			// If the displayScale property value is null, not a positive integer, or not in the valid array...
+			if (displayScale == null || !isPositiveInt(displayScale) 
+					|| !Arrays.asList(validDisplayScales).contains(displayScale)) {
 				// Reset the displayScale property to the default value.
 				settings.saveIniSlotDisplayScale(i, 100);
 			}
@@ -278,28 +307,31 @@ public class SettingsValidator {
 		// For each slot section in the settings file...
 		for (int i = 1; i <= settings.getMaxNumOfSlots(); i++) {
 			// Get the string value for the hotKeySize property from the settings file object.
-			String hotKeySize = ini.readString("Slot" + Integer.toString(i), "hotKeySize", "");
+			String hotKeySize = ini.get("Slot" + Integer.toString(i), "hotKeySize");
 			
-			// If the hotKeySize property value is not a positive integer, or it is not in the correct range...
-			if (!isPositiveInt(hotKeySize) || Integer.valueOf(hotKeySize) < 0 
+			// If the hotKeySize property value is null, not a positive integer, or not in the correct range...
+			if (hotKeySize == null || !isPositiveInt(hotKeySize) || Integer.valueOf(hotKeySize) < 0 
 					|| Integer.valueOf(hotKeySize) > 3) {
 				// Reset the hotKeySize property to the default value.
-				ini.writeInteger("Slot" + Integer.toString(i), "hotKeySize", 0);
+				ini.put("Slot" + Integer.toString(i), "hotKeySize", 0);
 				
 				// Write the new hotKeySize property value to the settings file.
 				updateSettingsFile();
 			}
 			
-			// Get the validated hotkey size from the settings file object.
-			int validatedHotKeySize = ini.readInteger("Slot" + Integer.toString(i), "hotKeySize", 0);
+			// Get the previously validated hotkey size from the settings file object.
+			int validatedHotKeySize = ini.get("Slot" + Integer.toString(i), "hotKeySize", int.class);
 			
 			// Create a variable to store the number of keys that are set for the current hotkey.
 			int numOfSetKeys = 0;
 			
 			// For each key in the hotkey...
 			for (int j = 0; j <= 3; j++) {
+				// Get the previously validated key code from the settings file.
+				int validatedKeyCode = ini.get("Slot" + Integer.toString(i), "key" + j, int.class);
+				
 				// If the current key's key code is set...
-				if (ini.readInteger("Slot" + Integer.toString(i), "key" + j, 0) != 0) {
+				if (validatedKeyCode != 0) {
 					// Increment the number of keys that are set for the current hotkey.
 					numOfSetKeys++;
 				}
@@ -307,7 +339,7 @@ public class SettingsValidator {
 				// If the current key is not a part of the current hotkey.
 				if (j > validatedHotKeySize) {
 					// Reset the key to the default value.
-					ini.writeInteger("Slot" + Integer.toString(i), "key" + j, 0);
+					ini.put("Slot" + Integer.toString(i), "key" + j, 0);
 								
 					// Write the new key property value to the settings file.
 					updateSettingsFile();
@@ -317,7 +349,7 @@ public class SettingsValidator {
 			// If the validated hotkey size exceeds the number of keys that are set for the current hotkey...
 			if (validatedHotKeySize > numOfSetKeys) {
 				// Set the hotKeySize property to the number of set keys.
-				ini.writeInteger("Slot" + Integer.toString(i), "hotKeySize", numOfSetKeys);
+				ini.put("Slot" + Integer.toString(i), "hotKeySize", numOfSetKeys);
 				
 				// Write the new hotKeySize property value to the settings file.
 				updateSettingsFile();
@@ -335,12 +367,12 @@ public class SettingsValidator {
 			// For each key in the hotkey, validate its key code.
 			for (int j = 1; j <= 3; j++) {
 				// Get the string value for the current key property from the settings file object.
-				String key = ini.readString("Slot" + Integer.toString(i), "key" + j, "");
+				String key = ini.get("Slot" + Integer.toString(i), "key" + j);
 				
-				// If any key property value is not a positive integer, or it is not in the list of valid keys codes...
-				if (!isPositiveInt(key) || !validkeyCodes.contains(Integer.valueOf(key))) {
+				// If any key property value is null, not a positive integer, or not in the list of valid keys codes...
+				if (key == null || !isPositiveInt(key) || !validkeyCodes.contains(Integer.valueOf(key))) {
 					// Reset the key to the default value.
-					ini.writeInteger("Slot" + Integer.toString(i), "key" + j, 0);
+					ini.put("Slot" + Integer.toString(i), "key" + j, 0);
 								
 					// Write the new key property value to the settings file.
 					updateSettingsFile();

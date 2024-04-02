@@ -7,8 +7,11 @@ import com.dhk.ui.DhkView;
  * This class starts an app refresher on a new thread. When the thread is running, the frame of the application is 
  * refreshed at a given interval.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class AppRefresher implements Runnable {
 	private Thread refresher;
@@ -19,7 +22,7 @@ public class AppRefresher implements Runnable {
 	/**
 	 * Constructor for the AppRefresher class.
 	 * 
-	 * @param frame - The frame for the GUI to refresh.
+	 * @param view - The view for the application.
 	 * @param interval - The interval at which to refresh the app.
 	 */
 	public AppRefresher (DhkView view, int interval) {

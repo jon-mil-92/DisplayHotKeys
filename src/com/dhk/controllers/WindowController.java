@@ -11,8 +11,11 @@ import com.dhk.window.MinimizeToTray;
  * often the application window should be refreshed, and it initializes the object that allows the application to be 
  * minimized to the system tray and restored from the system tray.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class WindowController implements Controller, WindowListener {
 	private AppRefresher appRefresher;
@@ -52,7 +55,7 @@ public class WindowController implements Controller, WindowListener {
 		// Minimize the application to the system tray.
 		minimizeToTray.execute();
 		
-		// Suspend the frame refresher while the GUI is minimized.
+		// Suspend the app refresher while the GUI is minimized.
 		appRefresher.suspend();
 	}
 	

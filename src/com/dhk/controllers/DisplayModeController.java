@@ -11,8 +11,11 @@ import com.dhk.ui.DhkView;
  * This class controls the Display Mode combo boxes. Listeners are added to the corresponding view components so that 
  * when a new display mode is selected from a Display Mode combo box, the model is updated.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class DisplayModeController implements Controller {
 	private DhkView view;

@@ -11,8 +11,11 @@ import com.dhk.ui.DhkView;
  * when a user hovers over or clicks the Exit button, its icon changes, and when a user clicks on the button, the 
  * application is stopped.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class ExitButtonController implements Controller {
 	private DhkView view;
