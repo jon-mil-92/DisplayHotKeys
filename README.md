@@ -119,7 +119,7 @@ Currently, Display Hot Keys only works with single-monitor configurations. If a 
 
 2. Select a scaling mode value in the "Scaling Mode" drop-down box for the hot key slot.
 
-	* Select "Preserve" to preserve the aspect ratio of the image.
+	* Select "Preserved" to preserve the aspect ratio of the image.
 	
 	* Select "Stretched" to stretch the image to the edges of the panel.
 	
