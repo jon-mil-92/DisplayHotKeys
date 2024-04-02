@@ -5,7 +5,7 @@ import java.net.URISyntaxException;
 
 /**
  * This class utilizes the Windows CLI to communicate with the SetDisplay program to set the given display 
- * mode and DPI scale percentage.
+ * mode, display scaling mode, and display scale percentage.
  * 
  * @author Jonathan Miller
  * @version 1.1.0
