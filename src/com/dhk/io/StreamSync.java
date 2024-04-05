@@ -7,7 +7,7 @@ import java.io.OutputStream;
  * This class takes the data from the given input stream and sends it to the given output stream.
  * 
  * @author Jonathan Miller
- * @version 1.2.0
+ * @version 1.2.1
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024

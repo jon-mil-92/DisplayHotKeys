@@ -13,7 +13,7 @@ import dorkbox.systemTray.SystemTray;
  * This class enables the application to be minimized to the system tray and restored from the system tray.
  * 
  * @author Jonathan Miller
- * @version 1.2.0
+ * @version 1.2.1
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -79,7 +79,7 @@ public class MinimizeToTray {
             public void actionPerformed(ActionEvent e) {
                 // Disable the system tray before exiting the program so it does not stay in the taskbar.
                 systemTray.setEnabled(false);
-                
+
                 System.exit(0);
             }
         });
