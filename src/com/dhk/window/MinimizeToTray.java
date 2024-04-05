@@ -77,6 +77,9 @@ public class MinimizeToTray {
         exit.setCallback(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                // Disable the system tray before exiting the program so it does not stay in the taskbar.
+                systemTray.setEnabled(false);
+                
                 System.exit(0);
             }
         });
