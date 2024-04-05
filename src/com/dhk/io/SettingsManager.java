@@ -14,7 +14,7 @@ import com.dhk.models.Key;
  * theme state, the run on startup state, the display modes, the display scales, and the hot keys.
  * 
  * @author Jonathan Miller
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -29,7 +29,7 @@ public class SettingsManager {
 	private final int MAX_NUM_OF_SLOTS = 8;
 	
 	/**
-	 * Constructor for the AppSettingsManager class.
+	 * Constructor for the SettingsManager class.
 	 */
 	public SettingsManager() {
 		// Get the array of supported display modes for the main display.
@@ -54,7 +54,7 @@ public class SettingsManager {
 			e.printStackTrace();
 		}
 		
-		// Instantiate the settings validator object.
+		// Initialize the settings validator object.
 		SettingsValidator validator = new SettingsValidator(this);
 			
 		// Validate each property value in the settings file.

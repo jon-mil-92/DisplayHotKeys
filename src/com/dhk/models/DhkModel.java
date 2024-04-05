@@ -7,7 +7,7 @@ import com.dhk.io.SettingsManager;
  * This class is the primary model of Display Hot Keys. Each slot in the application is initialized here.
  * 
  * @author Jonathan Miller
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -16,10 +16,6 @@ public class DhkModel {
 	private ArrayList<Slot> slots;
 	private int numOfSlots;
 	private int maxNumOfSlots;
-	
-	//------------------------------------------------------------------------------------------------------------------
-    // Public Methods
-    //------------------------------------------------------------------------------------------------------------------
 	
 	/**
 	 * This method initializes the number of active slots and each slot in the application from the settings file.

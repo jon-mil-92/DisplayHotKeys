@@ -9,7 +9,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
  * This class defines the Clear All button. The icons for the different states of the button are defined here.
  * 
  * @author Jonathan Miller
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -55,6 +55,10 @@ public class ClearAllButton extends JButton {
 		this.setContentAreaFilled(false);
 		this.setFocusPainted(false);
 	}
+	
+	//------------------------------------------------------------------------------------------------------------------
+    // Getters and Setters
+    //------------------------------------------------------------------------------------------------------------------
 	
 	/**
 	 * Getter for the clear all button icon when it is idle.

@@ -9,7 +9,7 @@ import javax.swing.Icon;
  * This class defines the Theme button. The icons for the different states of the button are defined here.
  * 
  * @author Jonathan Miller
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -83,6 +83,10 @@ public class ThemeButton extends JButton {
 	public void toggleDarkMode() {
 		darkMode = !darkMode;
 	}
+	
+	//------------------------------------------------------------------------------------------------------------------
+    // Getters and Setters
+    //------------------------------------------------------------------------------------------------------------------
 	
 	/**
 	 * Getter for the dark mode state of the icon.

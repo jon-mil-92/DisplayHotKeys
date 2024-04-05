@@ -13,7 +13,7 @@ import com.dhk.window.FrameUpdater;
  * active hot key slots is reflected in the application window.
  * 
  * @author Jonathan Miller
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
