@@ -10,9 +10,9 @@ package com.dhk.controllers;
  * @copyright Jonathan Miller 2024
  */
 public interface Controller {
-	
-	/**
-	 * Initialize the listeners for the controller.
-	 */
-	public void initListeners();
+
+    /**
+     * Initialize the listeners for the controller.
+     */
+    public void initListeners();
 }
