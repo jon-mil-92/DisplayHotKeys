@@ -128,7 +128,7 @@ Currently, Display Hot Keys only works with single-monitor configurations. If a 
 	
 	* Select "Centered" to center the image in the middle of the panel.
 
-3. Select a scaling percentage value in the "Display Scale" drop-down box for the hot key slot.
+3. Select a scale percentage value in the "Display Scale" drop-down box for the hot key slot.
 
 **Note:** You may need to use GPU Scaling in your display driver settings to prevent the monitor from overriding the scaling mode.
 
