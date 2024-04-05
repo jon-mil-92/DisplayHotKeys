@@ -42,7 +42,7 @@
 </div>
 <br />
 
-This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the resolution, bit depth, refresh rate, display scaling mode, and display scale percentage can be changed with user-defined hot keys. This project was created in conjunction with [SetDisplay].
+This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, bit depth, refresh rate, scaling mode, and scale percentage can be changed with user-defined hot keys. This project was created in conjunction with [SetDisplay].
 
 Common use cases for Display Hot Keys:
 
@@ -50,7 +50,7 @@ Common use cases for Display Hot Keys:
 
 * Quickly switch between resolutions with different aspect ratios.
 
-* Immediately apply a refresh rate without entering the in-game menus for video game benchmarking purposes.
+* Immediately apply a resolution without entering the in-game menus for video game benchmarking purposes.
 
 * Enlarge or shrink the elements on screen by instantly changing the display scale percentage.
 
