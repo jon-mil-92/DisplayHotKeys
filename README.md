@@ -220,7 +220,7 @@ Distribution made possible with the following tools:
 
 <!-- PAYPAL DONATE -->
 
-<a href="https://www.paypal.com/donate/?business=A6U7KG5BDZTRE&no_recurring=0&item_name=I+appreciate+you+visiting+this+page%21+Thank+you%21&currency_code=USD"><img src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" align="left" height="48"></a>
+<a href="https://www.paypal.com/donate/?business=A6U7KG5BDZTRE&no_recurring=0&item_name=I+appreciate+you+visiting+this+page%21+Thank+you%21&currency_code=USD"><img src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" align="left" height="72"></a>
 
 **Disclaimer:** Development of Display Hot Keys is not contingent on donations. PayPal is a registered trademark of PayPal, Inc. The PayPal logo is a trademark of PayPal, Inc.
 
