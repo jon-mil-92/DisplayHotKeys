@@ -38,7 +38,7 @@
 ## About The Project
 
 <div align="center">
-  <img src="product-screenshot.png" alt="Logo" width="720" align="center"/>
+  <img src="Display_Hot_Keys_Screenshot.png" alt="Screenshot" width="720" align="center"/>
 </div>
 <br />
 
@@ -220,7 +220,7 @@ Distribution made possible with the following tools:
 
 <!-- PAYPAL DONATE -->
 
-[![paypal](https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png)](https://www.paypal.com/donate/?business=A6U7KG5BDZTRE&no_recurring=0&item_name=I+appreciate+you+visiting+this+page%21+Thank+you%21&currency_code=USD)
+<a href="https://www.paypal.com/donate/?business=A6U7KG5BDZTRE&no_recurring=0&item_name=I+appreciate+you+visiting+this+page%21+Thank+you%21&currency_code=USD"><img src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" align="left" height="48"></a>
 
 **Disclaimer:** Development of Display Hot Keys is not contingent on donations. PayPal is a registered trademark of PayPal, Inc. The PayPal logo is a trademark of PayPal, Inc.
 
