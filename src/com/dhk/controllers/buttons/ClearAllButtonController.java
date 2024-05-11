@@ -14,8 +14,8 @@ import com.dhk.window.FrameUpdater;
 
 /**
  * This class controls the Clear All button. Listeners are added to the corresponding view component so that when the
- * Clear All button is pressed, the display mode, scaling mode, DPI scale percentage, and hot key for each slot is set
- * to default.
+ * Clear All button is pressed, the display mode, scaling mode, DPI scale percentage, and hot key for each slot for the
+ * selected display is set to default.
  * 
  * @author Jonathan Miller
  * @version 1.3.1
@@ -145,7 +145,7 @@ public class ClearAllButtonController implements Controller {
 
             // Save the display mode in the settings.
             settingsMgr.saveIniSlotDisplayMode(displayId, slotId, defaultDisplayMode.getWidth(),
-                    defaultDisplayMode.getWidth(), defaultDisplayMode.getBitDepth(),
+                    defaultDisplayMode.getHeight(), defaultDisplayMode.getBitDepth(),
                     defaultDisplayMode.getRefreshRate());
         }
     }
