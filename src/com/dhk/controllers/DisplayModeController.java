@@ -72,7 +72,7 @@ public class DisplayModeController implements Controller {
      */
     private void saveSlotDisplayMode(int displayIndex, int slotIndex) {
         // Get the ID for the given display.
-        String displayId = settingsMgr.getDisplayIds()[displayIndex];
+        String displayId = model.getDisplayIds()[displayIndex];
 
         // The ID for the slot starts at 1.
         int slotId = slotIndex + 1;

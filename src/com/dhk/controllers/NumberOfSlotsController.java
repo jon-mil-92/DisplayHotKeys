@@ -71,7 +71,7 @@ public class NumberOfSlotsController implements Controller {
      */
     private void saveNumberOfSlots(int displayIndex) {
         // Get the ID for the given display.
-        String displayId = settingsMgr.getDisplayIds()[displayIndex];
+        String displayId = model.getDisplayIds()[displayIndex];
 
         // The previous number of slots to be displayed.
         int oldNumOfSlots = model.getNumOfSlotsForDisplay(displayIndex);
