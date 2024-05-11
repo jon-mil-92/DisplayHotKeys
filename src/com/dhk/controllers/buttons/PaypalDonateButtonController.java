@@ -16,7 +16,7 @@ import com.dhk.ui.DhkView;
  * the PayPal Donate button is pressed, the paypal donation page is opened up in the user's default web browser.
  * 
  * @author Jonathan Miller
- * @version 1.3.0
+ * @version 1.3.1
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024

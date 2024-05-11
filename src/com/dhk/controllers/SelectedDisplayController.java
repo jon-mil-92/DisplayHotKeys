@@ -9,7 +9,7 @@ import com.dhk.window.FrameUpdater;
  * so that when a new display is selected, the slots are changed to those for the selected display.
  * 
  * @author Jonathan Miller
- * @version 1.3.0
+ * @version 1.3.1
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024

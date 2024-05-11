@@ -11,7 +11,7 @@ import javax.swing.SwingConstants;
  * This class defines the view components of a Slot.
  * 
  * @author Jonathan Miller
- * @version 1.3.0
+ * @version 1.3.1
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024

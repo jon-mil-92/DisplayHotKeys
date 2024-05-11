@@ -11,7 +11,7 @@ import com.dhk.ui.DhkView;
  * hold, and drag on any empty spot in the frame to move the application window around on the desktop.
  * 
  * @author Jonathan Miller
- * @version 1.3.0
+ * @version 1.3.1
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
