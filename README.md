@@ -77,7 +77,7 @@ This application will be distributed as a portable package and as an installer.
 
 2. Unzip the archive.
 
-3. Double-click the DisplayHotKeys executable file or create a shortcut to run it.
+3. Double-click the DisplayHotKeys executable file or create a shortcut to run the application.
 
 #### Installer
 
@@ -87,7 +87,7 @@ This application will be distributed as a portable package and as an installer.
 
 3. Follow the installer prompts.
 
-4. Double-click the created shortcut or the DisplayHotKeys executable file in the install location to run it.
+4. Double-click the created shortcut or the DisplayHotKeys executable file in the install directory to run the application.
 
 <p align="right"><a href="#readme-top">Back to Top</a>&nbsp; &#x25B2;</p>
 
@@ -159,7 +159,7 @@ The application can start automatically when the user logs into Windows by click
 
 #### Refresh App
 
-If you have created a custom display mode while the app is running, there is a "Refresh App" button that will refresh the app to reflect the new display mode.
+If you have created a custom display mode while the application is running, there is a "Refresh App" button that will refresh the application to reflect the new display mode.
 
 #### Clear All Slots
 
