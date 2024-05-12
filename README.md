@@ -35,8 +35,6 @@
 
 ## About The Project
 
-![screenshot](product_screenshot.jpg)
-
 This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, bit depth, refresh rate, scaling mode, and DPI scale percentage can be changed for each connected display with user-defined hot keys.
 
 ### Common Use Cases
@@ -50,6 +48,10 @@ This project was created to circumvent the tedious navigation of the Windows set
 * Enlarge or shrink the elements on screen by instantly changing the DPI scale percentage.
 
 * Instantly set a display mode while in a video game. (This is useful if a video game does not support changing the resolution or refresh rate while in-game.)
+
+### Example Screen
+
+![screenshot](product_screenshot.jpg)
 
 <p align="right"><a href="#readme-top">Back to Top</a>&nbsp; &#x25B2;</p>
 
