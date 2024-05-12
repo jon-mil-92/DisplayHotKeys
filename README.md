@@ -6,9 +6,8 @@
   <a href="https://github.com/jon-mil-92/DisplayHotKeys">
     <img src="src/tray_icon.png" alt="Logo" width="80" height="80" align="center" />
   </a>
-
+  <br/>
   <h3 align="center">Display Hot Keys</h3>
-
   <p align="center">
     <i>Effortlessly control display settings!</i>
     <br/>
@@ -32,6 +31,7 @@
     <li><a href="#dependencies">Dependencies</a></li>
   </ol>
 </details>
+<br/>
 
 <!-- ABOUT THE PROJECT -->
 
@@ -68,7 +68,7 @@ This application was made only for the Windows platform. Display Hot Keys also u
 
 * Windows 10 x64 or Windows 11 x64 operating system.
 
-* If using multiple displays, then the "**Multiple displays**" setting must be set to "**Extend these displays**" in the Windows "Display" settings menu!
+* If using multiple displays, then the "Multiple displays" setting must be set to "Extend these displays" in the Windows "Display" settings menu!
 
 ### Installation
 
@@ -98,7 +98,7 @@ This application will be distributed as a portable package and as an installer.
 
 ## Usage
 
-**This application will launch minimized to the system tray in the task bar by design**.
+This application will launch minimized to the system tray in the task bar by design.
 
 ### Setting Hot Keys
 
@@ -227,7 +227,7 @@ Distribution made possible with the following tools:
     <img src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" align="left" height="72"/>
   </a>
 </div>
-<br/><br/><br/>
+<br/>
 
 <!-- MARKDOWN LINKS -->
 
