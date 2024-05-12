@@ -11,8 +11,10 @@
     <i>Effortlessly control display settings!</i>
     <br/>
     <a href="https://github.com/jon-mil-92/DisplayHotKeys/issues">Report Bug</a>
-    ·
+    <b>·</b>
     <a href="https://github.com/jon-mil-92/DisplayHotKeys/issues">Request Feature</a>
+    <b>·</b>
+    <a href="https://github.com/jon-mil-92/DisplayHotKeys/releases">Releases</a>
   </p>
 </div>
 
@@ -43,7 +45,7 @@
 
 This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, bit depth, refresh rate, scaling mode, and DPI scale percentage can be changed for each connected display with user-defined hot keys.
 
-Common use cases for Display Hot Keys:
+### Common Use Cases
 
 * Switch refresh rates to quickly enable the Black Frame Insertion or Backlight Strobing capabilities of the display.
 
@@ -193,21 +195,21 @@ Jonathan Miller - jonRock1992@gmail.com
 
 ## Dependencies
 
-* [Java (low-level) System Hook] · [MIT License]
+* [Java (low-level) System Hook] <b>·</b> [MIT License]
 
-* [FlatLaf - Flat Look and Feel] · [Apache License 2.0]
+* [FlatLaf - Flat Look and Feel] <b>·</b> [Apache License 2.0]
 
-* [Material Design Icons] · [Apache License 2.0]
+* [Material Design Icons] <b>·</b> [Apache License 2.0]
 
-* [PayPal Donate Button] · [AGPL License 3.0]
+* [PayPal Donate Button] <b>·</b> [AGPL License 3.0]
 
-* [SystemTray] · [Apache License 2.0]
+* [SystemTray] <b>·</b> [Apache License 2.0]
 
-* [Ini4j] · [Apache License 2.0]
+* [Ini4j] <b>·</b> [Apache License 2.0]
 
-* [Apache Maven Assembly Plugin] · [Apache License 2.0]
+* [Apache Maven Assembly Plugin] <b>·</b> [Apache License 2.0]
 
-* [Maven Compiler Plugin] · [Apache License 2.0]
+* [Maven Compiler Plugin] <b>·</b> [Apache License 2.0]
 
 Distribution made possible with the following tools:
 
