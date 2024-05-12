@@ -139,23 +139,39 @@ This application will launch minimized to the system tray in the task bar by des
 
 **Note:** You may need to use GPU Scaling in your display driver settings to prevent the monitor from overriding the scaling mode.
 
-### Application Interaction
+### Buttons
 
-* Individual hot keys can be cleared by clicking on the "Clear Hot Key" button for a hot key slot.
+#### Clear Hot Key
 
-* If you find the application useful and wish to donate, there is a "Paypal Donate" button that will open a Paypal donation web page.
+Individual hot keys can be cleared by clicking on the "Clear Hot Key" button for a hot key slot.
 
-* The theme can be changed between "Light Mode" and "Dark Mode" by clicking on the "Change Theme" button. The icon will change to indicate the current theme.
+#### PayPal Donate
 
-* The application can start automatically when the user logs into Windows by clicking on the "Run On Startup" button. The arrow will turn green to indicate that this option is enabled. The application will start minimized to the system tray.
+If you find the application useful and wish to donate, there is a "PayPal Donate" button that will open a PayPal donation web page.
 
-* If you have created a custom display mode while the app is running, there is a "Refresh App" button that will refresh the app to reflect the new display mode.
+#### Change Theme
 
-* All hot key slots for the selected display can be reset by clicking on the "Clear All Slots" button.
+The theme can be changed between "Light Mode" and "Dark Mode" by clicking on the "Change Theme" button. The icon will change to indicate the current theme.
 
-* The application will be minimized to the system tray when the "Minimize To Tray" button is pressed. To restore the application, click the system tray icon and select "Restore".
+#### Run On Startup
 
-* To exit the application, click on the "Exit App" button. You can also exit the application from the system tray by clicking on the system tray icon and selecting "Exit".
+The application can start automatically when the user logs into Windows by clicking on the "Run On Startup" button. The arrow will turn green to indicate that this option is enabled. The application will start minimized to the system tray.
+
+#### Refresh App
+
+If you have created a custom display mode while the app is running, there is a "Refresh App" button that will refresh the app to reflect the new display mode.
+
+#### Clear All Slots
+
+All hot key slots for the selected display can be reset by clicking on the "Clear All Slots" button.
+
+#### Minimize To Tray
+
+The application will be minimized to the system tray when the "Minimize To Tray" button is pressed. To restore the application, click the system tray icon and select "Restore".
+
+#### Exit App
+
+To exit the application, click on the "Exit App" button. You can also exit the application from the system tray by clicking on the system tray icon and selecting "Exit".
 
 <p align="right"><a href="#readme-top">Back to Top</a>&nbsp; &#x25B2;</p>
 
