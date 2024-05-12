@@ -227,8 +227,7 @@ Distribution made possible with the following tools:
     <img src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" align="left" height="72"/>
   </a>
 </div>
-<br/>
-<br/>
+<br/><br/><br/>
 
 <!-- MARKDOWN LINKS -->
 
