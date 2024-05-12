@@ -32,7 +32,6 @@
     <li><a href="#dependencies">Dependencies</a></li>
   </ol>
 </details>
-<br/>
 
 <!-- ABOUT THE PROJECT -->
 
