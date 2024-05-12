@@ -1,7 +1,7 @@
 <!-- PROJECT LOGO -->
 
 <a name="readme-top"></a>
-<br />
+<br/>
 <div align="center">
   <a href="https://github.com/jon-mil-92/DisplayHotKeys">
     <img src="src/tray_icon.png" alt="Logo" width="80" height="80" align="center" />
@@ -11,7 +11,7 @@
 
   <p align="center">
     <i>Effortlessly control display settings!</i>
-    <br />
+    <br/>
     <a href="https://github.com/jon-mil-92/DisplayHotKeys/issues">Report Bug</a>
     ·
     <a href="https://github.com/jon-mil-92/DisplayHotKeys/issues">Request Feature</a>
@@ -40,7 +40,7 @@
 <div align="center">
   <img src="Display_Hot_Keys_Screenshot.png" alt="Screenshot" width="720" align="center"/>
 </div>
-<br />
+<br/>
 
 This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, bit depth, refresh rate, scaling mode, and DPI scale percentage can be changed for each connected display with user-defined hot keys.
 
@@ -222,7 +222,13 @@ Distribution made possible with the following tools:
 
 **Disclaimer:** Development of Display Hot Keys is not contingent on donations. PayPal is a registered trademark of PayPal, Inc. The PayPal logo is a trademark of PayPal, Inc.
 
-<p align="left"><a href="https://www.paypal.com/donate/?business=A6U7KG5BDZTRE&no_recurring=0&item_name=I+appreciate+you+visiting+this+page%21+Thank+you%21&currency_code=USD"><img src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" align="left" height="72"/></a></p>
+<div align="left">
+  <a href="https://www.paypal.com/donate/?business=A6U7KG5BDZTRE&no_recurring=0&item_name=I+appreciate+you+visiting+this+page%21+Thank+you%21&currency_code=USD">
+    <img src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" align="left" height="72"/>
+  </a>
+</div>
+<br/>
+<br/>
 
 <!-- MARKDOWN LINKS -->
 
