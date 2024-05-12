@@ -1,0 +1,6 @@
+remote_theme: pages-themes/slate@v0.2.0
+plugins:
+- jekyll-remote-theme
+
+title: Display Hot Keys
+description: Instantly apply display resolution, bit depth, refresh rate, scaling mode, and DPI scale perge with user-defined hot keys.
