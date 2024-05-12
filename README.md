@@ -163,9 +163,9 @@ This application will launch minimized to the system tray in the task bar by des
 
 ## Roadmap
 
-- [x]  Release the initial build.
-- [x]  Add display scaling mode selection per hot key slot.
-- [x]  Add multi-monitor support.
+- [x] <p>&nbsp; Release the initial build.</p>
+- [x] <p>&nbsp; Add display scaling mode selection per hot key slot.</p>
+- [x] <p>&nbsp; Add multi-monitor support.</p>
 
 See [open issues] for a full list of proposed features (and known issues).
 
