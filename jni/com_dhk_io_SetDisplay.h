@@ -12,8 +12,8 @@ extern "C" {
  * Method:    setDisplay
  * Signature: (Ljava/lang/String;IIIIII)V
  */
-JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay
-  (JNIEnv *, jobject, jstring, jint, jint, jint, jint, jint, jint);
+JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv*, jobject, jstring, jint, jint, jint, jint, jint,
+        jint);
 
 #ifdef __cplusplus
 }
