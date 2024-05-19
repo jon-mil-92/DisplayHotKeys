@@ -182,7 +182,7 @@ To exit the application, click on the "Exit App" button. You can also exit the a
 - [x] &thinsp; Release the initial build.
 - [x] &thinsp; Add scaling mode selection.
 - [x] &thinsp; Add multi-monitor support.
-- [] &thinsp; Add rotation support.
+- [ ] &thinsp; Add rotation support.
 
 See [open issues] for a full list of proposed features (and known issues).
 
