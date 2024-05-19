@@ -6,12 +6,13 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
+import com.dhk.ui.buttons.ClearHotKeyButton;
 
 /**
  * This class defines the view components of a Slot.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -21,9 +22,9 @@ public class Slot {
     private JComboBox<DisplayMode> slotDisplayModes;
     private JComboBox<String> slotScalingModes;
     private JComboBox<Integer> slotDpiScalePercentages;
-    private JButton slotChangeHotKeyButton;
-    private JButton slotClearHotKeyButton;
     private JLabel slotHotKey;
+    private ClearHotKeyButton slotClearHotKeyButton;
+    private JButton slotChangeHotKeyButton;
 
     /**
      * Constructor for the Slot class.
@@ -38,8 +39,8 @@ public class Slot {
         String slotID = Integer.toString(Integer.parseInt(slotIndex) + 1);
 
         // Initialize the slot indicator label component.
-        slotIndicatorLabel = new JLabel("Hot Key Slot " + slotID + " :", SwingConstants.CENTER);
-        slotIndicatorLabel.setPreferredSize(new Dimension(105, 28));
+        slotIndicatorLabel = new JLabel("Slot " + slotID + " :", SwingConstants.CENTER);
+        slotIndicatorLabel.setPreferredSize(new Dimension(50, 28));
 
         // Initialize the display modes combo box component.
         slotDisplayModes = new JComboBox<DisplayMode>(displayModes);
@@ -53,16 +54,15 @@ public class Slot {
         slotDpiScalePercentages = new JComboBox<Integer>(dpiScalePercentages);
         slotDpiScalePercentages.setPreferredSize(new Dimension(70, 28));
 
+        // Initialize the current hot key component.
+        slotHotKey = new JLabel("", SwingConstants.CENTER);
+
+        // Initialize the clear hot key button component.
+        slotClearHotKeyButton = new ClearHotKeyButton("/clear_hot_key_idle.svg", "/clear_hot_key_hover.svg");
+
         // Initialize the change hot key button component.
         slotChangeHotKeyButton = new JButton("Change Hot Key");
         slotChangeHotKeyButton.setPreferredSize(new Dimension(150, 28));
-
-        // Initialize the clear hot key button component.
-        slotClearHotKeyButton = new JButton("Clear Hot Key");
-        slotClearHotKeyButton.setPreferredSize(new Dimension(135, 28));
-
-        // Initialize the current hot key component.
-        slotHotKey = new JLabel("", SwingConstants.CENTER);
     }
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -106,12 +106,12 @@ public class Slot {
     }
 
     /**
-     * Getter for the change hot key button of the slot.
+     * Getter for the hot key of the slot.
      * 
-     * @return The change hot key button of the slot.
+     * @return The hot key of the slot.
      */
-    public JButton getChangeHotKeyButton() {
-        return slotChangeHotKeyButton;
+    public JLabel getHotKey() {
+        return slotHotKey;
     }
 
     /**
@@ -119,16 +119,16 @@ public class Slot {
      * 
      * @return The clear hot key button of the slot.
      */
-    public JButton getClearHotKeyButton() {
+    public ClearHotKeyButton getClearHotKeyButton() {
         return slotClearHotKeyButton;
     }
 
     /**
-     * Getter for the hot key of the slot.
+     * Getter for the change hot key button of the slot.
      * 
-     * @return The hot key of the slot.
+     * @return The change hot key button of the slot.
      */
-    public JLabel getHotKey() {
-        return slotHotKey;
+    public JButton getChangeHotKeyButton() {
+        return slotChangeHotKeyButton;
     }
 }

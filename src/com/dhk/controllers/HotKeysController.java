@@ -24,7 +24,7 @@ import java.awt.event.ActionListener;
  * is detected.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -762,8 +762,10 @@ public class HotKeysController implements Controller, GlobalKeyListener {
                 // Enable all DPI scale percentages combo boxes after getting user input.
                 view.getSlot(displayIndex, slotIndex).getDpiScalePercentages().setEnabled(true);
 
-                // Enable all Clear Hot Key buttons after getting user input.
-                view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().setEnabled(true);
+                // Enable the Clear Hot Key button after getting user input if the hot key is set.
+                if (model.getSlot(displayIndex, slotIndex).getHotKey().getKeys().size() > 0) {
+                    view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().setEnabled(true);
+                }
 
                 // Enable all Change Hot Key buttons after getting user input.
                 view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton().setEnabled(true);

@@ -10,7 +10,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
  * This class defines the Run On Startup button. The icons for the different states of the button are defined here.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -27,7 +27,6 @@ public class RunOnStartupButton extends JButton {
     private Icon runOnStartupEnabledLightHoverIcon;
     private Icon runOnStartupEnabledDarkPressedIcon;
     private Icon runOnStartupEnabledLightPressedIcon;
-    private boolean runOnStartup;
 
     // Set a fixed size for the button icon.
     private final Dimension BUTTON_ICON_SIZE = new Dimension(48, 50);
@@ -51,9 +50,6 @@ public class RunOnStartupButton extends JButton {
             String runOnStartupDisabledIdleIconPath, String runOnStartupEnabledDarkHoverIconPath,
             String runOnStartupEnabledLightHoverIconPath, String runOnStartupDisabledDarkHoverIconPath,
             String runOnStartupDisabledLightHoverIconPath) {
-        // Initialize the "run on startup" state of the button.
-        this.runOnStartup = runOnStartup;
-
         // Initialize run on startup enabled button icons.
         runOnStartupEnabledIdleIcon = new FlatSVGIcon(getClass().getResource(runOnStartupEnabledIdleIconPath))
                 .derive(0.80f);
@@ -105,34 +101,9 @@ public class RunOnStartupButton extends JButton {
         this.setMargin(new Insets(0, 0, 0, 0));
     }
 
-    /**
-     * Toggle the "run on startup" state.
-     */
-    public void toggleRunOnStartup() {
-        runOnStartup = !runOnStartup;
-    }
-
     // -----------------------------------------------------------------------------------------------------------------
     // Getters and Setters
     // -----------------------------------------------------------------------------------------------------------------
-
-    /**
-     * Getter for the "run on startup" state.
-     * 
-     * @return The "run on startup" state.
-     */
-    public boolean isRunOnStartup() {
-        return runOnStartup;
-    }
-
-    /**
-     * Setter for the "run on startup" state.
-     * 
-     * @param runOnStartup - Whether or not the application should run on startup.
-     */
-    public void setRunOnStartup(boolean runOnStartup) {
-        this.runOnStartup = runOnStartup;
-    }
 
     /**
      * Getter for the run on startup button idle icon when it is enabled.

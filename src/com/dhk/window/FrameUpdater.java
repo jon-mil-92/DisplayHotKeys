@@ -9,7 +9,7 @@ import com.dhk.ui.DhkView;
  * This class updates the view for Display Hot Keys. The frame components and UI are updated with this class.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import com.dhk.controllers.Controller;
+import com.dhk.models.DhkModel;
 import com.dhk.ui.DhkView;
 
 /**
@@ -16,12 +17,13 @@ import com.dhk.ui.DhkView;
  * the PayPal Donate button is pressed, the paypal donation page is opened up in the user's default web browser.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
  */
 public class PaypalDonateButtonController implements Controller {
+    private DhkModel model;
     private DhkView view;
 
     // Define a string for the paypal donate web link.
@@ -35,10 +37,12 @@ public class PaypalDonateButtonController implements Controller {
     /**
      * Constructor for the PaypalDonateButtonController class.
      *
-     * @param view - The view for the application.
+     * @param model - The model for the application.
+     * @param view  - The view for the application.
      */
-    public PaypalDonateButtonController(DhkView view) {
-        // Get the application's view.
+    public PaypalDonateButtonController(DhkModel model, DhkView view) {
+        // Get the application's model and view.
+        this.model = model;
         this.view = view;
     }
 
@@ -129,7 +133,7 @@ public class PaypalDonateButtonController implements Controller {
      */
     private void setPressedIcon() {
         // If the UI is in dark mode...
-        if (view.isDarkMode()) {
+        if (model.isDarkMode()) {
             // Use the pressed icon for dark mode.
             view.getPaypalDonateButton().setIcon(view.getPaypalDonateButton().getPaypalDonateDarkPressedIcon());
         } else {
@@ -143,7 +147,7 @@ public class PaypalDonateButtonController implements Controller {
      */
     private void setHoverIcon() {
         // If the UI is in dark mode...
-        if (view.isDarkMode()) {
+        if (model.isDarkMode()) {
             // Use the hover icon for dark mode.
             view.getPaypalDonateButton().setIcon(view.getPaypalDonateButton().getPaypalDonateDarkHoverIcon());
         } else {
@@ -157,7 +161,7 @@ public class PaypalDonateButtonController implements Controller {
      */
     private void setIdleIcon() {
         // If the UI is in dark mode...
-        if (view.isDarkMode()) {
+        if (model.isDarkMode()) {
             // Use the idle icon for dark mode.
             view.getPaypalDonateButton().setIcon(view.getPaypalDonateButton().getPaypalDonateDarkIdleIcon());
         } else {

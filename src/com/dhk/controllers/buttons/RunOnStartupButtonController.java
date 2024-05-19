@@ -5,6 +5,7 @@ import java.awt.event.FocusListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import com.dhk.io.SettingsManager;
+import com.dhk.models.DhkModel;
 import com.dhk.controllers.Controller;
 import com.dhk.io.RunOnStartupManager;
 import com.dhk.ui.DhkView;
@@ -15,12 +16,13 @@ import com.dhk.ui.DhkView;
  * login.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
  */
 public class RunOnStartupButtonController implements Controller {
+    private DhkModel model;
     private DhkView view;
     private SettingsManager settingsMgr;
     private RunOnStartupManager runOnStartupManager;
@@ -28,11 +30,13 @@ public class RunOnStartupButtonController implements Controller {
     /**
      * Constructor for the RunOnStartupButtonController class.
      *
+     * @param model       - The model for the application.
      * @param view        - The view for the application.
      * @param settingsMgr - The settings manager for the application.
      */
-    public RunOnStartupButtonController(DhkView view, SettingsManager settingsMgr) {
-        // Get the application's view and settings manager.
+    public RunOnStartupButtonController(DhkModel model, DhkView view, SettingsManager settingsMgr) {
+        // Get the application's model, view, and settings manager.
+        this.model = model;
         this.view = view;
         this.settingsMgr = settingsMgr;
     }
@@ -98,10 +102,10 @@ public class RunOnStartupButtonController implements Controller {
      */
     private void runOnStartupButtonAction() {
         // Toggle the "run on startup" state.
-        view.getRunOnStartupButton().toggleRunOnStartup();
+        model.toggleRunOnStartup();
 
         // If the application should run on startup...
-        if (view.getRunOnStartupButton().isRunOnStartup()) {
+        if (model.isRunOnStartup()) {
             // Add the startup batch file to run this application on Windows login.
             runOnStartupManager.addToStartup();
         } else {
@@ -110,7 +114,7 @@ public class RunOnStartupButtonController implements Controller {
         }
 
         // Save the new "run on startup" state into the settings file.
-        settingsMgr.saveIniRunOnStartup(view.getRunOnStartupButton().isRunOnStartup());
+        settingsMgr.saveIniRunOnStartup(model.isRunOnStartup());
     }
 
     /**
@@ -139,21 +143,21 @@ public class RunOnStartupButtonController implements Controller {
      */
     private void setPressedIcon() {
         // If the application should run on startup...
-        if (view.getRunOnStartupButton().isRunOnStartup()) {
+        if (model.isRunOnStartup()) {
             // If the UI is in dark mode...
-            if (view.isDarkMode()) {
-                // Use the run on startup enabled light pressed button icon.
+            if (model.isDarkMode()) {
+                // Use the run on startup enabled dark pressed button icon.
                 view.getRunOnStartupButton()
                         .setIcon(view.getRunOnStartupButton().getRunOnStartupEnabledDarkPressedIcon());
             } else {
-                // Use the run on startup enabled dark pressed button icon.
+                // Use the run on startup enabled light pressed button icon.
                 view.getRunOnStartupButton()
                         .setIcon(view.getRunOnStartupButton().getRunOnStartupEnabledLightPressedIcon());
             }
             // Otherwise, if the application should not run on startup...
         } else {
             // If the UI is in dark mode...
-            if (view.isDarkMode()) {
+            if (model.isDarkMode()) {
                 // Use the run on startup disabled dark pressed button icon.
                 view.getRunOnStartupButton()
                         .setIcon(view.getRunOnStartupButton().getRunOnStartupDisabledDarkPressedIcon());
@@ -170,21 +174,21 @@ public class RunOnStartupButtonController implements Controller {
      */
     private void setHoverIcon() {
         // If the application should run on startup...
-        if (view.getRunOnStartupButton().isRunOnStartup()) {
+        if (model.isRunOnStartup()) {
             // If the UI is in dark mode...
-            if (view.isDarkMode()) {
-                // Use the run on startup enabled light hover button icon.
+            if (model.isDarkMode()) {
+                // Use the run on startup enabled dark hover button icon.
                 view.getRunOnStartupButton()
                         .setIcon(view.getRunOnStartupButton().getRunOnStartupEnabledDarkHoverIcon());
             } else {
-                // Use the run on startup enabled dark hover button icon.
+                // Use the run on startup enabled light hover button icon.
                 view.getRunOnStartupButton()
                         .setIcon(view.getRunOnStartupButton().getRunOnStartupEnabledLightHoverIcon());
             }
             // Otherwise, if the application should not run on startup...
         } else {
             // If the UI is in dark mode...
-            if (view.isDarkMode()) {
+            if (model.isDarkMode()) {
                 // Use the run on startup disabled dark hover button icon.
                 view.getRunOnStartupButton()
                         .setIcon(view.getRunOnStartupButton().getRunOnStartupDisabledDarkHoverIcon());
@@ -201,7 +205,7 @@ public class RunOnStartupButtonController implements Controller {
      */
     private void setIdleIcon() {
         // If the application should run on startup...
-        if (view.getRunOnStartupButton().isRunOnStartup()) {
+        if (model.isRunOnStartup()) {
             // Use the run on startup enabled idle button icon.
             view.getRunOnStartupButton().setIcon(view.getRunOnStartupButton().getRunOnStartupEnabledIdleIcon());
             // Otherwise, if the application should not run on startup...

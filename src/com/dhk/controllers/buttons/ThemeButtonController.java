@@ -6,6 +6,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import com.dhk.controllers.Controller;
 import com.dhk.io.SettingsManager;
+import com.dhk.models.DhkModel;
 import com.dhk.ui.ButtonThemesUpdater;
 import com.dhk.ui.DhkView;
 import com.dhk.ui.ThemeUpdater;
@@ -16,12 +17,13 @@ import com.dhk.window.FrameUpdater;
  * button is pressed, the application's theme will be toggled between "Light" and "Dark."
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
  */
 public class ThemeButtonController implements Controller {
+    private DhkModel model;
     private DhkView view;
     private SettingsManager settingsMgr;
     private ThemeUpdater themeUpdater;
@@ -31,11 +33,13 @@ public class ThemeButtonController implements Controller {
     /**
      * Constructor for the ThemeButtonController class.
      *
+     * @param model       - The model for the application.
      * @param view        - The view for the application.
      * @param settingsMgr - The settings manager for the application.
      */
-    public ThemeButtonController(DhkView view, SettingsManager settingsMgr) {
-        // Get the application's view and settings manager.
+    public ThemeButtonController(DhkModel model, DhkView view, SettingsManager settingsMgr) {
+        // Get the application's model, view, and settings manager.
+        this.model = model;
         this.view = view;
         this.settingsMgr = settingsMgr;
     }
@@ -47,7 +51,7 @@ public class ThemeButtonController implements Controller {
     public void initController() {
         // Initialize the objects that will control the active theme.
         themeUpdater = new ThemeUpdater();
-        buttonThemesUpdater = new ButtonThemesUpdater(view);
+        buttonThemesUpdater = new ButtonThemesUpdater(model, view);
 
         // Initialize the frame updater that will update the application's view.
         frameUpdater = new FrameUpdater(view);
@@ -104,10 +108,10 @@ public class ThemeButtonController implements Controller {
      */
     private void themeButtonAction() {
         // Toggle the dark mode state of the UI.
-        view.toggleDarkMode();
+        model.toggleDarkMode();
 
         // Update the theme according to the current "dark mode" state of the UI.
-        themeUpdater.useDarkMode(view.isDarkMode());
+        themeUpdater.useDarkMode(model.isDarkMode());
 
         // Update the themeable buttons to relfect the new "dark mode" state of the UI.
         buttonThemesUpdater.updateIdleButtonThemes();
@@ -116,7 +120,7 @@ public class ThemeButtonController implements Controller {
         frameUpdater.updateUI();
 
         // Save the new UI mode into the settings file.
-        settingsMgr.saveIniDarkMode(view.isDarkMode());
+        settingsMgr.saveIniDarkMode(model.isDarkMode());
     }
 
     /**
@@ -145,7 +149,7 @@ public class ThemeButtonController implements Controller {
      */
     private void setPressedIcon() {
         // If the UI is in dark mode...
-        if (view.isDarkMode()) {
+        if (model.isDarkMode()) {
             // Use the pressed icon for dark mode.
             view.getThemeButton().setIcon(view.getThemeButton().getDarkModePressedIcon());
         } else {
@@ -159,7 +163,7 @@ public class ThemeButtonController implements Controller {
      */
     private void setHoverIcon() {
         // If the UI is in dark mode...
-        if (view.isDarkMode()) {
+        if (model.isDarkMode()) {
             // Use the hover icon for dark mode.
             view.getThemeButton().setIcon(view.getThemeButton().getDarkModeHoverIcon());
         } else {
@@ -173,7 +177,7 @@ public class ThemeButtonController implements Controller {
      */
     private void setIdleIcon() {
         // If the UI is in dark mode...
-        if (view.isDarkMode()) {
+        if (model.isDarkMode()) {
             // Use the idle icon for dark mode.
             view.getThemeButton().setIcon(view.getThemeButton().getDarkModeIdleIcon());
         } else {

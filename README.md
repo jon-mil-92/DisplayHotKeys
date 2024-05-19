@@ -51,9 +51,9 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 ### Example Screen
 
-![screenshot](product_screenshot.jpg)
+![screenshot](product_screenshot.png)
 
-<p align="right"><a href="#readme-top">Back to Top</a>&nbsp; &#x25B2;</p>
+<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
 <!-- GETTING STARTED -->
 
@@ -89,7 +89,7 @@ This application will be distributed as a portable package and as an installer.
 
 4. Double-click the created shortcut or the DisplayHotKeys executable file in the install directory to run the application.
 
-<p align="right"><a href="#readme-top">Back to Top</a>&nbsp; &#x25B2;</p>
+<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
 <!-- USAGE -->
 
@@ -143,7 +143,7 @@ This application will launch minimized to the system tray in the task bar by des
 
 #### Clear Hot Key
 
-Individual hot keys can be cleared by clicking on the "Clear Hot Key" button for a hot key slot.
+Individual hot keys can be cleared by clicking on the "Clear Hot Key" button for a hot key slot when a hot key is set.
 
 #### PayPal Donate
 
@@ -173,19 +173,20 @@ The application will be minimized to the system tray when the "Minimize To Tray"
 
 To exit the application, click on the "Exit App" button. You can also exit the application from the system tray by clicking on the system tray icon and selecting "Exit".
 
-<p align="right"><a href="#readme-top">Back to Top</a>&nbsp; &#x25B2;</p>
+<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
 <!-- ROADMAP -->
 
 ## Roadmap
 
-- [x] &nbsp; Release the initial build.
-- [x] &nbsp; Add scaling mode selection.
-- [x] &nbsp; Add multi-monitor support.
+- [x] &thinsp; Release the initial build.
+- [x] &thinsp; Add scaling mode selection.
+- [x] &thinsp; Add multi-monitor support.
+- [] &thinsp; Add rotation support.
 
 See [open issues] for a full list of proposed features (and known issues).
 
-<p align="right"><a href="#readme-top">Back to Top</a>&nbsp; &#x25B2;</p>
+<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
 <!-- LICENSE -->
 
@@ -193,7 +194,7 @@ See [open issues] for a full list of proposed features (and known issues).
 
 Distributed under the [MIT License]. See LICENSE.txt for more information.
 
-<p align="right"><a href="#readme-top">Back to Top</a>&nbsp; &#x25B2;</p>
+<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
 <!-- CONTACT -->
 
@@ -201,7 +202,7 @@ Distributed under the [MIT License]. See LICENSE.txt for more information.
 
 Jonathan Miller - jonRock1992@gmail.com
 
-<p align="right"><a href="#readme-top">Back to Top</a>&nbsp; &#x25B2;</p>
+<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
 <!-- DEPENDENCIES -->
 
@@ -229,7 +230,7 @@ Distribution made possible with the following tools:
 
 * [Inno Setup]
 
-<p align="right"><a href="#readme-top">Back to Top</a>&nbsp; &#x25B2;</p>
+<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
 <!-- PAYPAL DONATE -->
 

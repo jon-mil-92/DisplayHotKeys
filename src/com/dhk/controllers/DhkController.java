@@ -3,7 +3,6 @@ package com.dhk.controllers;
 import java.util.ArrayList;
 import javax.swing.JFrame;
 import com.dhk.controllers.buttons.ClearHotKeyButtonController;
-import com.dhk.controllers.buttons.PaypalDonateButtonController;
 import com.dhk.io.SettingsManager;
 import com.dhk.models.DhkModel;
 import com.dhk.ui.DhkView;
@@ -14,7 +13,7 @@ import lc.kra.system.keyboard.GlobalKeyboardHook;
  * created.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -74,7 +73,6 @@ public class DhkController implements Controller {
 
         controllers.add(new MenuController(model, view, this, settingsMgr));
         controllers.add(new NumberOfSlotsController(model, view, settingsMgr));
-        controllers.add(new PaypalDonateButtonController(view));
         controllers.add(new ScalingModeController(model, view, settingsMgr));
         controllers.add(new SelectedDisplayController(model, view));
         controllers.add(new WindowController(view));

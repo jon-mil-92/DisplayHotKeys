@@ -16,7 +16,7 @@ import lc.kra.system.keyboard.event.GlobalKeyEvent;
  * fails validation, then it is reset to the default value.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024

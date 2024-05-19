@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import com.dhk.controllers.buttons.ClearAllButtonController;
 import com.dhk.controllers.buttons.ExitButtonController;
 import com.dhk.controllers.buttons.MinimizeButtonController;
+import com.dhk.controllers.buttons.PaypalDonateButtonController;
 import com.dhk.controllers.buttons.RefreshAppButtonController;
 import com.dhk.controllers.buttons.RunOnStartupButtonController;
 import com.dhk.controllers.buttons.ThemeButtonController;
@@ -16,7 +17,7 @@ import com.dhk.ui.DhkView;
  * listeners are initialized through this menu controller.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -53,8 +54,9 @@ public class MenuController implements Controller {
         menuButtonControllers = new ArrayList<Controller>();
 
         // Create the menu button controllers and add them to the array list of menu button controllers.
-        menuButtonControllers.add(new RunOnStartupButtonController(view, settingsMgr));
-        menuButtonControllers.add(new ThemeButtonController(view, settingsMgr));
+        menuButtonControllers.add(new PaypalDonateButtonController(model, view));
+        menuButtonControllers.add(new ThemeButtonController(model, view, settingsMgr));
+        menuButtonControllers.add(new RunOnStartupButtonController(model, view, settingsMgr));
         menuButtonControllers.add(new RefreshAppButtonController(model, view, controller, settingsMgr));
         menuButtonControllers.add(new ClearAllButtonController(model, view, settingsMgr));
         menuButtonControllers.add(new MinimizeButtonController(view));
