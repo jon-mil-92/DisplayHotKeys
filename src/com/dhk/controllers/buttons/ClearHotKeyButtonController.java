@@ -142,6 +142,9 @@ public class ClearHotKeyButtonController implements Controller {
 
         // Save the hot key in the settings.
         settingsMgr.saveIniSlotHotKey(displayId, slotId, model.getSlot(displayIndex, slotIndex).getHotKey());
+        
+        // Focus on the display IDs label after clearing the hot key so the change hot key button doesn't gain focus.
+        view.getDisplayIdsLabel().requestFocusInWindow();
     }
 
     /**
