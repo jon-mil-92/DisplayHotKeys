@@ -121,6 +121,9 @@ public class ClearAllButtonController implements Controller {
             // Update the view's frame.
             frameUpdater.updateUI();
         }
+
+        // Set the focus on the display IDs label so the clear all slots button does not flash red after confirmation.
+        view.getDisplayIdsLabel().requestFocusInWindow();
     }
 
     /**
