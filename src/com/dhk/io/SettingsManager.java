@@ -14,11 +14,11 @@ import com.dhk.models.Key;
 
 /**
  * This class saves the application settings in an ini file. It enables the saving of the active number of slots, the
- * theme state, the run on startup state, the display modes, the scaling modes, the DPI scale percentages, and the hot
- * keys.
+ * theme state, the run on startup state, the orientation modes, the display modes, the scaling modes, the DPI scale
+ * percentages, and the hot keys.
  * 
  * @author Jonathan Miller
- * @version 1.3.2
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -36,6 +36,12 @@ public class SettingsManager {
     private final int MAX_NUM_OF_SLOTS = 12;
 
     /**
+     * Default constructor for the SettingsManager class.
+     */
+    public SettingsManager() {
+    }
+
+    /**
      * This method initializes the key text object, display modes map, and settings file for the settings manager.
      */
     public void initSettingsManager() {
@@ -50,30 +56,6 @@ public class SettingsManager {
     // -----------------------------------------------------------------------------------------------------------------
     // Settings File Getters and Setters
     // -----------------------------------------------------------------------------------------------------------------
-
-    /**
-     * Getter for the number of slots property value for the given display from the settings file object.
-     * 
-     * @param displayId - The ID of the display to get the number of slots for.
-     * @return The value for the number of slots property.
-     */
-    public int getIniNumOfSlotsForDisplay(String displayId) {
-        // Get the number of slots property value from the settings file object.
-        return ini.get("Application", "numOfSlotsFor--" + displayId, int.class);
-    }
-
-    /**
-     * Setter for the number of slots property value for the given display in the settings file object.
-     * 
-     * @param displayId  - The ID of the display to set the number of slots for.
-     * @param numOfSlots - The new value for the number of slots property.
-     */
-    public void saveIniNumOfSlotsForDisplay(String displayId, int numOfSlots) {
-        // Write the new number of slots property value to the settings file object.
-        ini.put("Application", "numOfSlotsFor--" + displayId, numOfSlots);
-
-        updateSettingsFile();
-    }
 
     /**
      * Getter for the dark mode property value from the settings file object.
@@ -115,6 +97,54 @@ public class SettingsManager {
     public void saveIniRunOnStartup(boolean runOnStartup) {
         // Write the new run on startup property value to the settings file object.
         ini.put("Application", "runOnStartup", runOnStartup);
+
+        updateSettingsFile();
+    }
+
+    /**
+     * Getter for the number of slots property value for the given display from the settings file object.
+     * 
+     * @param displayId - The ID of the display to get the number of slots for.
+     * @return The value for the number of slots property.
+     */
+    public int getIniNumOfSlotsForDisplay(String displayId) {
+        // Get the number of slots property value from the settings file object.
+        return ini.get("Application", "numOfSlotsFor--" + displayId, int.class);
+    }
+
+    /**
+     * Setter for the number of slots property value for the given display in the settings file object.
+     * 
+     * @param displayId  - The ID of the display to set the number of slots for.
+     * @param numOfSlots - The new value for the number of slots property.
+     */
+    public void saveIniNumOfSlotsForDisplay(String displayId, int numOfSlots) {
+        // Write the new number of slots property value to the settings file object.
+        ini.put("Application", "numOfSlotsFor--" + displayId, numOfSlots);
+
+        updateSettingsFile();
+    }
+
+    /**
+     * Getter for the orientation mode property value for the given display from the settings file object.
+     * 
+     * @param displayId - The ID of the display to get the orientation mode for.
+     * @return The value for the orientation mode property.
+     */
+    public int getIniOrientationModeForDisplay(String displayId) {
+        // Get the orientation mode property value from the settings file object.
+        return ini.get("Application", "orientationModeFor--" + displayId, int.class);
+    }
+
+    /**
+     * Setter for the orientation mode property value for the given display in the settings file object.
+     * 
+     * @param displayId       - The ID of the display to set the orientation mode for.
+     * @param orientationMode - The new value for the orientation mode property.
+     */
+    public void saveIniOrientationModeForDisplay(String displayId, int orientationMode) {
+        // Write the new orientation mode property value to the settings file object.
+        ini.put("Application", "orientationModeFor--" + displayId, orientationMode);
 
         updateSettingsFile();
     }

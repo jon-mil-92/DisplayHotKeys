@@ -16,7 +16,7 @@ import lc.kra.system.keyboard.event.GlobalKeyEvent;
  * fails validation, then it is reset to the default value.
  * 
  * @author Jonathan Miller
- * @version 1.3.2
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -59,9 +59,10 @@ public class SettingsValidator {
      * the corresponding default value is written to the settings file.
      */
     public void validateAllProperties() {
-        validateNumOfSlots();
         validateDarkMode();
         validateRunOnStartup();
+        validateNumOfSlots();
+        validateOrientationMode();
         validateDisplayModes();
         validateScalingModes();
         validateDpiScalePercentages();
@@ -102,32 +103,6 @@ public class SettingsValidator {
         keyCodeList.removeIf(n -> (n == 0));
 
         return keyCodeList;
-    }
-
-    /**
-     * This method validates the value for the numOfSlots property from the settings file. If the value is not in the
-     * correct range, then it writes the default value for the number of slots property.
-     */
-    private void validateNumOfSlots() {
-        // For each connected display...
-        for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
-            // Get the ID for the current display index.
-            String displayId = displayIds[displayIndex];
-
-            // Set the ini property string for the current display ID.
-            String iniProperty = "numOfSlotsFor--" + displayId;
-
-            // Get the string value for the number of slots property for the current display ID from the settings file.
-            String numOfSlots = ini.get("Application", iniProperty);
-
-            // If the number of slots property value for the current display is null, not a positive integer, or not in
-            // the correct range...
-            if (numOfSlots == null || !isPositiveInt(numOfSlots) || Integer.valueOf(numOfSlots) < 1
-                    || Integer.valueOf(numOfSlots) > settingsMgr.getMaxNumOfSlots()) {
-                // Reset the number of slots property for the current display to the default value.
-                settingsMgr.saveIniNumOfSlotsForDisplay(displayId, 4);
-            }
-        }
     }
 
     /**
@@ -216,6 +191,57 @@ public class SettingsValidator {
 
             // Remove the startup batch file since the runOnStartup property was reset to false.
             runOnStartupManager.removeFromStartup();
+        }
+    }
+
+    /**
+     * This method validates the value for the number of slots property from the settings file. If the value is not in
+     * the correct range, then it writes the default value for the number of slots property.
+     */
+    private void validateNumOfSlots() {
+        // For each connected display...
+        for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
+            // Get the ID for the current display index.
+            String displayId = displayIds[displayIndex];
+
+            // Set the ini property string for the current display ID.
+            String iniProperty = "numOfSlotsFor--" + displayId;
+
+            // Get the string value for the number of slots property for the current display ID from the settings file.
+            String numOfSlots = ini.get("Application", iniProperty);
+
+            // If the number of slots property value for the current display is null, not a positive integer, or not in
+            // the correct range...
+            if (numOfSlots == null || !isPositiveInt(numOfSlots) || Integer.valueOf(numOfSlots) < 1
+                    || Integer.valueOf(numOfSlots) > settingsMgr.getMaxNumOfSlots()) {
+                // Reset the number of slots property for the current display to the default value.
+                settingsMgr.saveIniNumOfSlotsForDisplay(displayId, 4);
+            }
+        }
+    }
+
+    /**
+     * This method validates the value for the orientation mode property from the settings file. If the value is not in
+     * the correct range, then it writes the default value for the orientation mode property.
+     */
+    private void validateOrientationMode() {
+        // For each connected display...
+        for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
+            // Get the ID for the current display index.
+            String displayId = displayIds[displayIndex];
+
+            // Set the ini property string for the current display ID.
+            String iniProperty = "orientationModeFor--" + displayId;
+
+            // Get the string value for the orientation mode property for the current display ID from the settings file.
+            String orientationMode = ini.get("Application", iniProperty);
+
+            // If the orientation mode property value for the current display is null, not a positive integer, or not in
+            // the correct range...
+            if (orientationMode == null || !isPositiveInt(orientationMode) || Integer.valueOf(orientationMode) > 3) {
+                // Reset the orientation mode property for the current display to the default value.
+                settingsMgr.saveIniOrientationModeForDisplay(displayId, 0);
+            }
         }
     }
 

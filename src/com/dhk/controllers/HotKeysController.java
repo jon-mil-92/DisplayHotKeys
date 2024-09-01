@@ -24,7 +24,7 @@ import java.awt.event.ActionListener;
  * is detected.
  * 
  * @author Jonathan Miller
- * @version 1.3.2
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -531,7 +531,7 @@ public class HotKeysController implements Controller, GlobalKeyListener {
     private void setDisplaySettings(int displayIndex, int slotIndex) {
         // Get the current display configuration.
         DisplayConfig displayConfig = new DisplayConfig();
-        displayConfig.updateDisplayConfig();
+        displayConfig.updateDisplayIds();
 
         // Get the ID for the given display index.
         String displayId = model.getDisplayIds()[displayIndex];
@@ -545,7 +545,8 @@ public class HotKeysController implements Controller, GlobalKeyListener {
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getBitDepth(),
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshRate(),
                     model.getSlot(displayIndex, slotIndex).getScalingMode(),
-                    model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
+                    model.getSlot(displayIndex, slotIndex).getDpiScalePercentage(),
+                    model.getOrientationModeForDisplay(displayIndex));
         }
     }
 
@@ -699,6 +700,9 @@ public class HotKeysController implements Controller, GlobalKeyListener {
 
             // Disable all interactive components for each slot in the view.
             for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
+                // Disable all apply display mode buttons while getting user input.
+                view.getSlot(displayIndex, slotIndex).getApplyDisplayModeButton().setEnabled(false);
+
                 // Disable all display mode combo boxes while getting user input.
                 view.getSlot(displayIndex, slotIndex).getDisplayModes().setEnabled(false);
 
@@ -753,6 +757,9 @@ public class HotKeysController implements Controller, GlobalKeyListener {
 
             // Enable all interactive components for each slot in the view.
             for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
+                // Enable all apply display mode buttons after getting user input.
+                view.getSlot(displayIndex, slotIndex).getApplyDisplayModeButton().setEnabled(true);
+
                 // Enable all display mode combo boxes after getting user input.
                 view.getSlot(displayIndex, slotIndex).getDisplayModes().setEnabled(true);
 

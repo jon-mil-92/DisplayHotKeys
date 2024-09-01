@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>DisplayHotKeys</groupId>
     <artifactId>DisplayHotKeys</artifactId>
-    <version>1.3.2</version>
+    <version>1.4.0</version>
     <name>DisplayHotKeys</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -56,12 +56,12 @@
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf</artifactId>
-            <version>3.4.1</version>
+            <version>3.5</version>
         </dependency>
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf-extras</artifactId>
-            <version>3.4.1</version>
+            <version>3.5</version>
         </dependency>
         <dependency>
             <groupId>com.formdev</groupId>

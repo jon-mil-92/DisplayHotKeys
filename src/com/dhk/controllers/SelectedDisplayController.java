@@ -6,10 +6,10 @@ import com.dhk.window.FrameUpdater;
 
 /**
  * This class controls the combo box for the selected display. Listeners are added to the corresponding view component
- * so that when a new display is selected, the slots are changed to those for the selected display.
+ * so that when a new display is selected, the view components are changed to those for the selected display.
  * 
  * @author Jonathan Miller
- * @version 1.3.2
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -27,8 +27,8 @@ public class SelectedDisplayController implements Controller {
      */
     public SelectedDisplayController(DhkModel model, DhkView view) {
         // Get the application's model and view
-        this.view = view;
         this.model = model;
+        this.view = view;
     }
 
     /**
@@ -67,11 +67,20 @@ public class SelectedDisplayController implements Controller {
             // The number of active slots displayed for the previously selected display.
             int oldNumOfActiveSlots = model.getNumOfSlotsForDisplay(prevSelectedDisplayIndex);
 
+            // The orientation mode to be displayed for the newly selected display.
+            int newOrientationMode = model.getOrientationModeForDisplay(displayIndex);
+
             // Show the number of active slots combo box for the selected display.
             view.showNumberOfActiveSlotsForDisplay(displayIndex);
 
             // Update the number of active slots combo box for the newly selected display.
             view.getNumberOfActiveSlots(displayIndex).setSelectedItem(newNumOfActiveSlots);
+
+            // Show the orientation modes combo box for the selected display.
+            view.showOrientationModesForDisplay(displayIndex);
+
+            // Update the orientation modes combo box for the newly selected display.
+            view.getOrientationModes(displayIndex).setSelectedItem(newOrientationMode);
 
             // Replace the slots that will be in the view with the slots for the newly selected display.
             view.replaceActiveSlots();
