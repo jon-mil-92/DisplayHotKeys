@@ -12,7 +12,7 @@ import com.dhk.window.MinimizeToTray;
  * system tray and restored from the system tray.
  * 
  * @author Jonathan Miller
- * @version 1.3.2
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -95,7 +95,8 @@ public class WindowController implements Controller, WindowListener {
      */
     @Override
     public void windowDeiconified(WindowEvent e) {
-        // Do nothing when the window is opened from an icon.
+        // Set the focus on the display IDs label after restoring the frame.
+        view.getDisplayIdsLabel().requestFocusInWindow();
     }
 
     /**

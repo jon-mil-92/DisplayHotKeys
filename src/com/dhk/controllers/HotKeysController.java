@@ -695,8 +695,11 @@ public class HotKeysController implements Controller, GlobalKeyListener {
 
         // For each connected display...
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
-            // Disable the number of active slots combo box for the current display index.
+            // Disable the number of active slots combo box while getting user input.
             view.getNumberOfActiveSlots(displayIndex).setEnabled(false);
+
+            // Disable the orientation modes combo box while getting user input.
+            view.getOrientationModes(displayIndex).setEnabled(false);
 
             // Disable all interactive components for each slot in the view.
             for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
@@ -752,8 +755,11 @@ public class HotKeysController implements Controller, GlobalKeyListener {
 
         // For each connected display...
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
-            // Enable the number of avtive slots combo box for the current display index.
+            // Enable the number of avtive slots combo box after getting user input.
             view.getNumberOfActiveSlots(displayIndex).setEnabled(true);
+
+            // Enable the orientation modes combo box after getting user input.
+            view.getOrientationModes(displayIndex).setEnabled(true);
 
             // Enable all interactive components for each slot in the view.
             for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
