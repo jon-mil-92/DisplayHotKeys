@@ -51,7 +51,7 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 ### Example Screen
 
-![screenshot](product_screenshot.png)
+![screenshot](product-screenshot.png)
 
 <p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
@@ -122,6 +122,22 @@ This application will launch minimized to the system tray in the task bar by des
 2. Select one of the values.
 
 **Note:** There can be up to 12 active hot key slots for each connected display.
+
+### Changing Display Orientation
+
+1. Click the "Orientation" drop-down box.
+
+2. Select one of the following values:
+    
+    * Landscape - The standard orientation with no rotation.
+    
+    * Portrait - Mode for 90 degrees display rotation.
+    
+    * iLandscape - Inverted landscape mode for 180 degrees display rotation.
+    
+    * iPortrait - Inverted portrait mode for 270 degrees display rotation.
+
+**Note:** Make sure you can rotate your display before changing the orientation; otherwise, it may be difficult to operate your computer.
 
 ### Selecting Display Settings
 
