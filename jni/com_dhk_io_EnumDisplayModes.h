@@ -12,7 +12,8 @@ extern "C" {
  * Method:    enumDisplayModes
  * Signature: (Ljava/lang/String;)[Ljava/awt/DisplayMode;
  */
-JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_EnumDisplayModes_enumDisplayModes(JNIEnv*, jobject, jstring);
+JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_EnumDisplayModes_enumDisplayModes
+  (JNIEnv *, jobject, jstring);
 
 #ifdef __cplusplus
 }
