@@ -45,7 +45,7 @@ public class WindowController implements Controller, WindowListener {
         viewRefresher.start();
 
         // Initialize the minimize-to-tray object for the apllication's frame with the specified tray icon path.
-        minimizeToTray = new MinimizeToTray(view.getFrame(), viewRefresher, "/tray_icon.png");
+        minimizeToTray = new MinimizeToTray(view, viewRefresher, "/tray_icon.png");
     }
 
     /**
@@ -95,8 +95,7 @@ public class WindowController implements Controller, WindowListener {
      */
     @Override
     public void windowDeiconified(WindowEvent e) {
-        // Set the focus on the display IDs label after restoring the frame.
-        view.getDisplayIdsLabel().requestFocusInWindow();
+        // Do nothing when the window is restored from an icon.
     }
 
     /**
@@ -104,7 +103,7 @@ public class WindowController implements Controller, WindowListener {
      */
     @Override
     public void windowClosing(WindowEvent e) {
-        // Do nothing when the window is closing.
+        // Do nothing right before the application closes.
     }
 
     /**
