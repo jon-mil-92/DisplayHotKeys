@@ -49,7 +49,7 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 * Instantly set a display mode while in a video game. (This is useful if a video game does not support changing the resolution or refresh rate while in-game.)
 
-### Example Screen (v1.4.0)
+### Example Screen
 
 ![screenshot](product-screenshot.png)
 
@@ -123,7 +123,7 @@ This application will launch minimized to the system tray in the task bar by des
 
 **Note:** There can be up to 12 active hot key slots for each connected display.
 
-### Changing Display Orientation (Coming in v1.4.0)
+### Changing Display Orientation
 
 1. Click the "Orientation" drop-down box.
 
