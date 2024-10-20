@@ -13,7 +13,7 @@ import com.dhk.ui.DhkView;
  * Minimize button is pressed, the application is minimized to the system tray.
  * 
  * @author Jonathan Miller
- * @version 1.3.2
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -92,7 +92,7 @@ public class MinimizeButtonController implements Controller {
         view.getDisplayIdsLabel().requestFocusInWindow();
 
         // Try to free up resources upon minimizing to the system tray to utilize minimal memory while minimized.
-        Runtime.getRuntime().gc();
+        System.gc();
     }
 
     /**

@@ -6,7 +6,7 @@ import java.util.ArrayList;
  * This class represents the model for a Hot Key. States and the string representation of the Hot Key are defined here.
  * 
  * @author Jonathan Miller
- * @version 1.3.2
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024

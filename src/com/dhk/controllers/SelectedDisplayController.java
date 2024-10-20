@@ -67,20 +67,11 @@ public class SelectedDisplayController implements Controller {
             // The number of active slots displayed for the previously selected display.
             int oldNumOfActiveSlots = model.getNumOfSlotsForDisplay(prevSelectedDisplayIndex);
 
-            // The orientation mode to be displayed for the newly selected display.
-            int newOrientationMode = model.getOrientationModeForDisplay(displayIndex);
-
             // Show the number of active slots combo box for the selected display.
             view.showNumberOfActiveSlotsForDisplay(displayIndex);
 
-            // Update the number of active slots combo box for the newly selected display.
-            view.getNumberOfActiveSlots(displayIndex).setSelectedItem(newNumOfActiveSlots);
-
             // Show the orientation modes combo box for the selected display.
             view.showOrientationModesForDisplay(displayIndex);
-
-            // Update the orientation modes combo box for the newly selected display.
-            view.getOrientationModes(displayIndex).setSelectedItem(newOrientationMode);
 
             // Replace the slots that will be in the view with the slots for the newly selected display.
             view.replaceActiveSlots();

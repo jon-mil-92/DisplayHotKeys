@@ -19,7 +19,7 @@ import com.dhk.utility.DisplayModeInverter;
  * selected display.
  * 
  * @author Jonathan Miller
- * @version 1.0.0
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024

@@ -4,7 +4,7 @@ package com.dhk.models;
  * This class represents the model for a Key. The key code, name, and pressed state of the Key is defined here.
  * 
  * @author Jonathan Miller
- * @version 1.3.2
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024

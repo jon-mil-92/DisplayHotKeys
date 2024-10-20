@@ -10,10 +10,10 @@ extern "C" {
 /*
  * Class:     com_dhk_io_SetDisplay
  * Method:    setDisplay
- * Signature: (Ljava/lang/String;IIIIIII)V
+ * Signature: (Ljava/lang/String;IIIIII)V
  */
 JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay
-  (JNIEnv *, jobject, jstring, jint, jint, jint, jint, jint, jint, jint);
+  (JNIEnv *, jobject, jstring, jint, jint, jint, jint, jint, jint);
 
 /*
  * Class:     com_dhk_io_SetDisplay

@@ -1,6 +1,6 @@
 /*
  * Original Author: Jonathan Miller
- * Version: 1.0.0.0
+ * Version: 1.4.0.0
  *
  * Description: Enumerate the display IDs for the connected displays.
  *

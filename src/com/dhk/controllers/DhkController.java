@@ -113,7 +113,7 @@ public class DhkController implements Controller {
             // Clean up and stop any opened threads.
             controller.cleanUp();
 
-            // Set the contoller to null to remove references and allow it to be collected by the garbage collector.
+            // Set the controller to null to remove references and allow it to be collected by the garbage collector.
             controller = null;
         }
     }
@@ -130,5 +130,8 @@ public class DhkController implements Controller {
         cleanUp();
         initController();
         initListeners();
+        
+        // Clean up memory after re-initializing the controller.
+        System.gc();
     }
 }

@@ -545,8 +545,7 @@ public class HotKeysController implements Controller, GlobalKeyListener {
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getBitDepth(),
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshRate(),
                     model.getSlot(displayIndex, slotIndex).getScalingMode(),
-                    model.getSlot(displayIndex, slotIndex).getDpiScalePercentage(),
-                    model.getOrientationModeForDisplay(displayIndex));
+                    model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
         }
     }
 
