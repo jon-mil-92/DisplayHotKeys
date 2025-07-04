@@ -51,7 +51,7 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 ### Example Screen
 
-![screenshot](src/product-screenshot.png)
+![screenshot](src/product_screenshot.png)
 
 <p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
