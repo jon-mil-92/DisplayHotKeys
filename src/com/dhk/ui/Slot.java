@@ -14,10 +14,10 @@ import com.dhk.ui.buttons.ClearHotKeyButton;
  * This class defines the view components of a Slot.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class Slot {
     private JLabel slotIndicatorLabel;

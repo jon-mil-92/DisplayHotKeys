@@ -7,7 +7,9 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
+
 import org.ini4j.Wini;
+
 import lc.kra.system.keyboard.event.GlobalKeyEvent;
 
 /**
@@ -16,10 +18,10 @@ import lc.kra.system.keyboard.event.GlobalKeyEvent;
  * fails validation, then it is reset to the default value.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class SettingsValidator {
     private SettingsManager settingsMgr;
@@ -60,6 +62,7 @@ public class SettingsValidator {
      */
     public void validateAllProperties() {
         validateDarkMode();
+        validateMinimizeToTray();
         validateRunOnStartup();
         validateNumOfSlots();
         validateOrientationMode();
@@ -173,6 +176,21 @@ public class SettingsValidator {
         if (darkMode == null || !(darkMode.equals("false") || darkMode.equals("true"))) {
             // Reset the darkMode property to the default value.
             settingsMgr.saveIniDarkMode(false);
+        }
+    }
+
+    /**
+     * This method validates the value for the minimizeToTray property from the settings file. If the value is not a
+     * string representation of a boolean, then it writes the default value for the minimizeToTray property.
+     */
+    private void validateMinimizeToTray() {
+        // Get the string representation of the minimizeToTray boolean value.
+        String minimizeToTray = ini.get("Application", "minimizeToTray");
+
+        // If the minimizeToTray property value is null or not a string representation of a boolean value...
+        if (minimizeToTray == null || !(minimizeToTray.equals("false") || minimizeToTray.equals("true"))) {
+            // Reset the minimizeToTray property to the default value.
+            settingsMgr.saveIniMinimizeToTray(false);
         }
     }
 

@@ -51,7 +51,7 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 ### Example Screen
 
-![screenshot](product-screenshot.png)
+![screenshot](src/product-screenshot.png)
 
 <p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
@@ -173,6 +173,10 @@ If you find the application useful and wish to donate, there is a "PayPal Donate
 
 The theme can be changed between "Light Mode" and "Dark Mode" by clicking on the "Change Theme" button. The icon will change to indicate the current theme.
 
+#### Minimize To Tray
+
+The application will be minimized to the system tray when the "Minimize To Tray" button is toggled on. To restore the application, click the system tray icon and select "Restore".
+
 #### Run On Startup
 
 The application can start automatically when the user logs into Windows by clicking on the "Run On Startup" button. The arrow will turn green to indicate that this option is enabled. The application will start minimized to the system tray.
@@ -185,9 +189,9 @@ If you have created a custom display mode while the application is running, ther
 
 All hot key slots for the selected display can be reset by clicking on the "Clear All Slots" button.
 
-#### Minimize To Tray
+#### Minimize
 
-The application will be minimized to the system tray when the "Minimize To Tray" button is pressed. To restore the application, click the system tray icon and select "Restore".
+The application will be minimized to the task bar or system tray depending on the state of the "Minimize To Tray" button.
 
 #### Exit App
 
@@ -204,6 +208,7 @@ To exit the application, click on the "Exit App" button. You can also exit the a
 - [x] &thinsp; Add multi-monitor support.
 - [x] &thinsp; Add display orientation selection.
 - [x] &thinsp; Add button to immediately apply display modes.
+- [x] &thinsp; Add a minimize to tray toggle.
 
 See [open issues] for a full list of proposed features (and known issues).
 

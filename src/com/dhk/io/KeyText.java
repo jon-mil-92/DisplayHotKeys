@@ -6,10 +6,10 @@ import java.awt.event.KeyEvent;
  * This class gets the text representation for a given key code.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class KeyText {
 

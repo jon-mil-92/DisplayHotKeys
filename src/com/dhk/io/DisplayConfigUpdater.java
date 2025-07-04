@@ -10,10 +10,10 @@ import com.dhk.ui.DhkView;
  * settings manager, model, view, and controllers will be re-initialized to reflect the new display configuration.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class DisplayConfigUpdater {
     private DhkModel model;

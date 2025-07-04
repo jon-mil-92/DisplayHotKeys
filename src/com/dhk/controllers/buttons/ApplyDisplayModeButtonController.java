@@ -17,10 +17,10 @@ import com.dhk.ui.DhkView;
  * when the Apply Display Mode button is pressed, the associated display mode is immediately applied.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class ApplyDisplayModeButtonController implements Controller {
     private DhkView view;

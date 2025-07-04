@@ -24,10 +24,10 @@ import java.awt.event.ActionListener;
  * is detected.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class HotKeysController implements Controller, GlobalKeyListener {
     private DhkView view;
@@ -677,6 +677,9 @@ public class HotKeysController implements Controller, GlobalKeyListener {
         // Disable the theme button while getting user input.
         view.getThemeButton().setEnabled(false);
 
+        // Disable the minimize to tray button while getting user input.
+        view.getMinimizeToTrayButton().setEnabled(false);
+
         // Disable the run on startup button while getting user input.
         view.getRunOnStartupButton().setEnabled(false);
 
@@ -736,6 +739,9 @@ public class HotKeysController implements Controller, GlobalKeyListener {
 
         // Enable the theme button after getting user input.
         view.getThemeButton().setEnabled(true);
+
+        // Enable the minimize to tray button while getting user input.
+        view.getMinimizeToTrayButton().setEnabled(true);
 
         // Enable the run on startup button after getting user input.
         view.getRunOnStartupButton().setEnabled(true);

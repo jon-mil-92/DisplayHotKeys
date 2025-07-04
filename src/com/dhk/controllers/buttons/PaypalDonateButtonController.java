@@ -17,10 +17,10 @@ import com.dhk.ui.DhkView;
  * the PayPal Donate button is pressed, the paypal donation page is opened up in the user's default web browser.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class PaypalDonateButtonController implements Controller {
     private DhkModel model;
