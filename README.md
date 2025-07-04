@@ -189,7 +189,7 @@ If you have created a custom display mode while the application is running, ther
 
 All hot key slots for the selected display can be reset by clicking on the "Clear All Slots" button.
 
-#### Minimize
+#### Minimize App
 
 The application will be minimized to the task bar or system tray depending on the state of the "Minimize To Tray" button.
 
