@@ -7,8 +7,11 @@ import java.awt.event.MouseEvent;
 import java.util.Arrays;
 
 import com.dhk.controllers.Controller;
+import com.dhk.controllers.DhkController;
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.SetDisplay;
+import com.dhk.io.SettingsManager;
+import com.dhk.main.AppRefresher;
 import com.dhk.models.DhkModel;
 import com.dhk.ui.DhkView;
 
@@ -25,24 +28,35 @@ import com.dhk.ui.DhkView;
 public class ApplyDisplayModeButtonController implements Controller {
     private DhkView view;
     private DhkModel model;
+    private DhkController controller;
+    private SettingsManager settingsMgr;
     private SetDisplay setDisplay;
+    private AppRefresher appRefresher;
 
     /**
      * Constructor for the ApplyDisplayModeButtonController class.
      *
-     * @param model - The model for the application.
-     * @param view  - The view for the application.
+     * @param model       - The model for the application.
+     * @param view        - The view for the application.
+     * @param controller  - The controller for the application.
+     * @param settingsMgr - The settings manager for the application.
      */
-    public ApplyDisplayModeButtonController(DhkModel model, DhkView view) {
-        // Get the application's model and view.
+    public ApplyDisplayModeButtonController(DhkModel model, DhkView view, DhkController controller,
+            SettingsManager settingsMgr) {
+        // Get the application's model, view, controller, and settings manager.
         this.model = model;
         this.view = view;
+        this.controller = controller;
+        this.settingsMgr = settingsMgr;
     }
 
     @Override
     public void initController() {
         // Initialize the set display object that will immediately apply the new display settings.
         setDisplay = new SetDisplay();
+
+        // Initialize the app refresher that will refresh the app after applying display modes.
+        appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
 
     /**
@@ -129,6 +143,9 @@ public class ApplyDisplayModeButtonController implements Controller {
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshRate(),
                     model.getSlot(displayIndex, slotIndex).getScalingMode(),
                     model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
+
+            // Re-initialize the app to prevent window corruption.
+            appRefresher.reInitApp();
         }
     }
 
