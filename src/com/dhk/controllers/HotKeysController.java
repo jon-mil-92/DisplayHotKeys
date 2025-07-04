@@ -1,6 +1,7 @@
 package com.dhk.controllers;
 
 import com.dhk.io.SettingsManager;
+import com.dhk.main.AppRefresher;
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.KeyText;
 import com.dhk.io.SetDisplay;
@@ -32,6 +33,7 @@ import java.awt.event.ActionListener;
 public class HotKeysController implements Controller, GlobalKeyListener {
     private DhkView view;
     private DhkModel model;
+    private DhkController controller;
     private SettingsManager settingsMgr;
     private SetDisplay setDisplay;
     private HotKey hotKeyBackup;
@@ -39,6 +41,7 @@ public class HotKeysController implements Controller, GlobalKeyListener {
     private Timer idleTimer;
     private Timer releaseMessageTimer;
     private FrameUpdater frameUpdater;
+    private AppRefresher appRefresher;
     private int currentKeyCount;
     private int maxNumOfSlots;
     private boolean showReleaseMessage;
@@ -68,10 +71,11 @@ public class HotKeysController implements Controller, GlobalKeyListener {
      * @param view        - The view for the application.
      * @param settingsMgr - The settings manager for the application.
      */
-    public HotKeysController(DhkModel model, DhkView view, SettingsManager settingsMgr) {
+    public HotKeysController(DhkModel model, DhkView view, DhkController controller, SettingsManager settingsMgr) {
         // Get the application's model, view, and settings manager.
         this.model = model;
         this.view = view;
+        this.controller = controller;
         this.settingsMgr = settingsMgr;
     }
 
@@ -104,6 +108,9 @@ public class HotKeysController implements Controller, GlobalKeyListener {
 
         // Any hot key is not a subset of another upon initialization of this controller.
         anyHotKeySubset = false;
+
+        // Initialize the app refresher that will refresh the app after applying display modes.
+        appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
 
     /**
@@ -546,6 +553,9 @@ public class HotKeysController implements Controller, GlobalKeyListener {
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshRate(),
                     model.getSlot(displayIndex, slotIndex).getScalingMode(),
                     model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
+
+            // Re-initialize the app to prevent window corruption.
+            appRefresher.reInitApp();
         }
     }
 
