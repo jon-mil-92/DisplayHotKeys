@@ -12,9 +12,9 @@ header:
 	
 dll:
 	# The JNI libraries will only build if JDK 21 is installed in the default path.
-	g++ --std=c++20 jni/com_dhk_io_EnumDisplayModes.cpp -I"C:\Program Files\Java\jdk-21\include" -I"C:\Program Files\Java\jdk-21\include\win32" -shared -o EnumDisplayModes.dll
-	g++ --std=c++20 jni/com_dhk_io_EnumDisplayIds.cpp -I"C:\Program Files\Java\jdk-21\include" -I"C:\Program Files\Java\jdk-21\include\win32" -shared -o EnumDisplayIds.dll
-	g++ --std=c++20 jni/com_dhk_io_SetDisplay.cpp -I"C:\Program Files\Java\jdk-21\include" -I"C:\Program Files\Java\jdk-21\include\win32" -shared -o SetDisplay.dll
+	g++ --std=c++20 jni/com_dhk_io_EnumDisplayModes.cpp -I"C:\Program Files\Java\jdk-21\include" -I"C:\Program Files\Java\jdk-21\include\win32" -shared -o EnumDisplayModes.dll -static
+	g++ --std=c++20 jni/com_dhk_io_EnumDisplayIds.cpp -I"C:\Program Files\Java\jdk-21\include" -I"C:\Program Files\Java\jdk-21\include\win32" -shared -o EnumDisplayIds.dll -static
+	g++ --std=c++20 jni/com_dhk_io_SetDisplay.cpp -I"C:\Program Files\Java\jdk-21\include" -I"C:\Program Files\Java\jdk-21\include\win32" -shared -o SetDisplay.dll -static
 
 clean:
 	rm -f jni/com_dhk_io_EnumDisplayIds.h
