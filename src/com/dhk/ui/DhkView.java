@@ -1,5 +1,6 @@
 package com.dhk.ui;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.DisplayMode;
 import java.awt.GridBagConstraints;
@@ -44,6 +45,8 @@ public class DhkView {
     private JPanel displayPanel;
     private JPanel menuPanel;
     private GridBagLayout mainPanelLayout;
+    private GridBagLayout displayPanelLayout;
+    private GridBagLayout menuPanelLayout;
     private GridBagConstraints mainPanelConstraints;
     private GridBagConstraints displayPanelConstraints;
     private GridBagConstraints menuPanelConstraints;
@@ -306,7 +309,7 @@ public class DhkView {
             GridBagConstraints prevApplyDisplayModeButtonConstraints = mainPanelLayout.getConstraints(
                     displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getApplyDisplayModeButton());
 
-            // Replace the previous slot's indicator label with the new slot's indicator label.
+            // Replace the previous slot's apply display mode button with the new slot's apply display mode button.
             mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getApplyDisplayModeButton());
             mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplyDisplayModeButton(),
                     prevApplyDisplayModeButtonConstraints);
@@ -371,14 +374,13 @@ public class DhkView {
      * @param displayIndex - The index of the display to show the number of active slots combo box for.
      */
     public void showNumberOfActiveSlotsForDisplay(int displayIndex) {
-        // Update the number of active slots combo box for the current display.
-        displayPanel.remove(3);
+        // Get the constraints for the previous selected display's number of active slots combo box.
+        GridBagConstraints prevNumberOfSlotsConstraints = displayPanelLayout
+                .getConstraints(numberOfActiveSlotsMap.get(previouslySelectedDisplayIndex));
 
-        // Define where the number of active slots combo box is located in the grid bag layout and add it to the panel.
-        displayPanelConstraints.gridwidth = 1;
-        displayPanelConstraints.gridx = 3;
-        displayPanelConstraints.gridy = 0;
-        displayPanel.add(numberOfActiveSlotsMap.get(displayIndex), displayPanelConstraints);
+        // Replace the previous selected display's number of active slots combo box.
+        displayPanel.remove(numberOfActiveSlotsMap.get(previouslySelectedDisplayIndex));
+        displayPanel.add(numberOfActiveSlotsMap.get(displayIndex), prevNumberOfSlotsConstraints);
     }
 
     /**
@@ -387,14 +389,13 @@ public class DhkView {
      * @param displayIndex - The index of the display to show the orientation modes combo box for.
      */
     public void showOrientationModesForDisplay(int displayIndex) {
-        // Remove the current orientation modes combo box for the previously selected display.
-        displayPanel.remove(5);
+        // Get the constraints for the previous selected display's orientation modes combo box.
+        GridBagConstraints prevOrientationModesConstraints = displayPanelLayout
+                .getConstraints(orientationModesMap.get(previouslySelectedDisplayIndex));
 
-        // Define where the orientation modes combo box is located in the grid bag layout and add it to the panel.
-        displayPanelConstraints.gridwidth = 1;
-        displayPanelConstraints.gridx = 5;
-        displayPanelConstraints.gridy = 0;
-        displayPanel.add(orientationModesMap.get(displayIndex), displayPanelConstraints);
+        // Replace the previous selected display's orientation modes combo box.
+        displayPanel.remove(orientationModesMap.get(previouslySelectedDisplayIndex));
+        displayPanel.add(orientationModesMap.get(displayIndex), prevOrientationModesConstraints);
     }
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -405,45 +406,31 @@ public class DhkView {
      * This method initializes all of the panels that will hold the view components.
      */
     private void initPanels() {
-        // Initialize the panel that will organize the components.
+        // Initialize the panels that will organize the components.
         mainPanel = new JPanel();
+        displayPanel = new JPanel();
+        menuPanel = new JPanel();
 
-        // Initialize the layout manager of the main panel.
+        // Initialize the layout managers for the panels.
         mainPanelLayout = new GridBagLayout();
+        displayPanelLayout = new GridBagLayout();
+        menuPanelLayout = new GridBagLayout();
 
-        // Set the main panel layout to the grid bag option.
+        // Set the layout managers for the panels.
         mainPanel.setLayout(mainPanelLayout);
+        displayPanel.setLayout(displayPanelLayout);
+        menuPanel.setLayout(menuPanelLayout);
 
-        // Create a constraints object to change aspects of the main panel layout.
+        // Create the constraint objects for the panels.
         mainPanelConstraints = new GridBagConstraints();
-
-        // Set main panel layout options.
         mainPanelConstraints.fill = GridBagConstraints.NONE;
         mainPanelConstraints.insets = new Insets(8, 8, 8, 8);
 
-        // Initialize the display panel that will organize the display index and number of slots view components.
-        displayPanel = new JPanel();
-
-        // Set the display panel layout to the grid bag option.
-        displayPanel.setLayout(new GridBagLayout());
-
-        // Create a constraints object to change aspects of the display panel layout.
         displayPanelConstraints = new GridBagConstraints();
-
-        // Set display panel layout options.
         displayPanelConstraints.fill = GridBagConstraints.NONE;
         displayPanelConstraints.insets = new Insets(0, 7, 0, 7);
 
-        // Initialize the menu panel that will organize the menu buttons.
-        menuPanel = new JPanel();
-
-        // Set the menu panel layout to the grid bag option.
-        menuPanel.setLayout(new GridBagLayout());
-
-        // Create a constraints object to change aspects of the menu panel layout.
         menuPanelConstraints = new GridBagConstraints();
-
-        // Set menu panel layout options.
         menuPanelConstraints.fill = GridBagConstraints.NONE;
         menuPanelConstraints.insets = new Insets(0, 7, 0, 7);
     }
@@ -470,6 +457,7 @@ public class DhkView {
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             // Create a new num of active slots combo box for the current display.
             JComboBox<Integer> numberOfActiveSlots = new JComboBox<Integer>(generateNumOfSlotsValues());
+            numberOfActiveSlots.setName("numberOfActiveSlotsComboBox");
             numberOfActiveSlots.setPreferredSize(new Dimension(60, 28));
 
             // Set the initial selection for the number of active slots combo box.
@@ -480,6 +468,7 @@ public class DhkView {
 
             // Create a new orientation modes combo box for the current display.
             JComboBox<String> orientationModes = new JComboBox<String>(ORIENTATION_MODES);
+            orientationModes.setName("orientationModesComboBox");
             orientationModes.setPreferredSize(new Dimension(115, 28));
 
             // Set the initial selection for the orientation modes combo box.

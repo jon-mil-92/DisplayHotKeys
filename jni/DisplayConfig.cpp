@@ -1,6 +1,6 @@
 /*
  * Original Author: Jonathan Miller
- * Version: 1.0.0.0
+ * Version: 1.4.0.0
  *
  * Description: Define various aspects of the current display configuration.
  *

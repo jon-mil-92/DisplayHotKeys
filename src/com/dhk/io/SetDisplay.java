@@ -29,7 +29,7 @@ public class SetDisplay {
 
     // Define a JNI function to immediately apply the given display settings for the given display.
     private native void setDisplay(String displayId, int resWidth, int resHeight, int bitDepth, int refreshRate,
-            int scalingMode, int dpiScalePercentageScale, int orientation);
+            int scalingMode, int dpiScalePercentageScale);
 
     // Define a JNI function to immediately apply the given orientation for the given display.
     private native void setOrientation(String dispalayId, int orientationMode);
@@ -44,12 +44,11 @@ public class SetDisplay {
      * @param refreshRate        - The new refresh rate for the given display.
      * @param scalingMode        - The new scaling mode for the given display.
      * @param dpiScalePercentage - The new DPI scale percentage for the given display.
-     * @param orientation        - The new orientation for the given display.
      */
     public void applyDisplaySettings(String displayId, int resWidth, int resHeight, int bitDepth, int refreshRate,
-            int scalingMode, int dpiScalePercentage, int orientation) {
+            int scalingMode, int dpiScalePercentage) {
         // Call the JNI function to immediately apply the given display settings for the given display.
-        setDisplay(displayId, resWidth, resHeight, bitDepth, refreshRate, scalingMode, dpiScalePercentage, orientation);
+        setDisplay(displayId, resWidth, resHeight, bitDepth, refreshRate, scalingMode, dpiScalePercentage);
     }
 
     /**

@@ -17,7 +17,7 @@ import com.dhk.ui.DhkView;
  * when the Apply Display Mode button is pressed, the associated display mode is immediately applied.
  * 
  * @author Jonathan Miller
- * @version 1.0.0
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -128,8 +128,7 @@ public class ApplyDisplayModeButtonController implements Controller {
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getBitDepth(),
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshRate(),
                     model.getSlot(displayIndex, slotIndex).getScalingMode(),
-                    model.getSlot(displayIndex, slotIndex).getDpiScalePercentage(),
-                    model.getOrientationModeForDisplay(displayIndex));
+                    model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
         }
     }
 
