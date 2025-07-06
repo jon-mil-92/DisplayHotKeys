@@ -12,7 +12,7 @@ import com.dhk.ui.DhkView;
  * application is stopped.
  * 
  * @author Jonathan Miller
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024

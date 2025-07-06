@@ -10,7 +10,7 @@ import com.dhk.ui.DhkView;
  * view component is created.
  * 
  * @author Jonathan Miller
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -19,7 +19,7 @@ public class DhkController implements Controller {
 	private ArrayList<Controller> controllers;
 	
 	/**
-	 * Constructor for the DisplayHotKeysController class.
+	 * Constructor for the DhkController class.
 	 * 
 	 * @param model - The model for the application.
 	 * @param view - The view for the application.

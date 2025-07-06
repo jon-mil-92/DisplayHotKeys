@@ -12,7 +12,7 @@ import com.dhk.ui.DhkView;
  * when the Minimize button is pressed, the application is minimized to the system tray.
  * 
  * @author Jonathan Miller
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024

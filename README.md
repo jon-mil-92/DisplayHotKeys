@@ -1,5 +1,6 @@
 <!-- PROJECT LOGO -->
 
+<a name="readme-top"></a>
 <br />
 <div align="center">
   <a href="https://github.com/jon-mil-92/DisplayHotKeys">
@@ -139,7 +140,7 @@ Currently, Display Hot Keys only works with single-monitor configurations. If a 
 
 * All hot key slots can be reset by clicking on the "Clear All Slots" button.
 
-* The application will be minimized to the system tray when the "Minimize To Tray" button is pressed. To restore the application, either double click the system tray icon, or right click the system tray icon and select "Restore".
+* The application will be minimized to the system tray when the "Minimize To Tray" button is pressed. To restore the application, click the system tray icon and select "Restore".
 
 * To exit the application, click on the "Exit App" button. You can also exit the application from the system tray by clicking on the system tray icon and selecting "Exit".
 
@@ -185,11 +186,13 @@ Jonathan Miller - jonRock1992@gmail.com
 
 * [Material Design Icons] · [Apache License 2.0]
 
+* [SystemTray] · [Apache License 2.0]
+
+* [Ini4j] · [Apache License 2.0]
+
 * [Apache Maven Assembly Plugin] · [Apache License 2.0]
 
 * [Maven Compiler Plugin] · [Apache License 2.0]
-
-* [Ini4j] · [Apache License 2.0]
 
 Distribution made possible with the following tools:
 
@@ -211,9 +214,10 @@ Distribution made possible with the following tools:
 [Java (low-level) System Hook]: https://github.com/kristian/system-hook
 [FlatLaf - Flat Look and Feel]: https://github.com/JFormDesigner/FlatLaf
 [Material Design Icons]: https://github.com/marella/material-design-icons
+[SystemTray]: https://github.com/dorkbox/SystemTray
+[Ini4j]: https://ini4j.sourceforge.net/
 [Apache Maven Assembly Plugin]: https://maven.apache.org/plugins/maven-assembly-plugin/index.html
 [Maven Compiler Plugin]: https://maven.apache.org/plugins/maven-compiler-plugin/index.html
-[Ini4j]: https://ini4j.sourceforge.net/
 [launch4j]: https://launch4j.sourceforge.net/index.html
 [Inno Setup]: https://jrsoftware.org/isinfo.php
 [MIT License]: https://mit-license.org

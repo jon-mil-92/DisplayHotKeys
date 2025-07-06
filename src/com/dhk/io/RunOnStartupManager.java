@@ -10,7 +10,7 @@ import java.net.URISyntaxException;
  * Windows login.
  * 
  * @author Jonathan Miller
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -23,7 +23,7 @@ public class RunOnStartupManager {
 	private String jarFilePath;
 	
 	/**
-	 * Constructor for the RunOnStartupManager.
+	 * Constructor for the RunOnStartupManager class.
 	 */
 	public RunOnStartupManager() {
 		// Initialize the path to the Windows startup folder for the current user.

@@ -15,7 +15,7 @@ import lc.kra.system.keyboard.event.GlobalKeyEvent;
  * fails validation, then it is reset to the default value.
  * 
  * @author Jonathan Miller
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -45,7 +45,7 @@ public class SettingsValidator {
 		// Initialize the array list of valid key codes.
 		validkeyCodes = buildValidKeyCodes();
 		
-		// Instantiate the run on startup manager.
+		// Initialize the run on startup manager.
 		runOnStartupManager = new RunOnStartupManager();
 	}
 	

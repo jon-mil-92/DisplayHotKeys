@@ -11,7 +11,7 @@ import javax.swing.SwingConstants;
  * This class defines the view components of a Slot.
  * 
  * @author Jonathan Miller
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -64,6 +64,10 @@ public class Slot {
 		// Initialize the current hot key component.
 		slotHotKey = new JLabel("", SwingConstants.CENTER);
 	}
+	
+	//------------------------------------------------------------------------------------------------------------------
+    // Getters and Setters
+    //------------------------------------------------------------------------------------------------------------------
 
 	/**
 	 * Getter for the indicator label of the slot.

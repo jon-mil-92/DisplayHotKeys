@@ -12,7 +12,7 @@ import com.dhk.window.MinimizeToTray;
  * minimized to the system tray and restored from the system tray.
  * 
  * @author Jonathan Miller
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -23,7 +23,7 @@ public class WindowController implements Controller, WindowListener {
 	private DhkView view;
 	
 	/**
-	 * Constructor for the HotKeysController class.
+	 * Constructor for the WindowController class.
 	 *
 	 * @param view - The view for the application.
 	 */
@@ -35,7 +35,7 @@ public class WindowController implements Controller, WindowListener {
 		appRefresher = new AppRefresher(view, 250);
 		appRefresher.start();
 				
-		// Set the minimize to tray ability for the apllication's frame with the specified tray icon path.
+		// Initialize the minimize-to-tray object for the apllication's frame with the specified tray icon path.
 		minimizeToTray = new MinimizeToTray(view.getFrame(), appRefresher, "/tray_icon.png");
 	}
 	

@@ -14,7 +14,7 @@ import com.dhk.ui.DhkView;
  * user login.
  * 
  * @author Jonathan Miller
- * @version 1.1.0
+ * @version 1.2.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -35,7 +35,7 @@ public class RunOnStartupButtonController implements Controller {
 		this.view = view;
 		this.settings = settings;
 		
-		// Instantiate the run on startup manager.
+		// Initialize the run on startup manager.
 		runOnStartupManager = new RunOnStartupManager();
 	}
 	
