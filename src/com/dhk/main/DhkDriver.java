@@ -1,20 +1,19 @@
 package com.dhk.main;
 
-import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import com.dhk.controllers.DhkController;
 import com.dhk.io.RunOnStartupManager;
 import com.dhk.io.SettingsManager;
 import com.dhk.models.DhkModel;
 import com.dhk.ui.DhkView;
-import com.dhk.ui.Theme;
+import com.dhk.ui.ThemeUpdater;
 
 /**
  * This class is the main driver for Display Hot Keys that starts the model, view, and controller on the AWT event
  * dispatch thread.
  * 
  * @author Jonathan Miller
- * @version 1.2.1
+ * @version 1.3.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -27,19 +26,20 @@ public class DhkDriver {
      */
     public static void main(final String[] args) {
         // Initialize a settings manager object.
-        SettingsManager settings = new SettingsManager();
+        SettingsManager settingsMgr = new SettingsManager();
+        settingsMgr.initSettingsManager();
 
         // Initialize a run on startup manager object.
         RunOnStartupManager runOnStartupManager = new RunOnStartupManager();
 
         // Set up the "look and feel" for the GUI.
-        Theme theme = new Theme();
+        ThemeUpdater themeUpdater = new ThemeUpdater();
 
         // Start the application in the UI mode defined in the settings file.
-        theme.useDarkMode(settings.getIniDarkMode());
+        themeUpdater.useDarkMode(settingsMgr.getIniDarkMode());
 
         // Create or delete the "run on startup" batch file depending on the value in the settings file.
-        if (settings.getIniRunOnStartup()) {
+        if (settingsMgr.getIniRunOnStartup()) {
             runOnStartupManager.addToStartup();
         } else {
             runOnStartupManager.removeFromStartup();
@@ -49,7 +49,7 @@ public class DhkDriver {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                initDhk(settings);
+                initDhk(settingsMgr);
             }
         });
     }
@@ -57,18 +57,16 @@ public class DhkDriver {
     /**
      * This method initializes the model, view, and controller for this application.
      * 
-     * @param settings - The settings file manager that retrieves the saved configuration for this application.
+     * @param settingsMgr - The settings file manager that retrieves the saved configuration for this application.
      */
-    private static void initDhk(SettingsManager settings) {
+    private static void initDhk(SettingsManager settingsMgr) {
         // Initialize the Display HotKeys MVC modules.
         DhkModel model = new DhkModel();
-        DhkView view = new DhkView(model, settings.getIniDarkMode(), settings.getIniRunOnStartup());
-        DhkController controller = new DhkController(model, view, settings);
+        DhkView view = new DhkView(model, settingsMgr.getIniDarkMode(), settingsMgr.getIniRunOnStartup());
+        DhkController controller = new DhkController(model, view, settingsMgr);
 
-        // Initialize all listeners.
+        // Initialize the main controller and all sub-controllers.
+        controller.initController();
         controller.initListeners();
-
-        // Start the program minimized.
-        view.getFrame().setExtendedState(JFrame.ICONIFIED);
     }
 }

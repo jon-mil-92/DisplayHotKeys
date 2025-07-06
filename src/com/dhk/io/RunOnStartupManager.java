@@ -2,15 +2,17 @@ package com.dhk.io;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 
 /**
  * This class gets the application's path and uses it to create or destroy a batch file that will run the application on
  * Windows login.
  * 
  * @author Jonathan Miller
- * @version 1.2.1
+ * @version 1.3.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -59,46 +61,29 @@ public class RunOnStartupManager {
      * This method adds a batch file to the user's startup folder that will execute this application upon login.
      */
     public void addToStartup() {
-        // Create a writer for the run on startup file.
-        PrintWriter startupFileWriter = null;
-
         try {
-            // Initialize the writer for the run on startup file
-            startupFileWriter = new PrintWriter(runOnStartupFile);
+            // Initialize the writer for the run on startup file.
+            PrintWriter startupFileWriter = new PrintWriter(runOnStartupFile);
+
+            // Write the command that will execute upon user login to the run on startup file.
+            startupFileWriter.print("start " + "\"\" \"" + jarFilePath + "\"");
+
+            // Close the file writer.
+            startupFileWriter.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
-
-        // Write the command that will execute upon user login to the run on startup file.
-        startupFileWriter.print("start " + "\"\" \"" + jarFilePath + "\"");
-
-        // Close the file writer.
-        startupFileWriter.close();
     }
 
     /**
      * This method will remove the run on startup file from the user's startup folder.
      */
     public void removeFromStartup() {
-        // Create a new windows command processor object to send commands to the Windows command line interface.
-        WindowsCommandProcessor cmd = new WindowsCommandProcessor();
-
-        // Create an object to hold the command strings to send to the Windows command line interface.
-        String[] commands = new String[2];
-
-        // Replace the double backslashes with single backslashes for the windows command line interface.
-        String cmdStartupPath = startupPath.replaceAll("\\\\\\\\", "\\\\");
-
-        // Create the command string that will cd into the user's startup folder.
-        commands[0] = "cd " + "\"" + cmdStartupPath + "\"";
-
-        // Create the command string that will delete the run on startup file.
-        commands[1] = "del " + runOnStartupFileName;
-
-        // Only attempt to delete the run on startup file if it exists.
-        if (runOnStartupFile.exists()) {
-            // Send the commands to the Windows command line interface that will delete the run on startup file.
-            cmd.sendCommands(commands);
+        // Delete the run on startup file if it exists.
+        try {
+            Files.deleteIfExists(runOnStartupFile.toPath());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

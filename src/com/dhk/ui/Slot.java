@@ -11,7 +11,7 @@ import javax.swing.SwingConstants;
  * This class defines the view components of a Slot.
  * 
  * @author Jonathan Miller
- * @version 1.2.1
+ * @version 1.3.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -20,7 +20,7 @@ public class Slot {
     private JLabel slotIndicatorLabel;
     private JComboBox<DisplayMode> slotDisplayModes;
     private JComboBox<String> slotScalingModes;
-    private JComboBox<Integer> slotDisplayScales;
+    private JComboBox<Integer> slotDpiScalePercentages;
     private JButton slotChangeHotKeyButton;
     private JButton slotClearHotKeyButton;
     private JLabel slotHotKey;
@@ -28,18 +28,18 @@ public class Slot {
     /**
      * Constructor for the Slot class.
      * 
-     * @param slotIndex     - The index of the slot.
-     * @param displayModes  - The array of display modes for the slot.
-     * @param scalingModes  - The array of scaling modes for the slot.
-     * @param displayScales - The array of display scales for the slot.
+     * @param slotIndex           - The index of the slot.
+     * @param displayModes        - The array of display modes for the slot.
+     * @param scalingModes        - The array of scaling modes for the slot.
+     * @param dpiScalePercentages - The array of DPI scale percentages for the slot.
      */
-    public Slot(String slotIndex, DisplayMode[] displayModes, String[] scalingModes, Integer[] displayScales) {
-        // Increment the slot number string.
-        String slotNumber = Integer.toString(Integer.parseInt(slotIndex) + 1);
+    public Slot(String slotIndex, DisplayMode[] displayModes, String[] scalingModes, Integer[] dpiScalePercentages) {
+        // Increment the slot ID string.
+        String slotID = Integer.toString(Integer.parseInt(slotIndex) + 1);
 
         // Initialize the slot indicator label component.
-        slotIndicatorLabel = new JLabel("Hot Key Slot " + slotNumber + " :", SwingConstants.CENTER);
-        slotIndicatorLabel.setPreferredSize(new Dimension(98, 28));
+        slotIndicatorLabel = new JLabel("Hot Key Slot " + slotID + " :", SwingConstants.CENTER);
+        slotIndicatorLabel.setPreferredSize(new Dimension(105, 28));
 
         // Initialize the display modes combo box component.
         slotDisplayModes = new JComboBox<DisplayMode>(displayModes);
@@ -49,17 +49,17 @@ public class Slot {
         slotScalingModes = new JComboBox<String>(scalingModes);
         slotScalingModes.setPreferredSize(new Dimension(110, 28));
 
-        // Initialize the display scales combo box component.
-        slotDisplayScales = new JComboBox<Integer>(displayScales);
-        slotDisplayScales.setPreferredSize(new Dimension(70, 28));
+        // Initialize the DPI scale percentages combo box component.
+        slotDpiScalePercentages = new JComboBox<Integer>(dpiScalePercentages);
+        slotDpiScalePercentages.setPreferredSize(new Dimension(70, 28));
 
         // Initialize the change hot key button component.
         slotChangeHotKeyButton = new JButton("Change Hot Key");
-        slotChangeHotKeyButton.setPreferredSize(new Dimension(145, 28));
+        slotChangeHotKeyButton.setPreferredSize(new Dimension(150, 28));
 
         // Initialize the clear hot key button component.
         slotClearHotKeyButton = new JButton("Clear Hot Key");
-        slotClearHotKeyButton.setPreferredSize(new Dimension(130, 28));
+        slotClearHotKeyButton.setPreferredSize(new Dimension(135, 28));
 
         // Initialize the current hot key component.
         slotHotKey = new JLabel("", SwingConstants.CENTER);
@@ -97,12 +97,12 @@ public class Slot {
     }
 
     /**
-     * Getter for the display scales combo box of the slot.
+     * Getter for the DPI scale percentages combo box of the slot.
      * 
-     * @return The display scales combo box of the slot.
+     * @return The DPI scale percentages combo box of the slot.
      */
-    public JComboBox<Integer> getDisplayScales() {
-        return slotDisplayScales;
+    public JComboBox<Integer> getDpiScalePercentages() {
+        return slotDpiScalePercentages;
     }
 
     /**

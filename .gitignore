@@ -87,3 +87,8 @@ buildNumber.properties
 .classpath
 
 # End of https://www.toptal.com/developers/gitignore/api/eclipse,maven
+
+# JNI DLLs
+EnumDisplayIds.dll
+EnumDisplayModes.dll
+SetDisplay.dll

@@ -1,6 +1,8 @@
 com.dhk.controllers
+com.dhk.controllers.buttons
 com.dhk.io
 com.dhk.main
 com.dhk.models
 com.dhk.ui
+com.dhk.ui.buttons
 com.dhk.window

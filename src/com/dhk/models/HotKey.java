@@ -6,7 +6,7 @@ import java.util.ArrayList;
  * This class represents the model for a Hot Key. States and the string representation of the Hot Key are defined here.
  * 
  * @author Jonathan Miller
- * @version 1.2.1
+ * @version 1.3.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -20,7 +20,7 @@ public class HotKey {
     /**
      * Constructor for the HotKey class.
      * 
-     * @param hotKey - The array list of keys that make up the hotkey.
+     * @param hotKey - The array list of keys that make up the hot key.
      */
     public HotKey(ArrayList<Key> hotKey) {
         this.keys = hotKey;
@@ -30,30 +30,30 @@ public class HotKey {
     }
 
     /**
-     * This method builds a hotkey string from an array list of keys.
+     * This method builds a hot key string from an array list of keys.
      * 
-     * @return The hotkey string.
+     * @return The hot key string.
      */
     public String getHotKeyString() {
         // Start building the string with an empty string.
         String hotKeyString = "";
 
         // For each HotKey, append its key to the hot key string.
-        for (int i = 0; i < keys.size(); i++) {
+        for (int keyIndex = 0; keyIndex < keys.size(); keyIndex++) {
             // If not on the last element of the array...
-            if (i != (keys.size() - 1)) {
+            if (keyIndex != (keys.size() - 1)) {
                 // Build the string with a plus at the end.
-                hotKeyString += (keys.get(i).getName() + " + ");
+                hotKeyString += (keys.get(keyIndex).getName() + " + ");
             } else {
-                // Build the string without the plus since it is the last key in the hotkey.
-                hotKeyString += (keys.get(i).getName());
+                // Build the string without the plus since it is the last key in the hot key.
+                hotKeyString += (keys.get(keyIndex).getName());
             }
         }
 
-        // If the hotkey's array list of keys is empty...
+        // If the hot key's array list of keys is empty...
         if (keys.size() == 0) {
-            // The hotkey is not set.
-            hotKeyString = "Not Set!";
+            // The hot key is not set.
+            hotKeyString = "Not Set";
         }
 
         return hotKeyString;
@@ -64,72 +64,72 @@ public class HotKey {
     // -----------------------------------------------------------------------------------------------------------------
 
     /**
-     * Getter for the key array list that makes up the hotkey.
+     * Getter for the key array list that makes up the hot key.
      * 
-     * @return The key array list that makes up the hotkey.
+     * @return The key array list that makes up the hot key.
      */
     public ArrayList<Key> getKeys() {
         return keys;
     }
 
     /**
-     * Setter for the key array list that makes up the hotkey.
+     * Setter for the key array list that makes up the hot key.
      * 
-     * @param keys - The new key array list that makes up the hotkey.
+     * @param keys - The new key array list that makes up the hot key.
      */
     public void setKeys(ArrayList<Key> keys) {
         this.keys = keys;
     }
 
     /**
-     * Getter for the "changing hotkey" state of the slot.
+     * Getter for the "changing hot key" state of the slot.
      * 
-     * @return Whether or not the user is changing the hotkey for the slot.
+     * @return Whether or not the user is changing the hot key for the slot.
      */
     public boolean isChangingHotKey() {
         return changingHotKey;
     }
 
     /**
-     * Setter for the "changing hotkey" state of the slot.
+     * Setter for the "changing hot key" state of the slot.
      * 
-     * @param changingHotKey - The new boolean for the "changing hotkey" state of the slot.
+     * @param changingHotKey - The new boolean for the "changing hot key" state of the slot.
      */
     public void setChangingHotKey(boolean changingHotKey) {
         this.changingHotKey = changingHotKey;
     }
 
     /**
-     * Setter for the hotkey's "pressed" state.
+     * Getter for the hot key's "pressed" state.
      * 
-     * @return Whether or not the hotkey is pressed.
+     * @return Whether or not the hot key is pressed.
      */
     public boolean isHotKeyPressed() {
         return hotKeyPressed;
     }
 
     /**
-     * Setter for the hotkey's "pressed" state.
+     * Setter for the hot key's "pressed" state.
      * 
-     * @param hotKeyPressed - The new "pressed" state for the hotkey.
+     * @param hotKeyPressed - The new "pressed" state for the hot key.
      */
     public void setHotKeyPressed(boolean hotKeyPressed) {
         this.hotKeyPressed = hotKeyPressed;
     }
 
     /**
-     * Getter for the hotkey's "held down" state.
+     * Getter for the hot key's "held down" state.
      * 
-     * @return The "held down" state of the hotkey.
+     * @return The "held down" state of the hot key.
      */
     public boolean isHotKeyHeldDown() {
         return hotKeyHeldDown;
     }
 
     /**
-     * Setter for the hotkey's "held down" state.
+     * Setter for the hot key's "held down" state.
      * 
-     * @param hotKeyHeldDown - The new "held down" state for the hotkey.
+     * @param hotKeyHeldDown - The new "held down" state for the hot key.
      */
     public void setHotKeyHeldDown(boolean hotKeyHeldDown) {
         this.hotKeyHeldDown = hotKeyHeldDown;

@@ -3,11 +3,11 @@ package com.dhk.models;
 import java.awt.DisplayMode;
 
 /**
- * This class represents the model for a Slot. The display mode, display scale, and hot key for a slot are initialized
- * here.
+ * This class represents the model for a Slot. The display mode, scaling mode, DPI scale percentage, and hot key for a
+ * slot are initialized here.
  * 
  * @author Jonathan Miller
- * @version 1.2.1
+ * @version 1.3.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -15,23 +15,24 @@ import java.awt.DisplayMode;
 public class Slot {
     private DisplayMode displayMode;
     private int scalingMode;
-    private int displayScale;
+    private int dpiScalePercentage;
     private HotKey hotKey;
 
     /**
      * Constructor for the Slot class.
      * 
-     * @param displayMode    - The display mode for the slot.
-     * @param scalingMode    - The scaling mode for the slot.
-     * @param displayScale   - The display scale for the slot.
-     * @param changingHotKey - The "changing hotkey" state for the slot.
-     * @param hotKey         - The hotkey for the slot.
+     * @param displayMode        - The display mode for the slot.
+     * @param scalingMode        - The scaling mode for the slot.
+     * @param dpiScalePercentage - The DPI scale percentage for the slot.
+     * @param changingHotKey     - The "changing hot key" state for the slot.
+     * @param hotKey             - The hot key for the slot.
      */
-    public Slot(DisplayMode displayMode, int scalingMode, int displayScale, boolean changingHotKey, HotKey hotKey) {
-        // Initialize hotkey slot fields.
+    public Slot(DisplayMode displayMode, int scalingMode, int dpiScalePercentage, boolean changingHotKey,
+            HotKey hotKey) {
+        // Initialize fields.
         this.displayMode = displayMode;
         this.scalingMode = scalingMode;
-        this.displayScale = displayScale;
+        this.dpiScalePercentage = dpiScalePercentage;
         this.hotKey = hotKey;
     }
 
@@ -76,36 +77,36 @@ public class Slot {
     }
 
     /**
-     * Getter for the display scale of the slot.
+     * Getter for the DPI scale percentage of the slot.
      * 
-     * @return The display scale of the slot.
+     * @return The DPI scale percentage of the slot.
      */
-    public int getDisplayScale() {
-        return displayScale;
+    public int getDpiScalePercentage() {
+        return dpiScalePercentage;
     }
 
     /**
-     * Setter for the display scale of the slot.
+     * Setter for the DPI scale percentage of the slot.
      * 
-     * @param displayScale - The new display scale of the slot.
+     * @param dpiScalePercentage - The new DPI scale percentage of the slot.
      */
-    public void setDisplayScale(int displayScale) {
-        this.displayScale = displayScale;
+    public void setDpiScalePercentage(int dpiScalePercentage) {
+        this.dpiScalePercentage = dpiScalePercentage;
     }
 
     /**
-     * Getter for the hotkey for the slot.
+     * Getter for the hot key for the slot.
      * 
-     * @return The hotkey for the slot.
+     * @return The hot key for the slot.
      */
     public HotKey getHotKey() {
         return hotKey;
     }
 
     /**
-     * Setter for the hotkey for the slot.
+     * Setter for the hot key for the slot.
      * 
-     * @param hotKey - The new hotkey for the slot.
+     * @param hotKey - The new hot key for the slot.
      */
     public void setHotKey(HotKey hotKey) {
         this.hotKey = hotKey;

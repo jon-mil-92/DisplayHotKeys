@@ -6,7 +6,7 @@ import java.awt.event.KeyEvent;
  * This class gets the text representation for a given key code.
  * 
  * @author Jonathan Miller
- * @version 1.2.1
+ * @version 1.3.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -74,6 +74,9 @@ public class KeyText {
             break;
         case 44:
             keyCodeText = "Print Screen";
+            break;
+        case 13:
+            keyCodeText = "Enter";
             break;
         default:
             keyCodeText = KeyEvent.getKeyText(keyCode);

@@ -6,6 +6,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
 import org.ini4j.Wini;
 import lc.kra.system.keyboard.event.GlobalKeyEvent;
 
@@ -15,32 +16,36 @@ import lc.kra.system.keyboard.event.GlobalKeyEvent;
  * fails validation, then it is reset to the default value.
  * 
  * @author Jonathan Miller
- * @version 1.2.1
+ * @version 1.3.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
  */
 public class SettingsValidator {
-    private SettingsManager settings;
+    private SettingsManager settingsMgr;
     private Wini ini;
-    private DisplayMode[] displayModes;
+    private String[] displayIds;
+    private ConcurrentHashMap<String, DisplayMode[]> displayModesMap;
     private ArrayList<Integer> validkeyCodes;
     private RunOnStartupManager runOnStartupManager;
 
     /**
      * Constructor for the SettingsValidator class.
      * 
-     * @param settings - The manager for the settings file.
+     * @param settingsMgr - The manager for the settings file.
      */
-    public SettingsValidator(SettingsManager settings) {
+    public SettingsValidator(SettingsManager settingsMgr) {
         // Initialize the settings manager.
-        this.settings = settings;
+        this.settingsMgr = settingsMgr;
 
         // Initialize the settings file.
-        this.ini = settings.getIni();
+        ini = settingsMgr.getIni();
 
-        // Initialize the array of supported display modes for the main display.
-        displayModes = settings.getDisplayModes();
+        // Initialize the array of display IDs.
+        displayIds = settingsMgr.getDisplayIds();
+
+        // Initialize the map of display IDs to display modes.
+        displayModesMap = settingsMgr.getDisplayModesMap();
 
         // Initialize the array list of valid key codes.
         validkeyCodes = buildValidKeyCodes();
@@ -59,9 +64,13 @@ public class SettingsValidator {
         validateRunOnStartup();
         validateDisplayModes();
         validateScalingModes();
-        validateDisplayScales();
+        validateDpiScalePercentages();
         validateHotKeys();
     }
+
+    // -----------------------------------------------------------------------------------------------------------------
+    // Private Methods
+    // -----------------------------------------------------------------------------------------------------------------
 
     /**
      * This method builds an array list of valid key codes from the GlobalKeyEvent class.
@@ -97,17 +106,27 @@ public class SettingsValidator {
 
     /**
      * This method validates the value for the numOfSlots property from the settings file. If the value is not in the
-     * correct range, then it writes the default value for the numOfSlots property.
+     * correct range, then it writes the default value for the number of slots property.
      */
     private void validateNumOfSlots() {
-        // Get the string value for the numOfSlots property from the settings file.
-        String numOfSlots = ini.get("Application", "numOfSlots");
+        // For each connected display...
+        for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
+            // Get the ID for the current display index.
+            String displayId = displayIds[displayIndex];
 
-        // If the numOfSlots property value is null, not a positive integer, or not in the correct range...
-        if (numOfSlots == null || !isPositiveInt(numOfSlots) || Integer.valueOf(numOfSlots) < 1
-                || Integer.valueOf(numOfSlots) > settings.getMaxNumOfSlots()) {
-            // Reset the numOfSlots property to the default value.
-            settings.saveIniNumOfSlots(4);
+            // Set the ini property string for the current display ID.
+            String iniProperty = "numOfSlotsFor--" + displayId;
+
+            // Get the string value for the number of slots property for the current display ID from the settings file.
+            String numOfSlots = ini.get("Application", iniProperty);
+
+            // If the number of slots property value for the current display is null, not a positive integer, or not in
+            // the correct range...
+            if (numOfSlots == null || !isPositiveInt(numOfSlots) || Integer.valueOf(numOfSlots) < 1
+                    || Integer.valueOf(numOfSlots) > settingsMgr.getMaxNumOfSlots()) {
+                // Reset the number of slots property for the current display to the default value.
+                settingsMgr.saveIniNumOfSlotsForDisplay(displayId, 4);
+            }
         }
     }
 
@@ -140,9 +159,9 @@ public class SettingsValidator {
         }
 
         // For each character in the given string...
-        for (int i = 0; i < intString.length(); i++) {
+        for (int charIndex = 0; charIndex < intString.length(); charIndex++) {
             // If the current character is not a digit with a radix of 10...
-            if (Character.digit(intString.charAt(i), 10) < 0) {
+            if (Character.digit(intString.charAt(charIndex), 10) < 0) {
                 // The given string is not a string representation of a positive integer.
                 return false;
             }
@@ -151,9 +170,9 @@ public class SettingsValidator {
         // If the given string has the same length as the max integer string...
         if (intString.length() == maxIntString.length()) {
             // Compare each character of the given string to the max integer string.
-            for (int i = 0; i < maxIntString.length(); i++) {
-                char intStringChar = intString.charAt(i);
-                char maxIntChar = maxIntString.charAt(i);
+            for (int charIndex = 0; charIndex < maxIntString.length(); charIndex++) {
+                char intStringChar = intString.charAt(charIndex);
+                char maxIntChar = maxIntString.charAt(charIndex);
 
                 // If the given string is larger than the max integer string...
                 if (intStringChar > maxIntChar) {
@@ -178,7 +197,7 @@ public class SettingsValidator {
         // If the darkMode property value is null or not a string representation of a boolean value...
         if (darkMode == null || !(darkMode.equals("false") || darkMode.equals("true"))) {
             // Reset the darkMode property to the default value.
-            settings.saveIniDarkMode(false);
+            settingsMgr.saveIniDarkMode(false);
         }
     }
 
@@ -193,7 +212,7 @@ public class SettingsValidator {
         // If the runOnStartup property value is null or not a string representation of a boolean value...
         if (runOnStartup == null || !(runOnStartup.equals("false") || runOnStartup.equals("true"))) {
             // Reset the runOnStartup property to the default value.
-            settings.saveIniRunOnStartup(false);
+            settingsMgr.saveIniRunOnStartup(false);
 
             // Remove the startup batch file since the runOnStartup property was reset to false.
             runOnStartupManager.removeFromStartup();
@@ -206,30 +225,39 @@ public class SettingsValidator {
      * settings file for that slot.
      */
     private void validateDisplayModes() {
-        // For each slot section in the settings file...
-        for (int i = 1; i <= settings.getMaxNumOfSlots(); i++) {
-            // Get the display mode properties for the current slot.
-            String width = ini.get("Slot" + Integer.toString(i), "displayModeWidth");
-            String height = ini.get("Slot" + Integer.toString(i), "displayModeHeight");
-            String bitDepth = ini.get("Slot" + Integer.toString(i), "displayModeBitDepth");
-            String refreshRate = ini.get("Slot" + Integer.toString(i), "displayModeRefreshRate");
+        // For each connected display...
+        for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
+            // Get the ID for the current display index.
+            String displayId = displayIds[displayIndex];
 
-            // If all display mode property values are not null and positive integers...
-            if ((width != null && isPositiveInt(width)) && (height != null && isPositiveInt(height))
-                    && (bitDepth != null && isPositiveInt(bitDepth))
-                    && (refreshRate != null && isPositiveInt(refreshRate))) {
-                // Create a new display mode object with the values from the settings file.
-                DisplayMode displayMode = new DisplayMode(Integer.valueOf(width), Integer.valueOf(height),
-                        Integer.valueOf(bitDepth), Integer.valueOf(refreshRate));
+            // For each slot section in the settings file...
+            for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
+                // Set the ini section string for the current display ID and slot ID.
+                String iniSection = displayId + "--Slot" + Integer.toString(slotId);
 
-                // If the current display mode is not in the supported display modes array...
-                if (!Arrays.asList(settings.getDisplayModes()).contains(displayMode)) {
+                // Get the display mode properties for the current slot.
+                String width = ini.get(iniSection, "displayModeWidth");
+                String height = ini.get(iniSection, "displayModeHeight");
+                String bitDepth = ini.get(iniSection, "displayModeBitDepth");
+                String refreshRate = ini.get(iniSection, "displayModeRefreshRate");
+
+                // If all display mode property values are not null and positive integers...
+                if ((width != null && isPositiveInt(width)) && (height != null && isPositiveInt(height))
+                        && (bitDepth != null && isPositiveInt(bitDepth))
+                        && (refreshRate != null && isPositiveInt(refreshRate))) {
+                    // Create a new display mode object with the values from the settings file.
+                    DisplayMode displayMode = new DisplayMode(Integer.valueOf(width), Integer.valueOf(height),
+                            Integer.valueOf(bitDepth), Integer.valueOf(refreshRate));
+
+                    // If the current display mode is not in the supported display modes array...
+                    if (!Arrays.asList(displayModesMap.get(displayId)).contains(displayMode)) {
+                        // Write the default display mode values to their corresponding properties in the settings file.
+                        writeDefaultDisplayMode(displayId, slotId);
+                    }
+                } else {
                     // Write the default display mode values to their corresponding properties in the settings file.
-                    writeDefaultDisplayMode(i);
+                    writeDefaultDisplayMode(displayId, slotId);
                 }
-            } else {
-                // Write the default display mode values to their corresponding properties in the settings file.
-                writeDefaultDisplayMode(i);
             }
         }
     }
@@ -237,15 +265,19 @@ public class SettingsValidator {
     /**
      * This method writes the default display mode property values to the give slot section in the settings file.
      * 
-     * @param slotNumber - The number for the slot section in the settings file.
+     * @param displayId - The ID of the display to get the display mode for.
+     * @param slotId    - The ID of the slot to get the display mode for.
      */
-    private void writeDefaultDisplayMode(int slotNumber) {
+    private void writeDefaultDisplayMode(String displayId, int slotId) {
+        // Get the array of supported display modes for the given display.
+        DisplayMode[] displayModes = displayModesMap.get(displayId);
+
         // Get the default highest display mode.
-        DisplayMode defaultDisplayMode = displayModes[displayModes.length - 1];
+        DisplayMode defaultDisplayMode = displayModes[0];
 
         // Reset the display mode property values to their defaults (highest display mode values).
-        settings.saveIniSlotDisplayMode(slotNumber, defaultDisplayMode.getWidth(), defaultDisplayMode.getHeight(),
-                defaultDisplayMode.getBitDepth(), defaultDisplayMode.getRefreshRate());
+        settingsMgr.saveIniSlotDisplayMode(displayId, slotId, defaultDisplayMode.getWidth(),
+                defaultDisplayMode.getHeight(), defaultDisplayMode.getBitDepth(), defaultDisplayMode.getRefreshRate());
     }
 
     /**
@@ -253,47 +285,66 @@ public class SettingsValidator {
      * value, then it writes the default value for the scalingMode property.
      */
     private void validateScalingModes() {
-        // For each slot section in the settings file...
-        for (int i = 1; i <= settings.getMaxNumOfSlots(); i++) {
-            // An array of valid scaling mode values for the corresponding combo box.
-            String[] validScalingModes = { "0", "1", "2" };
+        // For each connected display...
+        for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
+            // Get the ID for the current display index.
+            String displayId = displayIds[displayIndex];
 
-            // Get the scaling mode for the current slot.
-            String scalingMode = ini.get("Slot" + Integer.toString(i), "scalingMode");
+            // For each slot section in the settings file...
+            for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
+                // An array of valid scaling mode values for the corresponding combo box.
+                String[] validScalingModes = { "0", "1", "2" };
 
-            // If the scalingMode property value is null, not a positive integer, or not in the valid array...
-            if (scalingMode == null || !isPositiveInt(scalingMode)
-                    || !Arrays.asList(validScalingModes).contains(scalingMode)) {
-                // Reset the scalingMode property to the default value.
-                settings.saveIniSlotScalingMode(i, 0);
+                // Set the ini section string for the current display ID and slot ID.
+                String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+
+                // Get the scaling mode for the current slot.
+                String scalingMode = ini.get(iniSection, "scalingMode");
+
+                // If the scalingMode property value is null, not a positive integer, or not in the valid array...
+                if (scalingMode == null || !isPositiveInt(scalingMode)
+                        || !Arrays.asList(validScalingModes).contains(scalingMode)) {
+                    // Reset the scalingMode property to the default value.
+                    settingsMgr.saveIniSlotScalingMode(displayId, slotId, 0);
+                }
             }
         }
     }
 
     /**
-     * This method validates the value for each displayScale property from the settings file. If the value is not a
-     * valid value, then it writes the default value for the displayScale property.
+     * This method validates the value for each dpiScalePercentage property from the settings file. If the value is not
+     * a valid value, then it writes the default value for the dpiScalePercentage property.
      */
-    private void validateDisplayScales() {
-        // For each slot section in the settings file...
-        for (int i = 1; i <= settings.getMaxNumOfSlots(); i++) {
-            // An array of valid scaling percentage values for the corresponding combo box.
-            String[] validDisplayScales = { "100", "125", "150", "175", "200", "225", "250", "300", "350" };
+    private void validateDpiScalePercentages() {
+        // For each connected display...
+        for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
+            // Get the ID for the current display index.
+            String displayId = displayIds[displayIndex];
 
-            // Get the display scale for the current slot.
-            String displayScale = ini.get("Slot" + Integer.toString(i), "displayScale");
+            // For each slot section in the settings file...
+            for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
+                // An array of valid DPI scale percentage values for the corresponding combo box.
+                String[] validDpiScalePercentages = { "100", "125", "150", "175", "200", "225", "250", "300", "350" };
 
-            // If the displayScale property value is null, not a positive integer, or not in the valid array...
-            if (displayScale == null || !isPositiveInt(displayScale)
-                    || !Arrays.asList(validDisplayScales).contains(displayScale)) {
-                // Reset the displayScale property to the default value.
-                settings.saveIniSlotDisplayScale(i, 100);
+                // Set the ini section string for the current display ID and slot ID.
+                String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+
+                // Get the DPI scale percentage for the current slot.
+                String dpiScalePercentage = ini.get(iniSection, "dpiScalePercentage");
+
+                // If the dpiScalePercentage property value is null, not a positive integer, or not in the valid
+                // array...
+                if (dpiScalePercentage == null || !isPositiveInt(dpiScalePercentage)
+                        || !Arrays.asList(validDpiScalePercentages).contains(dpiScalePercentage)) {
+                    // Reset the dpiScalePercentage property to the default value.
+                    settingsMgr.saveIniSlotDpiScalePercentage(displayId, slotId, 100);
+                }
             }
         }
     }
 
     /**
-     * This method calls the method to validate the keys for each hotkey, and then it validates the value for each
+     * This method calls the method to validate the keys for each hot key, and then it validates the value for each
      * hotKeySize property from the settings file. If the value is not in the correct range, then it writes the default
      * value for the hotKeySize property. If the hotKeySize property value does not match the number of set keys, then
      * the hotKeySize property value is updated to the number of set keys.
@@ -302,55 +353,64 @@ public class SettingsValidator {
         // Validate the value for each key property from the settings file.
         validateKeys();
 
-        // For each slot section in the settings file...
-        for (int i = 1; i <= settings.getMaxNumOfSlots(); i++) {
-            // Get the string value for the hotKeySize property from the settings file object.
-            String hotKeySize = ini.get("Slot" + Integer.toString(i), "hotKeySize");
+        // For each connected display...
+        for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
+            // Get the ID for the current display index.
+            String displayId = displayIds[displayIndex];
 
-            // If the hotKeySize property value is null, not a positive integer, or not in the correct range...
-            if (hotKeySize == null || !isPositiveInt(hotKeySize) || Integer.valueOf(hotKeySize) < 0
-                    || Integer.valueOf(hotKeySize) > 3) {
-                // Reset the hotKeySize property to the default value.
-                ini.put("Slot" + Integer.toString(i), "hotKeySize", 0);
+            // For each slot section in the settings file...
+            for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
+                // Set the ini section string for the current display ID and slot ID.
+                String iniSection = displayId + "--Slot" + Integer.toString(slotId);
 
-                // Write the new hotKeySize property value to the settings file.
-                updateSettingsFile();
-            }
+                // Get the string value for the hotKeySize property from the settings file object.
+                String hotKeySize = ini.get(iniSection, "hotKeySize");
 
-            // Get the previously validated hotkey size from the settings file object.
-            int validatedHotKeySize = ini.get("Slot" + Integer.toString(i), "hotKeySize", int.class);
+                // If the hotKeySize property value is null, not a positive integer, or not in the correct range...
+                if (hotKeySize == null || !isPositiveInt(hotKeySize) || Integer.valueOf(hotKeySize) < 0
+                        || Integer.valueOf(hotKeySize) > 3) {
+                    // Reset the hotKeySize property to the default value.
+                    ini.put(iniSection, "hotKeySize", 0);
 
-            // Create a variable to store the number of keys that are set for the current hotkey.
-            int numOfSetKeys = 0;
-
-            // For each key in the hotkey...
-            for (int j = 0; j <= 3; j++) {
-                // Get the previously validated key code from the settings file.
-                int validatedKeyCode = ini.get("Slot" + Integer.toString(i), "key" + j, int.class);
-
-                // If the current key's key code is set...
-                if (validatedKeyCode != 0) {
-                    // Increment the number of keys that are set for the current hotkey.
-                    numOfSetKeys++;
-                }
-
-                // If the current key is not a part of the current hotkey.
-                if (j > validatedHotKeySize) {
-                    // Reset the key to the default value.
-                    ini.put("Slot" + Integer.toString(i), "key" + j, 0);
-
-                    // Write the new key property value to the settings file.
+                    // Write the new hotKeySize property value to the settings file.
                     updateSettingsFile();
                 }
-            }
 
-            // If the validated hotkey size exceeds the number of keys that are set for the current hotkey...
-            if (validatedHotKeySize > numOfSetKeys) {
-                // Set the hotKeySize property to the number of set keys.
-                ini.put("Slot" + Integer.toString(i), "hotKeySize", numOfSetKeys);
+                // Get the previously validated hot key size from the settings file object.
+                int validatedHotKeySize = ini.get(iniSection, "hotKeySize", int.class);
 
-                // Write the new hotKeySize property value to the settings file.
-                updateSettingsFile();
+                // Create a variable to store the number of keys that are set for the current hot key.
+                int numOfSetKeys = 0;
+
+                // For each key in the hot key...
+                for (int keyId = 1; keyId <= 3; keyId++) {
+                    // Get the previously validated key code from the settings file.
+                    int validatedKeyCode = ini.get(iniSection, "key" + keyId, int.class);
+
+                    // If the current key's key code is set...
+                    if (validatedKeyCode != 0) {
+                        // Increment the number of keys that are set for the current hot key.
+                        numOfSetKeys++;
+                    }
+
+                    // If the current key is not a part of the current hot key.
+                    if (numOfSetKeys > validatedHotKeySize) {
+                        // Reset the key to the default value.
+                        ini.put(iniSection, "key" + keyId, 0);
+
+                        // Write the new key property value to the settings file.
+                        updateSettingsFile();
+                    }
+                }
+
+                // If the validated hot key size exceeds the number of keys that are set for the current hot key...
+                if (validatedHotKeySize > numOfSetKeys) {
+                    // Set the hotKeySize property to the number of set keys.
+                    ini.put(iniSection, "hotKeySize", numOfSetKeys);
+
+                    // Write the new hotKeySize property value to the settings file.
+                    updateSettingsFile();
+                }
             }
         }
     }
@@ -360,20 +420,30 @@ public class SettingsValidator {
      * then it writes the default value for the key property.
      */
     private void validateKeys() {
-        // For each slot section in the settings file...
-        for (int i = 1; i <= settings.getMaxNumOfSlots(); i++) {
-            // For each key in the hotkey, validate its key code.
-            for (int j = 1; j <= 3; j++) {
-                // Get the string value for the current key property from the settings file object.
-                String key = ini.get("Slot" + Integer.toString(i), "key" + j);
+        // For each connected display...
+        for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
+            // Get the ID for the current display index.
+            String displayId = displayIds[displayIndex];
 
-                // If any key property value is null, not a positive integer, or not in the list of valid keys codes...
-                if (key == null || !isPositiveInt(key) || !validkeyCodes.contains(Integer.valueOf(key))) {
-                    // Reset the key to the default value.
-                    ini.put("Slot" + Integer.toString(i), "key" + j, 0);
+            // For each slot section in the settings file...
+            for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
+                // For each key in the hot key, validate its key code.
+                for (int keyId = 1; keyId <= 3; keyId++) {
+                    // Set the ini section string for the current display ID and slot ID.
+                    String iniSection = displayId + "--Slot" + Integer.toString(slotId);
 
-                    // Write the new key property value to the settings file.
-                    updateSettingsFile();
+                    // Get the string value for the current key property from the settings file object.
+                    String key = ini.get(iniSection, "key" + keyId);
+
+                    // If any key property value is null, not a positive integer, or not in the list of valid keys
+                    // codes...
+                    if (key == null || !isPositiveInt(key) || !validkeyCodes.contains(Integer.valueOf(key))) {
+                        // Reset the key to the default value.
+                        ini.put(iniSection, "key" + keyId, 0);
+
+                        // Write the new key property value to the settings file.
+                        updateSettingsFile();
+                    }
                 }
             }
         }

@@ -1,7 +1,5 @@
 package com.dhk.controllers;
 
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import com.dhk.io.SettingsManager;
 import com.dhk.models.DhkModel;
 import com.dhk.ui.DhkView;
@@ -13,7 +11,7 @@ import com.dhk.window.FrameUpdater;
  * slots is reflected in the application window.
  * 
  * @author Jonathan Miller
- * @version 1.2.1
+ * @version 1.3.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -21,22 +19,28 @@ import com.dhk.window.FrameUpdater;
 public class NumberOfSlotsController implements Controller {
     private DhkView view;
     private DhkModel model;
-    private SettingsManager settings;
+    private SettingsManager settingsMgr;
     private FrameUpdater frameUpdater;
 
     /**
      * Constructor for the NumberOfSlotsController class.
      *
-     * @param model    - The model for the application.
-     * @param view     - The view for the application.
-     * @param settings - The settings manager for the application.
+     * @param model       - The model for the application.
+     * @param view        - The view for the application.
+     * @param settingsMgr - The settings manager for the application.
      */
-    public NumberOfSlotsController(DhkModel model, DhkView view, SettingsManager settings) {
-        // Get the application's view, model, and settings manager.
+    public NumberOfSlotsController(DhkModel model, DhkView view, SettingsManager settingsMgr) {
+        // Get the application's model, view, and settings manager.
         this.view = view;
         this.model = model;
-        this.settings = settings;
+        this.settingsMgr = settingsMgr;
+    }
 
+    /**
+     * This method creates a new frame updater.
+     */
+    @Override
+    public void initController() {
         // Initialize the object that will update the view's frame.
         frameUpdater = new FrameUpdater(view);
     }
@@ -44,51 +48,58 @@ public class NumberOfSlotsController implements Controller {
     /**
      * This method initializes the listeners for the number of slots combo box.
      */
+    @Override
     public void initListeners() {
-        // Start the action listener for a number of slots change.
-        view.getNumberOfSlots().addActionListener(e -> saveNumberOfSlots());
+        // For each connected display...
+        for (int i = 0; i < model.getNumOfConnectedDisplays(); i++) {
+            // The display index for the current display to add an action listener to.
+            int displayIndex = i;
 
-        // Set mouse listeners for the number of slots combo box from the view.
-        view.getNumberOfSlots().addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                // Set the focus on the number of slots combo box when the mouse hovers over it.
-                view.getNumberOfSlots().requestFocusInWindow();
-            }
-        });
+            // Start the action listener for a number of slots change.
+            view.getNumberOfActiveSlots(displayIndex).addActionListener(e -> saveNumberOfSlots(displayIndex));
+        }
+    }
+
+    @Override
+    public void cleanUp() {
     }
 
     /**
      * This method updates the model's visible number of slots with the selected number of slots from the view.
+     * 
+     * @param displayIndex - The index of the display to update the number of slots for.
      */
-    private void saveNumberOfSlots() {
+    private void saveNumberOfSlots(int displayIndex) {
+        // Get the ID for the given display.
+        String displayId = settingsMgr.getDisplayIds()[displayIndex];
+
         // The previous number of slots to be displayed.
-        int oldNumOfSlots = model.getNumOfSlots();
+        int oldNumOfSlots = model.getNumOfSlotsForDisplay(displayIndex);
 
         // The new number of slots to be displayed.
-        int newNumOfSlots = (int) view.getNumberOfSlots().getSelectedItem();
+        int newNumOfSlots = (int) view.getNumberOfActiveSlots(displayIndex).getSelectedItem();
 
         // Calculate the number of slots to remove.
         int slotsToRemove = oldNumOfSlots - newNumOfSlots;
 
         // Update the new number of slots in the model.
-        model.setNumOfSlots(newNumOfSlots);
+        model.setNumOfSlotsForDisplay(displayIndex, newNumOfSlots);
 
         // Save the new number of slots in the settings file.
-        settings.saveIniNumOfSlots(newNumOfSlots);
+        settingsMgr.saveIniNumOfSlotsForDisplay(displayId, newNumOfSlots);
 
         // If decreasing the number of slots...
         if (oldNumOfSlots > newNumOfSlots) {
             // Remove the specified number of slots from the view.
-            view.removeSlots(slotsToRemove);
+            view.popSlots(slotsToRemove);
         }
         // If increasing the number of slots...
         else if (oldNumOfSlots < newNumOfSlots) {
             // Add slots to the view starting at the last ending slot index.
-            view.addSlots(oldNumOfSlots);
+            view.pushSlots(displayIndex, oldNumOfSlots);
         }
 
-        // Update the view components.
+        // Update the view's frame.
         frameUpdater.updateUI();
     }
 }
