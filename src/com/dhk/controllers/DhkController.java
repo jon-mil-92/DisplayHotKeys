@@ -76,7 +76,7 @@ public class DhkController implements Controller {
         controllers.add(new DpiScaleController(model, view, settingsMgr));
         controllers.add(new FrameDragController(view));
 
-        hotKeysController = new HotKeysController(model, view, settingsMgr);
+        hotKeysController = new HotKeysController(model, view, this, settingsMgr);
         controllers.add(hotKeysController);
 
         controllers.add(new MenuController(model, view, this, settingsMgr));
