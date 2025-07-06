@@ -9,8 +9,7 @@ import com.dhk.ui.DhkView;
 import lc.kra.system.keyboard.GlobalKeyboardHook;
 
 /**
- * This is the main controller class for the application. The model and view is initialized, and the controllers are
- * created.
+ * This is the main controller class for the application. It creates all of the controllers for the application.
  * 
  * @author Jonathan Miller
  * @version 1.3.2

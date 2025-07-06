@@ -1,7 +1,8 @@
 package com.dhk.controllers;
 
 /**
- * This interface defines a controller. Controllers must have an initListeners method.
+ * This interface defines a controller. Controllers must have an initController method, an initListeners method, and a
+ * cleanUp method.
  * 
  * @author Jonathan Miller
  * @version 1.3.2
