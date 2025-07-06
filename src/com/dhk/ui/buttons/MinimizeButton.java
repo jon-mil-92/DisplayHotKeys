@@ -40,7 +40,7 @@ public class MinimizeButton extends JButton {
         this.setIcon(minimizeIdleIcon);
 
         // Set the tooltip for the button.
-        this.setToolTipText("Minimize To Tray");
+        this.setToolTipText("Minimize App");
 
         // Set the initial button size.
         this.setPreferredSize(BUTTON_ICON_SIZE);
