@@ -17,7 +17,7 @@ import com.dhk.window.FrameUpdater;
  * default.
  * 
  * @author Jonathan Miller
- * @version 1.2.0
+ * @version 1.2.1
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024

@@ -7,7 +7,7 @@ import java.io.PrintWriter;
  * This class starts a Windows CLI process to stream commands to.
  * 
  * @author Jonathan Miller
- * @version 1.2.0
+ * @version 1.2.1
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024

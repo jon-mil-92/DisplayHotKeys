@@ -14,7 +14,7 @@ import com.dhk.models.Key;
  * theme state, the run on startup state, the display modes, the display scales, and the hot keys.
  * 
  * @author Jonathan Miller
- * @version 1.2.0
+ * @version 1.2.1
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
