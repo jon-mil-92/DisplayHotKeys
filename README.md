@@ -157,6 +157,10 @@ This application will launch minimized to the system tray in the task bar by des
 
 ### Button Interaction
 
+#### Apply Display Mode
+
+The display settings can be immediately applied by clicking on the "Apply Display Mode" button for a hot key slot.
+
 #### Clear Hot Key
 
 Individual hot keys can be cleared by clicking on the "Clear Hot Key" button for a hot key slot when a hot key is set.
