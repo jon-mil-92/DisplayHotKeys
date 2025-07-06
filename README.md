@@ -1,11 +1,11 @@
 <!-- PROJECT LOGO -->
 
 <a name="readme-top"></a>
-<br/>
 <div align="center">
   <a href="https://github.com/jon-mil-92/DisplayHotKeys">
     <img src="src/tray_icon.png" alt="Logo" width="80" height="80" align="center" />
   </a>
+  <br/>
   <h3 align="center">Display Hot Keys</h3>
   <p align="center">
     <i>Effortlessly control display settings!</i>
