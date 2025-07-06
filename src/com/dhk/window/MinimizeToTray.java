@@ -17,8 +17,11 @@ import javax.swing.JFrame;
 /**
  * This class enables the application to be minimized to the system tray and restored from the system tray.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class MinimizeToTray {
 	private Frame frame;

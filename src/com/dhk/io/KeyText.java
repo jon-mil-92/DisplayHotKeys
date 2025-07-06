@@ -5,8 +5,11 @@ import java.awt.event.KeyEvent;
 /**
  * This class gets the text representation for a given key code.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class KeyText {
 	
@@ -17,6 +20,9 @@ public class KeyText {
 	
 	/**
 	 * This method gets the proper key text from the specified key code.
+	 * 
+	 * @param keyCode - The key code for the key to get the text for.
+	 * @return The text representation for the key.
 	 */
 	public String getKeyCodeText(int keyCode) {
 		String keyCodeText = "";

@@ -12,8 +12,11 @@ import com.dhk.window.FrameUpdater;
  * corresponding view component so that when a new number of active hot key slots is selected, the number of visibly 
  * active hot key slots is reflected in the application window.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class NumberOfSlotsController implements Controller {
 	private DhkView view;

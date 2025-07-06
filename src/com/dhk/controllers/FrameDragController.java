@@ -11,8 +11,11 @@ import com.dhk.ui.DhkView;
  * This class controls the frame of the application. Listeners are added to the frame that enables the user to click,
  * hold, and drag on any empty spot in the frame to move the application window around on the desktop.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class FrameDragController implements Controller {
 	private final JFrame frame;

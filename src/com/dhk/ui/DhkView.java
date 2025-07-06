@@ -21,8 +21,11 @@ import java.util.ArrayList;
  * This class defines the view for Display Hot Keys. The layout for the view components is defined here. View components
  * are initialized and arranged in a GridBag layout.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class DhkView {
 	private DhkModel model;
@@ -34,7 +37,8 @@ public class DhkView {
 	private GridBagConstraints menuConstraints;
 	private JLabel numberOfSlotsLabel;
 	private JComboBox<Integer> numberOfSlots;
-	private JLabel displayModesLabel;
+	private JLabel displayModeLabel;
+	private JLabel scalingModeLabel;
 	private JLabel displayScaleLabel;
 	private JLabel hotKeyLabel;
 	private ClearAllButton clearAllButton;
@@ -46,8 +50,8 @@ public class DhkView {
 	private boolean runOnStartup;
 	private int slotGridY;
 	
-	// Each slot consists of six different components.
-	private final int NUM_OF_SLOT_COMPONENTS = 6;
+	// Each slot consists of seven different components.
+	private final int NUM_OF_SLOT_COMPONENTS = 7;
 
 	/**
 	 * Constructor for the DhkView class.
@@ -155,9 +159,13 @@ public class DhkView {
 		exitButton = new ExitButton("/exit_idle.svg", "/exit_hover.svg");
 		
 		// Initialize headers.
-		displayModesLabel = new JLabel("Display Mode", SwingConstants.CENTER);
-		displayModesLabel.setPreferredSize(new Dimension(90, 28));
-		makeLabelBold(displayModesLabel);
+		displayModeLabel = new JLabel("Display Mode", SwingConstants.CENTER);
+		displayModeLabel.setPreferredSize(new Dimension(90, 28));
+		makeLabelBold(displayModeLabel);
+		
+		scalingModeLabel = new JLabel("Scaling Mode", SwingConstants.CENTER);
+		scalingModeLabel.setPreferredSize(new Dimension(90, 28));
+		makeLabelBold(scalingModeLabel);
 		
 		displayScaleLabel = new JLabel("Display Scale", SwingConstants.CENTER);
 		displayScaleLabel.setPreferredSize(new Dimension(90, 28));
@@ -211,28 +219,34 @@ public class DhkView {
 			mainConstraints.gridx = 1;
 			mainConstraints.gridy = slotGridY;
 			mainPanel.add(slots.get(i).getDisplayModes(), mainConstraints);
-								
-			// Define where the current slot's display scale combo box is located in the grid bag layout.
+			
+			// Define where the current slot's scaling modes combo box is located in the grid bag layout.
 			mainConstraints.gridwidth = 1;
 			mainConstraints.gridx = 2;
+			mainConstraints.gridy = slotGridY;
+			mainPanel.add(slots.get(i).getScalingModes(), mainConstraints);
+								
+			// Define where the current slot's display scales combo box is located in the grid bag layout.
+			mainConstraints.gridwidth = 1;
+			mainConstraints.gridx = 3;
 			mainConstraints.gridy = slotGridY;
 			mainPanel.add(slots.get(i).getDisplayScales(), mainConstraints);
 								
 			// Define where the current slot's hot key is located in the grid bag layout.
 			mainConstraints.gridwidth = 1;
-			mainConstraints.gridx = 3;
+			mainConstraints.gridx = 4;
 			mainConstraints.gridy = slotGridY;
 			mainPanel.add(slots.get(i).getHotKey(), mainConstraints);
 			
 			// Define where the current slot's change hot key button is located in the grid bag layout.
 			mainConstraints.gridwidth = 1;
-			mainConstraints.gridx = 4;
+			mainConstraints.gridx = 5;
 			mainConstraints.gridy = slotGridY;
 			mainPanel.add(slots.get(i).getChangeHotKeyButton(), mainConstraints);
 			
 			// Define where the current slot's clear hot key button is located in the grid bag layout.
 			mainConstraints.gridwidth = 1;
-			mainConstraints.gridx = 5;
+			mainConstraints.gridx = 6;
 			mainConstraints.gridy = slotGridY;
 			mainPanel.add(slots.get(i).getClearHotKeyButton(), mainConstraints);
 								
@@ -283,6 +297,9 @@ public class DhkView {
 	private void initSlotComponents() {
 		// Get an array of supported display modes for the main display.
 		DisplayMode[] displayModes = getSupportedDisplayModes();
+		
+		// An array of scaling mode values for the corresponding combo box.
+		String[] scalingModes = new String[]{"Preserved", "Stretched", "Centered"};
 				
 		// An array of scaling percentage values for the corresponding combo box.
 		Integer[] displayScales = new Integer[]{100, 125, 150, 175, 200, 225, 250, 300, 350};
@@ -290,10 +307,13 @@ public class DhkView {
 		// For each slot in the model, add it to the view and set the selection for it.
 		for (int i = 0; i < model.getMaxNumOfSlots(); i++) {
 			// Initialize the new slot components.
-			slots.add(new Slot(Integer.toString(i), displayModes, displayScales));
+			slots.add(new Slot(Integer.toString(i), displayModes, scalingModes, displayScales));
 
 			// Set the new display mode for the new slot.
 			slots.get(i).getDisplayModes().setSelectedItem(model.getSlot(i).getDisplayMode());
+			
+			// Set the scaling mode for the new slot.
+			slots.get(i).getScalingModes().setSelectedIndex(model.getSlot(i).getScalingMode());
 															
 			// Set the display scale for the new slot.
 			slots.get(i).getDisplayScales().setSelectedItem(model.getSlot(i).getDisplayScale());
@@ -357,21 +377,27 @@ public class DhkView {
 		// Anchor the headers to the bottom of the grid.
 		mainConstraints.anchor = GridBagConstraints.SOUTH;
 				
-		// Define where the display modes header is located in the grid bag layout.
+		// Define where the display mode header is located in the grid bag layout.
 		mainConstraints.gridwidth = 1;
 		mainConstraints.gridx = 1;
 		mainConstraints.gridy = 0;
-		mainPanel.add(displayModesLabel, mainConstraints);
+		mainPanel.add(displayModeLabel, mainConstraints);
+		
+		// Define where the scaling mode header is located in the grid bag layout.
+		mainConstraints.gridwidth = 1;
+		mainConstraints.gridx = 2;
+		mainConstraints.gridy = 0;
+		mainPanel.add(scalingModeLabel, mainConstraints);
 				
 		// Define where the display scale header is located in the grid bag layout.
 		mainConstraints.gridwidth = 1;
-		mainConstraints.gridx = 2;
+		mainConstraints.gridx = 3;
 		mainConstraints.gridy = 0;
 		mainPanel.add(displayScaleLabel, mainConstraints);
 		
 		// Define where the hot key header is located in the grid bag layout.
 		mainConstraints.gridwidth = 1;
-		mainConstraints.gridx = 3;
+		mainConstraints.gridx = 4;
 		mainConstraints.gridy = 0;
 		mainPanel.add(hotKeyLabel, mainConstraints);
 		
@@ -380,7 +406,7 @@ public class DhkView {
 		
 		// Define where the menu panel is located in the grid bag layout.
 		mainConstraints.gridwidth = 2;
-		mainConstraints.gridx = 4;
+		mainConstraints.gridx = 5;
 		mainConstraints.gridy = 0;
 		mainPanel.add(menuPanel, mainConstraints);
 		
@@ -458,6 +484,7 @@ public class DhkView {
 	/**
 	 * Getter for the specified slot.
 	 * 
+	 * @param slotIndex - The index for the slot to get.
 	 * @return The specified slot.
 	 */
 	public Slot getSlot(int slotIndex) {

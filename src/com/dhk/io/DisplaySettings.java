@@ -7,8 +7,11 @@ import java.net.URISyntaxException;
  * This class utilizes the Windows CLI to communicate with the SetDisplay program to set the given display 
  * mode and DPI scale percentage.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class DisplaySettings {
 	WindowsCommandProcessor cmd;
@@ -41,10 +44,11 @@ public class DisplaySettings {
 	 * @param height - The vertical resolution of the primary monitor.
 	 * @param bitDepth - The bit depth of the primary monitor.
 	 * @param refreshRate - The refresh rate of the primary monitor.
+	 * @param scalingMode - The scaling mode of the primary monitor.
 	 * @param displayScale - The display scale percentage of the primary monitor.
 	 */
-	public void setDisplay(String width, String height, String bitDepth,
-			String refreshRate, String displayScale) {
+	public void setDisplay(String width, String height, String bitDepth, String refreshRate, String scalingMode, 
+			String displayScale) {
 		// Create an object to hold the command strings to send to the Windows CLI.
 		String[] commands = new String[2];
 		
@@ -52,8 +56,8 @@ public class DisplaySettings {
 		commands[0] = "cd " + "\"" + appPath + "\"";
 		
 		// Create the command string that will set the display settings by using the SetDisplay program.
-		commands[1] = ("SetDisplay.exe " + width + " " + height + " " + bitDepth 
-				+ " " + refreshRate + " " + displayScale);
+		commands[1] = ("SetDisplay.exe " + width + " " + height + " " + bitDepth + " " + refreshRate + " " 
+				+ scalingMode + " " + displayScale);
 		
 		// Send both commands to the Windows CLI.
 		cmd.sendCommands(commands);

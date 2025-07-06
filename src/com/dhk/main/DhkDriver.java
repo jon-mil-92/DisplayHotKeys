@@ -13,8 +13,11 @@ import com.dhk.ui.Theme;
  * This class is the main driver for Display Hot Keys that starts the model, view, and controller on the AWT event 
  * dispatch thread.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class DhkDriver {
 	/**

@@ -11,8 +11,11 @@ import com.dhk.window.FrameUpdater;
  * This class controls the Clear Hot Key buttons. Listeners are added to the corresponding view components so that when 
  * the Clear Hot Key button is pressed, the corresponding hot key is cleared.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class ClearHotKeyButtonController implements Controller {
 	private DhkModel model;
@@ -20,6 +23,13 @@ public class ClearHotKeyButtonController implements Controller {
 	private SettingsManager settings;
 	private FrameUpdater frameUpdater;
 	
+	/**
+	 * Constructor for the ClearHotKeyButtonController class.
+	 * 
+	 * @param model - The model for the application.
+	 * @param view - The view for the application.
+	 * @param settings - The settings manager of the application.
+	 */
 	public ClearHotKeyButtonController (DhkModel model, DhkView view, SettingsManager settings) {
 		// Get the application's model, view, and settings manager.
 		this.model = model;

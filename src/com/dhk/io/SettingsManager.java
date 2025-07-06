@@ -5,6 +5,7 @@ import java.awt.GraphicsEnvironment;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import org.ini4j.Wini;
 import com.dhk.models.HotKey;
 import com.dhk.models.Key;
 
@@ -12,13 +13,17 @@ import com.dhk.models.Key;
  * This class saves the application settings in an ini file. It enables the saving of the active number of slots, the 
  * theme state, the run on startup state, the display modes, the display scales, and the hot keys.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class SettingsManager {
-	private JIniFile ini;
+	private Wini ini;
 	private DisplayMode[] displayModes;
 	private KeyText keyText;
+	private File settingsFile;
 	
 	// The max number of visible slots in the application frame.
 	private final int MAX_NUM_OF_SLOTS = 8;
@@ -33,16 +38,18 @@ public class SettingsManager {
 		// Get the path for the settings folder that will hold the settings file.
 		String settingsPath = System.getProperty("user.home") + "\\Documents\\DisplayHotKeys\\";
 		
-		// Create the application's settings folder in the user's Documents folder.
-		new File(settingsPath).mkdirs();
-		
 		// Set the full path to the settings file.
 		settingsPath = settingsPath + "settings.ini";
 		
-		// Try to create an ini object from the settings file path.
+		// Try to create an ini object from the settings file.
 		try {
+			// Create the application's settings file in the user's Documents folder.
+			settingsFile = new File(settingsPath);
+			settingsFile.getParentFile().mkdirs();
+			settingsFile.createNewFile();
+			
 			// Create the new settings file object.
-			ini = new JIniFile(settingsPath);
+			ini = new Wini(settingsFile);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -68,7 +75,7 @@ public class SettingsManager {
 	 */
 	public int getIniNumOfSlots() {
 		// Get the number of slots property value from the settings file object.
-		return ini.readInteger("Application", "numOfSlots", 1);
+		return ini.get("Application", "numOfSlots", int.class);
 	}
 
 	
@@ -79,7 +86,7 @@ public class SettingsManager {
 	 */
 	public void saveIniNumOfSlots(int numOfSlots) {
 		// Write the new number of slots property value to the settings file object.
-		ini.writeInteger("Application", "numOfSlots", numOfSlots);
+		ini.put("Application", "numOfSlots", numOfSlots);
 		
 		updateSettingsFile();
 	}
@@ -91,7 +98,7 @@ public class SettingsManager {
 	 */
 	public boolean getIniDarkMode() {
 		// Get the dark mode property value from the settings file object.
-		return ini.readBool("Application", "darkMode", false);
+		return ini.get("Application", "darkMode", boolean.class);
 	}
 	
 	/**
@@ -101,7 +108,7 @@ public class SettingsManager {
 	 */
 	public void saveIniDarkMode(boolean darkMode) {
 		// Write the new dark mode property value to the settings file object.
-		ini.writeBool("Application", "darkMode", darkMode);
+		ini.put("Application", "darkMode", darkMode);
 		
 		updateSettingsFile();
 	}
@@ -113,7 +120,7 @@ public class SettingsManager {
 	 */
 	public boolean getIniRunOnStartup() {
 		// Get the run on startup property value from the settings file object.
-		return ini.readBool("Application", "runOnStartup", false);
+		return ini.get("Application", "runOnStartup", boolean.class);
 	}
 	
 	/**
@@ -123,7 +130,7 @@ public class SettingsManager {
 	 */
 	public void saveIniRunOnStartup(boolean runOnStartup) {
 		// Write the new run on startup property value to the settings file object.
-		ini.writeBool("Application", "runOnStartup", runOnStartup);
+		ini.put("Application", "runOnStartup", runOnStartup);
 		
 		updateSettingsFile();
 	}
@@ -135,19 +142,12 @@ public class SettingsManager {
 	 * @return The display mode from the display property values for the specified slot number.
 	 */
 	public DisplayMode getIniSlotDisplayMode(int slotNumber) {
-		// Get the default highest display mode.
-		DisplayMode defaultDisplayMode = displayModes[displayModes.length - 1];
-				
 		// Build the display mode from the display mode properties for the specified slot in the settings file object.
 		DisplayMode slotDisplayMode = new DisplayMode(
-				ini.readInteger("Slot" + Integer.toString(slotNumber), "displayModeWidth", 
-						defaultDisplayMode.getWidth()), 
-				ini.readInteger("Slot" + Integer.toString(slotNumber), "displayModeHeight", 
-						defaultDisplayMode.getHeight()), 
-				ini.readInteger("Slot" + Integer.toString(slotNumber), "displayModeBitDepth", 
-						defaultDisplayMode.getBitDepth()), 
-				ini.readInteger("Slot" + Integer.toString(slotNumber), "displayModeRefreshRate", 
-						defaultDisplayMode.getRefreshRate()));
+				ini.get("Slot" + Integer.toString(slotNumber), "displayModeWidth", int.class), 
+				ini.get("Slot" + Integer.toString(slotNumber), "displayModeHeight", int.class), 
+				ini.get("Slot" + Integer.toString(slotNumber), "displayModeBitDepth", int.class), 
+				ini.get("Slot" + Integer.toString(slotNumber), "displayModeRefreshRate", int.class));
 		
 		return slotDisplayMode;
 	}
@@ -163,14 +163,38 @@ public class SettingsManager {
 	 */
 	public void saveIniSlotDisplayMode(int slotNumber, int width, int height, int bitDepth, int refreshRate) {
 		// Write the new display mode property values for the specified slot to the settings file object.
-		ini.writeInteger("Slot" + Integer.toString(slotNumber), "displayModeWidth", width);
-		ini.writeInteger("Slot" + Integer.toString(slotNumber), "displayModeHeight", height);
-		ini.writeInteger("Slot" + Integer.toString(slotNumber), "displayModeBitDepth", bitDepth);
-		ini.writeInteger("Slot" + Integer.toString(slotNumber), "displayModeRefreshRate", refreshRate);
+		ini.put("Slot" + Integer.toString(slotNumber), "displayModeWidth", width);
+		ini.put("Slot" + Integer.toString(slotNumber), "displayModeHeight", height);
+		ini.put("Slot" + Integer.toString(slotNumber), "displayModeBitDepth", bitDepth);
+		ini.put("Slot" + Integer.toString(slotNumber), "displayModeRefreshRate", refreshRate);
 		
 		updateSettingsFile();
 	}
 
+	/**
+	 * Getter for the specified slot's scaling mode property value from the settings file  object.
+	 * 
+	 * @param slotNumber - The slot number to get the scaling mode for.
+	 * @return The specified slot's scaling mode property value.
+	 */
+	public int getIniSlotScalingMode(int slotNumber) {
+		// Get the scaling mode property value from the settings file object.
+		return ini.get("Slot" + Integer.toString(slotNumber), "scalingMode", int.class);
+	}
+
+	/**
+	 * Setter for the specified slot's scaling mode property value in the settings file  object.
+	 * 
+	 * @param slotNumber - The slot number to set the scaling mode for.
+	 * @param scalingMode - The specified slot's new value for the scaling mode property.
+	 */
+	public void saveIniSlotScalingMode(int slotNumber, int scalingMode) {
+		// Write the new scaling mode property value for the specified slot to the settings file.
+		ini.put("Slot" + Integer.toString(slotNumber), "scalingMode", scalingMode);
+		
+		updateSettingsFile();
+	}
+	
 	/**
 	 * Getter for the specified slot's display scale property value from the settings file  object.
 	 * 
@@ -179,7 +203,7 @@ public class SettingsManager {
 	 */
 	public int getIniSlotDisplayScale(int slotNumber) {
 		// Get the display scale property value from the settings file object.
-		return ini.readInteger("Slot" + Integer.toString(slotNumber), "displayScale", 100);
+		return ini.get("Slot" + Integer.toString(slotNumber), "displayScale", int.class);
 	}
 
 	/**
@@ -190,7 +214,7 @@ public class SettingsManager {
 	 */
 	public void saveIniSlotDisplayScale(int slotNumber, int displayScale) {
 		// Write the new display scale property value for the specified slot to the settings file.
-		ini.writeInteger("Slot" + Integer.toString(slotNumber), "displayScale", displayScale);
+		ini.put("Slot" + Integer.toString(slotNumber), "displayScale", displayScale);
 		
 		updateSettingsFile();
 	}
@@ -206,12 +230,12 @@ public class SettingsManager {
 		HotKey hotKey = new HotKey(new ArrayList<Key>());
 		
 		// Get the hotkey size property value from the settings file object.
-		int hotKeySize = ini.readInteger("Slot" + Integer.toString(slotNumber), "hotKeySize", 1);
+		int hotKeySize = ini.get("Slot" + Integer.toString(slotNumber), "hotKeySize", int.class);
 		
 		// For each stored key that makes up the hotkey...
 		for (int i = 1; i <= hotKeySize; i++) {
 			// Get the current key property value from the settings file object.
-			int keyCode = ini.readInteger("Slot" + Integer.toString(slotNumber), "key" + Integer.toString(i), 1);
+			int keyCode = ini.get("Slot" + Integer.toString(slotNumber), "key" + Integer.toString(i), int.class);
 			
 			// Build the hotkey array list of keys by retrieving each key property value from the settings file.
 			hotKey.getKeys().add(new Key(keyCode, keyText.getKeyCodeText(keyCode), false));
@@ -231,7 +255,7 @@ public class SettingsManager {
 		int hotKeySize = hotKey.getKeys().size();
 		
 		// Store the updated hotkey size for the specified slot.
-		ini.writeInteger("Slot" + Integer.toString(slotNumber), "hotKeySize", hotKeySize);
+		ini.put("Slot" + Integer.toString(slotNumber), "hotKeySize", hotKeySize);
 		
 		// For each key in the hotkey...
 		for (int i = 0; i < 3; i++) {
@@ -241,11 +265,11 @@ public class SettingsManager {
 				int keyCode = hotKey.getKeys().get(i).getKey();
 				
 				// Write the retrieved key code value into the settings file object for the current key.
-				ini.writeInteger("Slot" + Integer.toString(slotNumber), "key" + Integer.toString(i + 1), keyCode);
+				ini.put("Slot" + Integer.toString(slotNumber), "key" + Integer.toString(i + 1), keyCode);
 			}
 			// Otherwise, reset the key code for the unused keys.
 			else {
-				ini.writeInteger("Slot" + Integer.toString(slotNumber), "key" + Integer.toString(i + 1), 0);
+				ini.put("Slot" + Integer.toString(slotNumber), "key" + Integer.toString(i + 1), 0);
 			}
 		}
 		
@@ -261,7 +285,7 @@ public class SettingsManager {
 	 * 
 	 * @return The settings ini file.
 	 */
-	public JIniFile getIni() {
+	public Wini getIni() {
 		return ini;
 	}
 	
@@ -288,12 +312,12 @@ public class SettingsManager {
     //------------------------------------------------------------------------------------------------------------------
 	
 	/**
-	 * This method simply wraps the JIniFile update file method in a try/catch block.
+	 * This method simply wraps the Wini store method in a try/catch block.
 	 */
 	private void updateSettingsFile() {
 		// Try to write the new property values to settings file.
 		try {
-			ini.updateFile();
+			ini.store();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

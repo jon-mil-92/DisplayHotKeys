@@ -9,12 +9,22 @@ import com.dhk.ui.DhkView;
  * This class adds menu button controllers to the menu controller. Each menu button controller is created, and their 
  * listeners are initialized through this menu controller.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class MenuController implements Controller {
 	private ArrayList<Controller> menuButtonControllers;
 	
+	/**
+	 * Constructor for the MenuController class.
+	 * 
+	 * @param model - The model for the application.
+	 * @param view - The view for the application.
+	 * @param settings - The settings manager of the application.
+	 */
 	public MenuController (DhkModel model, DhkView view, SettingsManager settings) {
 		// Create the array list of menu button controllers.
 		menuButtonControllers = new ArrayList<Controller>();

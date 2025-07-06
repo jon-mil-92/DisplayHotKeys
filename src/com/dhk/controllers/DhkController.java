@@ -9,8 +9,11 @@ import com.dhk.ui.DhkView;
  * This is the main controller class for the application. The model and view is initialized, and the controller for each 
  * view component is created.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class DhkController implements Controller {
 	private ArrayList<Controller> controllers;
@@ -38,6 +41,7 @@ public class DhkController implements Controller {
 		controllers.add(new MenuController(model, view, settings));
 		controllers.add(new NumberOfSlotsController(model, view, settings));
 		controllers.add(new DisplayModeController(model, view, settings));
+		controllers.add(new ScalingModeController(model, view, settings));
 		controllers.add(new DisplayScaleController(model, view, settings));
 		controllers.add(new HotKeysController(model, view, settings));
 		controllers.add(new ClearHotKeyButtonController(model, view, settings));

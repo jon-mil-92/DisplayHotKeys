@@ -3,8 +3,11 @@ package com.dhk.models;
 /**
  * This class represents the model for a Key. The key code, name, and pressed state of the Key is defined here.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class Key {
 	private int key;
@@ -15,6 +18,7 @@ public class Key {
 	 * Constructor for the Key class.
 	 * 
 	 * @param key - The native key even key code for the key.
+	 * @param name - The name for the key.
 	 * @param keyPressed - Whether or not the key is pressed down or not.
 	 */
 	public Key(int key, String name, boolean keyPressed) {

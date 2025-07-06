@@ -11,8 +11,11 @@ import com.dhk.ui.DhkView;
  * This class controls the Minimize button. Listeners are added to the corresponding view component so that 
  * when the Minimize button is pressed, the application is minimized to the system tray.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class MinimizeButtonController implements Controller {
 private DhkView view;

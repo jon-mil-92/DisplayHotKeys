@@ -5,8 +5,11 @@ import java.util.ArrayList;
 /**
  * This class represents the model for a Hot Key. States and the string representation of the Hot Key are defined here.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class HotKey {
 	private ArrayList<Key> keys;
@@ -29,7 +32,6 @@ public class HotKey {
 	/**
 	 * This method builds a hotkey string from an array list of keys.
 	 * 
-	 * @param hotkeys - The array list of keys to build the hotkey string from.
 	 * @return The hotkey string.
 	 */
 	public String getHotKeyString() {

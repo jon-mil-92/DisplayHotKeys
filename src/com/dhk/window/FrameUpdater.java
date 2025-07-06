@@ -8,8 +8,11 @@ import com.dhk.ui.DhkView;
 /**
  * This class updates the view for Display Hot Keys. The frame components and UI are updated with this class.
  * 
- * @version 1.0.0
  * @author Jonathan Miller
+ * @version 1.1.0
+ * 
+ * @license <a href="https://mit-license.org/">The MIT License</a>
+ * @copyright Jonathan Miller 2024
  */
 public class FrameUpdater {
 	private JFrame frame;
@@ -18,7 +21,7 @@ public class FrameUpdater {
 	/**
 	 * Constructor for the FrameUpdater class.
 	 * 
-	 * @param frame - The view's frame.
+	 * @param view - The view for the application.
 	 */
 	public FrameUpdater(DhkView view) {
 		// Get the application view's frame and panel.

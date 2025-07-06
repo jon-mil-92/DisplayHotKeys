@@ -71,5 +71,10 @@
 			<artifactId>system-hook</artifactId>
 			<version>3.8</version>
 		</dependency>
+		<dependency>
+    		<groupId>org.ini4j</groupId>
+    		<artifactId>ini4j</artifactId>
+    		<version>0.5.4</version>
+		</dependency>
 	</dependencies>
 </project>
