@@ -51,11 +51,7 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 * Instantly set a display mode while in a video game. (This is useful if a video game does not support changing the resolution or refresh rate while in-game.)
 
-<p align="right">
-  <form>
-    <input type="BUTTON" value="Back to Top" onclick="window.location.href='#readme-top'">
-  </form>
-</p>
+<p align="right">&#x25B2;<a href="#readme-top">Back to Top</a></p>
 
 <!-- GETTING STARTED -->
 
@@ -91,7 +87,7 @@ This application will be distributed as a portable package and as an installer.
 
 4. Double-click the created shortcut or the DisplayHotKeys executable file in the install location to run it.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+<p align="right">&#x25B2;<a href="#readme-top">Back to Top</a></p>
 
 <!-- USAGE -->
 
@@ -159,7 +155,7 @@ This application will launch minimized to the system tray in the task bar by des
 
 * To exit the application, click on the "Exit App" button. You can also exit the application from the system tray by clicking on the system tray icon and selecting "Exit".
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+<p align="right">&#x25B2;<a href="#readme-top">Back to Top</a></p>
 
 <!-- ROADMAP -->
 
@@ -171,7 +167,7 @@ This application will launch minimized to the system tray in the task bar by des
 
 See [open issues] for a full list of proposed features (and known issues).
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+<p align="right">&#x25B2;<a href="#readme-top">Back to Top</a></p>
 
 <!-- LICENSE -->
 
@@ -187,7 +183,7 @@ Distributed under the [MIT License]. See LICENSE.txt for more information.
 
 Jonathan Miller - jonRock1992@gmail.com
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+<p align="right">&#x25B2;<a href="#readme-top">Back to Top</a></p>
 
 <!-- DEPENDENCIES -->
 
@@ -215,7 +211,7 @@ Distribution made possible with the following tools:
 
 * [Inno Setup]
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+<p align="right">&#x25B2;<a href="#readme-top">Back to Top</a></p>
 
 <!-- PAYPAL DONATE -->
 
