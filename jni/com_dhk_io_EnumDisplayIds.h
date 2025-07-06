@@ -12,16 +12,14 @@ extern "C" {
  * Method:    queryNumOfConnectedDisplays
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_com_dhk_io_EnumDisplayIds_queryNumOfConnectedDisplays
-  (JNIEnv *, jobject);
+JNIEXPORT jint JNICALL Java_com_dhk_io_EnumDisplayIds_queryNumOfConnectedDisplays(JNIEnv*, jobject);
 
 /*
  * Class:     com_dhk_io_EnumDisplayIds
  * Method:    enumDisplayIds
  * Signature: ()[Ljava/lang/String;
  */
-JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_EnumDisplayIds_enumDisplayIds
-  (JNIEnv *, jobject);
+JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_EnumDisplayIds_enumDisplayIds(JNIEnv*, jobject);
 
 #ifdef __cplusplus
 }
