@@ -161,9 +161,9 @@ This application will launch minimized to the system tray in the task bar by des
 
 ## Roadmap
 
-- [x] &nbsp; Release the initial build.
-- [x] &nbsp; Add display scaling mode selection per hot key slot.
-- [x] &nbsp; Add multi-monitor support.
+- [x] Release the initial build.
+- [x] Add scaling mode selection.
+- [x] Add multi-monitor support.
 
 See [open issues] for a full list of proposed features (and known issues).
 
@@ -173,7 +173,7 @@ See [open issues] for a full list of proposed features (and known issues).
 
 ## License
 
-Distributed under the [MIT License]. See `LICENSE.txt` for more information.
+Distributed under the [MIT License]. See LICENSE.txt for more information.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -222,9 +222,6 @@ Distribution made possible with the following tools:
     <img src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" align="left" height="72"/>
   </a>
 </div>
-<br/>
-<br/>
-<br/>
 
 <!-- MARKDOWN LINKS -->
 
