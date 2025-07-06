@@ -24,6 +24,7 @@ import com.formdev.flatlaf.ui.FlatUIUtils;
 import java.awt.Insets;
 import java.awt.Point;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -31,15 +32,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * are initialized and arranged in a GridBag layout.
  * 
  * @author Jonathan Miller
- * @version 1.3.2
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
  */
 public class DhkView {
     private DhkModel model;
-    private ConcurrentHashMap<Integer, ArrayList<Slot>> displayMap;
-    private ConcurrentHashMap<Integer, JComboBox<Integer>> numberOfActiveSlotsMap;
     private JFrame frame;
     private JPanel mainPanel;
     private JPanel displayPanel;
@@ -49,12 +48,16 @@ public class DhkView {
     private GridBagConstraints displayPanelConstraints;
     private GridBagConstraints menuPanelConstraints;
     private JLabel displayIdsLabel;
-    private JComboBox<Integer> displayIds;
     private JLabel numberOfActiveSlotsLabel;
+    private JLabel orientationLabel;
     private JLabel displayModeLabel;
     private JLabel scalingModeLabel;
     private JLabel dpiScaleLabel;
     private JLabel hotKeyLabel;
+    private JComboBox<Integer> displayIds;
+    private Map<Integer, ArrayList<Slot>> displayMap;
+    private Map<Integer, JComboBox<Integer>> numberOfActiveSlotsMap;
+    private Map<Integer, JComboBox<String>> orientationModesMap;
     private PaypalDonateButton paypalDonateButton;
     private ThemeButton themeButton;
     private RunOnStartupButton runOnStartupButton;
@@ -67,7 +70,10 @@ public class DhkView {
     private int gridYPositionForSlotInPanel;
 
     // Each slot consists of seven different components.
-    private final int NUM_OF_SLOT_COMPONENTS = 7;
+    private final int NUM_OF_SLOT_COMPONENTS = 8;
+
+    // Define the orientation mode values for the combo box.
+    private final String[] ORIENTATION_MODES = { "Landscape", "Portrait", "iLandscape", "iPortrait" };
 
     /**
      * Constructor for the DhkView class.
@@ -105,23 +111,23 @@ public class DhkView {
         // Initialize the map of number of slots combo boxes for the actively connected displays.
         numberOfActiveSlotsMap = new ConcurrentHashMap<Integer, JComboBox<Integer>>();
 
+        // Initialize the map of orientation modes combo boxes for the actively connected displays.
+        orientationModesMap = new ConcurrentHashMap<Integer, JComboBox<String>>();
+
         // The previously selected display is the primary display upon app initialization.
         previouslySelectedDisplayIndex = 0;
 
         // Initialize the frame of the application.
         frame = new JFrame();
 
-        // Close the application when the close button is pressed.
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
         // Hide the title bar.
         frame.setUndecorated(true);
 
-        // Make the window visible.
-        frame.setVisible(true);
-
         // Do not allow the user to resize the window.
         frame.setResizable(false);
+
+        // Make the window visible.
+        frame.setVisible(true);
 
         // Initialize the panels that will organize the view components.
         initPanels();
@@ -145,6 +151,9 @@ public class DhkView {
         } else {
             // Set the location to the given point.
             frame.setLocation(frameLocation);
+
+            // Force a redraw of the frame to prevent GUI corruption.
+            frame.setSize(0, 0);
         }
 
         // Give focus to the display label.
@@ -183,12 +192,29 @@ public class DhkView {
             mainPanelConstraints.gridy = gridYPositionForSlotInPanel;
             mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getIndicatorLabel(), mainPanelConstraints);
 
+            // Anchor the menu panel to the right of the grid.
+            mainPanelConstraints.anchor = GridBagConstraints.WEST;
+
+            // Define where the current slot's apply display mode button is located in the grid bag layout and add it to
+            // the panel.
+            mainPanelConstraints.gridwidth = 1;
+            mainPanelConstraints.gridx = 1;
+            mainPanelConstraints.gridy = gridYPositionForSlotInPanel;
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplyDisplayModeButton(),
+                    mainPanelConstraints);
+
+            // Anchor the menu panel to the right of the grid.
+            mainPanelConstraints.anchor = GridBagConstraints.EAST;
+
             // Define where the current slot's display modes combo box is located in the grid bag layout and add it to
             // the panel.
             mainPanelConstraints.gridwidth = 1;
             mainPanelConstraints.gridx = 1;
             mainPanelConstraints.gridy = gridYPositionForSlotInPanel;
             mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDisplayModes(), mainPanelConstraints);
+
+            // Anchor the following slot elements to the center of the grid.
+            mainPanelConstraints.anchor = GridBagConstraints.CENTER;
 
             // Define where the current slot's scaling modes combo box is located in the grid bag layout and add it to
             // the panel.
@@ -276,6 +302,15 @@ public class DhkView {
             mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getIndicatorLabel(),
                     prevIndicatorLabelConstraints);
 
+            // Get the constraints for the previous slot's apply display mode button.
+            GridBagConstraints prevApplyDisplayModeButtonConstraints = mainPanelLayout.getConstraints(
+                    displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getApplyDisplayModeButton());
+
+            // Replace the previous slot's indicator label with the new slot's indicator label.
+            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getApplyDisplayModeButton());
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplyDisplayModeButton(),
+                    prevApplyDisplayModeButtonConstraints);
+
             // Get the constraints for the previous slot's display modes combo box.
             GridBagConstraints prevDisplayModesConstraints = mainPanelLayout
                     .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getDisplayModes());
@@ -330,7 +365,7 @@ public class DhkView {
     }
 
     /**
-     * This method removes the current number of active slots combo box and add the correct one for the selected
+     * This method removes the current number of active slots combo box and adds the correct one for the selected
      * display.
      * 
      * @param displayIndex - The index of the display to show the number of active slots combo box for.
@@ -344,6 +379,22 @@ public class DhkView {
         displayPanelConstraints.gridx = 3;
         displayPanelConstraints.gridy = 0;
         displayPanel.add(numberOfActiveSlotsMap.get(displayIndex), displayPanelConstraints);
+    }
+
+    /**
+     * This method removes the current orientation modes combo box and adds the correct one for the selected display.
+     * 
+     * @param displayIndex - The index of the display to show the orientation modes combo box for.
+     */
+    public void showOrientationModesForDisplay(int displayIndex) {
+        // Remove the current orientation modes combo box for the previously selected display.
+        displayPanel.remove(5);
+
+        // Define where the orientation modes combo box is located in the grid bag layout and add it to the panel.
+        displayPanelConstraints.gridwidth = 1;
+        displayPanelConstraints.gridx = 5;
+        displayPanelConstraints.gridy = 0;
+        displayPanel.add(orientationModesMap.get(displayIndex), displayPanelConstraints);
     }
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -411,7 +462,11 @@ public class DhkView {
         numberOfActiveSlotsLabel = new JLabel("Slots :", SwingConstants.LEFT);
         numberOfActiveSlotsLabel.setPreferredSize(new Dimension(40, 28));
 
-        // Initialize the map of number of active slots combo boxes.
+        // Initialize the orientation modes components.
+        orientationLabel = new JLabel("Orientation :", SwingConstants.LEFT);
+        orientationLabel.setPreferredSize(new Dimension(75, 28));
+
+        // Initialize the maps for the number of active slots and orientation modes combo boxes.
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             // Create a new num of active slots combo box for the current display.
             JComboBox<Integer> numberOfActiveSlots = new JComboBox<Integer>(generateNumOfSlotsValues());
@@ -422,6 +477,16 @@ public class DhkView {
 
             // Add the combo box to the map of num of active slots combo boxes.
             numberOfActiveSlotsMap.put(displayIndex, numberOfActiveSlots);
+
+            // Create a new orientation modes combo box for the current display.
+            JComboBox<String> orientationModes = new JComboBox<String>(ORIENTATION_MODES);
+            orientationModes.setPreferredSize(new Dimension(115, 28));
+
+            // Set the initial selection for the orientation modes combo box.
+            orientationModes.setSelectedIndex(model.getOrientationModeForDisplay(displayIndex));
+
+            // Add the combo box to the map of orientation modes combo boxes.
+            orientationModesMap.put(displayIndex, orientationModes);
         }
 
         // Initialize the paypal donate button.
@@ -452,7 +517,7 @@ public class DhkView {
 
         // Initialize headers.
         displayModeLabel = new JLabel("Display Mode", SwingConstants.CENTER);
-        displayModeLabel.setPreferredSize(new Dimension(90, 28));
+        displayModeLabel.setPreferredSize(new Dimension(256, 28));
         makeLabelBold(displayModeLabel);
 
         scalingModeLabel = new JLabel("Scaling Mode", SwingConstants.CENTER);
@@ -548,7 +613,7 @@ public class DhkView {
             // For each slot in the model, add it to the view and set the selection for it.
             for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
                 // Initialize the new slot components.
-                slots.add(new Slot(Integer.toString(slotIndex), displayModes, scalingModes, dpiScalePercentages));
+                slots.add(new Slot(slotIndex, displayIndex, displayModes, scalingModes, dpiScalePercentages));
 
                 // Set the new display mode for the new slot.
                 slots.get(slotIndex).getDisplayModes()
@@ -609,6 +674,18 @@ public class DhkView {
         displayPanelConstraints.gridy = 0;
         displayPanel.add(numberOfActiveSlotsMap.get(displayIds.getSelectedIndex()), displayPanelConstraints);
 
+        // Define where the orientation modes label is located in the grid bag layout and add it to the panel.
+        displayPanelConstraints.gridwidth = 1;
+        displayPanelConstraints.gridx = 4;
+        displayPanelConstraints.gridy = 0;
+        displayPanel.add(orientationLabel, displayPanelConstraints);
+
+        // Define where the orientation modes combo box is located in the grid bag layout and add it to the panel.
+        displayPanelConstraints.gridwidth = 1;
+        displayPanelConstraints.gridx = 5;
+        displayPanelConstraints.gridy = 0;
+        displayPanel.add(orientationModesMap.get(displayIds.getSelectedIndex()), displayPanelConstraints);
+
         // Anchor the menu panel to the right of the grid.
         mainPanelConstraints.anchor = GridBagConstraints.EAST;
 
@@ -618,45 +695,39 @@ public class DhkView {
         mainPanelConstraints.gridy = 0;
         mainPanel.add(menuPanel, mainPanelConstraints);
 
-        // Define where the paypal donate button is located in the grid bag layout and add it to the panel.
-        menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 0;
-        menuPanelConstraints.gridy = 0;
-        menuPanel.add(paypalDonateButton, menuPanelConstraints);
-
         // Define where the theme button is located in the grid bag layout and add it to the panel.
         menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 1;
+        menuPanelConstraints.gridx = 0;
         menuPanelConstraints.gridy = 0;
         menuPanel.add(themeButton, menuPanelConstraints);
 
         // Define where the run on startup button is located in the grid bag layout and add it to the panel.
         menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 2;
+        menuPanelConstraints.gridx = 1;
         menuPanelConstraints.gridy = 0;
         menuPanel.add(runOnStartupButton, menuPanelConstraints);
 
         // Define where the refresh app button is located in the grid bag layout and add it to the panel.
         menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 3;
+        menuPanelConstraints.gridx = 2;
         menuPanelConstraints.gridy = 0;
         menuPanel.add(refreshAppButton, menuPanelConstraints);
 
         // Define where the clear all button is located in the grid bag layout and add it to the panel.
         menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 4;
+        menuPanelConstraints.gridx = 3;
         menuPanelConstraints.gridy = 0;
         menuPanel.add(clearAllButton, menuPanelConstraints);
 
         // Define where the minimize button is located in the grid bag layout and add it to the panel.
         menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 5;
+        menuPanelConstraints.gridx = 4;
         menuPanelConstraints.gridy = 0;
         menuPanel.add(minimizeButton, menuPanelConstraints);
 
         // Define where the exit button is located in the grid bag layout and add it to the panel.
         menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 6;
+        menuPanelConstraints.gridx = 5;
         menuPanelConstraints.gridy = 0;
         menuPanel.add(exitButton, menuPanelConstraints);
 
@@ -686,6 +757,12 @@ public class DhkView {
         mainPanelConstraints.gridx = 4;
         mainPanelConstraints.gridy = 1;
         mainPanel.add(hotKeyLabel, mainPanelConstraints);
+
+        // Define where the paypal donate button is located in the grid bag layout and add it to the panel.
+        mainPanelConstraints.gridwidth = 1;
+        mainPanelConstraints.gridx = 6;
+        mainPanelConstraints.gridy = 1;
+        mainPanel.add(paypalDonateButton, mainPanelConstraints);
     }
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -754,6 +831,16 @@ public class DhkView {
      */
     public JComboBox<Integer> getNumberOfActiveSlots(int displayIndex) {
         return numberOfActiveSlotsMap.get(displayIndex);
+    }
+
+    /**
+     * Getter for the orientation modes combo box for the given display index.
+     * 
+     * @param displayIndex - The index of the display to get the orientation modes combo box for.
+     * @return The orientation modes combo box for the given dispay index.
+     */
+    public JComboBox<String> getOrientationModes(int displayIndex) {
+        return orientationModesMap.get(displayIndex);
     }
 
     /**

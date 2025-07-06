@@ -6,19 +6,22 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
+
+import com.dhk.ui.buttons.ApplyDisplayModeButton;
 import com.dhk.ui.buttons.ClearHotKeyButton;
 
 /**
  * This class defines the view components of a Slot.
  * 
  * @author Jonathan Miller
- * @version 1.3.2
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
  */
 public class Slot {
     private JLabel slotIndicatorLabel;
+    private ApplyDisplayModeButton applyDisplayModeButton;
     private JComboBox<DisplayMode> slotDisplayModes;
     private JComboBox<String> slotScalingModes;
     private JComboBox<Integer> slotDpiScalePercentages;
@@ -30,17 +33,23 @@ public class Slot {
      * Constructor for the Slot class.
      * 
      * @param slotIndex           - The index of the slot.
+     * @param displayIndex        - The index of the display the slot resides in.
      * @param displayModes        - The array of display modes for the slot.
      * @param scalingModes        - The array of scaling modes for the slot.
      * @param dpiScalePercentages - The array of DPI scale percentages for the slot.
      */
-    public Slot(String slotIndex, DisplayMode[] displayModes, String[] scalingModes, Integer[] dpiScalePercentages) {
+    public Slot(int slotIndex, int displayIndex, DisplayMode[] displayModes, String[] scalingModes,
+            Integer[] dpiScalePercentages) {
         // Increment the slot ID string.
-        String slotID = Integer.toString(Integer.parseInt(slotIndex) + 1);
+        String slotID = Integer.toString(slotIndex + 1);
 
         // Initialize the slot indicator label component.
         slotIndicatorLabel = new JLabel("Slot " + slotID + " :", SwingConstants.CENTER);
         slotIndicatorLabel.setPreferredSize(new Dimension(50, 28));
+
+        // Initialize the button used to immediately apply the slot's display settings.
+        applyDisplayModeButton = new ApplyDisplayModeButton("/apply_idle.svg", "/apply_hover.svg", slotIndex,
+                displayIndex);
 
         // Initialize the display modes combo box component.
         slotDisplayModes = new JComboBox<DisplayMode>(displayModes);
@@ -76,6 +85,15 @@ public class Slot {
      */
     public JLabel getIndicatorLabel() {
         return slotIndicatorLabel;
+    }
+
+    /**
+     * Getter for the apply display mode button.
+     * 
+     * @return The apply display mode button.
+     */
+    public ApplyDisplayModeButton getApplyDisplayModeButton() {
+        return applyDisplayModeButton;
     }
 
     /**

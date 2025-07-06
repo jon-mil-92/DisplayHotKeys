@@ -5,4 +5,5 @@ com.dhk.main
 com.dhk.models
 com.dhk.ui
 com.dhk.ui.buttons
+com.dhk.utility
 com.dhk.window

@@ -1,6 +1,6 @@
 /*
  * Original Author: Jonathan Miller
- * Version: 1.0.0.0
+ * Version: 1.1.0.0
  * 
  * Description: Immediately apply display settings for a given display.
  * 
@@ -19,9 +19,10 @@ using namespace std;
 void setDisplayMode(UINT32 displayIndex, UINT32 width, UINT32 height, UINT32 bitDepth, UINT32 refreshRate);
 void setDisplayScalingMode(UINT32 displayIndex, UINT32 scalingMode);
 void setDpiScalePercentage(UINT32 displayIndex, int32_t dpiScalePercentage);
+void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation);
 
 /*
- * This function updates the display mode, display scaling mode, and DPI scale percentage for the given display.
+ * This function updates the display mode, scaling mode, orientaion, and DPI scale percentage for the given display.
  *
  * @param env 				 - The structure containing methods to use to to access Java elements.
  * @param obj 				 - The reference to the Java native object instance.
@@ -32,9 +33,10 @@ void setDpiScalePercentage(UINT32 displayIndex, int32_t dpiScalePercentage);
  * @param refreshRate  		 - The new refresh rate for the given display.
  * @param scalingMode  		 - The new scaling mode for the given display.
  * @param dpiScalePercentage - The new DPI scale percentage for the given display.
+ * @param orientation        - The new orientation for the given display.
  */
 JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv *env, jobject obj, jstring displayId, jint resWidth,
-        jint resHeight, jint bitDepth, jint refreshRate, jint scalingMode, jint dpiScalePercentage) {
+        jint resHeight, jint bitDepth, jint refreshRate, jint scalingMode, jint dpiScalePercentage, jint orientation) {
     // Convert the display ID jstring to a string.
     jboolean isCopy;
     const char *displayIdChars = (env)->GetStringUTFChars(displayId, &isCopy);
@@ -49,11 +51,39 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv *env, jobjec
     // Set the display mode for the given display.
     setDisplayMode(enumDisplayDevicesDisplayIdIndex, resWidth, resHeight, bitDepth, refreshRate);
 
-    // Set the display scaling mode for the given display.
+    // Set the scaling mode for the given display.
     setDisplayScalingMode(queryDisplayConfigDisplayIdIndex, scalingMode);
 
     // Set the DPI scale percentage for the given display.
     setDpiScalePercentage(queryDisplayConfigDisplayIdIndex, dpiScalePercentage);
+
+    // Set the orientation for the given display.
+    setDisplayOrientation(queryDisplayConfigDisplayIdIndex, orientation);
+}
+
+/*
+ * This function updates the orientation for the given display.
+ *
+ * @param env                - The structure containing methods to use to to access Java elements.
+ * @param obj                - The reference to the Java native object instance.
+ * @param displayId          - The ID of the display to apply the display settings for.
+ * @param orientation        - The new orientation for the given display.
+ */
+JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setOrientation(JNIEnv *env, jobject obj, jstring displayId,
+        jint orientation) {
+    // Convert the display ID jstring to a string.
+    jboolean isCopy;
+    const char *displayIdChars = (env)->GetStringUTFChars(displayId, &isCopy);
+    string displayIdString = displayIdChars;
+
+    // Get the display index in the EnumDisplayDevices display ID vector for the give display.
+    int enumDisplayDevicesDisplayIdIndex = getEnumDisplayDevicesDisplayIdIndex(displayIdString);
+
+    // Get the display index in the QueryDisplayConfig display ID vector for the give display.
+    int queryDisplayConfigDisplayIdIndex = getQueryDisplayConfigDisplayIdIndex(displayIdString);
+
+    // Set the display orientation for the given display.
+    setDisplayOrientation(queryDisplayConfigDisplayIdIndex, orientation);
 }
 
 /*
@@ -102,13 +132,13 @@ void setDisplayMode(UINT32 displayIndex, UINT32 resWidth, UINT32 resHeight, UINT
 }
 
 /*
- * This function sets the display scaling mode for the given display.
+ * This function sets the scaling mode for the given display.
  *
  * @param displayIndex - The index of the display to set the scaling mode for.
- * @param scalingMode  - The new display scaling mode to apply for the given display.
+ * @param scalingMode  - The new scaling mode to apply for the given display.
  */
 void setDisplayScalingMode(UINT32 displayIndex, UINT32 scalingMode) {
-    // Variable to hold the new display scaling mode.
+    // Variable to hold the new scaling mode.
     DISPLAYCONFIG_SCALING displayConfigScalingMode;
 
     // Update the display config scaling mode corresponding to the given scaling mode value.
@@ -131,17 +161,17 @@ void setDisplayScalingMode(UINT32 displayIndex, UINT32 scalingMode) {
     // connected displays.
     DisplayConfig displayConfig = getDisplayConfig();
 
-    // Set the new display scaling mode for the given display.
+    // Set the new scaling mode for the given display.
     displayConfig.pathInfoArray[displayIndex].targetInfo.scaling = displayConfigScalingMode;
 
-    // Apply the new display scaling mode.
+    // Apply the new scaling mode.
     LONG setDisplayConfigResult = SetDisplayConfig(displayConfig.numPathInfoArrayElements, displayConfig.pathInfoArray,
             displayConfig.numModeInfoArrayElements, displayConfig.modeInfoArray, SDC_APPLY |
             SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE);
 
     // Check if the display configuration could be set, and output an error message if it failed.
     if (setDisplayConfigResult != ERROR_SUCCESS) {
-        cerr << "Failed to set the display configuration! Error Code: " << setDisplayConfigResult << endl;
+        cerr << "Failed to set the scaling mode! Error Code: " << setDisplayConfigResult << endl;
     }
 }
 
@@ -205,5 +235,52 @@ void setDpiScalePercentage(UINT32 displayIndex, int32_t dpiScalePercentage) {
     // Check if the DPI scale percentage could be set, and output an error message if it failed.
     if (setDpiScaleResult != ERROR_SUCCESS) {
         cerr << "Failed to set the DPI scale percentage! Error Code : " << setDpiScaleResult << endl;
+    }
+}
+
+/*
+ * This function sets the orientation for the given display.
+ *
+ * @param displayIndex - The index of the display to set the scaling mode for.
+ * @param orientation  - The new orientation to apply for the given display.
+ */
+void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation) {
+    // Variable to hold the new orientation.
+    DISPLAYCONFIG_ROTATION displayConfigRotation;
+
+    // Update the display orientation corresponding to the given orientation value.
+    switch (orientation) {
+    case 0:
+        displayConfigRotation = DISPLAYCONFIG_ROTATION_IDENTITY; // Landscape mode.
+        break;
+    case 1:
+        displayConfigRotation = DISPLAYCONFIG_ROTATION_ROTATE90; // Portrait mode.
+        break;
+    case 2:
+        displayConfigRotation = DISPLAYCONFIG_ROTATION_ROTATE180; // Inverted landscape mode.
+        break;
+    case 3:
+        displayConfigRotation = DISPLAYCONFIG_ROTATION_ROTATE270; // Inverted portrait mode.
+        break;
+    default:
+        displayConfigRotation = DISPLAYCONFIG_ROTATION_IDENTITY; // Landscape mode.
+        break;
+    }
+
+    // Initialize a structure to hold the active paths as defined in the persistence database for the currently
+    // connected displays.
+    DisplayConfig displayConfig = getDisplayConfig();
+
+    // Set the new orientation for the given display.
+    displayConfig.pathInfoArray[displayIndex].targetInfo.rotation = displayConfigRotation;
+
+    // Apply the new orientation.
+    LONG setDisplayConfigResult = SetDisplayConfig(displayConfig.numPathInfoArrayElements, displayConfig.pathInfoArray,
+            displayConfig.numModeInfoArrayElements, displayConfig.modeInfoArray, SDC_APPLY |
+            SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE);
+
+    // Check if the display configuration could be set, and output an error message if it failed.
+    if (setDisplayConfigResult != ERROR_SUCCESS) {
+        cerr << "Failed to set the display orientation! Error Code: " << setDisplayConfigResult << endl;
     }
 }

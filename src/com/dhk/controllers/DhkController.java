@@ -2,6 +2,8 @@ package com.dhk.controllers;
 
 import java.util.ArrayList;
 import javax.swing.JFrame;
+
+import com.dhk.controllers.buttons.ApplyDisplayModeButtonController;
 import com.dhk.controllers.buttons.ClearHotKeyButtonController;
 import com.dhk.io.SettingsManager;
 import com.dhk.models.DhkModel;
@@ -12,7 +14,7 @@ import lc.kra.system.keyboard.GlobalKeyboardHook;
  * This is the main controller class for the application. It creates all of the controllers for the application.
  * 
  * @author Jonathan Miller
- * @version 1.3.2
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -61,6 +63,7 @@ public class DhkController implements Controller {
         controllers = new ArrayList<Controller>();
 
         // Create the controllers and add them to the array list of controllers.
+        controllers.add(new ApplyDisplayModeButtonController(model, view));
         controllers.add(new ClearHotKeyButtonController(model, view, settingsMgr));
         controllers.add(new ConnectedDisplaysController(model, view, this, settingsMgr));
         controllers.add(new DisplayModeController(model, view, settingsMgr));
@@ -72,6 +75,7 @@ public class DhkController implements Controller {
 
         controllers.add(new MenuController(model, view, this, settingsMgr));
         controllers.add(new NumberOfSlotsController(model, view, settingsMgr));
+        controllers.add(new OrientationController(model, view, this, settingsMgr));
         controllers.add(new ScalingModeController(model, view, settingsMgr));
         controllers.add(new SelectedDisplayController(model, view));
         controllers.add(new WindowController(view));

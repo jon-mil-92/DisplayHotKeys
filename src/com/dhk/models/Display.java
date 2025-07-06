@@ -3,11 +3,11 @@ package com.dhk.models;
 import java.util.ArrayList;
 
 /**
- * This class defines the model for a Display. The id, active number of hot key slots, and array list of hot key slots
- * are initialized here.
+ * This class defines the model for a Display. The id, active number of hot key slots, orientation mode, and array list
+ * of hot key slots are initialized here.
  * 
  * @author Jonathan Miller
- * @version 1.3.2
+ * @version 1.4.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -15,6 +15,7 @@ import java.util.ArrayList;
 public class Display {
     private String id;
     private int numOfActiveSlots;
+    private int orientationMode;
     private ArrayList<Slot> slots;
 
     /**
@@ -22,12 +23,14 @@ public class Display {
      * 
      * @param id               - The ID of the display.
      * @param numOfActiveSlots - The number of active hot key slots for the display.
+     * @param orientationMode  - The orientation mode for the display.
      * @param slots            - The array of active hot key slots for the display.
      */
-    public Display(String id, int numOfActiveSlots, ArrayList<Slot> slots) {
+    public Display(String id, int numOfActiveSlots, int orientationMode, ArrayList<Slot> slots) {
         // Initialize fields.
         this.id = id;
         this.numOfActiveSlots = numOfActiveSlots;
+        this.orientationMode = orientationMode;
         this.slots = slots;
     }
 
@@ -56,6 +59,24 @@ public class Display {
      */
     public void setNumOfActiveSlots(int numOfActiveSlots) {
         this.numOfActiveSlots = numOfActiveSlots;
+    }
+
+    /**
+     * Getter for the orientation mode for the display.
+     * 
+     * @return The orientation mode for the display.
+     */
+    public int getOrientationMode() {
+        return orientationMode;
+    }
+
+    /**
+     * Setter for the orientation mode for the display.
+     * 
+     * @param orientationMode - The orientation mode for the display.
+     */
+    public void setOrientationMode(int orientationMode) {
+        this.orientationMode = orientationMode;
     }
 
     /**
