@@ -163,9 +163,9 @@ This application will launch minimized to the system tray in the task bar by des
 
 ## Roadmap
 
-- [x] Release the initial build.
-- [x] Add scaling mode selection.
-- [x] Add multi-monitor support.
+- [x] &nbsp; Release the initial build.
+- [x] &nbsp; Add scaling mode selection.
+- [x] &nbsp; Add multi-monitor support.
 
 See [open issues] for a full list of proposed features (and known issues).
 
