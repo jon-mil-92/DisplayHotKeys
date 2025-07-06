@@ -569,9 +569,9 @@ public class HotKeysController implements Controller, GlobalKeyListener {
 
         // If the user did not type any keys before the idle timeout or any hot key is a subset of another...
         if (model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().getKeys().size() == 0 || anyHotKeySubset) {
-            // Do not notify the user that the hot key was not set if the idle timeout was reached.
-            if (model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().getKeys().size() != 0) {
-                // Notify the user that the hot key was not set if any hot key is a subset of another.
+            // Only notify the user that the hot key was not set if any hot key is a subset of another.
+            if (anyHotKeySubset) {
+                // Update the Change Hot Key button text to notify the user that the hot key was not successfully set.
                 view.getSlot(selectedDisplayIndex, slotIndex).getChangeHotKeyButton().setText(HOT_KEY_NOT_SET_TEXT);
             }
 
@@ -588,7 +588,7 @@ public class HotKeysController implements Controller, GlobalKeyListener {
             // Update the view's frame.
             frameUpdater.updateUI();
         } else {
-            // Update the hot key button to notify the user that the hot key was successfully set.
+            // Update the Change Hot Key button text to notify the user that the hot key was successfully set.
             view.getSlot(selectedDisplayIndex, slotIndex).getChangeHotKeyButton().setText(HOT_KEY_SET_TEXT);
         }
 
@@ -600,7 +600,7 @@ public class HotKeysController implements Controller, GlobalKeyListener {
 
         // If the release message is not showing...
         if (!showReleaseMessage) {
-            // Update the Change Hot Key button to notify the user that they can change the hot key again.
+            // Update the Change Hot Key button text to notify the user that they can change the hot key again.
             view.getSlot(selectedDisplayIndex, slotIndex).getChangeHotKeyButton().setText(CHANGE_HOT_KEY_TEXT);
 
             // Re-enable the view components.
@@ -625,7 +625,7 @@ public class HotKeysController implements Controller, GlobalKeyListener {
                 // Get the display index for the selected display from the view.
                 int selectedDisplayIndex = view.getDisplayIds().getSelectedIndex();
 
-                // Revert the text back for the Change Hot Key button.
+                // Update the Change Hot Key button text to notify the user that they can change the hot key again.
                 view.getSlot(selectedDisplayIndex, slotIndex).getChangeHotKeyButton().setText(CHANGE_HOT_KEY_TEXT);
 
                 // Re-enable the view components.
