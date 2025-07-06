@@ -139,7 +139,7 @@ This application will launch minimized to the system tray in the task bar by des
 
 **Note:** You may need to use GPU Scaling in your display driver settings to prevent the monitor from overriding the scaling mode.
 
-### Buttons
+### Button Interaction
 
 #### Clear Hot Key
 
