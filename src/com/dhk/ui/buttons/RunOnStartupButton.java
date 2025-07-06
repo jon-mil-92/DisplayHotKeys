@@ -10,10 +10,10 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
  * This class defines the Run On Startup button. The icons for the different states of the button are defined here.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class RunOnStartupButton extends JButton {
     private static final long serialVersionUID = 1L;
@@ -36,14 +36,14 @@ public class RunOnStartupButton extends JButton {
      *
      * @param runOnStartup                           - Whether or not the application will run when the user logs into
      *                                               Windows.
-     * @param runOnStartupEnabledIdleIconPath        - The resource path for the startup button enabled idle icon.
-     * @param runOnStartupDisabledIdleIconPath       - The resource path for the startup button disable idle icon.
-     * @param runOnStartupEnabledDarkHoverIconPath   - The resource path for the startup button enabled hover dark icon.
-     * @param runOnStartupEnabledLightHoverIconPath  - The resource path for the startup button enabled hover light
+     * @param runOnStartupEnabledIdleIconPath        - The resource path for the run on startup button enabled idle icon.
+     * @param runOnStartupDisabledIdleIconPath       - The resource path for the run on startup button disable idle icon.
+     * @param runOnStartupEnabledDarkHoverIconPath   - The resource path for the run on startup button enabled hover dark icon.
+     * @param runOnStartupEnabledLightHoverIconPath  - The resource path for the run on startup button enabled hover light
      *                                               icon.
-     * @param runOnStartupDisabledDarkHoverIconPath  - The resource path for the startup button disabled hover dark
+     * @param runOnStartupDisabledDarkHoverIconPath  - The resource path for the run on startup button disabled hover dark
      *                                               icon.
-     * @param runOnStartupDisabledLightHoverIconPath - The resource path for the startup button disabled hover light
+     * @param runOnStartupDisabledLightHoverIconPath - The resource path for the run on startup button disabled hover light
      *                                               icon.
      */
     public RunOnStartupButton(boolean runOnStartup, String runOnStartupEnabledIdleIconPath,
@@ -172,17 +172,17 @@ public class RunOnStartupButton extends JButton {
     }
 
     /**
-     * Getter for the run on startup Disabled light button icon when the cursor is over the button or the button is in
+     * Getter for the run on startup disabled light button icon when the cursor is over the button or the button is in
      * focus.
      * 
-     * @return The run on startup Disabled light button hover icon.
+     * @return The run on startup disabled light button hover icon.
      */
     public Icon getRunOnStartupDisabledLightHoverIcon() {
         return runOnStartupDisabledLightHoverIcon;
     }
 
     /**
-     * Getter for the run on startup Disabled dark button icon when the button is held down.
+     * Getter for the run on startup disabled dark button icon when the button is held down.
      * 
      * @return The pressed run on startup Disabled dark button icon.
      */
@@ -191,9 +191,9 @@ public class RunOnStartupButton extends JButton {
     }
 
     /**
-     * Getter for the run on startup Disabled light button icon when the button is held down.
+     * Getter for the run on startup disabled light button icon when the button is held down.
      * 
-     * @return The pressed run on startup Disabled light button icon.
+     * @return The pressed run on startup disabled light button icon.
      */
     public Icon getRunOnStartupDisabledLightPressedIcon() {
         return runOnStartupDisabledLightPressedIcon;

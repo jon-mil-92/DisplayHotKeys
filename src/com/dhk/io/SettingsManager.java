@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
+
 import org.ini4j.Wini;
+
 import com.dhk.models.HotKey;
 import com.dhk.models.Key;
 
@@ -18,10 +20,10 @@ import com.dhk.models.Key;
  * percentages, and the hot keys.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class SettingsManager {
     private Wini ini;
@@ -75,6 +77,28 @@ public class SettingsManager {
     public void saveIniDarkMode(boolean darkMode) {
         // Write the new dark mode property value to the settings file object.
         ini.put("Application", "darkMode", darkMode);
+
+        updateSettingsFile();
+    }
+
+    /**
+     * Getter for the minimize to tray property value from the settings file object.
+     * 
+     * @return The value for the minimize to tray property.
+     */
+    public boolean getIniMinimizeToTray() {
+        // Get the minimize to tray property value from the settings file object.
+        return ini.get("Application", "minimizeToTray", boolean.class);
+    }
+
+    /**
+     * Setter for the minimize to tray property value in the settings file object.
+     * 
+     * @param minimizeToTray - The new value for the minimize to tray property.
+     */
+    public void saveIniMinimizeToTray(boolean minimizeToTray) {
+        // Write the new minimize to tray property value to the settings file object.
+        ini.put("Application", "minimizeToTray", minimizeToTray);
 
         updateSettingsFile();
     }

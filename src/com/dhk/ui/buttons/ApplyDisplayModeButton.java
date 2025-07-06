@@ -11,10 +11,10 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
  * along with the slot and display that the button resides in.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class ApplyDisplayModeButton extends JButton {
     private static final long serialVersionUID = 1L;

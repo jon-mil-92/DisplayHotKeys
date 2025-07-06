@@ -9,10 +9,10 @@ import com.dhk.window.FrameUpdater;
  * so that when a new display is selected, the view components are changed to those for the selected display.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class SelectedDisplayController implements Controller {
     private DhkView view;

@@ -1,6 +1,7 @@
 package com.dhk.models;
 
 import java.util.ArrayList;
+
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.SettingsManager;
 
@@ -8,10 +9,10 @@ import com.dhk.io.SettingsManager;
  * This class is the primary model of Display Hot Keys. Each slot in the application is initialized here.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class DhkModel {
     private DisplayConfig displayConfig;
@@ -20,6 +21,7 @@ public class DhkModel {
     private int numOfConnectedDisplays;
     private int maxNumOfSlots;
     private boolean darkMode;
+    private boolean minimizeToTray;
     private boolean runOnStartup;
 
     /**
@@ -34,11 +36,14 @@ public class DhkModel {
      * @param settingsMgr - The manager of the application's settings file.
      */
     public void initModel(SettingsManager settingsMgr) {
-        // Get the "run on startup" state from the settings manager.
-        runOnStartup = settingsMgr.getIniRunOnStartup();
-
         // Get the "dark mode" state from the settings manager.
         darkMode = settingsMgr.getIniDarkMode();
+
+        // Get the "minimize to tray" state from the settings manager.
+        minimizeToTray = settingsMgr.getIniMinimizeToTray();
+
+        // Get the "run on startup" state from the settings manager.
+        runOnStartup = settingsMgr.getIniRunOnStartup();
 
         // Initialize the object that will get the current display configuration.
         displayConfig = settingsMgr.getDisplayConfig();
@@ -174,22 +179,6 @@ public class DhkModel {
     }
 
     /**
-     * Toggle the "run on startup" state.
-     */
-    public void toggleRunOnStartup() {
-        runOnStartup = !runOnStartup;
-    }
-
-    /**
-     * Getter for the "run on startup" state.
-     * 
-     * @return The "run on startup" state.
-     */
-    public boolean isRunOnStartup() {
-        return runOnStartup;
-    }
-
-    /**
      * Getter for the current "dark mode" state of the UI.
      * 
      * @return The current "dark mode" state of the UI.
@@ -203,5 +192,37 @@ public class DhkModel {
      */
     public void toggleDarkMode() {
         darkMode = !darkMode;
+    }
+
+    /**
+     * Toggle the "minimize to tray" state.
+     */
+    public void toggleMinimizeToTray() {
+        minimizeToTray = !minimizeToTray;
+    }
+
+    /**
+     * Getter for the "minimize to tray" state.
+     * 
+     * @return The "minimize to tray" state.
+     */
+    public boolean isMinimizeToTray() {
+        return minimizeToTray;
+    }
+
+    /**
+     * Toggle the "run on startup" state.
+     */
+    public void toggleRunOnStartup() {
+        runOnStartup = !runOnStartup;
+    }
+
+    /**
+     * Getter for the "run on startup" state.
+     * 
+     * @return The "run on startup" state.
+     */
+    public boolean isRunOnStartup() {
+        return runOnStartup;
     }
 }

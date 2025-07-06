@@ -16,10 +16,10 @@ import dorkbox.systemTray.SystemTray;
  * This class enables the application to be minimized to the system tray and restored from the system tray.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class MinimizeToTray {
     private DhkView view;

@@ -1,16 +1,21 @@
 package com.dhk.io;
 
 import java.awt.DisplayMode;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class gets the current information for the connected displays.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class DisplayConfig {
     private String[] displayIds;
@@ -46,13 +51,6 @@ public class DisplayConfig {
     public void checkNumOfConnectedDisplays() {
         numOfConnectedDisplays = enumDisplayIds.getNumOfConnectedDisplays();
     }
-    
-    /**
-     * This method gets the currently applied display settings for the given display.
-     * 
-     * @param displayIndex - The index of the display to get the display settings for.
-     */
-    // TODO: Utilize JNI to get the current display settings for the given display.
 
     /**
      * This method gets the current array of unique display IDs and stores the number of connected displays.
@@ -74,6 +72,9 @@ public class DisplayConfig {
         for (String displayId : displayIds) {
             // Get the current array of supported display modes.
             displayModes = enumDisplayModes.getDisplayModes(displayId);
+
+            Arrays.sort(displayModes, Comparator.comparing(DisplayMode::getWidth).thenComparing(DisplayMode::getHeight)
+                    .thenComparing(DisplayMode::getBitDepth).thenComparing(DisplayMode::getRefreshRate).reversed());
 
             // Add the array of supported display modes to the hash map.
             displayModesMap.put(displayId, displayModes);

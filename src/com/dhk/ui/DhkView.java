@@ -1,42 +1,45 @@
 package com.dhk.ui;
 
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.DisplayMode;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Toolkit;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.UIManager;
+
+import com.dhk.io.DisplayConfig;
 import com.dhk.models.DhkModel;
 import com.dhk.ui.buttons.ClearAllButton;
 import com.dhk.ui.buttons.ExitButton;
 import com.dhk.ui.buttons.MinimizeButton;
+import com.dhk.ui.buttons.MinimizeToTrayButton;
 import com.dhk.ui.buttons.PaypalDonateButton;
 import com.dhk.ui.buttons.RefreshAppButton;
 import com.dhk.ui.buttons.RunOnStartupButton;
 import com.dhk.ui.buttons.ThemeButton;
-import com.dhk.io.DisplayConfig;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.ui.FlatUIUtils;
-import java.awt.Insets;
-import java.awt.Point;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class defines the view for Display Hot Keys. The layout for the view components is defined here. View components
  * are initialized and arranged in a GridBag layout.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class DhkView {
     private DhkModel model;
@@ -63,6 +66,7 @@ public class DhkView {
     private Map<Integer, JComboBox<String>> orientationModesMap;
     private PaypalDonateButton paypalDonateButton;
     private ThemeButton themeButton;
+    private MinimizeToTrayButton minimizeToTrayButton;
     private RunOnStartupButton runOnStartupButton;
     private RefreshAppButton refreshAppButton;
     private ClearAllButton clearAllButton;
@@ -158,6 +162,9 @@ public class DhkView {
             // Force a redraw of the frame to prevent GUI corruption.
             frame.setSize(0, 0);
         }
+        
+        // Set the taskbar icon.
+        frame.setIconImage(Toolkit.getDefaultToolkit().getImage(DhkView.class.getResource("/tray_icon.png")));
 
         // Give focus to the display label.
         displayIdsLabel.requestFocusInWindow();
@@ -432,7 +439,7 @@ public class DhkView {
 
         menuPanelConstraints = new GridBagConstraints();
         menuPanelConstraints.fill = GridBagConstraints.NONE;
-        menuPanelConstraints.insets = new Insets(0, 7, 0, 7);
+        menuPanelConstraints.insets = new Insets(0, 6, 0, 6);
     }
 
     /**
@@ -451,7 +458,7 @@ public class DhkView {
 
         // Initialize the orientation modes components.
         orientationLabel = new JLabel("Orientation :", SwingConstants.LEFT);
-        orientationLabel.setPreferredSize(new Dimension(75, 28));
+        orientationLabel.setPreferredSize(new Dimension(78, 28));
 
         // Initialize the maps for the number of active slots and orientation modes combo boxes.
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
@@ -485,6 +492,12 @@ public class DhkView {
         // Initialize the theme button.
         themeButton = new ThemeButton(model.isDarkMode(), "/dark_mode_idle.svg", "/dark_mode_hover.svg",
                 "/light_mode_idle.svg", "/light_mode_hover.svg");
+
+        // Initialize the minimize to tray button.
+        minimizeToTrayButton = new MinimizeToTrayButton(model.isMinimizeToTray(), "/minimize_to_tray_enabled_idle.svg",
+                "/minimize_to_tray_disabled_idle.svg", "/minimize_to_tray_enabled_dark_hover.svg",
+                "/minimize_to_tray_enabled_light_hover.svg", "/minimize_to_tray_disabled_dark_hover.svg",
+                "/minimize_to_tray_disabled_light_hover.svg");
 
         // Initialize the run on startup button.
         runOnStartupButton = new RunOnStartupButton(model.isRunOnStartup(), "/run_on_startup_enabled_idle.svg",
@@ -690,33 +703,39 @@ public class DhkView {
         menuPanelConstraints.gridy = 0;
         menuPanel.add(themeButton, menuPanelConstraints);
 
-        // Define where the run on startup button is located in the grid bag layout and add it to the panel.
+        // Define where the minimize to tray button is located in the grid bag layout and add it to the panel.
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 1;
+        menuPanelConstraints.gridy = 0;
+        menuPanel.add(minimizeToTrayButton, menuPanelConstraints);
+
+        // Define where the run on startup button is located in the grid bag layout and add it to the panel.
+        menuPanelConstraints.gridwidth = 1;
+        menuPanelConstraints.gridx = 2;
         menuPanelConstraints.gridy = 0;
         menuPanel.add(runOnStartupButton, menuPanelConstraints);
 
         // Define where the refresh app button is located in the grid bag layout and add it to the panel.
         menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 2;
+        menuPanelConstraints.gridx = 3;
         menuPanelConstraints.gridy = 0;
         menuPanel.add(refreshAppButton, menuPanelConstraints);
 
         // Define where the clear all button is located in the grid bag layout and add it to the panel.
         menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 3;
+        menuPanelConstraints.gridx = 4;
         menuPanelConstraints.gridy = 0;
         menuPanel.add(clearAllButton, menuPanelConstraints);
 
         // Define where the minimize button is located in the grid bag layout and add it to the panel.
         menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 4;
+        menuPanelConstraints.gridx = 5;
         menuPanelConstraints.gridy = 0;
         menuPanel.add(minimizeButton, menuPanelConstraints);
 
         // Define where the exit button is located in the grid bag layout and add it to the panel.
         menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 5;
+        menuPanelConstraints.gridx = 6;
         menuPanelConstraints.gridy = 0;
         menuPanel.add(exitButton, menuPanelConstraints);
 
@@ -848,6 +867,15 @@ public class DhkView {
      */
     public ThemeButton getThemeButton() {
         return themeButton;
+    }
+
+    /**
+     * Getter for the minimize to tray button.
+     * 
+     * @return The minimize to tray button.
+     */
+    public MinimizeToTrayButton getMinimizeToTrayButton() {
+        return minimizeToTrayButton;
     }
 
     /**

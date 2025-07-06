@@ -2,9 +2,11 @@ package com.dhk.controllers;
 
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+
+import com.dhk.models.DhkModel;
 import com.dhk.ui.DhkView;
-import com.dhk.window.ViewRefresher;
 import com.dhk.window.MinimizeToTray;
+import com.dhk.window.ViewRefresher;
 
 /**
  * This class controls the application's window. The window listener is initialized with this class. It defines how
@@ -12,14 +14,15 @@ import com.dhk.window.MinimizeToTray;
  * system tray and restored from the system tray.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class WindowController implements Controller, WindowListener {
     private ViewRefresher viewRefresher;
     private MinimizeToTray minimizeToTray;
+    private DhkModel model;
     private DhkView view;
 
     // Update the frame every 250 ms when it is visible.
@@ -28,10 +31,12 @@ public class WindowController implements Controller, WindowListener {
     /**
      * Constructor for the WindowController class.
      *
-     * @param view - The view for the application.
+     * @param model - The model for the application.
+     * @param view  - The view for the application.
      */
-    public WindowController(DhkView view) {
-        // Get the application's view.
+    public WindowController(DhkModel model, DhkView view) {
+        // Get the application's model and view.
+        this.model = model;
         this.view = view;
     }
 
@@ -58,7 +63,7 @@ public class WindowController implements Controller, WindowListener {
     }
 
     /**
-     * Stop refreshing the view and remove the app from the system tray if it is minized to the system tray.
+     * Stop refreshing the view and remove the app from the system tray if it is minimized to the system tray.
      */
     @Override
     public void cleanUp() {
@@ -75,8 +80,10 @@ public class WindowController implements Controller, WindowListener {
      */
     @Override
     public void windowIconified(WindowEvent e) {
-        // Minimize the application to the system tray.
-        minimizeToTray.execute();
+        // Minimize the application to the system tray if "minimize to tray" is enabled.
+        if (model.isMinimizeToTray()) {
+            minimizeToTray.execute();
+        }
 
         // Suspend the view refresher while the GUI is minimized.
         viewRefresher.suspend();
@@ -95,7 +102,8 @@ public class WindowController implements Controller, WindowListener {
      */
     @Override
     public void windowDeiconified(WindowEvent e) {
-        // Do nothing when the window is restored from an icon.
+        // Resume the view refresher so the frame continues to update.
+        viewRefresher.resume();
     }
 
     /**

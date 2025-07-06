@@ -1,6 +1,7 @@
 package com.dhk.controllers;
 
 import java.util.ArrayList;
+
 import javax.swing.JFrame;
 
 import com.dhk.controllers.buttons.ApplyDisplayModeButtonController;
@@ -8,16 +9,17 @@ import com.dhk.controllers.buttons.ClearHotKeyButtonController;
 import com.dhk.io.SettingsManager;
 import com.dhk.models.DhkModel;
 import com.dhk.ui.DhkView;
+
 import lc.kra.system.keyboard.GlobalKeyboardHook;
 
 /**
  * This is the main controller class for the application. It creates all of the controllers for the application.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class DhkController implements Controller {
     private DhkModel model;
@@ -47,8 +49,12 @@ public class DhkController implements Controller {
         // Initialize the view.
         view.initView(null);
 
-        // Initialize the frame state to ICONIFIED so the application starts minimized.
-        frameState = JFrame.ICONIFIED;
+        // Initialize the frame state.
+        if (settingsMgr.getIniMinimizeToTray()) {
+            frameState = JFrame.ICONIFIED;
+        } else {
+            frameState = JFrame.NORMAL;
+        }
 
         // Initialize the global keyboard input hook.
         keyboardHook = new GlobalKeyboardHook(true);
@@ -78,7 +84,7 @@ public class DhkController implements Controller {
         controllers.add(new OrientationController(model, view, this, settingsMgr));
         controllers.add(new ScalingModeController(model, view, settingsMgr));
         controllers.add(new SelectedDisplayController(model, view));
-        controllers.add(new WindowController(view));
+        controllers.add(new WindowController(model, view));
 
         // Initialize all sub-controllers.
         for (Controller controller : controllers) {
@@ -130,7 +136,7 @@ public class DhkController implements Controller {
         cleanUp();
         initController();
         initListeners();
-        
+
         // Clean up memory after re-initializing the controller.
         System.gc();
     }

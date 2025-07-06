@@ -4,10 +4,10 @@ package com.dhk.io;
  * This class utilizes the EnumDisplayIds JNI library to retreive the current array of display IDs.
  * 
  * @author Jonathan Miller
- * @version 1.4.0
+ * @version 1.5.0
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2024
+ * @copyright Jonathan Miller 2025
  */
 public class EnumDisplayIds {
 
