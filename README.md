@@ -50,6 +50,8 @@ Common use cases for Display Hot Keys:
 
 * Quickly switch between resolutions with different aspect ratios.
 
+* Immediately apply a refresh rate without entering the in-game menus for video game benchmarking purposes.
+
 * Enlarge or shrink the elements on screen by instantly changing the display scale percentage.
 
 * Instantly set a display mode while in a video game. (This is useful if a video game does not support changing the resolution or refresh rate while in-game.)
