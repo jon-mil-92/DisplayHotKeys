@@ -16,7 +16,7 @@ import com.dhk.window.FrameUpdater;
  * button is pressed, the application's theme will be toggled between "Light" and "Dark."
  * 
  * @author Jonathan Miller
- * @version 1.3.0
+ * @version 1.3.1
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
