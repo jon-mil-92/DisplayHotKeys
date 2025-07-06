@@ -130,7 +130,7 @@ public class ClearAllButtonController implements Controller {
         DisplayMode[] displayModes = displayConfig.getDisplayModes(displayId);
 
         // Get the default highest display mode.
-        DisplayMode defaultDisplayMode = displayModes[displayModes.length - 1];
+        DisplayMode defaultDisplayMode = displayModes[0];
 
         // For all slots...
         for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
