@@ -69,10 +69,11 @@ public class HotKeysController implements Controller, GlobalKeyListener {
      *
      * @param model       - The model for the application.
      * @param view        - The view for the application.
+     * @param controller  - The controller for the application.
      * @param settingsMgr - The settings manager for the application.
      */
     public HotKeysController(DhkModel model, DhkView view, DhkController controller, SettingsManager settingsMgr) {
-        // Get the application's model, view, and settings manager.
+        // Get the application's model, view, controller, and settings manager.
         this.model = model;
         this.view = view;
         this.controller = controller;

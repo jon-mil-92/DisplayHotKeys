@@ -69,7 +69,7 @@ public class DhkController implements Controller {
         controllers = new ArrayList<Controller>();
 
         // Create the controllers and add them to the array list of controllers.
-        controllers.add(new ApplyDisplayModeButtonController(model, view));
+        controllers.add(new ApplyDisplayModeButtonController(model, view, this, settingsMgr));
         controllers.add(new ClearHotKeyButtonController(model, view, settingsMgr));
         controllers.add(new ConnectedDisplaysController(model, view, this, settingsMgr));
         controllers.add(new DisplayModeController(model, view, settingsMgr));

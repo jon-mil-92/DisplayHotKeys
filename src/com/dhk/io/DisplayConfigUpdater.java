@@ -48,8 +48,9 @@ public class DisplayConfigUpdater {
         // Get the current number of connected displays.
         displayConfig.checkNumOfConnectedDisplays();
 
-        // If the number of connected displays has changed...
-        if (displayConfig.getNumOfConnectedDisplays() != model.getNumOfConnectedDisplays()) {
+        // If there are connected displays and the number of connected displays has changed...
+        if (displayConfig.getNumOfConnectedDisplays() != 0
+                && displayConfig.getNumOfConnectedDisplays() != model.getNumOfConnectedDisplays()) {
             // Re-initialize the app to reflect the new display configuration.
             appRefresher.reInitApp();
         }
