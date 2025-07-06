@@ -51,7 +51,11 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 * Instantly set a display mode while in a video game. (This is useful if a video game does not support changing the resolution or refresh rate while in-game.)
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+<p align="right">
+  <form>
+    <input type="BUTTON" value="Back to Top" onclick="window.location.href='#readme-top'">
+  </form>
+</p>
 
 <!-- GETTING STARTED -->
 
