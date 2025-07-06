@@ -107,6 +107,9 @@ public class ClearAllButtonController implements Controller {
      * Clear all slots for the selected display and then update the UI.
      */
     private void clearAllButtonAction() {
+        // Set the focus on the display IDs label so the clear all slots button does not flash red after confirmation.
+        view.getDisplayIdsLabel().requestFocusInWindow();
+
         // Confirm whether or not all slots should be cleared.
         int confirmationResult = getUserConfirmation();
 
@@ -121,9 +124,6 @@ public class ClearAllButtonController implements Controller {
             // Update the view's frame.
             frameUpdater.updateUI();
         }
-
-        // Set the focus on the display IDs label so the clear all slots button does not flash red after confirmation.
-        view.getDisplayIdsLabel().requestFocusInWindow();
     }
 
     /**
