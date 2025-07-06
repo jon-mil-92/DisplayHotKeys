@@ -562,15 +562,18 @@ public class HotKeysController implements Controller, GlobalKeyListener {
         int selectedDisplayIndex = view.getDisplayIds().getSelectedIndex();
 
         // Get the ID for the given display.
-        String displayId = settingsMgr.getDisplayIds()[selectedDisplayIndex];
+        String displayId = model.getDisplayIds()[selectedDisplayIndex];
 
         // The ID for the slot starts at 1.
         int slotId = slotIndex + 1;
 
         // If the user did not type any keys before the idle timeout or any hot key is a subset of another...
         if (model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().getKeys().size() == 0 || anyHotKeySubset) {
-            // Update the hot key button to notify the user that the hot key was not set.
-            view.getSlot(selectedDisplayIndex, slotIndex).getChangeHotKeyButton().setText(HOT_KEY_NOT_SET_TEXT);
+            // Do not notify the user that the hot key was not set if the idle timeout was reached.
+            if (model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().getKeys().size() != 0) {
+                // Notify the user that the hot key was not set if any hot key is a subset of another.
+                view.getSlot(selectedDisplayIndex, slotIndex).getChangeHotKeyButton().setText(HOT_KEY_NOT_SET_TEXT);
+            }
 
             // Restore the hot key to what it was before trying to change it.
             model.getSlot(selectedDisplayIndex, slotIndex).setHotKey(hotKeyBackup);

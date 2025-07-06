@@ -1,12 +1,12 @@
 package com.dhk.controllers.buttons;
 
 import java.awt.DisplayMode;
-import java.awt.GraphicsEnvironment;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import com.dhk.controllers.Controller;
+import com.dhk.io.DisplayConfig;
 import com.dhk.io.SettingsManager;
 import com.dhk.models.DhkModel;
 import com.dhk.ui.DhkView;
@@ -28,6 +28,7 @@ public class ClearAllButtonController implements Controller {
     private DhkView view;
     private SettingsManager settingsMgr;
     private FrameUpdater frameUpdater;
+    private DisplayConfig displayConfig;
 
     /**
      * Constructor for the ClearAllButtonController class.
@@ -50,6 +51,9 @@ public class ClearAllButtonController implements Controller {
     public void initController() {
         // Create the frame updater object that will be used to refresh the frame once all slots are cleared.
         frameUpdater = new FrameUpdater(view);
+
+        // Get the current display config from the model.
+        displayConfig = model.getDisplayConfig();
     }
 
     /**
@@ -116,18 +120,17 @@ public class ClearAllButtonController implements Controller {
      * Clear all display modes for the selected display and save the changes.
      */
     private void clearAllDisplayModes() {
-        // Get the array of supported display modes for the main display.
-        DisplayMode[] displayModes = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice()
-                .getDisplayModes();
-
-        // Get the default highest display mode.
-        DisplayMode defaultDisplayMode = displayModes[displayModes.length - 1];
-
         // Get the display index for the selected display from the view.
         int displayIndex = view.getDisplayIds().getSelectedIndex();
 
-        // Get the ID for the selected display from the view.
-        String displayId = settingsMgr.getDisplayIds()[displayIndex];
+        // Get the ID for the selected display.
+        String displayId = model.getDisplayIds()[displayIndex];
+
+        // Get the array of supported display modes for the selected display.
+        DisplayMode[] displayModes = displayConfig.getDisplayModes(displayId);
+
+        // Get the default highest display mode.
+        DisplayMode defaultDisplayMode = displayModes[displayModes.length - 1];
 
         // For all slots...
         for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
@@ -154,8 +157,8 @@ public class ClearAllButtonController implements Controller {
         // Get the display index for the selected display from the view.
         int displayIndex = view.getDisplayIds().getSelectedIndex();
 
-        // Get the ID for the selected display from the view.
-        String displayId = settingsMgr.getDisplayIds()[displayIndex];
+        // Get the ID for the selected display.
+        String displayId = model.getDisplayIds()[displayIndex];
 
         // For all slots...
         for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
@@ -180,8 +183,8 @@ public class ClearAllButtonController implements Controller {
         // Get the display index for the selected display from the view.
         int displayIndex = view.getDisplayIds().getSelectedIndex();
 
-        // Get the ID for the selected display from the view.
-        String displayId = settingsMgr.getDisplayIds()[displayIndex];
+        // Get the ID for the selected display.
+        String displayId = model.getDisplayIds()[displayIndex];
 
         // For all slots...
         for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
@@ -206,8 +209,8 @@ public class ClearAllButtonController implements Controller {
         // Get the display index for the selected display from the view.
         int displayIndex = view.getDisplayIds().getSelectedIndex();
 
-        // Get the ID for the selected display from the view.
-        String displayId = settingsMgr.getDisplayIds()[displayIndex];
+        // Get the ID for the selected display.
+        String displayId = model.getDisplayIds()[displayIndex];
 
         // For all slots...
         for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
