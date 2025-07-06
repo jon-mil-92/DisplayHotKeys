@@ -4,6 +4,9 @@ import com.dhk.controllers.DhkController;
 import com.dhk.io.SettingsManager;
 import com.dhk.models.DhkModel;
 import com.dhk.ui.DhkView;
+import com.formdev.flatlaf.FlatDarculaLaf;
+import com.formdev.flatlaf.FlatIntelliJLaf;
+import com.formdev.flatlaf.FlatLaf;
 
 /**
  * This class is an app refresher that gets the application's model, view, controller, and settings manager, and then it
@@ -55,5 +58,20 @@ public class AppRefresher {
 
         // Re-initialize the controllers.
         controller.reInitController(previousFrameState);
+
+        // Set up the "look and feel" for the GUI.
+        if (model.isDarkMode()) {
+            // Apply the dark "look and feel" for the GUI.
+            FlatDarculaLaf.setup();
+
+            // Update the UI after changing the theme.
+            FlatLaf.updateUI();
+        } else {
+            // Apply the light "look and feel" for the GUI.
+            FlatIntelliJLaf.setup();
+
+            // Update the UI after changing the theme.
+            FlatLaf.updateUI();
+        }
     }
 }
