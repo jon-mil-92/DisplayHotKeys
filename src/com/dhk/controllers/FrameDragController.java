@@ -18,63 +18,63 @@ import com.dhk.ui.DhkView;
  * @copyright Jonathan Miller 2024
  */
 public class FrameDragController implements Controller {
-	private final JFrame frame;
-	private Point mousePressedCoords;
+    private final JFrame frame;
+    private Point mousePressedCoords;
 
-	/**
-	 * Constructor for the FrameDragController class.
-	 *
-	 * @param view - The view for the application.
-	 */
-	public FrameDragController(DhkView view) {
-		// Get the view's frame.
-		this.frame = view.getFrame();
-		
-		// Initialize the mouse pointer coordinates.
-		mousePressedCoords = null;
-	}
-	
-	/**
-	 * This method initializes the mouse listeners for the frame to enable window dragging.
-	 */
-	public void initListeners() {
-		// Set the mouse listener for the frame.
-		frame.addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseReleased(final MouseEvent e) {
-				// Reset the mouse pointer coordinates when the left mouse button is released.
-				mousePressedCoords = null;
-			}
+    /**
+     * Constructor for the FrameDragController class.
+     *
+     * @param view - The view for the application.
+     */
+    public FrameDragController(DhkView view) {
+        // Get the view's frame.
+        this.frame = view.getFrame();
 
-			@Override
-			public void mousePressed(final MouseEvent e) {
-				// Get the coordinates of the mouse pointer when the left mouse button is pressed.
-				mousePressedCoords = MouseInfo.getPointerInfo().getLocation();
-			}
-		});
-		
-		// Set the mouse movement listener for the frame.
-		frame.addMouseMotionListener(new MouseAdapter() {
-			@Override
-			public void mouseDragged(final MouseEvent e) {
-				// Get the current coordinates of the frame.
-				Point frameCoords = frame.getLocationOnScreen();
-				
-				// Get the new coordinates of the mouse pointer.
-				Point newMousePressedCoords = MouseInfo.getPointerInfo().getLocation();
-				
-				// The distance the mouse pointer moved horizontally.
-				int dragDistanceX = newMousePressedCoords.x - mousePressedCoords.x;
-				
-				// The distance the mouse pointer moved vertically.
-				int dragDistanceY = newMousePressedCoords.y - mousePressedCoords.y;
-				
-				// Move the frame with the mouse pointer.
-				frame.setLocation(frameCoords.x + dragDistanceX, frameCoords.y + dragDistanceY);
-				
-				// Update the coordinates of the mouse pointer.
-				mousePressedCoords = newMousePressedCoords;
-			}
-		});
-	}
+        // Initialize the mouse pointer coordinates.
+        mousePressedCoords = null;
+    }
+
+    /**
+     * This method initializes the mouse listeners for the frame to enable window dragging.
+     */
+    public void initListeners() {
+        // Set the mouse listener for the frame.
+        frame.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(final MouseEvent e) {
+                // Reset the mouse pointer coordinates when the left mouse button is released.
+                mousePressedCoords = null;
+            }
+
+            @Override
+            public void mousePressed(final MouseEvent e) {
+                // Get the coordinates of the mouse pointer when the left mouse button is pressed.
+                mousePressedCoords = MouseInfo.getPointerInfo().getLocation();
+            }
+        });
+
+        // Set the mouse movement listener for the frame.
+        frame.addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseDragged(final MouseEvent e) {
+                // Get the current coordinates of the frame.
+                Point frameCoords = frame.getLocationOnScreen();
+
+                // Get the new coordinates of the mouse pointer.
+                Point newMousePressedCoords = MouseInfo.getPointerInfo().getLocation();
+
+                // The distance the mouse pointer moved horizontally.
+                int dragDistanceX = newMousePressedCoords.x - mousePressedCoords.x;
+
+                // The distance the mouse pointer moved vertically.
+                int dragDistanceY = newMousePressedCoords.y - mousePressedCoords.y;
+
+                // Move the frame with the mouse pointer.
+                frame.setLocation(frameCoords.x + dragDistanceX, frameCoords.y + dragDistanceY);
+
+                // Update the coordinates of the mouse pointer.
+                mousePressedCoords = newMousePressedCoords;
+            }
+        });
+    }
 }
