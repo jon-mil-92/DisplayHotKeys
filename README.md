@@ -157,7 +157,7 @@ This application will launch minimized to the system tray in the task bar by des
 
 ### Button Interaction
 
-#### Apply Display Mode (Coming in v1.4.0)
+#### Apply Display Mode
 
 The display settings can be immediately applied by clicking on the "Apply Display Mode" button for a hot key slot.
 
