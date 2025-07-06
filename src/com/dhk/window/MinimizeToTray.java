@@ -6,6 +6,9 @@ import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.JFrame;
+
+import com.dhk.ui.DhkView;
+
 import dorkbox.systemTray.MenuItem;
 import dorkbox.systemTray.SystemTray;
 
@@ -19,6 +22,7 @@ import dorkbox.systemTray.SystemTray;
  * @copyright Jonathan Miller 2024
  */
 public class MinimizeToTray {
+    private DhkView view;
     private Frame frame;
     private ViewRefresher viewRefresher;
     private SystemTray systemTray;
@@ -27,13 +31,14 @@ public class MinimizeToTray {
     /**
      * Constructor for the MinimizeToTray class.
      * 
-     * @param frame            - The frame for the view to minimize.
+     * @param view             - The view for the application.
      * @param appRefresher     - The refresher for the given frame.
      * @param iconResourcePath - The icon resource path for the tray icon.
      */
-    public MinimizeToTray(Frame frame, ViewRefresher appRefresher, String iconResourcePath) {
-        // Get the application view's frame.
-        this.frame = frame;
+    public MinimizeToTray(DhkView view, ViewRefresher appRefresher, String iconResourcePath) {
+        // Get the application view and its frame.
+        this.view = view;
+        this.frame = view.getFrame();
 
         // Get the refresher for the view.
         this.viewRefresher = appRefresher;
@@ -88,6 +93,9 @@ public class MinimizeToTray {
 
                 // Un-hide the frame.
                 frame.setVisible(true);
+
+                // Set the focus on the display IDs label when restoring the frame.
+                view.getDisplayIdsLabel().requestFocusInWindow();
 
                 // Shut down the system tray after restoring the frame.
                 systemTray.shutdown();
