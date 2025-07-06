@@ -3,4 +3,4 @@ plugins:
 - jekyll-remote-theme
 
 title: Display Hot Keys
-description: Instantly apply display resolution, bit depth, refresh rate, scaling mode, and DPI scale perge with user-defined hot keys.
+description: Instantly apply display resolution, bit depth, refresh rate, scaling mode, and DPI scale percentage with user-defined hot keys.
