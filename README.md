@@ -93,7 +93,7 @@ This application will be distributed as a portable package and as an installer.
 
 ## Usage
 
-Currently, Display Hot Keys only works with single-monitor configurations. If a multi-monitor configuration is used, Display Hot Keys will only change the display settings for the primary monitor.
+Currently, Display Hot Keys only works with single-monitor configurations. If a multi-monitor configuration is used, Display Hot Keys will only change the display settings for the primary monitor. Also, **this application will launch minimized to the system tray in the task bar by design**.
 
 ### Setting Hot Keys
 
