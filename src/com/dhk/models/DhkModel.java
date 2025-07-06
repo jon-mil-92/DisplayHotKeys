@@ -8,7 +8,7 @@ import com.dhk.io.SettingsManager;
  * This class is the primary model of Display Hot Keys. Each slot in the application is initialized here.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -19,6 +19,8 @@ public class DhkModel {
     private ArrayList<Display> displays;
     private int numOfConnectedDisplays;
     private int maxNumOfSlots;
+    private boolean darkMode;
+    private boolean runOnStartup;
 
     /**
      * This method initializes the slots for each display from the settings file.
@@ -26,6 +28,12 @@ public class DhkModel {
      * @param settingsMgr - The manager of the application's settings file.
      */
     public void initModel(SettingsManager settingsMgr) {
+        // Get the "run on startup" state from the settings manager.
+        runOnStartup = settingsMgr.getIniRunOnStartup();
+
+        // Get the "dark mode" state from the settings manager.
+        darkMode = settingsMgr.getIniDarkMode();
+
         // Initialize the object that will get the current display configuration.
         displayConfig = settingsMgr.getDisplayConfig();
 
@@ -131,5 +139,37 @@ public class DhkModel {
      */
     public int getMaxNumOfSlots() {
         return maxNumOfSlots;
+    }
+
+    /**
+     * Toggle the "run on startup" state.
+     */
+    public void toggleRunOnStartup() {
+        runOnStartup = !runOnStartup;
+    }
+
+    /**
+     * Getter for the "run on startup" state.
+     * 
+     * @return The "run on startup" state.
+     */
+    public boolean isRunOnStartup() {
+        return runOnStartup;
+    }
+
+    /**
+     * Getter for the current "dark mode" state of the UI.
+     * 
+     * @return The current "dark mode" state of the UI.
+     */
+    public boolean isDarkMode() {
+        return darkMode;
+    }
+
+    /**
+     * Toggle the "dark mode" state of the UI.
+     */
+    public void toggleDarkMode() {
+        darkMode = !darkMode;
     }
 }

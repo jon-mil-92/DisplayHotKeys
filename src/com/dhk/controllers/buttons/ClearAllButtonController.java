@@ -5,6 +5,7 @@ import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import javax.swing.JOptionPane;
 import com.dhk.controllers.Controller;
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.SettingsManager;
@@ -18,7 +19,7 @@ import com.dhk.window.FrameUpdater;
  * selected display is set to default.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -82,11 +83,11 @@ public class ClearAllButtonController implements Controller {
             }
         });
 
-        // Set the mouse listener for the clear all hot keys button.
+        // Set the mouse listener for the clear all button.
         view.getClearAllButton().addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                // Set the focus on the clear all hot keys button when the mouse hovers over it.
+                // Set the focus on the clear all button when the mouse hovers over it.
                 view.getClearAllButton().requestFocusInWindow();
             }
 
@@ -106,14 +107,39 @@ public class ClearAllButtonController implements Controller {
      * Clear all slots for the selected display and then update the UI.
      */
     private void clearAllButtonAction() {
-        // Set the default values for all slots.
-        clearAllDisplayModes();
-        clearAllScalingModes();
-        clearAllDpiScalePercentages();
-        clearAllHotKeys();
+        // Confirm whether or not all slots should be cleared.
+        int confirmationResult = getUserConfirmation();
 
-        // Update the view's frame.
-        frameUpdater.updateUI();
+        // Only clear all slots if the user clicked on the "Yes" option.
+        if (confirmationResult == JOptionPane.YES_OPTION) {
+            // Set the default values for all slots.
+            clearAllDisplayModes();
+            clearAllScalingModes();
+            clearAllDpiScalePercentages();
+            clearAllHotKeys();
+
+            // Update the view's frame.
+            frameUpdater.updateUI();
+        }
+    }
+
+    /**
+     * This method shows a confirmation window that asks if the user wants to clear all slots.
+     * 
+     * @return The return value from the option pane.
+     */
+    private int getUserConfirmation() {
+        // Create a confirmation message string to be used in the confirmation window.
+        String confirmationMessage = "Are you sure you want to clear all slots?";
+
+        // Create a message to show in the title bar of the confirmation window.
+        String titleBarMessage = "Confirm clear all slots.";
+
+        // Create an option pane to confirm if the user wants to clear all slots.
+        int confirmationResult = JOptionPane.showConfirmDialog(view.getFrame(), confirmationMessage, titleBarMessage,
+                JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        return confirmationResult;
     }
 
     /**
@@ -222,6 +248,9 @@ public class ClearAllButtonController implements Controller {
 
             // Update the hot key in the view for the slot.
             view.getSlot(displayIndex, slotIndex).getHotKey().setText("Not Set");
+
+            // Disable the clear hot key button after clearing the hot key.
+            view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().setEnabled(false);
 
             // Save the hot key in the settings.
             settingsMgr.saveIniSlotHotKey(displayId, slotId, model.getSlot(displayIndex, slotIndex).getHotKey());

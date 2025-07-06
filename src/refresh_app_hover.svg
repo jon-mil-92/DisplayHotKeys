@@ -5,22 +5,10 @@
    width="48"
    version="1.1"
    id="svg1"
-   sodipodi:docname="refresh_display_modes.svg"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <defs
      id="defs1" />
-  <sodipodi:namedview
-     id="namedview1"
-     pagecolor="#ffffff"
-     bordercolor="#000000"
-     borderopacity="0.25"
-     inkscape:showpageshadow="2"
-     inkscape:pageopacity="0.0"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1" />
   <path
      d="M 480,-160 Q 347,-160 253.5,-253.5 160,-347 160,-480 160,-613 253.5,-706.5 347,-800 480,-800 q 85,0 149,34.5 64,34.5 111,94.5 v -129 h 60 v 254 H 546 v -60 h 168 q -38,-60 -97,-97 -59,-37 -137,-37 -109,0 -184.5,75.5 Q 220,-589 220,-480 q 0,109 75.5,184.5 75.5,75.5 184.5,75.5 83,0 152,-47.5 69,-47.5 96,-125.5 h 62 q -29,105 -115,169 -86,64 -195,64 z"
      id="path1"

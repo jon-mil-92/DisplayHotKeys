@@ -13,7 +13,7 @@ import com.dhk.ui.ThemeUpdater;
  * dispatch thread.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -60,9 +60,9 @@ public class DhkDriver {
      * @param settingsMgr - The settings file manager that retrieves the saved configuration for this application.
      */
     private static void initDhk(SettingsManager settingsMgr) {
-        // Initialize the Display HotKeys MVC modules.
+        // Initialize the Display Hot Keys MVC modules.
         DhkModel model = new DhkModel();
-        DhkView view = new DhkView(model, settingsMgr.getIniDarkMode(), settingsMgr.getIniRunOnStartup());
+        DhkView view = new DhkView(model);
         DhkController controller = new DhkController(model, view, settingsMgr);
 
         // Initialize the main controller and all sub-controllers.

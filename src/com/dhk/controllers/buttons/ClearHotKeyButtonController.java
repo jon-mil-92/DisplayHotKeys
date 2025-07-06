@@ -1,9 +1,14 @@
 package com.dhk.controllers.buttons;
 
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import com.dhk.controllers.Controller;
 import com.dhk.io.SettingsManager;
 import com.dhk.models.DhkModel;
 import com.dhk.ui.DhkView;
+import com.dhk.ui.buttons.ClearHotKeyButton;
 import com.dhk.window.FrameUpdater;
 
 /**
@@ -11,7 +16,7 @@ import com.dhk.window.FrameUpdater;
  * the Clear Hot Key button is pressed, the corresponding hot key is cleared.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -41,12 +46,12 @@ public class ClearHotKeyButtonController implements Controller {
      */
     @Override
     public void initController() {
-        // Create the frame updater object that will be used to refresh the frame once all slots are cleared.
+        // Create the frame updater object that will be used to refresh the frame once the hot key is cleared.
         frameUpdater = new FrameUpdater(view);
     }
 
     /**
-     * This method initializes the application's listeners.
+     * This method initializes the listeners for the clear hot key buttons.
      */
     @Override
     public void initListeners() {
@@ -63,6 +68,45 @@ public class ClearHotKeyButtonController implements Controller {
                 // Set action listeners for the clear hot key button presses from the view.
                 view.getSlot(displayIndex, slotIndex).getClearHotKeyButton()
                         .addActionListener(e -> slotClearHotKeyEvent(displayIndex, slotIndex));
+
+                // Set the state change listener for the clear hot key button.
+                view.getSlot(displayIndex, slotIndex).getClearHotKeyButton()
+                        .addChangeListener(e -> clearHotKeyButtonStateChangeAction(displayIndex, slotIndex));
+
+                // Set the focus listener for the clear hot key button from the view.
+                view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().addFocusListener(new FocusListener() {
+                    @Override
+                    public void focusGained(FocusEvent e) {
+                        // Switch to the rollover state when the clear hot key button is focused.
+                        view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().getModel().setRollover(true);
+                    }
+
+                    @Override
+                    public void focusLost(FocusEvent e) {
+                        // Leave the rollover state when the clear hot key button is not focused.
+                        view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().getModel().setRollover(false);
+                    }
+                });
+
+                // Set the mouse listener for the clear hot key button.
+                view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseEntered(MouseEvent e) {
+                        // Set the focus on the clear hot key button when the mouse hovers over it.
+                        view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().requestFocusInWindow();
+                    }
+
+                    @Override
+                    public void mouseExited(MouseEvent e) {
+                        // Set the focus on the display IDs label when the mouse leaves the button.
+                        view.getDisplayIdsLabel().requestFocusInWindow();
+                    }
+                });
+
+                // Enable the clear hot key buttons for the hot keys that are set.
+                if (model.getSlot(displayIndex, slotIndex).getHotKey().getKeys().size() > 0) {
+                    view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().setEnabled(true);
+                }
             }
         }
     }
@@ -90,10 +134,40 @@ public class ClearHotKeyButtonController implements Controller {
         // Update the hot key in the view for the slot.
         view.getSlot(displayIndex, slotIndex).getHotKey().setText("Not Set");
 
+        // Disable the clear hot key button after clearing the hot key.
+        view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().setEnabled(false);
+
         // Update the view's frame.
         frameUpdater.updateUI();
 
         // Save the hot key in the settings.
         settingsMgr.saveIniSlotHotKey(displayId, slotId, model.getSlot(displayIndex, slotIndex).getHotKey());
+    }
+
+    /**
+     * This method changes the clear hot key button icon depending on the button's state.
+     * 
+     * @param displayIndex - The index of the display to change the clear hot key button icon for.
+     * @param slotIndex    - The index of the slot to change the clear hot key button icon for.
+     */
+    private void clearHotKeyButtonStateChangeAction(int displayIndex, int slotIndex) {
+        // Get the clear hot key button for the given slot.
+        ClearHotKeyButton clearHotKeyButton = view.getSlot(displayIndex, slotIndex).getClearHotKeyButton();
+
+        // If the user is holding the action button on the clear hot key button...
+        if (clearHotKeyButton.getModel().isArmed()) {
+            // Use the pressed icon for the clear hot key button.
+            clearHotKeyButton.setIcon(clearHotKeyButton.getClearHotKeyPressedIcon());
+        }
+        // If the user is hovering on the clear hot key button...
+        else if (clearHotKeyButton.getModel().isRollover()) {
+            // Use the hover icon for the clear hot key button.
+            clearHotKeyButton.setIcon(clearHotKeyButton.getClearHotKeyHoverIcon());
+        }
+        // Otherwise, if the user is not interacting with the clear hot key button...
+        else {
+            // Use the idle icon for the clear hot key button.
+            clearHotKeyButton.setIcon(clearHotKeyButton.getClearHotKeyIdleIcon());
+        }
     }
 }

@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * are initialized and arranged in a GridBag layout.
  * 
  * @author Jonathan Miller
- * @version 1.3.1
+ * @version 1.3.2
  * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
  * @copyright Jonathan Miller 2024
@@ -62,8 +62,6 @@ public class DhkView {
     private ClearAllButton clearAllButton;
     private MinimizeButton minimizeButton;
     private ExitButton exitButton;
-    private boolean darkMode;
-    private boolean runOnStartup;
     private boolean appLaunching;
     private int previouslySelectedDisplayIndex;
     private int gridYPositionForSlotInPanel;
@@ -74,19 +72,11 @@ public class DhkView {
     /**
      * Constructor for the DhkView class.
      * 
-     * @param model        - The model for the application.
-     * @param darkMode     - Whether or not to start the view in dark mode.
-     * @param runOnStartup - Whether or not to run the application when the user logs into Windows.
+     * @param model - The model for the application.
      */
-    public DhkView(DhkModel model, boolean darkMode, boolean runOnStartup) {
+    public DhkView(DhkModel model) {
         // Get the application's model.
         this.model = model;
-
-        // Get the starting state of the UI theme.
-        this.darkMode = darkMode;
-
-        // Get the "run on startup" state.
-        this.runOnStartup = runOnStartup;
 
         // The app is currently launching.
         appLaunching = true;
@@ -220,19 +210,19 @@ public class DhkView {
             mainPanelConstraints.gridy = gridYPositionForSlotInPanel;
             mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getHotKey(), mainPanelConstraints);
 
-            // Define where the current slot's change hot key button is located in the grid bag layout and add it to the
+            // Define where the current slot's clear hot key button is located in the grid bag layout and add it to the
             // panel.
             mainPanelConstraints.gridwidth = 1;
             mainPanelConstraints.gridx = 5;
             mainPanelConstraints.gridy = gridYPositionForSlotInPanel;
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getChangeHotKeyButton(), mainPanelConstraints);
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearHotKeyButton(), mainPanelConstraints);
 
-            // Define where the current slot's clear hot key button is located in the grid bag layout and add it to the
+            // Define where the current slot's change hot key button is located in the grid bag layout and add it to the
             // panel.
             mainPanelConstraints.gridwidth = 1;
             mainPanelConstraints.gridx = 6;
             mainPanelConstraints.gridy = gridYPositionForSlotInPanel;
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearHotKeyButton(), mainPanelConstraints);
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getChangeHotKeyButton(), mainPanelConstraints);
 
             // Add the next slot view components to the following row in the layout.
             gridYPositionForSlotInPanel++;
@@ -435,15 +425,15 @@ public class DhkView {
         }
 
         // Initialize the paypal donate button.
-        paypalDonateButton = new PaypalDonateButton(darkMode, "/paypal_donate_dark_idle.svg",
+        paypalDonateButton = new PaypalDonateButton(model.isDarkMode(), "/paypal_donate_dark_idle.svg",
                 "/paypal_donate_dark_hover.svg", "/paypal_donate_light_idle.svg", "/paypal_donate_light_hover.svg");
 
         // Initialize the theme button.
-        themeButton = new ThemeButton(darkMode, "/dark_mode_idle.svg", "/dark_mode_hover.svg", "/light_mode_idle.svg",
-                "/light_mode_hover.svg");
+        themeButton = new ThemeButton(model.isDarkMode(), "/dark_mode_idle.svg", "/dark_mode_hover.svg",
+                "/light_mode_idle.svg", "/light_mode_hover.svg");
 
         // Initialize the run on startup button.
-        runOnStartupButton = new RunOnStartupButton(runOnStartup, "/run_on_startup_enabled_idle.svg",
+        runOnStartupButton = new RunOnStartupButton(model.isRunOnStartup(), "/run_on_startup_enabled_idle.svg",
                 "/run_on_startup_disabled_idle.svg", "/run_on_startup_enabled_dark_hover.svg",
                 "/run_on_startup_enabled_light_hover.svg", "/run_on_startup_disabled_dark_hover.svg",
                 "/run_on_startup_disabled_light_hover.svg");
@@ -838,21 +828,5 @@ public class DhkView {
      */
     public Slot getSlot(int displayIndex, int slotIndex) {
         return displayMap.get(displayIndex).get(slotIndex);
-    }
-
-    /**
-     * Getter for the current "dark mode" state of the UI.
-     * 
-     * @return The current "dark mode" state of the UI.
-     */
-    public boolean isDarkMode() {
-        return darkMode;
-    }
-
-    /**
-     * Toggle the "dark mode" state of the UI.
-     */
-    public void toggleDarkMode() {
-        darkMode = !darkMode;
     }
 }
