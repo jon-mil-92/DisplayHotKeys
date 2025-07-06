@@ -127,7 +127,7 @@ Currently, Display Hot Keys only works with single-monitor configurations. If a 
 
 3. Select a scaling percentage value in the "Display Scale" drop-down box for the hot key slot.
 
-**Note:** Use GPU Scaling in your display driver settings to ensure the display scaling mode does not get overridden by the monitor.
+**Note:** You may need to use GPU Scaling in your display driver settings to prevent the monitor from overriding the scaling mode.
 
 ### Application Interaction
 
