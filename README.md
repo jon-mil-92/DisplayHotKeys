@@ -140,6 +140,7 @@ Currently, Display Hot Keys only works with single-monitor configurations. If a 
 ## Roadmap
 
 - [x] Release initial build
+- [ ] Add display scaling mode selection per hot key slot
 - [ ] Add multi-monitor support
 
 See [open issues] for a full list of proposed features (and known issues).
