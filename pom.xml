@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>DisplayHotKeys</groupId>
     <artifactId>DisplayHotKeys</artifactId>
-    <version>1.5.0</version>
+    <version>1.5.1</version>
     <name>DisplayHotKeys</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -12,22 +12,17 @@
         <java.version>21</java.version>
     </properties>
     <build>
-        <sourceDirectory>src</sourceDirectory>
         <resources>
             <resource>
-                <directory>src</directory>
+                <directory>src/main/resources/images</directory>
+            </resource>
+            <resource>
+                <directory>src/main/resources/themes</directory>
+                <targetPath>com/dhk/theme</targetPath>
             </resource>
         </resources>
         <plugins>
             <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
-                <configuration>
-                    <release>21</release>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <configuration>
                     <archive>
@@ -42,7 +37,6 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>standalone</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
@@ -56,12 +50,12 @@
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf</artifactId>
-            <version>3.6</version>
+            <version>3.6.1</version>
         </dependency>
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf-extras</artifactId>
-            <version>3.6</version>
+            <version>3.6.1</version>
         </dependency>
         <dependency>
             <groupId>com.formdev</groupId>

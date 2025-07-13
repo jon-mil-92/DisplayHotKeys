@@ -1,14 +1,14 @@
 header:
 	mkdir -p jni
 	
-	javac -h jni src/com/dhk/io/EnumDisplayModes.java
-	rm -f src/com/dhk/io/EnumDisplayModes.class
+	javac -h jni src/main/java/com/dhk/io/EnumDisplayModes.java
+	rm -f src/main/java/com/dhk/io/EnumDisplayModes.class
 	
-	javac -h jni src/com/dhk/io/EnumDisplayIds.java
-	rm -f src/com/dhk/io/EnumDisplayIds.class
+	javac -h jni src/main/java/com/dhk/io/EnumDisplayIds.java
+	rm -f src/main/java/com/dhk/io/EnumDisplayIds.class
 	
-	javac -h jni src/com/dhk/io/SetDisplay.java
-	rm -f src/com/dhk/io/SetDisplay.class
+	javac -h jni src/main/java/com/dhk/io/SetDisplay.java
+	rm -f src/main/java/com/dhk/io/SetDisplay.class
 	
 dll:
 	# The JNI libraries will only build if JDK 21 is installed in the default path.

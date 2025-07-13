@@ -3,7 +3,7 @@
 <a name="readme-top"></a>
 <div align="center">
   <a href="https://github.com/jon-mil-92/DisplayHotKeys">
-    <img src="src/tray_icon.png" alt="Logo" width="80" height="80" align="center" />
+    <img src="src/main/resources/images/tray_icon.png" alt="Logo" width="80" height="80" align="center" />
   </a>
   <br/>
   <h3 align="center">Display Hot Keys</h3>
@@ -51,7 +51,7 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 ### Example Screen
 
-![screenshot](src/product_screenshot.png)
+![screenshot](src/main/resources/images/product_screenshot.png)
 
 <p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
