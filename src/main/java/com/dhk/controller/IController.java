@@ -1,16 +1,14 @@
 package com.dhk.controller;
 
 /**
- * This interface defines a controller. Controllers must have an initController method, an initListeners method, and a
- * cleanUp method.
+ * Defines the required methods for a controller.
  * 
  * @author Jonathan Miller
- * @version 1.5.1
- * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2025
+ * @copyright © 2025 Jonathan Miller
  */
-public interface Controller {
+public interface IController {
+
     /**
      * Initialize the controller.
      */
@@ -25,4 +23,5 @@ public interface Controller {
      * General cleanup before re-initialization.
      */
     public void cleanUp();
+
 }

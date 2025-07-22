@@ -4,14 +4,12 @@ import java.awt.DisplayMode;
 import java.util.Arrays;
 
 /**
- * This class utilizes the EnumDisplayModes JNI library to retreive the current array of supported display modes for a
- * given display.
+ * Utilizes the EnumDisplayModes JNI library to retrieve the current array of supported display modes for a given
+ * display.
  * 
  * @author Jonathan Miller
- * @version 1.5.1
- * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2025
+ * @copyright © 2025 Jonathan Miller
  */
 public class EnumDisplayModes {
 
@@ -21,7 +19,6 @@ public class EnumDisplayModes {
     public EnumDisplayModes() {
     }
 
-    // Load the EnumDisplayModes.dll file.
     static {
         try {
             System.loadLibrary("EnumDisplayModes");
@@ -30,17 +27,22 @@ public class EnumDisplayModes {
         }
     }
 
-    // Define a JNI function to enumerate the supported display modes for the given display.
+    /*
+     * Defines a JNI function to enumerate the supported display modes for the given display.
+     */
     private native DisplayMode[] enumDisplayModes(String displayID);
 
     /**
-     * This method gets the current supported display modes for the given display.
+     * Gets the current supported display modes for the given display.
      * 
-     * @param displayId - The ID of the display to get the array of supported display modes for.
-     * @return The current array of supported display modes for the given display.
+     * @param displayId
+     *            - The ID of the display to get the array of supported display modes for
+     * 
+     * @return The current array of supported display modes for the given display
      */
     public DisplayMode[] getDisplayModes(String displayId) {
-        // Only return unique supported display modes, as the EnumDisplaySettings function from Windows.h may not.
+        // Only return unique supported display modes, as the EnumDisplaySettings function from Windows.h may not
         return Arrays.stream(enumDisplayModes(displayId)).distinct().toArray(DisplayMode[]::new);
     }
+
 }

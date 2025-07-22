@@ -1,15 +1,14 @@
 package com.dhk.model;
 
 /**
- * This class represents the model for a Key. The key code, name, and pressed state of the Key is defined here.
+ * Defines the model for a Key. The key code, name, and pressed state of the Key is defined here.
  * 
  * @author Jonathan Miller
- * @version 1.5.1
- * 
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright Jonathan Miller 2025
+ * @copyright © 2025 Jonathan Miller
  */
 public class Key {
+
     private int key;
     private String name;
     private boolean keyPressed;
@@ -17,12 +16,14 @@ public class Key {
     /**
      * Constructor for the Key class.
      * 
-     * @param key        - The native key even key code for the key.
-     * @param name       - The name for the key.
-     * @param keyPressed - Whether or not the key is pressed down or not.
+     * @param key
+     *            - The native key even key code for the key
+     * @param name
+     *            - The name for the key
+     * @param keyPressed
+     *            - Whether or not the key is pressed down or not
      */
     public Key(int key, String name, boolean keyPressed) {
-        // Initialize fields.
         this.key = key;
         this.name = name;
         this.keyPressed = false;
@@ -30,20 +31,16 @@ public class Key {
 
     @Override
     public boolean equals(Object object) {
-        // If the object is compared with itself, return true.
         if (object == this) {
             return true;
         }
 
-        // If the object is not an instance of Key, return false.
         if (!(object instanceof Key)) {
             return false;
         }
 
-        // Typecast the object to Key so that the data members can be compared.
         Key keyToCompare = (Key) object;
 
-        // Compare the data members and return accordingly
         return key == keyToCompare.getKey();
     }
 
@@ -53,55 +50,56 @@ public class Key {
     }
 
     /**
-     * This function hashes on the key's key code and returns the result.
+     * Hashes on the key's key code and returns the result.
      * 
-     * @param key - The key code for the key.
-     * @return The hashed result.
+     * @param key
+     *            - The key code for the key
+     * 
+     * @return The hashed result
      */
     private int hash(int key) {
         key = ((key >>> 16) ^ key) * 0x45d9f3b;
         key = ((key >>> 16) ^ key) * 0x45d9f3b;
         key = (key >>> 16) ^ key;
+
         return key;
     }
 
-    // -----------------------------------------------------------------------------------------------------------------
-    // Getters and Setters
-    // -----------------------------------------------------------------------------------------------------------------
-
     /**
-     * Getter for the key's key code.
+     * Gets the key's key code.
      * 
-     * @return The key code for the key.
+     * @return The key code for the key
      */
     public int getKey() {
         return key;
     }
 
     /**
-     * Getter for the key's name.
+     * Gets the key's name.
      * 
-     * @return The name for the key.
+     * @return The name for the key
      */
     public String getName() {
         return name;
     }
 
     /**
-     * Getter for the "pressed" state of the key.
+     * Gets the "pressed" state of the key.
      * 
-     * @return Whether or not the key is pressed.
+     * @return Whether or not the key is pressed
      */
     public boolean isKeyPressed() {
         return keyPressed;
     }
 
     /**
-     * Setter for the "pressed" state of the key.
+     * Sets the "pressed" state of the key.
      * 
-     * @param keyPressed - The new "pressed" state of the key.
+     * @param keyPressed
+     *            - The new "pressed" state of the key
      */
     public void setKeyPressed(boolean keyPressed) {
         this.keyPressed = keyPressed;
     }
+
 }
