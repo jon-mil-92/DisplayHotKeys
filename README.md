@@ -149,7 +149,7 @@ This application will launch minimized to the system tray in the task bar by des
 	
 	* Select "Stretched" to stretch the image to the edges of the panel.
 	
-	* Select "Centered" to center the image in the middle of the panel.
+	* Select "Centered" to center the image in the middle of the panel without scaling.
 
 3. Select a DPI scale percentage value in the "DPI Scale" drop-down box for the hot key slot.
 
