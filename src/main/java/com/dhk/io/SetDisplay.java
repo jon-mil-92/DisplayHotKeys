@@ -1,8 +1,8 @@
 package com.dhk.io;
 
 /**
- * Utilizes the SetDisplay JNI library to immediately apply the given display mode, scaling mode, and DPI scale
- * percentage for the given display.
+ * Utilizes the SetDisplay JNI library to immediately apply the given display mode, scaling mode, DPI scale percentage,
+ * and orientation mode for the given display.
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
@@ -31,7 +31,7 @@ public class SetDisplay {
             int scalingMode, int dpiScalePercentageScale);
 
     /*
-     * Defines a JNI function to immediately apply the given orientation for the given display.
+     * Defines a JNI function to immediately apply the given orientation mode for the given display.
      */
     private native void setOrientation(String dispalayId, int orientationMode);
 
@@ -59,13 +59,13 @@ public class SetDisplay {
     }
 
     /**
-     * Immediately applies the given orientation for the given display.
+     * Immediately applies the given orientation mode for the given display.
      * 
      * @param displayId
-     *            - The ID of the display to apply the orientation for
+     *            - The ID of the display to apply the orientation mode for
      * @param orientationMode
-     *            - The new orientation for the given display. 0 for landscape, 1 for portrait, 2 for inverted
-     *            landscape, and 3 for for inverted portrait
+     *            - The new orientation mode for the given display. 0 for Landscape, 1 for Portrait, 2 for Inverted
+     *            Landscape, and 3 for Inverted Portrait
      */
     public void applyDisplayOrientation(String displayId, int orientationMode) {
         setOrientation(displayId, orientationMode);

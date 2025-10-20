@@ -2,12 +2,13 @@ package com.dhk.controller.button;
 
 import java.awt.DisplayMode;
 import javax.swing.JOptionPane;
+import com.dhk.controller.DhkController;
 import com.dhk.controller.IController;
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.SettingsManager;
+import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
 import com.dhk.view.DhkView;
-import com.dhk.window.FrameUpdater;
 
 /**
  * Controls the Clear All button. Listeners are added to the corresponding view component so that when the Clear All
@@ -22,12 +23,13 @@ public class ClearAllButtonController extends AbstractButtonController implement
 
     private DhkModel model;
     private DhkView view;
+    private DhkController controller;
     private SettingsManager settingsMgr;
-    private FrameUpdater frameUpdater;
     private DisplayConfig displayConfig;
+    private AppRefresher appRefresher;
 
-    private final String CONFIRMATION_MESSAGE = "Are you sure you want to clear all slots?";
-    private final String TITLE_BAR_MESSAGE = "Confirm clear all slots.";
+    private final String CONFIRMATION_MESSAGE = "Are you sure you want to clear all slots for the selected display?";
+    private final String TITLE_BAR_MESSAGE = "Confirm Clear All Slots";
 
     /**
      * Constructor for the ClearAllButtonController class.
@@ -36,12 +38,16 @@ public class ClearAllButtonController extends AbstractButtonController implement
      *            - The model for the application
      * @param view
      *            - The view for the application
+     * @param controller
+     *            - The controller for the application
      * @param settingsMgr
      *            - The settings manager for the application
      */
-    public ClearAllButtonController(DhkModel model, DhkView view, SettingsManager settingsMgr) {
+    public ClearAllButtonController(DhkModel model, DhkView view, DhkController controller,
+            SettingsManager settingsMgr) {
         this.model = model;
         this.view = view;
+        this.controller = controller;
         this.settingsMgr = settingsMgr;
     }
 
@@ -50,8 +56,8 @@ public class ClearAllButtonController extends AbstractButtonController implement
      */
     @Override
     public void initController() {
-        frameUpdater = new FrameUpdater(view);
         displayConfig = model.getDisplayConfig();
+        appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
 
     /**
@@ -76,12 +82,13 @@ public class ClearAllButtonController extends AbstractButtonController implement
         view.getDisplayIdsLabel().requestFocusInWindow();
 
         if (getUserConfirmation() == JOptionPane.YES_OPTION) {
+            clearAllOrientationModes();
             clearAllDisplayModes();
             clearAllScalingModes();
             clearAllDpiScalePercentages();
             clearAllHotKeys();
 
-            frameUpdater.updateUI();
+            appRefresher.reInitApp();
         }
     }
 
@@ -96,16 +103,34 @@ public class ClearAllButtonController extends AbstractButtonController implement
     }
 
     /**
+     * Clears all orientation modes for the selected display and save the changes.
+     */
+    private void clearAllOrientationModes() {
+        int displayIndex = view.getDisplayIds().getSelectedIndex();
+        String displayId = model.getDisplayIds()[displayIndex];
+
+        for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
+            int slotId = slotIndex + 1;
+
+            model.getSlot(displayIndex, slotIndex).setClearingSlot(true);
+            model.getSlot(displayIndex, slotIndex).setOrientationMode(0);
+            view.getSlot(displayIndex, slotIndex).getOrientationModes().setSelectedIndex(0);
+            settingsMgr.saveIniSlotOrientationMode(displayId, slotId, 0);
+            model.getSlot(displayIndex, slotIndex).setClearingSlot(false);
+        }
+    }
+
+    /**
      * Clears all display modes for the selected display and save the changes.
      */
     private void clearAllDisplayModes() {
         int displayIndex = view.getDisplayIds().getSelectedIndex();
         String displayId = model.getDisplayIds()[displayIndex];
-        DisplayMode[] displayModes = displayConfig.getDisplayModes(displayId);
-        DisplayMode defaultDisplayMode = displayModes[0];
 
         for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
             int slotId = slotIndex + 1;
+            DisplayMode[] displayModes = displayConfig.getLandscapeDisplayModes(displayId);
+            DisplayMode defaultDisplayMode = displayModes[0];
 
             model.getSlot(displayIndex, slotIndex).setDisplayMode(defaultDisplayMode);
             view.getSlot(displayIndex, slotIndex).getDisplayModes().setSelectedIndex(0);

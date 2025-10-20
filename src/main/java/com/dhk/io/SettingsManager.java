@@ -28,7 +28,8 @@ public class SettingsManager {
     private DisplayConfig displayConfig;
     private int numOfConnectedDisplays;
     private String[] displayIds;
-    private Map<String, DisplayMode[]> displayModesMap;
+    private Map<String, DisplayMode[]> landscapeDisplayModesMap;
+    private Map<String, DisplayMode[]> portraitDisplayModesMap;
     private File settingsFile;
 
     // The max number of visible slots in the application frame
@@ -133,32 +134,6 @@ public class SettingsManager {
      */
     public void saveIniNumOfSlotsForDisplay(String displayId, int numOfSlots) {
         ini.put("Application", "numOfSlotsFor--" + displayId, numOfSlots);
-
-        updateSettingsFile();
-    }
-
-    /**
-     * Gets the orientation mode property value for the given display from the settings file object.
-     * 
-     * @param displayId
-     *            - The ID of the display to get the orientation mode for
-     * 
-     * @return The value for the orientation mode property
-     */
-    public int getIniOrientationModeForDisplay(String displayId) {
-        return ini.get("Application", "orientationModeFor--" + displayId, int.class);
-    }
-
-    /**
-     * Sets the orientation mode property value for the given display in the settings file object.
-     * 
-     * @param displayId
-     *            - The ID of the display to set the orientation mode for
-     * @param orientationMode
-     *            - The new value for the orientation mode property
-     */
-    public void saveIniOrientationModeForDisplay(String displayId, int orientationMode) {
-        ini.put("Application", "orientationModeFor--" + displayId, orientationMode);
 
         updateSettingsFile();
     }
@@ -279,6 +254,39 @@ public class SettingsManager {
     }
 
     /**
+     * Gets the specified slot's orientation mode property value from the settings file object.
+     * 
+     * @param displayId
+     *            - The ID of the display to get the orientation mode for
+     * @param slotId
+     *            - The ID of the slot to get the orientation mode for
+     * 
+     * @return The specified slot's orientation mode property value
+     */
+    public int getIniSlotOrientationMode(String displayId, int slotId) {
+        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+
+        return ini.get(iniSection, "orientationMode", int.class);
+    }
+
+    /**
+     * Sets the specified slot's orientation mode property value in the settings file object.
+     * 
+     * @param displayId
+     *            - The ID of the display to set the orientation mode for
+     * @param slotId
+     *            - The ID of the slot to set the orientation mode for
+     * @param orientationMode
+     *            - The specified slot's new value for the orientation mode property
+     */
+    public void saveIniSlotOrientationMode(String displayId, int slotId, int orientationMode) {
+        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+        ini.put(iniSection, "orientationMode", orientationMode);
+
+        updateSettingsFile();
+    }
+
+    /**
      * Gets the specified slot's hot key built from the hot key properties in the settings file object.
      * 
      * @param displayId
@@ -366,12 +374,21 @@ public class SettingsManager {
     }
 
     /**
-     * Gets the map of display IDs to supported display modes array.
+     * Gets the map of display IDs to supported landscape display modes array.
      * 
-     * @return The map of display IDs to supported display modes array
+     * @return The map of display IDs to supported landscape display modes array
      */
-    public Map<String, DisplayMode[]> getDisplayModesMap() {
-        return displayModesMap;
+    public Map<String, DisplayMode[]> getLandscapeDisplayModesMap() {
+        return landscapeDisplayModesMap;
+    }
+
+    /**
+     * Gets the map of display IDs to supported portrait display modes array.
+     * 
+     * @return The map of display IDs to supported portrait display modes array
+     */
+    public Map<String, DisplayMode[]> getPortraitDisplayModesMap() {
+        return portraitDisplayModesMap;
     }
 
     /**
@@ -391,10 +408,14 @@ public class SettingsManager {
         displayConfig.updateDisplayConfig();
         numOfConnectedDisplays = displayConfig.getNumOfConnectedDisplays();
         displayIds = displayConfig.getDisplayIds();
-        displayModesMap = new HashMap<String, DisplayMode[]>();
+        landscapeDisplayModesMap = new HashMap<String, DisplayMode[]>();
+        portraitDisplayModesMap = new HashMap<String, DisplayMode[]>();
 
         for (int displayIndex = 0; displayIndex < numOfConnectedDisplays; displayIndex++) {
-            displayModesMap.put(displayIds[displayIndex], displayConfig.getDisplayModes(displayIds[displayIndex]));
+            landscapeDisplayModesMap.put(displayIds[displayIndex],
+                    displayConfig.getLandscapeDisplayModes(displayIds[displayIndex]));
+            portraitDisplayModesMap.put(displayIds[displayIndex],
+                    displayConfig.getPortraitDisplayModes(displayIds[displayIndex]));
         }
     }
 

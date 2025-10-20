@@ -59,7 +59,6 @@ public class SelectedDisplayController implements IController {
             int oldNumOfActiveSlots = model.getNumOfSlotsForDisplay(prevSelectedDisplayIndex);
 
             view.showNumberOfActiveSlotsForDisplay(displayIndex);
-            view.showOrientationModesForDisplay(displayIndex);
             view.replaceActiveSlots();
 
             if (oldNumOfActiveSlots > newNumOfActiveSlots) {

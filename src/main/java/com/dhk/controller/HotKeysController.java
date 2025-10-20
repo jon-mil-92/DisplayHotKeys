@@ -438,6 +438,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
         // If the connected displays have not changed
         if (Arrays.equals(model.getDisplayIds(), displayConfig.getDisplayIds())) {
+            setDisplay.applyDisplayOrientation(displayId, model.getSlot(displayIndex, slotIndex).getOrientationMode());
             setDisplay.applyDisplaySettings(displayId,
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getWidth(),
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getHeight(),
@@ -552,13 +553,13 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             view.getNumberOfActiveSlots(displayIndex).setEnabled(false);
-            view.getOrientationModes(displayIndex).setEnabled(false);
 
             for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
                 view.getSlot(displayIndex, slotIndex).getApplyDisplayModeButton().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getDisplayModes().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getScalingModes().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getDpiScalePercentages().setEnabled(false);
+                view.getSlot(displayIndex, slotIndex).getOrientationModes().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton().setEnabled(false);
             }
@@ -581,13 +582,13 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             view.getNumberOfActiveSlots(displayIndex).setEnabled(true);
-            view.getOrientationModes(displayIndex).setEnabled(true);
 
             for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
                 view.getSlot(displayIndex, slotIndex).getApplyDisplayModeButton().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getDisplayModes().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getScalingModes().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getDpiScalePercentages().setEnabled(true);
+                view.getSlot(displayIndex, slotIndex).getOrientationModes().setEnabled(true);
 
                 // Enable the Clear Hot Key button after getting user input if the hot key is set
                 if (model.getSlot(displayIndex, slotIndex).getHotKey().getKeys().size() > 0) {

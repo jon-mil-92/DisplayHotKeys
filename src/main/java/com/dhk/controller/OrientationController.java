@@ -1,10 +1,7 @@
 package com.dhk.controller;
 
 import java.awt.DisplayMode;
-import java.util.Arrays;
 import javax.swing.JOptionPane;
-import com.dhk.io.DisplayConfig;
-import com.dhk.io.SetDisplay;
 import com.dhk.io.SettingsManager;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
@@ -12,8 +9,8 @@ import com.dhk.utility.DisplayModeInverter;
 import com.dhk.view.DhkView;
 
 /**
- * Controls the combo box for the orientation of the selected display. Listeners are added to the corresponding view
- * component so that when a new display is selected, the view components are changed to those for the selected display.
+ * Controls the orientation mode combo boxes. Listeners are added to the corresponding view components so that when a
+ * new orientation mode is selected from an orientation mode combo box, the model is updated.
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
@@ -25,13 +22,11 @@ public class OrientationController implements IController {
     private DhkModel model;
     private DhkController controller;
     private SettingsManager settingsMgr;
-    private DisplayModeInverter displayModeInverter;
-    private SetDisplay setDisplay;
     private AppRefresher appRefresher;
 
-    private final String CONFIRMATION_MESSAGE = "Are you sure you want to change the display orientation?"
+    private final String CONFIRMATION_MESSAGE = "Are you sure you want to change the display orientation for the slot?"
             + " Only do this if you can rotate your display!";
-    private final String TITLE_BAR_MESSAGE = "Confirm display orientation change.";
+    private final String TITLE_BAR_MESSAGE = "Confirm Display Orientation Change";
 
     /**
      * Constructor for the OrientationController class.
@@ -57,9 +52,7 @@ public class OrientationController implements IController {
      */
     @Override
     public void initController() {
-        displayModeInverter = new DisplayModeInverter();
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
-        setDisplay = new SetDisplay();
     }
 
     /**
@@ -70,25 +63,35 @@ public class OrientationController implements IController {
         for (int i = 0; i < model.getNumOfConnectedDisplays(); i++) {
             int displayIndex = i;
 
-            view.getOrientationModes(displayIndex).addActionListener(e -> orientationModeAction(displayIndex));
+            // Set the action listener for each slot in the view.
+            for (int j = 0; j < model.getMaxNumOfSlots(); j++) {
+                int slotIndex = j;
+
+                view.getSlot(displayIndex, slotIndex).getOrientationModes()
+                        .addActionListener(e -> orientationModeAction(displayIndex, slotIndex));
+            }
         }
     }
 
     /**
-     * Changes the orientation of the display upon user confirmation.
+     * Changes the orientation mode of the display upon user confirmation.
      * 
      * @param displayIndex
-     *            - The index of the dislay to change the orientation for
+     *            - The index of the display to change the orientation mode for
+     * @param slotIndex
+     *            - The index of the slot to update the orientation mode for
      */
-    private void orientationModeAction(int displayIndex) {
+    private void orientationModeAction(int displayIndex, int slotIndex) {
         // Set the focus on the display IDs label so the clear all slots button does not flash red after confirmation
         view.getDisplayIdsLabel().requestFocusInWindow();
 
-        if (getUserConfirmation() == JOptionPane.YES_OPTION) {
-            saveOrientationMode(displayIndex);
+        if (model.getSlot(displayIndex, slotIndex).isClearingSlot()
+                || getUserConfirmation() == JOptionPane.YES_OPTION) {
+            saveSlotOrientationMode(displayIndex, slotIndex);
         } else {
-            int previouslySelectedOrientationMode = model.getOrientationModeForDisplay(displayIndex);
-            view.getOrientationModes(displayIndex).setSelectedIndex(previouslySelectedOrientationMode);
+            int previouslySelectedOrientationMode = model.getSlot(displayIndex, slotIndex).getOrientationMode();
+            view.getSlot(displayIndex, slotIndex).getOrientationModes()
+                    .setSelectedIndex(previouslySelectedOrientationMode);
         }
     }
 
@@ -103,66 +106,47 @@ public class OrientationController implements IController {
     }
 
     /**
-     * Updates the view with the slot components for the selected orientation mode.
+     * Updates the given slot for the selected orientation mode.
      * 
      * @param displayIndex
-     *            - The index of the display to change the orientation for
+     *            - The index of the display to change the orientation mode for
+     * @param slotIndex
+     *            - The index of the slot to update the orientation mode for
      */
-    private void saveOrientationMode(int displayIndex) {
+    private void saveSlotOrientationMode(int displayIndex, int slotIndex) {
         String displayId = model.getDisplayIds()[displayIndex];
-        int previouslySelectedOrientationMode = model.getOrientationModeForDisplay(displayIndex);
-        int selectedOrientationMode = view.getOrientationModes(displayIndex).getSelectedIndex();
+        int slotId = slotIndex + 1;
+        int previouslySelectedOrientationMode = model.getSlot(displayIndex, slotIndex).getOrientationMode();
+        int selectedOrientationMode = view.getSlot(displayIndex, slotIndex).getOrientationModes().getSelectedIndex();
 
         if (previouslySelectedOrientationMode != selectedOrientationMode) {
-            model.setOrientationModeForDisplay(displayIndex, selectedOrientationMode);
-            settingsMgr.saveIniOrientationModeForDisplay(displayId, selectedOrientationMode);
+            // Determine if the previous orientation mode was a landscape orientation mode
+            boolean previouslyLandscapeOrientation = previouslySelectedOrientationMode == 0
+                    || previouslySelectedOrientationMode == 2;
+
+            // Determine if the selected orientation mode is a portrait orientation mode
+            boolean selectedPortraitOrientation = selectedOrientationMode == 1 || selectedOrientationMode == 3;
 
             // Determine if going from a landscape orientation mode to a portrait orientation mode
-            boolean landscapeToPortrait = (previouslySelectedOrientationMode == 0
-                    || previouslySelectedOrientationMode == 2)
-                    && (selectedOrientationMode == 1 || selectedOrientationMode == 3);
+            boolean landscapeToPortrait = previouslyLandscapeOrientation && selectedPortraitOrientation;
 
             // Determine if going from a portrait orientation mode to a landscape orientation mode
-            boolean portraitToLandscape = ((previouslySelectedOrientationMode == 1
-                    || previouslySelectedOrientationMode == 3)
-                    && (selectedOrientationMode == 0 || selectedOrientationMode == 2));
+            boolean portraitToLandscape = (!previouslyLandscapeOrientation && !selectedPortraitOrientation);
+
+            model.getSlot(displayIndex, slotIndex).setOrientationMode(selectedOrientationMode);
+            settingsMgr.saveIniSlotOrientationMode(displayId, slotId, selectedOrientationMode);
 
             // Only invert the display modes if going from landscape to portrait or vice versa
             if (landscapeToPortrait || portraitToLandscape) {
+                DisplayMode invertedDisplayMode = DisplayModeInverter
+                        .invertDisplayMode(model.getSlot(displayIndex, slotIndex).getDisplayMode());
 
-                // Invert the saved display mode for each slot for the current display
-                for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
-                    int slotId = slotIndex + 1;
-
-                    DisplayMode invertedDisplayMode = displayModeInverter
-                            .invert(model.getSlot(displayIndex, slotIndex).getDisplayMode());
-
-                    settingsMgr.saveIniSlotDisplayMode(displayId, slotId, invertedDisplayMode.getWidth(),
-                            invertedDisplayMode.getHeight(), invertedDisplayMode.getBitDepth(),
-                            invertedDisplayMode.getRefreshRate());
-                }
+                settingsMgr.saveIniSlotDisplayMode(displayId, slotId, invertedDisplayMode.getWidth(),
+                        invertedDisplayMode.getHeight(), invertedDisplayMode.getBitDepth(),
+                        invertedDisplayMode.getRefreshRate());
             }
 
-            setOrientation(displayIndex);
             appRefresher.reInitApp();
-        }
-    }
-
-    /**
-     * Sets the orientation if the display is connected.
-     * 
-     * @param displayIndex
-     *            - The index of the display to set the orientation mode for
-     */
-    private void setOrientation(int displayIndex) {
-        DisplayConfig displayConfig = new DisplayConfig();
-        displayConfig.updateDisplayIds();
-
-        String displayId = model.getDisplayIds()[displayIndex];
-
-        // If the connected displays have not changed
-        if (Arrays.equals(model.getDisplayIds(), displayConfig.getDisplayIds())) {
-            setDisplay.applyDisplayOrientation(displayId, model.getOrientationModeForDisplay(displayIndex));
         }
     }
 

@@ -6,6 +6,5 @@ tmp/
 target/
 
 # JNI DLLs
-EnumDisplayIds.dll
-EnumDisplayModes.dll
+GetDisplay.dll
 SetDisplay.dll

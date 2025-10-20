@@ -3,8 +3,8 @@ package com.dhk.model;
 import java.awt.DisplayMode;
 
 /**
- * Defines the model for a Slot. The display mode, scaling mode, DPI scale percentage, and hot key for a slot are
- * initialized here.
+ * Defines the model for a Slot. The display mode, scaling mode, DPI scale percentage, orientation mode, and hot key for
+ * a slot are initialized here.
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
@@ -15,7 +15,9 @@ public class Slot {
     private DisplayMode displayMode;
     private int scalingMode;
     private int dpiScalePercentage;
+    private int orientationMode;
     private HotKey hotKey;
+    private boolean clearingSlot;
 
     /**
      * Constructor for the Slot class.
@@ -26,17 +28,21 @@ public class Slot {
      *            - The scaling mode for the slot
      * @param dpiScalePercentage
      *            - The DPI scale percentage for the slot
+     * @param orientationMode
+     *            - The orientation mode for the display
      * @param changingHotKey
      *            - The "changing hot key" state for the slot
      * @param hotKey
      *            - The hot key for the slot
      */
-    public Slot(DisplayMode displayMode, int scalingMode, int dpiScalePercentage, boolean changingHotKey,
-            HotKey hotKey) {
+    public Slot(DisplayMode displayMode, int scalingMode, int dpiScalePercentage, int orientationMode,
+            boolean changingHotKey, HotKey hotKey) {
         this.displayMode = displayMode;
         this.scalingMode = scalingMode;
         this.dpiScalePercentage = dpiScalePercentage;
+        this.orientationMode = orientationMode;
         this.hotKey = hotKey;
+        this.clearingSlot = false;
     }
 
     /**
@@ -97,6 +103,25 @@ public class Slot {
     }
 
     /**
+     * Gets the orientation mode for the slot.
+     * 
+     * @return The orientation mode for the slot
+     */
+    public int getOrientationMode() {
+        return orientationMode;
+    }
+
+    /**
+     * Sets the orientation mode for the slot.
+     * 
+     * @param orientationMode
+     *            - The orientation mode for the slot
+     */
+    public void setOrientationMode(int orientationMode) {
+        this.orientationMode = orientationMode;
+    }
+
+    /**
      * Gets the hot key for the slot.
      * 
      * @return The hot key for the slot
@@ -113,6 +138,25 @@ public class Slot {
      */
     public void setHotKey(HotKey hotKey) {
         this.hotKey = hotKey;
+    }
+
+    /**
+     * Gets whether or not the slot is being cleared.
+     * 
+     * @return Whether or not the slot is being cleared
+     */
+    public boolean isClearingSlot() {
+        return clearingSlot;
+    }
+
+    /**
+     * Sets whether or not the slot is being cleared.
+     * 
+     * @param clearingSlot
+     *            - Whether or not the slot is being cleared
+     */
+    public void setClearingSlot(boolean clearingSlot) {
+        this.clearingSlot = clearingSlot;
     }
 
 }

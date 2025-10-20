@@ -93,6 +93,7 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
 
         // If the connected displays have not changed
         if (Arrays.equals(model.getDisplayIds(), displayConfig.getDisplayIds())) {
+            setDisplay.applyDisplayOrientation(displayId, model.getSlot(displayIndex, slotIndex).getOrientationMode());
             setDisplay.applyDisplaySettings(displayId,
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getWidth(),
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getHeight(),
