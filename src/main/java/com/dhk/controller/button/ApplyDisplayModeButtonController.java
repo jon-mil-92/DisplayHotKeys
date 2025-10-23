@@ -68,7 +68,7 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
                         .addActionListener(e -> applyDisplayModeButtonAction(displayIndex, slotIndex));
 
                 initStateChangeListeners(view.getSlot(displayIndex, slotIndex).getApplyDisplayModeButton(),
-                        view.getDisplayIdsLabel());
+                        view.getSelectedDisplayLabel());
             }
         }
     }

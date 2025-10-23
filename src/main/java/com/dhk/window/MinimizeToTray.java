@@ -78,8 +78,8 @@ public class MinimizeToTray {
                 frame.setExtendedState(JFrame.NORMAL);
                 frame.setVisible(true);
 
-                // Set the focus on the display IDs label after restoring the frame
-                view.getDisplayIdsLabel().requestFocusInWindow();
+                // Focus on the selected display label after restoring the frame
+                view.getSelectedDisplayLabel().requestFocusInWindow();
 
                 systemTray.shutdown();
                 viewRefresher.resume();

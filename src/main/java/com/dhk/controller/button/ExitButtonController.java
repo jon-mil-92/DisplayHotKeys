@@ -36,7 +36,7 @@ public class ExitButtonController extends AbstractButtonController implements IC
     public void initListeners() {
         view.getExitButton().addActionListener(e -> exitButtonAction());
 
-        initStateChangeListeners(view.getExitButton(), view.getDisplayIdsLabel());
+        initStateChangeListeners(view.getExitButton(), view.getSelectedDisplayLabel());
     }
 
     @Override

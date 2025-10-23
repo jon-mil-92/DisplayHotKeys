@@ -58,7 +58,7 @@ public class ThemeButtonController extends AbstractButtonController implements I
     public void initListeners() {
         view.getThemeButton().addActionListener(e -> themeButtonAction());
 
-        initStateChangeListeners(view.getThemeButton(), view.getDisplayIdsLabel());
+        initStateChangeListeners(view.getThemeButton(), view.getSelectedDisplayLabel());
     }
 
     @Override

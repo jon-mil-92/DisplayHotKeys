@@ -109,11 +109,11 @@ This application will launch minimized to the system tray in the task bar by des
 
 **Note:** A hot key cannot be a subset of another hot key. For example, you cannot have a hot key of "Ctrl + F1" and another hot key of "Ctrl + Shift + F1". However, a hot key can be the same as another hot key if they are for different displays. This will allow you to apply display settings for multiple displays with one hot key!
 
-### Changing Displays
+### Changing the Selected Display
 
-1. Click the "Display Number" drop-down box.
+1. Click the "Selected Display" drop-down box.
 
-2. Select the display you want to change hot keys for.
+2. Select the display number you want to change hot keys for.
 
 **Note:** The application will automatically detect newly disconnected and connected displays, and the application will refresh to reflect the display configuration change.
 

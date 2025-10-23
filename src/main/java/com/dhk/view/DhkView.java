@@ -46,7 +46,7 @@ public class DhkView {
     private GridBagConstraints mainPanelConstraints;
     private GridBagConstraints displayPanelConstraints;
     private GridBagConstraints menuPanelConstraints;
-    private JLabel displayIdsLabel;
+    private JLabel selectedDisplayLabel;
     private JLabel numberOfActiveSlotsLabel;
     private JLabel displayModeLabel;
     private JLabel scalingModeLabel;
@@ -170,7 +170,7 @@ public class DhkView {
         // Set the taskbar icon
         frame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
 
-        displayIdsLabel.requestFocusInWindow();
+        selectedDisplayLabel.requestFocusInWindow();
     }
 
     /**
@@ -391,8 +391,8 @@ public class DhkView {
      * Initializes the components and the initial selection for each interactive component.
      */
     private void initComponents() {
-        displayIdsLabel = new JLabel("Display Number :", SwingConstants.LEFT);
-        displayIdsLabel.setPreferredSize(new Dimension(106, 28));
+        selectedDisplayLabel = new JLabel("Selected Display :", SwingConstants.LEFT);
+        selectedDisplayLabel.setPreferredSize(new Dimension(110, 28));
 
         displayIds = new JComboBox<Integer>(generateDisplayIds());
         displayIds.setPreferredSize(new Dimension(60, 28));
@@ -569,7 +569,7 @@ public class DhkView {
         displayPanelConstraints.gridwidth = 1;
         displayPanelConstraints.gridx = 0;
         displayPanelConstraints.gridy = 0;
-        displayPanel.add(displayIdsLabel, displayPanelConstraints);
+        displayPanel.add(selectedDisplayLabel, displayPanelConstraints);
 
         displayPanelConstraints.gridwidth = 1;
         displayPanelConstraints.gridx = 1;
@@ -680,12 +680,12 @@ public class DhkView {
     }
 
     /**
-     * Gets the display IDs label.
+     * Gets the selected display label.
      * 
-     * @return The label for the display IDs combo box in the view
+     * @return The label for the selected display combo box in the view
      */
-    public JLabel getDisplayIdsLabel() {
-        return displayIdsLabel;
+    public JLabel getSelectedDisplayLabel() {
+        return selectedDisplayLabel;
     }
 
     /**

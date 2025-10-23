@@ -52,7 +52,7 @@ public class RunOnStartupButtonController extends AbstractButtonController imple
     public void initListeners() {
         view.getRunOnStartupButton().addActionListener(e -> runOnStartupButtonAction());
 
-        initStateChangeListeners(view.getRunOnStartupButton(), view.getDisplayIdsLabel());
+        initStateChangeListeners(view.getRunOnStartupButton(), view.getSelectedDisplayLabel());
     }
 
     @Override

@@ -67,7 +67,7 @@ public class ClearAllButtonController extends AbstractButtonController implement
     public void initListeners() {
         view.getClearAllButton().addActionListener(e -> clearAllButtonAction());
 
-        initStateChangeListeners(view.getClearAllButton(), view.getDisplayIdsLabel());
+        initStateChangeListeners(view.getClearAllButton(), view.getSelectedDisplayLabel());
     }
 
     @Override
@@ -78,8 +78,8 @@ public class ClearAllButtonController extends AbstractButtonController implement
      * Clears all slots for the selected display and then update the UI.
      */
     private void clearAllButtonAction() {
-        // Set the focus on the display IDs label so the clear all slots button does not flash red after confirmation
-        view.getDisplayIdsLabel().requestFocusInWindow();
+        // Focus on the selected display label so the clear all slots button does not flash red after confirmation
+        view.getSelectedDisplayLabel().requestFocusInWindow();
 
         if (getUserConfirmation() == JOptionPane.YES_OPTION) {
             clearAllOrientationModes();

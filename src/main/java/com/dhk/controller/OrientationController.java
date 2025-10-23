@@ -82,8 +82,8 @@ public class OrientationController implements IController {
      *            - The index of the slot to update the orientation mode for
      */
     private void orientationModeAction(int displayIndex, int slotIndex) {
-        // Set the focus on the display IDs label so the clear all slots button does not flash red after confirmation
-        view.getDisplayIdsLabel().requestFocusInWindow();
+        // Focus on the selected display label
+        view.getSelectedDisplayLabel().requestFocusInWindow();
 
         int previouslySelectedOrientationMode = model.getSlot(displayIndex, slotIndex).getOrientationMode();
         int selectedOrientationMode = view.getSlot(displayIndex, slotIndex).getOrientationModes().getSelectedIndex();
