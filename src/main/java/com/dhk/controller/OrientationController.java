@@ -85,13 +85,17 @@ public class OrientationController implements IController {
         // Set the focus on the display IDs label so the clear all slots button does not flash red after confirmation
         view.getDisplayIdsLabel().requestFocusInWindow();
 
-        if (model.getSlot(displayIndex, slotIndex).isClearingSlot()
-                || getUserConfirmation() == JOptionPane.YES_OPTION) {
-            saveSlotOrientationMode(displayIndex, slotIndex);
-        } else {
-            int previouslySelectedOrientationMode = model.getSlot(displayIndex, slotIndex).getOrientationMode();
-            view.getSlot(displayIndex, slotIndex).getOrientationModes()
-                    .setSelectedIndex(previouslySelectedOrientationMode);
+        int previouslySelectedOrientationMode = model.getSlot(displayIndex, slotIndex).getOrientationMode();
+        int selectedOrientationMode = view.getSlot(displayIndex, slotIndex).getOrientationModes().getSelectedIndex();
+
+        if (previouslySelectedOrientationMode != selectedOrientationMode) {
+            if (model.getSlot(displayIndex, slotIndex).isClearingSlot()
+                    || getUserConfirmation() == JOptionPane.YES_OPTION) {
+                saveSlotOrientationMode(displayIndex, slotIndex);
+            } else {
+                view.getSlot(displayIndex, slotIndex).getOrientationModes()
+                        .setSelectedIndex(previouslySelectedOrientationMode);
+            }
         }
     }
 

@@ -41,6 +41,8 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 * Switch refresh rates to quickly enable the Black Frame Insertion or Backlight Strobing capabilities of the display.
 
+* Easily rotate the display orientation with hot keys.
+
 * Quickly switch between resolutions with different aspect ratios.
 
 * Immediately apply a resolution without entering the in-game menus for video game benchmarking purposes.
@@ -109,35 +111,19 @@ This application will launch minimized to the system tray in the task bar by des
 
 ### Changing Displays
 
-1. Click the "Display" drop-down box.
+1. Click the "Display Number" drop-down box.
 
 2. Select the display you want to change hot keys for.
 
 **Note:** The application will automatically detect newly disconnected and connected displays, and the application will refresh to reflect the display configuration change.
 
-### Changing Active Hot Key Slots
+### Changing the Number of Active Hot Key Slots for a Display
 
-1. Click the "Slots" drop-down box.
+1. Click the "Active Slots" drop-down box.
 
 2. Select one of the values.
 
 **Note:** There can be up to 12 active hot key slots for each connected display.
-
-### Changing Display Orientation
-
-1. Click the "Orientation" drop-down box.
-
-2. Select one of the following values:
-    
-    * Landscape - The standard orientation with no rotation.
-    
-    * Portrait - Mode for 90 degrees display rotation.
-    
-    * iLandscape - Inverted landscape mode for 180 degrees display rotation.
-    
-    * iPortrait - Inverted portrait mode for 270 degrees display rotation.
-
-**Note:** Make sure you can rotate your display before changing the orientation; otherwise, it may be difficult to operate your computer.
 
 ### Selecting Display Settings
 
@@ -150,10 +136,22 @@ This application will launch minimized to the system tray in the task bar by des
 	* Select "Stretched" to stretch the image to the edges of the panel.
 	
 	* Select "Centered" to center the image in the middle of the panel without scaling.
+	
+**Note:** You may need to use GPU Scaling in your display driver settings to prevent the monitor from overriding the scaling mode.
 
 3. Select a DPI scale percentage value in the "DPI Scale" drop-down box for the hot key slot.
 
-**Note:** You may need to use GPU Scaling in your display driver settings to prevent the monitor from overriding the scaling mode.
+4. Select a display orientation in the "Orientation" drop-down box for the hot key slot.
+
+	* Select "Landscape" for a landscape orientation of no rotation.
+    
+    * Select "Portrait" for a portrait orientation of 90 degrees rotation.
+    
+    * Select "iLandscape" for an inverted landscape orientation of 180 degrees rotation.
+    
+    * Select "iPortrait" for an inverted portrait orientation of 270 degrees rotation.
+	
+**Note:** Make sure you can rotate your display before changing the orientation; otherwise, it may be difficult to operate your computer.
 
 ### Button Interaction
 
