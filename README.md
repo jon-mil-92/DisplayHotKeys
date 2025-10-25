@@ -209,6 +209,7 @@ To exit the application, click on the "Exit App" button. You can also exit the a
 - [x] &thinsp; Add display orientation selection.
 - [x] &thinsp; Add button to immediately apply display modes.
 - [x] &thinsp; Add a minimize to tray toggle.
+- [x] &thinsp; Add ability to change display orientation with hot keys.
 
 See [open issues] for a full list of proposed features (and known issues).
 
