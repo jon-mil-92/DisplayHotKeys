@@ -51,9 +51,13 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 * Instantly set a display mode while in a video game. (This is useful if a video game does not support changing the resolution or refresh rate while in-game.)
 
-### Example Screen
+### Light Mode
 
-![screenshot](src/main/resources/images/product_screenshot.png)
+![screenshot](src/main/resources/images/product_screenshot_light.png)
+
+### Dark Mode
+
+![screenshot](src/main/resources/images/product_screenshot_dark.png)
 
 <p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 

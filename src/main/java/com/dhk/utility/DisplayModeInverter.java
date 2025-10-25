@@ -21,9 +21,9 @@ public class DisplayModeInverter {
      * Swap the width and height of the given display mode.
      * 
      * @param displayMode
-     *            - The display mode to invert.
+     *            - The display mode to invert
      * 
-     * @return The inverted display mode.
+     * @return The inverted display mode
      */
     public static DisplayMode invertDisplayMode(DisplayMode displayMode) {
         int width = displayMode.getWidth();
@@ -41,9 +41,9 @@ public class DisplayModeInverter {
      * Swap the width and height of the given display modes.
      * 
      * @param displayModes
-     *            - The display modes to invert.
+     *            - The display modes to invert
      * 
-     * @return The inverted display modes.
+     * @return The inverted display modes
      */
     public static DisplayMode[] invertDisplayModes(DisplayMode[] displayModes) {
         DisplayMode[] invertedDisplayModes = new DisplayMode[displayModes.length];
