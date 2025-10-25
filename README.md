@@ -101,8 +101,6 @@ This application will be distributed as a portable package and as an installer.
 
 ## Usage
 
-This application will launch minimized to the system tray in the task bar by design.
-
 ### Setting Hot Keys
 
 1. Click the "Change Hot Key" button.
