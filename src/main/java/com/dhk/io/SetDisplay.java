@@ -24,19 +24,40 @@ public class SetDisplay {
         }
     }
 
-    /*
-     * Defines a JNI function to immediately apply the given display settings for the given display.
+    /**
+     * Defines a JNI function to immediately apply the given settings for the given display.
+     * 
+     * @param displayId
+     *            - The ID of the display to apply the display settings for
+     * @param resWidth
+     *            - The new horizontal resolution for the given display
+     * @param resHeight
+     *            - The new vertical resolution for the given display
+     * @param bitDepth
+     *            - The new bit depth for the given display
+     * @param refreshRate
+     *            - The new refresh rate for the given display
+     * @param scalingMode
+     *            - The new scaling mode for the given display
+     * @param dpiScalePercentage
+     *            - The new DPI scale percentage for the given display
      */
     private native void setDisplay(String displayId, int resWidth, int resHeight, int bitDepth, int refreshRate,
-            int scalingMode, int dpiScalePercentageScale);
-
-    /*
-     * Defines a JNI function to immediately apply the given orientation mode for the given display.
-     */
-    private native void setOrientation(String dispalayId, int orientationMode);
+            int scalingMode, int dpiScalePercentage);
 
     /**
-     * Immediately applies the given display settings for the given display.
+     * Defines a JNI function to immediately apply the given orientation mode for the given display.
+     * 
+     * @param displayId
+     *            - The ID of the display to apply the orientation mode for
+     * @param orientationMode
+     *            - The new orientation mode for the given display. 0 for Landscape, 1 for Portrait, 2 for Inverted
+     *            Landscape, and 3 for Inverted Portrait
+     */
+    private native void setOrientation(String displayId, int orientationMode);
+
+    /**
+     * Immediately applies the given settings for the given display.
      * 
      * @param displayId
      *            - The ID of the display to apply the display settings for

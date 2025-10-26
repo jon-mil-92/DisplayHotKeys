@@ -26,23 +26,37 @@ public class GetDisplay {
         }
     }
 
-    /*
+    /**
      * Defines a JNI function to enumerate the supported display modes for the given display.
+     * 
+     * @param displayId
+     *            - The ID of the display to get the array of supported display modes for
+     * 
+     * @return The current array of supported display modes for the given display
      */
-    private native DisplayMode[] enumDisplayModes(String displayID);
+    private native DisplayMode[] enumDisplayModes(String displayId);
 
-    /*
+    /**
      * Defines a JNI function to get the current number of connected displays.
+     * 
+     * @return The current number of connected displays
      */
     private native int queryNumOfConnectedDisplays();
 
-    /*
+    /**
      * Defines a JNI function to enumerate the display IDs for the connected displays.
+     * 
+     * @return The array of display IDs for the connected displays
      */
     private native String[] enumDisplayIds();
 
-    /*
-     * Defines a JNI function to get the current display orientation for the given display index.
+    /**
+     * Defines a JNI function to get the current orientation for the given display.
+     * 
+     * @param displayIndex
+     *            - The index of the display to get the orientation for
+     * 
+     * @return The current orientation for the given display
      */
     private native int queryDisplayOrientation(int displayIndex);
 
@@ -77,8 +91,13 @@ public class GetDisplay {
         return enumDisplayIds();
     }
 
-    /*
-     * Gets the current display orientation for the given display.
+    /**
+     * Gets the current orientation for the given display.
+     * 
+     * @param displayIndex
+     *            - The index of the display to get the orientation for
+     * 
+     * @return The current orientation for the given display
      */
     public int getDisplayOrientation(int displayIndex) {
         return queryDisplayOrientation(displayIndex);
