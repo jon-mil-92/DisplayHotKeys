@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"com.dhk.controller"},{"l":"com.dhk.controller.button"},{"l":"com.dhk.io"},{"l":"com.dhk.main"},{"l":"com.dhk.model"},{"l":"com.dhk.model.button"},{"l":"com.dhk.theme"},{"l":"com.dhk.utility"},{"l":"com.dhk.view"},{"l":"com.dhk.window"}];updateSearchResults();
