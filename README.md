@@ -63,7 +63,7 @@ This application was made only for the Windows platform. Display Hot Keys also u
 
 ### Prerequisites
 
-* Windows 10 x64 or Windows 11 x64 operating system.
+* Native Windows 10 x64 or Windows 11 x64 operating system installation. Running the app through virtualization software is not fully supported.
 
 * If using multiple displays, then the "Multiple displays" setting must be set to "Extend these displays" in the Windows "Display" settings menu!
 
@@ -288,3 +288,4 @@ Distribution made possible with the following tools:
 [MIT License]: https://mit-license.org
 [Apache License 2.0]: https://www.apache.org/licenses/LICENSE-2.0
 [AGPL License 3.0]: https://www.gnu.org/licenses/agpl-3.0.en.html
+
