@@ -19,7 +19,7 @@ void setDpiScalePercentage(UINT32 displayIndex, int32_t dpiScalePercentage);
 void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation);
 
 /*
- * Updates the display mode, scaling mode, orientation, and DPI scale percentage for the given
+ * Updates the display mode, scaling mode, and DPI scale percentage for the given
  * display.
  *
  * @param env

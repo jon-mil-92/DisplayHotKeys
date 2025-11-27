@@ -46,17 +46,16 @@ public class DhkView {
     private GridBagConstraints mainPanelConstraints;
     private GridBagConstraints displayPanelConstraints;
     private GridBagConstraints menuPanelConstraints;
-    private JLabel displayIdsLabel;
+    private JLabel selectedDisplayLabel;
     private JLabel numberOfActiveSlotsLabel;
-    private JLabel orientationLabel;
     private JLabel displayModeLabel;
     private JLabel scalingModeLabel;
     private JLabel dpiScaleLabel;
+    private JLabel orientationLabel;
     private JLabel hotKeyLabel;
     private JComboBox<Integer> displayIds;
     private Map<Integer, List<Slot>> displayMap;
     private Map<Integer, JComboBox<Integer>> numberOfActiveSlotsMap;
-    private Map<Integer, JComboBox<String>> orientationModesMap;
     private ThemeableButton themeButton;
     private ThemeableToggleButton minimizeToTrayButton;
     private ThemeableToggleButton runOnStartupButton;
@@ -70,7 +69,7 @@ public class DhkView {
     private int previouslySelectedDisplayIndex;
     private int gridYPosForSlotInPanel;
 
-    private final int NUM_OF_SLOT_COMPONENTS = 8;
+    private final int NUM_OF_SLOT_COMPONENTS = 9;
     private final String[] ORIENTATION_MODES = {"Landscape", "Portrait", "iLandscape", "iPortrait"};
     private final String[] SCALING_MODES = new String[]{"Preserved", "Stretched", "Centered"};
     private final Integer[] DPI_SCALE_PERCENTAGES = new Integer[]{100, 125, 150, 175, 200, 225, 250, 300, 350};
@@ -143,7 +142,6 @@ public class DhkView {
     public void initView(Point frameLocation) {
         displayMap = new HashMap<Integer, List<Slot>>();
         numberOfActiveSlotsMap = new HashMap<Integer, JComboBox<Integer>>();
-        orientationModesMap = new HashMap<Integer, JComboBox<String>>();
         previouslySelectedDisplayIndex = 0;
 
         frame = new JFrame();
@@ -172,7 +170,7 @@ public class DhkView {
         // Set the taskbar icon
         frame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
 
-        displayIdsLabel.requestFocusInWindow();
+        selectedDisplayLabel.requestFocusInWindow();
     }
 
     /**
@@ -233,15 +231,20 @@ public class DhkView {
             mainPanelConstraints.gridwidth = 1;
             mainPanelConstraints.gridx = 4;
             mainPanelConstraints.gridy = gridYPosForSlotInPanel;
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getHotKey(), mainPanelConstraints);
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getOrientationModes(), mainPanelConstraints);
 
             mainPanelConstraints.gridwidth = 1;
             mainPanelConstraints.gridx = 5;
             mainPanelConstraints.gridy = gridYPosForSlotInPanel;
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearHotKeyButton(), mainPanelConstraints);
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getHotKey(), mainPanelConstraints);
 
             mainPanelConstraints.gridwidth = 1;
             mainPanelConstraints.gridx = 6;
+            mainPanelConstraints.gridy = gridYPosForSlotInPanel;
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearHotKeyButton(), mainPanelConstraints);
+
+            mainPanelConstraints.gridwidth = 1;
+            mainPanelConstraints.gridx = 7;
             mainPanelConstraints.gridy = gridYPosForSlotInPanel;
             mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getChangeHotKeyButton(), mainPanelConstraints);
 
@@ -313,6 +316,13 @@ public class DhkView {
             mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDpiScalePercentages(),
                     prevDpiScalePercentagesConstraints);
 
+            GridBagConstraints prevOrientationModeConstraints = mainPanelLayout.getConstraints(
+                    displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getOrientationModes());
+
+            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getOrientationModes());
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getOrientationModes(),
+                    prevOrientationModeConstraints);
+
             GridBagConstraints prevHotKeyConstraints = mainPanelLayout
                     .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getHotKey());
 
@@ -350,20 +360,6 @@ public class DhkView {
     }
 
     /**
-     * Removes the current orientation modes combo box and adds the correct one for the selected display.
-     * 
-     * @param displayIndex
-     *            - The index of the display to show the orientation modes combo box for
-     */
-    public void showOrientationModesForDisplay(int displayIndex) {
-        GridBagConstraints prevOrientationModesConstraints = displayPanelLayout
-                .getConstraints(orientationModesMap.get(previouslySelectedDisplayIndex));
-
-        displayPanel.remove(orientationModesMap.get(previouslySelectedDisplayIndex));
-        displayPanel.add(orientationModesMap.get(displayIndex), prevOrientationModesConstraints);
-    }
-
-    /**
      * Initializes all of the panels that will hold the view components.
      */
     private void initPanels() {
@@ -395,33 +391,29 @@ public class DhkView {
      * Initializes the components and the initial selection for each interactive component.
      */
     private void initComponents() {
-        displayIdsLabel = new JLabel("Display :", SwingConstants.LEFT);
-        displayIdsLabel.setPreferredSize(new Dimension(55, 28));
+        selectedDisplayLabel = new JLabel("Selected Display :", SwingConstants.LEFT);
+        selectedDisplayLabel.setPreferredSize(new Dimension(110, 28));
 
         displayIds = new JComboBox<Integer>(generateDisplayIds());
-        displayIds.setPreferredSize(new Dimension(55, 28));
+        displayIds.setPreferredSize(new Dimension(60, 28));
 
-        numberOfActiveSlotsLabel = new JLabel("Slots :", SwingConstants.LEFT);
-        numberOfActiveSlotsLabel.setPreferredSize(new Dimension(40, 28));
-
-        orientationLabel = new JLabel("Orientation :", SwingConstants.LEFT);
-        orientationLabel.setPreferredSize(new Dimension(78, 28));
+        numberOfActiveSlotsLabel = new JLabel("Active Slots :", SwingConstants.LEFT);
+        numberOfActiveSlotsLabel.setPreferredSize(new Dimension(81, 28));
 
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             JComboBox<Integer> numberOfActiveSlots = new JComboBox<Integer>(generateNumOfSlotsValues());
-            numberOfActiveSlots.setName("numberOfActiveSlotsComboBox");
             numberOfActiveSlots.setPreferredSize(new Dimension(60, 28));
             numberOfActiveSlots.setSelectedItem(model.getNumOfSlotsForDisplay(displayIndex));
 
             numberOfActiveSlotsMap.put(displayIndex, numberOfActiveSlots);
-
-            JComboBox<String> orientationModes = new JComboBox<String>(ORIENTATION_MODES);
-            orientationModes.setName("orientationModesComboBox");
-            orientationModes.setPreferredSize(new Dimension(115, 28));
-            orientationModes.setSelectedIndex(model.getOrientationModeForDisplay(displayIndex));
-
-            orientationModesMap.put(displayIndex, orientationModes);
         }
+
+        paypalDonateButton = new ThemeableButton("/paypal_donate_light_idle.svg", "/paypal_donate_light_hover.svg",
+                "/paypal_donate_dark_idle.svg", "/paypal_donate_dark_hover.svg", PAYPAL_DONATE_BUTTON_TOOLTIP,
+                PAYPAL_DONATE_BUTTON_SIZE, PAYPAL_DONATE_BUTTON_IDLE_SCALE, PAYPAL_DONATE_BUTTON_HELD_SCALE, true,
+                model.isDarkMode());
+
+        themeableButtons.add(paypalDonateButton);
 
         themeButton = new ThemeableButton("/light_mode_idle.svg", "/light_mode_hover.svg", "/dark_mode_idle.svg",
                 "/dark_mode_hover.svg", THEME_BUTTON_TOOLTIP, THEME_BUTTON_SIZE, THEME_BUTTON_IDLE_SCALE,
@@ -459,13 +451,6 @@ public class DhkView {
         exitButton = new Button("/exit_idle.svg", "/exit_hover.svg", EXIT_BUTTON_TOOLTIP, EXIT_BUTTON_SIZE,
                 EXIT_BUTTON_IDLE_SCALE, EXIT_BUTTON_HELD_SCALE, true);
 
-        paypalDonateButton = new ThemeableButton("/paypal_donate_light_idle.svg", "/paypal_donate_light_hover.svg",
-                "/paypal_donate_dark_idle.svg", "/paypal_donate_dark_hover.svg", PAYPAL_DONATE_BUTTON_TOOLTIP,
-                PAYPAL_DONATE_BUTTON_SIZE, PAYPAL_DONATE_BUTTON_IDLE_SCALE, PAYPAL_DONATE_BUTTON_HELD_SCALE, true,
-                model.isDarkMode());
-
-        themeableButtons.add(paypalDonateButton);
-
         displayModeLabel = new JLabel("Display Mode", SwingConstants.CENTER);
         displayModeLabel.setPreferredSize(new Dimension(256, 28));
         makeLabelBold(displayModeLabel);
@@ -477,6 +462,10 @@ public class DhkView {
         dpiScaleLabel = new JLabel("DPI Scale", SwingConstants.CENTER);
         dpiScaleLabel.setPreferredSize(new Dimension(90, 28));
         makeLabelBold(dpiScaleLabel);
+
+        orientationLabel = new JLabel("Orientation", SwingConstants.CENTER);
+        orientationLabel.setPreferredSize(new Dimension(90, 28));
+        makeLabelBold(orientationLabel);
 
         hotKeyLabel = new JLabel("Hot Key", SwingConstants.CENTER);
         hotKeyLabel.setPreferredSize(new Dimension(90, 28));
@@ -535,10 +524,16 @@ public class DhkView {
 
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             List<Slot> slots = new ArrayList<Slot>();
-            DisplayMode[] displayModes = displayConfig.getDisplayModes(displayIds[displayIndex]);
 
             for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
-                slots.add(new Slot(slotIndex, displayIndex, displayModes, SCALING_MODES, DPI_SCALE_PERCENTAGES));
+                int slotOrientationMode = model.getSlot(displayIndex, slotIndex).getOrientationMode();
+                boolean landscapeOrientation = slotOrientationMode == 0 || slotOrientationMode == 2;
+                DisplayMode[] displayModes = landscapeOrientation
+                        ? displayConfig.getLandscapeDisplayModes(displayIds[displayIndex])
+                        : displayConfig.getPortraitDisplayModes(displayIds[displayIndex]);
+
+                slots.add(new Slot(slotIndex, displayIndex, displayModes, SCALING_MODES, DPI_SCALE_PERCENTAGES,
+                        ORIENTATION_MODES));
 
                 slots.get(slotIndex).getDisplayModes()
                         .setSelectedItem(model.getSlot(displayIndex, slotIndex).getDisplayMode());
@@ -548,6 +543,9 @@ public class DhkView {
 
                 slots.get(slotIndex).getDpiScalePercentages()
                         .setSelectedItem(model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
+
+                slots.get(slotIndex).getOrientationModes()
+                        .setSelectedIndex(model.getSlot(displayIndex, slotIndex).getOrientationMode());
 
                 slots.get(slotIndex).getHotKey()
                         .setText(model.getSlot(displayIndex, slotIndex).getHotKey().getHotKeyString());
@@ -571,7 +569,7 @@ public class DhkView {
         displayPanelConstraints.gridwidth = 1;
         displayPanelConstraints.gridx = 0;
         displayPanelConstraints.gridy = 0;
-        displayPanel.add(displayIdsLabel, displayPanelConstraints);
+        displayPanel.add(selectedDisplayLabel, displayPanelConstraints);
 
         displayPanelConstraints.gridwidth = 1;
         displayPanelConstraints.gridx = 1;
@@ -588,19 +586,9 @@ public class DhkView {
         displayPanelConstraints.gridy = 0;
         displayPanel.add(numberOfActiveSlotsMap.get(displayIds.getSelectedIndex()), displayPanelConstraints);
 
-        displayPanelConstraints.gridwidth = 1;
-        displayPanelConstraints.gridx = 4;
-        displayPanelConstraints.gridy = 0;
-        displayPanel.add(orientationLabel, displayPanelConstraints);
-
-        displayPanelConstraints.gridwidth = 1;
-        displayPanelConstraints.gridx = 5;
-        displayPanelConstraints.gridy = 0;
-        displayPanel.add(orientationModesMap.get(displayIds.getSelectedIndex()), displayPanelConstraints);
-
         mainPanelConstraints.anchor = GridBagConstraints.EAST;
 
-        mainPanelConstraints.gridwidth = 7;
+        mainPanelConstraints.gridwidth = 8;
         mainPanelConstraints.gridx = 0;
         mainPanelConstraints.gridy = 0;
         mainPanel.add(menuPanel, mainPanelConstraints);
@@ -608,35 +596,40 @@ public class DhkView {
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 0;
         menuPanelConstraints.gridy = 0;
-        menuPanel.add(themeButton, menuPanelConstraints);
+        menuPanel.add(paypalDonateButton, menuPanelConstraints);
 
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 1;
         menuPanelConstraints.gridy = 0;
-        menuPanel.add(minimizeToTrayButton, menuPanelConstraints);
+        menuPanel.add(themeButton, menuPanelConstraints);
 
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 2;
         menuPanelConstraints.gridy = 0;
-        menuPanel.add(runOnStartupButton, menuPanelConstraints);
+        menuPanel.add(minimizeToTrayButton, menuPanelConstraints);
 
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 3;
         menuPanelConstraints.gridy = 0;
-        menuPanel.add(refreshAppButton, menuPanelConstraints);
+        menuPanel.add(runOnStartupButton, menuPanelConstraints);
 
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 4;
         menuPanelConstraints.gridy = 0;
-        menuPanel.add(clearAllButton, menuPanelConstraints);
+        menuPanel.add(refreshAppButton, menuPanelConstraints);
 
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 5;
         menuPanelConstraints.gridy = 0;
-        menuPanel.add(minimizeButton, menuPanelConstraints);
+        menuPanel.add(clearAllButton, menuPanelConstraints);
 
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 6;
+        menuPanelConstraints.gridy = 0;
+        menuPanel.add(minimizeButton, menuPanelConstraints);
+
+        menuPanelConstraints.gridwidth = 1;
+        menuPanelConstraints.gridx = 7;
         menuPanelConstraints.gridy = 0;
         menuPanel.add(exitButton, menuPanelConstraints);
 
@@ -660,12 +653,12 @@ public class DhkView {
         mainPanelConstraints.gridwidth = 1;
         mainPanelConstraints.gridx = 4;
         mainPanelConstraints.gridy = 1;
-        mainPanel.add(hotKeyLabel, mainPanelConstraints);
+        mainPanel.add(orientationLabel, mainPanelConstraints);
 
         mainPanelConstraints.gridwidth = 1;
-        mainPanelConstraints.gridx = 6;
+        mainPanelConstraints.gridx = 5;
         mainPanelConstraints.gridy = 1;
-        mainPanel.add(paypalDonateButton, mainPanelConstraints);
+        mainPanel.add(hotKeyLabel, mainPanelConstraints);
     }
 
     /**
@@ -687,12 +680,12 @@ public class DhkView {
     }
 
     /**
-     * Gets the display IDs label.
+     * Gets the selected display label.
      * 
-     * @return The label for the display IDs combo box in the view
+     * @return The label for the selected display combo box in the view
      */
-    public JLabel getDisplayIdsLabel() {
-        return displayIdsLabel;
+    public JLabel getSelectedDisplayLabel() {
+        return selectedDisplayLabel;
     }
 
     /**
@@ -733,18 +726,6 @@ public class DhkView {
      */
     public JComboBox<Integer> getNumberOfActiveSlots(int displayIndex) {
         return numberOfActiveSlotsMap.get(displayIndex);
-    }
-
-    /**
-     * Gets the orientation modes combo box for the given display index.
-     * 
-     * @param displayIndex
-     *            - The index of the display to get the orientation modes combo box for
-     *
-     * @return The orientation modes combo box for the given display index
-     */
-    public JComboBox<String> getOrientationModes(int displayIndex) {
-        return orientationModesMap.get(displayIndex);
     }
 
     /**

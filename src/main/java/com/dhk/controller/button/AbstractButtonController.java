@@ -17,6 +17,12 @@ import com.dhk.model.button.AbstractButton;
 public abstract class AbstractButtonController {
 
     /**
+     * Default constructor for the AbstractButtonController class
+     */
+    public AbstractButtonController() {
+    }
+
+    /**
      * Initializes the state change listeners for the given button.
      * 
      * @param button

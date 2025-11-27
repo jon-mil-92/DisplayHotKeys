@@ -22,6 +22,7 @@ public class Slot {
     private JComboBox<DisplayMode> slotDisplayModes;
     private JComboBox<String> slotScalingModes;
     private JComboBox<Integer> slotDpiScalePercentages;
+    private JComboBox<String> slotOrientationModes;
     private JLabel slotHotKey;
     private Button slotClearHotKeyButton;
     private JButton slotChangeHotKeyButton;
@@ -49,9 +50,11 @@ public class Slot {
      *            - The array of scaling modes for the slot
      * @param dpiScalePercentages
      *            - The array of DPI scale percentages for the slot
+     * @param orientationModes
+     *            - The array of orientation modes for the slot
      */
     public Slot(int slotIndex, int displayIndex, DisplayMode[] displayModes, String[] scalingModes,
-            Integer[] dpiScalePercentages) {
+            Integer[] dpiScalePercentages, String[] orientationModes) {
         String slotID = Integer.toString(slotIndex + 1);
 
         slotIndicatorLabel = new JLabel("Slot " + slotID + " :", SwingConstants.CENTER);
@@ -69,6 +72,9 @@ public class Slot {
 
         slotDpiScalePercentages = new JComboBox<Integer>(dpiScalePercentages);
         slotDpiScalePercentages.setPreferredSize(new Dimension(70, 28));
+
+        slotOrientationModes = new JComboBox<String>(orientationModes);
+        slotOrientationModes.setPreferredSize(new Dimension(115, 28));
 
         slotHotKey = new JLabel("", SwingConstants.CENTER);
 
@@ -123,6 +129,15 @@ public class Slot {
      */
     public JComboBox<Integer> getDpiScalePercentages() {
         return slotDpiScalePercentages;
+    }
+
+    /**
+     * Gets the orientation modes combo box of the slot.
+     * 
+     * @return The orientation modes combo box of the slot
+     */
+    public JComboBox<String> getOrientationModes() {
+        return slotOrientationModes;
     }
 
     /**

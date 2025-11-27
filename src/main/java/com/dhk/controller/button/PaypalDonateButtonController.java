@@ -47,7 +47,7 @@ public class PaypalDonateButtonController extends AbstractButtonController imple
     public void initListeners() {
         view.getPaypalDonateButton().addActionListener(e -> paypalDonateButtonAction());
 
-        initStateChangeListeners(view.getPaypalDonateButton(), view.getDisplayIdsLabel());
+        initStateChangeListeners(view.getPaypalDonateButton(), view.getSelectedDisplayLabel());
     }
 
     @Override

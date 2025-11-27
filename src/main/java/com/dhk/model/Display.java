@@ -3,8 +3,8 @@ package com.dhk.model;
 import java.util.List;
 
 /**
- * Defines the model for a Display. The id, active number of hot key slots, orientation mode, and array list of hot key
- * slots are initialized here.
+ * Defines the model for a Display. The id, active number of hot key slots, and array list of hot key slots are
+ * initialized here.
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
@@ -14,7 +14,6 @@ public class Display {
 
     private String id;
     private int numOfActiveSlots;
-    private int orientationMode;
     private List<Slot> slots;
 
     /**
@@ -24,15 +23,12 @@ public class Display {
      *            - The ID of the display
      * @param numOfActiveSlots
      *            - The number of active hot key slots for the display
-     * @param orientationMode
-     *            - The orientation mode for the display
      * @param slots
      *            - The list of active hot key slots for the display
      */
-    public Display(String id, int numOfActiveSlots, int orientationMode, List<Slot> slots) {
+    public Display(String id, int numOfActiveSlots, List<Slot> slots) {
         this.id = id;
         this.numOfActiveSlots = numOfActiveSlots;
-        this.orientationMode = orientationMode;
         this.slots = slots;
     }
 
@@ -62,25 +58,6 @@ public class Display {
      */
     public void setNumOfActiveSlots(int numOfActiveSlots) {
         this.numOfActiveSlots = numOfActiveSlots;
-    }
-
-    /**
-     * Gets the orientation mode for the display.
-     * 
-     * @return The orientation mode for the display
-     */
-    public int getOrientationMode() {
-        return orientationMode;
-    }
-
-    /**
-     * Sets the orientation mode for the display.
-     * 
-     * @param orientationMode
-     *            - The orientation mode for the display
-     */
-    public void setOrientationMode(int orientationMode) {
-        this.orientationMode = orientationMode;
     }
 
     /**

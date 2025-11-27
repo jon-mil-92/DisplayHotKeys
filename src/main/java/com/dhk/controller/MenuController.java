@@ -60,7 +60,7 @@ public class MenuController implements IController {
         menuButtonControllers.add(new MinimizeToTrayButtonController(model, view, settingsMgr));
         menuButtonControllers.add(new RunOnStartupButtonController(model, view, settingsMgr));
         menuButtonControllers.add(new RefreshAppButtonController(model, view, controller, settingsMgr));
-        menuButtonControllers.add(new ClearAllButtonController(model, view, settingsMgr));
+        menuButtonControllers.add(new ClearAllButtonController(model, view, controller, settingsMgr));
         menuButtonControllers.add(new MinimizeButtonController(view));
         menuButtonControllers.add(new ExitButtonController(view));
 

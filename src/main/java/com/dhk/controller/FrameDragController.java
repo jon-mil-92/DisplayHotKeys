@@ -63,8 +63,11 @@ public class FrameDragController implements IController {
                     mousePressedY = mousePressedEvent.getYOnScreen();
                 }
 
-                // Focus on the display IDs label to remove the selection outline around the last selected component
-                view.getDisplayIdsLabel().requestFocusInWindow();
+                /*
+                 * Focus on the selected display label to remove the selection outline around the last selected
+                 * component
+                 */
+                view.getSelectedDisplayLabel().requestFocusInWindow();
             }
         });
 

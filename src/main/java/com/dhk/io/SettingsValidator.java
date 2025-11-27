@@ -25,7 +25,8 @@ public class SettingsValidator {
     private SettingsManager settingsMgr;
     private Wini ini;
     private String[] displayIds;
-    private Map<String, DisplayMode[]> displayModesMap;
+    private Map<String, DisplayMode[]> landscapeDisplayModesMap;
+    private Map<String, DisplayMode[]> portraitDisplayModesMap;
     private List<Integer> validkeyCodes;
     private RunOnStartupManager runOnStartupManager;
 
@@ -44,7 +45,8 @@ public class SettingsValidator {
         this.settingsMgr = settingsMgr;
         ini = settingsMgr.getIni();
         displayIds = settingsMgr.getDisplayIds();
-        displayModesMap = settingsMgr.getDisplayModesMap();
+        landscapeDisplayModesMap = settingsMgr.getLandscapeDisplayModesMap();
+        portraitDisplayModesMap = settingsMgr.getPortraitDisplayModesMap();
         validkeyCodes = buildValidKeyCodes();
         runOnStartupManager = new RunOnStartupManager();
     }
@@ -58,7 +60,7 @@ public class SettingsValidator {
         validateMinimizeToTray();
         validateRunOnStartup();
         validateNumOfSlots();
-        validateOrientationMode();
+        validateOrientationModes();
         validateDisplayModes();
         validateScalingModes();
         validateDpiScalePercentages();
@@ -191,17 +193,21 @@ public class SettingsValidator {
     }
 
     /**
-     * Validates the value for the orientation mode property from the settings file. If the value is not in the correct
-     * range, then it writes the default value for the orientation mode property.
+     * Validates the value for each orientationMode property from the settings file. If the value is not a valid value,
+     * then it writes the default value for the orientationMode property.
      */
-    private void validateOrientationMode() {
+    private void validateOrientationModes() {
         for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
             String displayId = displayIds[displayIndex];
-            String iniProperty = "orientationModeFor--" + displayId;
-            String orientationMode = ini.get("Application", iniProperty);
 
-            if (orientationMode == null || !isPositiveInt(orientationMode) || Integer.valueOf(orientationMode) > 3) {
-                settingsMgr.saveIniOrientationModeForDisplay(displayId, 0);
+            for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
+                String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+                String orientationMode = ini.get(iniSection, "orientationMode");
+
+                if (orientationMode == null || !isPositiveInt(orientationMode)
+                        || Integer.valueOf(orientationMode) > 3) {
+                    settingsMgr.saveIniSlotOrientationMode(displayId, slotId, 0);
+                }
             }
         }
     }
@@ -216,6 +222,8 @@ public class SettingsValidator {
             String displayId = displayIds[displayIndex];
 
             for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
+                int slotOrientationMode = settingsMgr.getIniSlotOrientationMode(displayId, slotId);
+                boolean landscapeOrientation = slotOrientationMode == 0 || slotOrientationMode == 2;
                 String iniSection = displayId + "--Slot" + Integer.toString(slotId);
                 String width = ini.get(iniSection, "displayModeWidth");
                 String height = ini.get(iniSection, "displayModeHeight");
@@ -228,11 +236,19 @@ public class SettingsValidator {
                     DisplayMode displayMode = new DisplayMode(Integer.valueOf(width), Integer.valueOf(height),
                             Integer.valueOf(bitDepth), Integer.valueOf(refreshRate));
 
-                    if (!Arrays.asList(displayModesMap.get(displayId)).contains(displayMode)) {
-                        writeDefaultDisplayMode(displayId, slotId);
+                    if (landscapeOrientation
+                            && !Arrays.asList(landscapeDisplayModesMap.get(displayId)).contains(displayMode)) {
+                        writeDefaultDisplayMode(false, displayId, slotId);
+                    } else if (!landscapeOrientation
+                            && !Arrays.asList(portraitDisplayModesMap.get(displayId)).contains(displayMode)) {
+                        writeDefaultDisplayMode(true, displayId, slotId);
                     }
                 } else {
-                    writeDefaultDisplayMode(displayId, slotId);
+                    if (landscapeOrientation) {
+                        writeDefaultDisplayMode(false, displayId, slotId);
+                    } else {
+                        writeDefaultDisplayMode(true, displayId, slotId);
+                    }
                 }
             }
         }
@@ -241,14 +257,17 @@ public class SettingsValidator {
     /**
      * Writes the default display mode property values to the give slot section in the settings file.
      * 
+     * @param landscapeOrientation
+     *            - Whether or not to write a landscape display mode
      * @param displayId
      *            - The ID of the display to get the display mode for
      * @param slotId
      *            - The ID of the slot to get the display mode for
      */
-    private void writeDefaultDisplayMode(String displayId, int slotId) {
-        DisplayMode[] displayModes = displayModesMap.get(displayId);
-        DisplayMode defaultDisplayMode = displayModes[0];
+    private void writeDefaultDisplayMode(boolean landscapeOrientation, String displayId, int slotId) {
+        DisplayMode[] landscapeDisplayModes = landscapeDisplayModesMap.get(displayId);
+        DisplayMode[] portraitDisplayModes = portraitDisplayModesMap.get(displayId);
+        DisplayMode defaultDisplayMode = landscapeOrientation ? landscapeDisplayModes[0] : portraitDisplayModes[0];
 
         settingsMgr.saveIniSlotDisplayMode(displayId, slotId, defaultDisplayMode.getWidth(),
                 defaultDisplayMode.getHeight(), defaultDisplayMode.getBitDepth(), defaultDisplayMode.getRefreshRate());

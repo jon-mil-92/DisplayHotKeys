@@ -4,6 +4,7 @@ import java.awt.DisplayMode;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Map;
+import com.dhk.utility.DisplayModeInverter;
 import java.util.HashMap;
 
 /**
@@ -16,18 +17,18 @@ import java.util.HashMap;
 public class DisplayConfig {
 
     private String[] displayIds;
-    private EnumDisplayModes enumDisplayModes;
-    private EnumDisplayIds enumDisplayIds;
-    private DisplayMode[] displayModes;
-    private Map<String, DisplayMode[]> displayModesMap;
+    private GetDisplay getDisplay;
+    private Map<String, DisplayMode[]> landscapeDisplayModesMap;
+    private Map<String, DisplayMode[]> portraitDisplayModesMap;
     private int numOfConnectedDisplays;
 
     /**
      * Constructor for the DisplayConfig class.
      */
     public DisplayConfig() {
-        enumDisplayIds = new EnumDisplayIds();
-        enumDisplayModes = new EnumDisplayModes();
+        getDisplay = new GetDisplay();
+        landscapeDisplayModesMap = new HashMap<String, DisplayMode[]>();
+        portraitDisplayModesMap = new HashMap<String, DisplayMode[]>();
     }
 
     /**
@@ -42,40 +43,45 @@ public class DisplayConfig {
      * Gets the current number of connected displays.
      */
     public void checkNumOfConnectedDisplays() {
-        numOfConnectedDisplays = enumDisplayIds.getNumOfConnectedDisplays();
+        numOfConnectedDisplays = getDisplay.getNumOfConnectedDisplays();
     }
 
     /**
      * Updates the current array of unique display IDs and stores the number of connected displays.
      */
     public void updateDisplayIds() {
-        displayIds = enumDisplayIds.getDisplayIds();
+        displayIds = getDisplay.getDisplayIds();
         numOfConnectedDisplays = displayIds.length;
     }
 
     /**
-     * Gets the current array of display modes for each connected display and stores it in the display modes map.
+     * Gets the current array of landscape and portrait display modes for each connected display.
      */
     private void updateDisplayModes() {
-        displayModesMap = new HashMap<String, DisplayMode[]>();
+        int displayIndex = 0;
+        landscapeDisplayModesMap = new HashMap<String, DisplayMode[]>();
+        portraitDisplayModesMap = new HashMap<String, DisplayMode[]>();
 
         for (String displayId : displayIds) {
-            displayModes = enumDisplayModes.getDisplayModes(displayId);
+            int orientation = getDisplay.getDisplayOrientation(displayIndex);
+            boolean landscapeOrientation = orientation == 1 || orientation == 3;
+            DisplayMode[] displayModes = getDisplay.getDisplayModes(displayId);
 
             Arrays.sort(displayModes, Comparator.comparing(DisplayMode::getWidth).thenComparing(DisplayMode::getHeight)
                     .thenComparing(DisplayMode::getBitDepth).thenComparing(DisplayMode::getRefreshRate).reversed());
 
-            displayModesMap.put(displayId, displayModes);
-        }
-    }
+            DisplayMode[] landscapeDisplayModes = landscapeOrientation
+                    ? displayModes
+                    : DisplayModeInverter.invertDisplayModes(displayModes);
+            DisplayMode[] portraitDisplayModes = landscapeOrientation
+                    ? DisplayModeInverter.invertDisplayModes(displayModes)
+                    : displayModes;
 
-    /**
-     * Gets the number of connected displays.
-     * 
-     * @return The number of connected displays
-     */
-    public int getNumOfConnectedDisplays() {
-        return numOfConnectedDisplays;
+            landscapeDisplayModesMap.put(displayId, landscapeDisplayModes);
+            portraitDisplayModesMap.put(displayId, portraitDisplayModes);
+
+            displayIndex++;
+        }
     }
 
     /**
@@ -88,15 +94,36 @@ public class DisplayConfig {
     }
 
     /**
-     * Gets the array of supported display modes for the given display ID.
+     * Gets the array of supported landscape display modes for the given display ID.
      * 
      * @param displayId
-     *            - The ID of the display to get the supported display modes for
+     *            - The ID of the display to get the supported landscape display modes for
      * 
-     * @return The array of supported display modes for the given display ID
+     * @return The array of supported landscape display modes for the given display ID
      */
-    public DisplayMode[] getDisplayModes(String displayId) {
-        return displayModesMap.get(displayId);
+    public DisplayMode[] getLandscapeDisplayModes(String displayId) {
+        return landscapeDisplayModesMap.get(displayId);
+    }
+
+    /**
+     * Gets the array of supported portrait display modes for the given display ID.
+     * 
+     * @param displayId
+     *            - The ID of the display to get the supported portrait display modes for
+     * 
+     * @return The array of supported portrait display modes for the given display ID
+     */
+    public DisplayMode[] getPortraitDisplayModes(String displayId) {
+        return portraitDisplayModesMap.get(displayId);
+    }
+
+    /**
+     * Gets the number of connected displays.
+     * 
+     * @return The number of connected displays
+     */
+    public int getNumOfConnectedDisplays() {
+        return numOfConnectedDisplays;
     }
 
 }

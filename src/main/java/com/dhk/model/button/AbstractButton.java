@@ -15,6 +15,12 @@ public abstract class AbstractButton extends JButton {
     private static final long serialVersionUID = -8040714399831618945L;
 
     /**
+     * Default constructor for the AbstractButton class
+     */
+    public AbstractButton() {
+    }
+
+    /**
      * Gets an SVG icon for the resource at the given path with the given image scale percentage.
      * 
      * @param path

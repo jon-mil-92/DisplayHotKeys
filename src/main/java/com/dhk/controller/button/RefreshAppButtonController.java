@@ -58,7 +58,7 @@ public class RefreshAppButtonController extends AbstractButtonController impleme
     public void initListeners() {
         view.getRefreshAppButton().addActionListener(e -> refreshAppButtonAction());
 
-        initStateChangeListeners(view.getRefreshAppButton(), view.getDisplayIdsLabel());
+        initStateChangeListeners(view.getRefreshAppButton(), view.getSelectedDisplayLabel());
     }
 
     @Override

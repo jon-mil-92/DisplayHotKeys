@@ -60,7 +60,7 @@ public class ClearHotKeyButtonController extends AbstractButtonController implem
                         .addActionListener(e -> slotClearHotKeyEvent(displayIndex, slotIndex));
 
                 initStateChangeListeners(view.getSlot(displayIndex, slotIndex).getClearHotKeyButton(),
-                        view.getDisplayIdsLabel());
+                        view.getSelectedDisplayLabel());
 
                 // Enable the clear hot key buttons for the hot keys that are set
                 if (model.getSlot(displayIndex, slotIndex).getHotKey().getKeys().size() > 0) {
@@ -92,8 +92,8 @@ public class ClearHotKeyButtonController extends AbstractButtonController implem
         settingsMgr.saveIniSlotHotKey(displayId, slotId, model.getSlot(displayIndex, slotIndex).getHotKey());
         frameUpdater.updateUI();
 
-        // Focus on the display IDs label after clearing the hot key so the change hot key button doesn't gain focus
-        view.getDisplayIdsLabel().requestFocusInWindow();
+        // Focus on the selected display label so the change hot key button does not gain focus
+        view.getSelectedDisplayLabel().requestFocusInWindow();
     }
 
 }

@@ -37,7 +37,7 @@ public class MinimizeButtonController extends AbstractButtonController implement
     public void initListeners() {
         view.getMinimizeButton().addActionListener(e -> minimizeButtonAction());
 
-        initStateChangeListeners(view.getMinimizeButton(), view.getDisplayIdsLabel());
+        initStateChangeListeners(view.getMinimizeButton(), view.getSelectedDisplayLabel());
     }
 
     @Override
@@ -51,8 +51,8 @@ public class MinimizeButtonController extends AbstractButtonController implement
         // Minimize the application
         view.getFrame().setExtendedState(Frame.ICONIFIED);
 
-        // Transfer focus to the first element in the frame so the icon is not focused upon leaving the ICONIFIED state
-        view.getDisplayIdsLabel().requestFocusInWindow();
+        // Focus on the selected display label so the button is not focused on upon leaving the ICONIFIED state
+        view.getSelectedDisplayLabel().requestFocusInWindow();
 
         // Try to free up resources upon minimizing to the system tray to utilize minimal memory while minimized
         System.gc();

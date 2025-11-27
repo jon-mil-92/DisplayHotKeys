@@ -35,11 +35,13 @@
 
 ## About The Project
 
-This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, bit depth, refresh rate, scaling mode, and DPI scale percentage can be changed for each connected display with user-defined hot keys.
+This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, bit depth, refresh rate, scaling mode, DPI scale percentage, and orientation can be changed for each connected display with user-defined hot keys.
 
 ### Common Use Cases
 
 * Switch refresh rates to quickly enable the Black Frame Insertion or Backlight Strobing capabilities of the display.
+
+* Easily rotate the display orientation with hot keys.
 
 * Quickly switch between resolutions with different aspect ratios.
 
@@ -49,9 +51,13 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 * Instantly set a display mode while in a video game. (This is useful if a video game does not support changing the resolution or refresh rate while in-game.)
 
-### Example Screen
+### Light Mode
 
-![screenshot](src/main/resources/images/product_screenshot.png)
+![screenshot](src/main/resources/images/product_screenshot_light.png)
+
+### Dark Mode
+
+![screenshot](src/main/resources/images/product_screenshot_dark.png)
 
 <p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
@@ -95,8 +101,6 @@ This application will be distributed as a portable package and as an installer.
 
 ## Usage
 
-This application will launch minimized to the system tray in the task bar by design.
-
 ### Setting Hot Keys
 
 1. Click the "Change Hot Key" button.
@@ -107,37 +111,21 @@ This application will launch minimized to the system tray in the task bar by des
 
 **Note:** A hot key cannot be a subset of another hot key. For example, you cannot have a hot key of "Ctrl + F1" and another hot key of "Ctrl + Shift + F1". However, a hot key can be the same as another hot key if they are for different displays. This will allow you to apply display settings for multiple displays with one hot key!
 
-### Changing Displays
+### Changing the Selected Display
 
-1. Click the "Display" drop-down box.
+1. Click the "Selected Display" drop-down box.
 
-2. Select the display you want to change hot keys for.
+2. Select the display number you want to change hot keys for.
 
 **Note:** The application will automatically detect newly disconnected and connected displays, and the application will refresh to reflect the display configuration change.
 
-### Changing Active Hot Key Slots
+### Changing the Number of Active Hot Key Slots for a Display
 
-1. Click the "Slots" drop-down box.
+1. Click the "Active Slots" drop-down box.
 
 2. Select one of the values.
 
 **Note:** There can be up to 12 active hot key slots for each connected display.
-
-### Changing Display Orientation
-
-1. Click the "Orientation" drop-down box.
-
-2. Select one of the following values:
-    
-    * Landscape - The standard orientation with no rotation.
-    
-    * Portrait - Mode for 90 degrees display rotation.
-    
-    * iLandscape - Inverted landscape mode for 180 degrees display rotation.
-    
-    * iPortrait - Inverted portrait mode for 270 degrees display rotation.
-
-**Note:** Make sure you can rotate your display before changing the orientation; otherwise, it may be difficult to operate your computer.
 
 ### Selecting Display Settings
 
@@ -150,10 +138,22 @@ This application will launch minimized to the system tray in the task bar by des
 	* Select "Stretched" to stretch the image to the edges of the panel.
 	
 	* Select "Centered" to center the image in the middle of the panel without scaling.
+	
+**Note:** You may need to use GPU Scaling in your display driver settings to prevent the monitor from overriding the scaling mode.
 
 3. Select a DPI scale percentage value in the "DPI Scale" drop-down box for the hot key slot.
 
-**Note:** You may need to use GPU Scaling in your display driver settings to prevent the monitor from overriding the scaling mode.
+4. Select a display orientation in the "Orientation" drop-down box for the hot key slot.
+
+	* Select "Landscape" for a landscape orientation of no rotation.
+    
+    * Select "Portrait" for a portrait orientation of 90 degrees rotation.
+    
+    * Select "iLandscape" for an inverted landscape orientation of 180 degrees rotation.
+    
+    * Select "iPortrait" for an inverted portrait orientation of 270 degrees rotation.
+	
+**Note:** Make sure you can rotate your display before changing the orientation; otherwise, it may be difficult to operate your computer.
 
 ### Button Interaction
 
@@ -209,6 +209,7 @@ To exit the application, click on the "Exit App" button. You can also exit the a
 - [x] &thinsp; Add display orientation selection.
 - [x] &thinsp; Add button to immediately apply display modes.
 - [x] &thinsp; Add a minimize to tray toggle.
+- [x] &thinsp; Add ability to change display orientation with hot keys.
 
 See [open issues] for a full list of proposed features (and known issues).
 

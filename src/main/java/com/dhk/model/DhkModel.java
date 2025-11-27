@@ -1,5 +1,6 @@
 package com.dhk.model;
 
+import java.awt.DisplayMode;
 import java.util.ArrayList;
 import java.util.List;
 import com.dhk.io.DisplayConfig;
@@ -50,16 +51,18 @@ public class DhkModel {
             List<Slot> slots = new ArrayList<Slot>(maxNumOfSlots);
 
             for (int slotId = 1; slotId <= maxNumOfSlots; slotId++) {
-                slots.add(new Slot(settingsMgr.getIniSlotDisplayMode(displayId, slotId),
-                        settingsMgr.getIniSlotScalingMode(displayId, slotId),
-                        settingsMgr.getIniSlotDpiScalePercentage(displayId, slotId), false,
-                        settingsMgr.getIniSlotHotKey(displayId, slotId)));
+                DisplayMode displayMode = settingsMgr.getIniSlotDisplayMode(displayId, slotId);
+                int scalingMode = settingsMgr.getIniSlotScalingMode(displayId, slotId);
+                int dpiScalePercentage = settingsMgr.getIniSlotDpiScalePercentage(displayId, slotId);
+                int orientationMode = settingsMgr.getIniSlotOrientationMode(displayId, slotId);
+                HotKey hotKey = settingsMgr.getIniSlotHotKey(displayId, slotId);
+
+                slots.add(new Slot(displayMode, scalingMode, dpiScalePercentage, orientationMode, false, hotKey));
             }
 
             int numOfSlots = settingsMgr.getIniNumOfSlotsForDisplay(displayId);
-            int orientationMode = settingsMgr.getIniOrientationModeForDisplay(displayId);
 
-            displays.add(new Display(displayId, numOfSlots, orientationMode, slots));
+            displays.add(new Display(displayId, numOfSlots, slots));
         }
     }
 
@@ -112,30 +115,6 @@ public class DhkModel {
      */
     public void setNumOfSlotsForDisplay(int displayIndex, int numberOfSlots) {
         displays.get(displayIndex).setNumOfActiveSlots(numberOfSlots);
-    }
-
-    /**
-     * Gets the orientation mode for the given display.
-     * 
-     * @param displayIndex
-     *            - The index of the display to get the orientation mode for
-     *
-     * @return The orientation mode the given display
-     */
-    public int getOrientationModeForDisplay(int displayIndex) {
-        return displays.get(displayIndex).getOrientationMode();
-    }
-
-    /**
-     * Sets the orientation mode for the given display.
-     * 
-     * @param displayIndex
-     *            - The index of the display to set the orientation mode for
-     * @param orientationMode
-     *            - The new orientation mode for the given display
-     */
-    public void setOrientationModeForDisplay(int displayIndex, int orientationMode) {
-        displays.get(displayIndex).setOrientationMode(orientationMode);
     }
 
     /**
