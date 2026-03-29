@@ -1,6 +1,5 @@
 package com.dhk.model.button;
 
-import java.awt.Dimension;
 import java.awt.Insets;
 import javax.swing.Icon;
 
@@ -9,7 +8,7 @@ import javax.swing.Icon;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class Button extends AbstractButton {
 
@@ -20,28 +19,22 @@ public class Button extends AbstractButton {
     private Icon heldIcon;
 
     /**
-     * Constructor for the Button class.
+     * Constructor for the {@link Button} class.
      * 
      * @param idleIconPath
      *            - The resource path for the idle icon
      * @param hoverIconPath
      *            - The resource path for the hover icon
-     * @param tooltip
-     *            - The text for the button tooltip
-     * @param size
-     *            - The size of the button
-     * @param idleScale
-     *            - The image scale percentage when the button is idle
-     * @param heldScale
-     *            - The image scale percentage when the button is held down
+     * @param properties
+     *            - The properties of the button
      * @param enabled
      *            - The initial enabled state of the button
      */
-    public Button(String idleIconPath, String hoverIconPath, String tooltip, Dimension size, float idleScale,
-            float heldScale, boolean enabled) {
-        this.idleIcon = getSvgIcon(idleIconPath, idleScale);
-        this.hoverIcon = getSvgIcon(hoverIconPath, idleScale);
-        this.heldIcon = getSvgIcon(hoverIconPath, heldScale);
+    public Button(String idleIconPath, String hoverIconPath, ButtonProperties properties, boolean enabled) {
+        setButtonProperties(properties);
+        this.idleIcon = getSvgIcon(idleIconPath, properties.getIdleScale());
+        this.hoverIcon = getSvgIcon(hoverIconPath, properties.getIdleScale());
+        this.heldIcon = getSvgIcon(hoverIconPath, properties.getHeldScale());
 
         updateIdleIcon();
         getInputMap().clear();
@@ -49,8 +42,8 @@ public class Button extends AbstractButton {
         setContentAreaFilled(false);
         setFocusPainted(false);
         setMargin(new Insets(0, 0, 0, 0));
-        setToolTipText(tooltip);
-        setPreferredSize(size);
+        setToolTipText(properties.getTooltip());
+        setPreferredSize(properties.getSize());
         setEnabled(enabled);
 
         addChangeListener(e -> super.iconChangeAction());

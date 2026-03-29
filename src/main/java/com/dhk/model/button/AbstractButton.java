@@ -8,14 +8,16 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public abstract class AbstractButton extends JButton {
 
     private static final long serialVersionUID = -8040714399831618945L;
 
+    private ButtonProperties buttonProperties;
+
     /**
-     * Default constructor for the AbstractButton class
+     * Default constructor for the {@link AbstractButton} class
      */
     public AbstractButton() {
     }
@@ -50,16 +52,35 @@ public abstract class AbstractButton extends JButton {
     /**
      * Updates the icon when the button is idle.
      */
-    abstract void updateIdleIcon();
+    public abstract void updateIdleIcon();
 
     /**
      * Updates the icon when the cursor is hovering over the button.
      */
-    abstract void updateHoverIcon();
+    public abstract void updateHoverIcon();
 
     /**
      * Updates the icon when the button is held down.
      */
-    abstract void updateHeldIcon();
+    public abstract void updateHeldIcon();
+
+    /**
+     * Gets the button properties.
+     * 
+     * @return The button properties
+     */
+    public ButtonProperties getButtonProperties() {
+        return buttonProperties;
+    }
+
+    /**
+     * Sets the button properties.
+     * 
+     * @param buttonProperties
+     *            - The button properties to set
+     */
+    public void setButtonProperties(ButtonProperties buttonProperties) {
+        this.buttonProperties = buttonProperties;
+    }
 
 }

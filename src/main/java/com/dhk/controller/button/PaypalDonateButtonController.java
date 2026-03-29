@@ -5,7 +5,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import com.dhk.controller.IController;
-import com.dhk.view.DhkView;
+import com.dhk.model.button.ThemeableButton;
+import com.dhk.view.IView;
 
 /**
  * Controls the PayPal Donate button. Listeners are added to the corresponding view component so that when the PayPal
@@ -13,41 +14,44 @@ import com.dhk.view.DhkView;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class PaypalDonateButtonController extends AbstractButtonController implements IController {
 
-    private DhkView view;
+    private IView view;
+    private ThemeableButton paypalDonateButton;
 
-    private final String LINK_DOMAIN = "https://www.paypal.com/donate/";
-    private final String LINK_ID = "?business=A6U7KG5BDZTRE";
-    private final String LINK_RECURRING = "&no_recurring=0";
-    private final String LINK_MESSAGE = "&item_name=I+appreciate+you+visiting+this+page%21+Thank+you%21";
-    private final String LINK_CURRENCY = "&currency_code=USD";
-    private final String PAYPAL_DONATE_LINK = LINK_DOMAIN + LINK_ID + LINK_RECURRING + LINK_MESSAGE + LINK_CURRENCY;
+    private static final String LINK_DOMAIN = "https://www.paypal.com";
+    private static final String LINK_PATH = "/donate/";
+    private static final String LINK_ID = "?business=A6U7KG5BDZTRE";
+    private static final String LINK_RECURRING = "&no_recurring=0";
+    private static final String LINK_MESSAGE = "&item_name=I+appreciate+you+visiting+this+page%21+Thank+you%21";
+    private static final String LINK_CURRENCY = "&currency_code=USD";
+    private static final String PAYPAL_DONATE_LINK = LINK_DOMAIN + LINK_PATH + LINK_ID + LINK_RECURRING + LINK_MESSAGE
+            + LINK_CURRENCY;
 
     /**
-     * Constructor for the PaypalDonateButtonController class.
+     * Constructor for the {@link PaypalDonateButtonController} class.
      *
      * @param view
-     *            - The view for the application
+     *            - The view that holds the PayPal donate button
+     * @param paypalDonateButton
+     *            - The PayPal donate button to control
      */
-    public PaypalDonateButtonController(DhkView view) {
+    public PaypalDonateButtonController(IView view, ThemeableButton paypalDonateButton) {
         this.view = view;
+        this.paypalDonateButton = paypalDonateButton;
     }
 
     @Override
     public void initController() {
     }
 
-    /**
-     * Initializes the listeners for the paypal donate button.
-     */
     @Override
     public void initListeners() {
-        view.getPaypalDonateButton().addActionListener(e -> paypalDonateButtonAction());
+        paypalDonateButton.addActionListener(e -> paypalDonateButtonAction());
 
-        initStateChangeListeners(view.getPaypalDonateButton(), view.getSelectedDisplayLabel());
+        initStateChangeListeners(paypalDonateButton, view.getDefaultFocusComponent());
     }
 
     @Override

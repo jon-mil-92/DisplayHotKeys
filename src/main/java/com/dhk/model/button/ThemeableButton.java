@@ -1,6 +1,5 @@
 package com.dhk.model.button;
 
-import java.awt.Dimension;
 import javax.swing.Icon;
 import javax.swing.event.ChangeListener;
 
@@ -9,7 +8,7 @@ import javax.swing.event.ChangeListener;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class ThemeableButton extends Button {
 
@@ -21,7 +20,7 @@ public class ThemeableButton extends Button {
     private boolean darkMode;
 
     /**
-     * Constructor for the ThemeableButton class.
+     * Constructor for the {@link ThemeableButton} class.
      * 
      * @param idleIconPath
      *            - The resource path for the idle icon
@@ -31,26 +30,21 @@ public class ThemeableButton extends Button {
      *            - The resource path for the dark mode idle icon
      * @param darkHoverIconPath
      *            - The resource path for the dark mode hover icon
-     * @param tooltip
-     *            - The text for the button tooltip
-     * @param size
-     *            - The size of the button
-     * @param idleScale
-     *            - The image scale percentage when the button is idle
-     * @param heldScale
-     *            - The image scale percentage when the button is held down
+     * @param properties
+     *            - The properties of the button
      * @param enabled
      *            - The initial enabled state of the button
      * @param darkMode
      *            - The initial dark mode state of the button
      */
     public ThemeableButton(String idleIconPath, String hoverIconPath, String darkIdleIconPath, String darkHoverIconPath,
-            String tooltip, Dimension size, float idleScale, float heldScale, boolean enabled, boolean darkMode) {
-        super(idleIconPath, hoverIconPath, tooltip, size, idleScale, heldScale, enabled);
+            ButtonProperties properties, boolean enabled, boolean darkMode) {
+        super(idleIconPath, hoverIconPath, properties, enabled);
+        setButtonProperties(properties);
 
-        this.darkIdleIcon = getSvgIcon(darkIdleIconPath, idleScale);
-        this.darkHoverIcon = getSvgIcon(darkHoverIconPath, idleScale);
-        this.darkHeldIcon = getSvgIcon(darkHoverIconPath, heldScale);
+        this.darkIdleIcon = getSvgIcon(darkIdleIconPath, properties.getIdleScale());
+        this.darkHoverIcon = getSvgIcon(darkHoverIconPath, properties.getIdleScale());
+        this.darkHeldIcon = getSvgIcon(darkHoverIconPath, properties.getHeldScale());
         this.darkMode = darkMode;
 
         updateIdleIcon();

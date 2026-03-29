@@ -1,5 +1,6 @@
 package com.dhk.view;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.DisplayMode;
 import java.awt.GridBagConstraints;
@@ -20,6 +21,7 @@ import javax.swing.UIManager;
 import com.dhk.io.DisplayConfig;
 import com.dhk.model.DhkModel;
 import com.dhk.model.button.Button;
+import com.dhk.model.button.ButtonProperties;
 import com.dhk.model.button.ThemeableButton;
 import com.dhk.model.button.ThemeableToggleButton;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
@@ -31,9 +33,9 @@ import com.formdev.flatlaf.ui.FlatUIUtils;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
-public class DhkView {
+public class DhkView implements IView {
 
     private DhkModel model;
     private JFrame frame;
@@ -56,6 +58,7 @@ public class DhkView {
     private JComboBox<Integer> displayIds;
     private Map<Integer, List<Slot>> displayMap;
     private Map<Integer, JComboBox<Integer>> numberOfActiveSlotsMap;
+    private ThemeableButton aboutButton;
     private ThemeableButton themeButton;
     private ThemeableToggleButton minimizeToTrayButton;
     private ThemeableToggleButton runOnStartupButton;
@@ -63,59 +66,18 @@ public class DhkView {
     private Button clearAllButton;
     private Button minimizeButton;
     private Button exitButton;
-    private ThemeableButton paypalDonateButton;
     private List<ThemeableButton> themeableButtons;
     private boolean appLaunching;
     private int previouslySelectedDisplayIndex;
     private int gridYPosForSlotInPanel;
 
-    private final int NUM_OF_SLOT_COMPONENTS = 9;
-    private final String[] ORIENTATION_MODES = {"Landscape", "Portrait", "iLandscape", "iPortrait"};
-    private final String[] SCALING_MODES = new String[]{"Preserved", "Stretched", "Centered"};
-    private final Integer[] DPI_SCALE_PERCENTAGES = new Integer[]{100, 125, 150, 175, 200, 225, 250, 300, 350};
-
-    private final String THEME_BUTTON_TOOLTIP = "Change Theme";
-    private final Dimension THEME_BUTTON_SIZE = new Dimension(50, 50);
-    private final float THEME_BUTTON_IDLE_SCALE = 0.80f;
-    private final float THEME_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String MINIMIZE_TO_TRAY_BUTTON_TOOLTIP = "Minimize To Tray";
-    private final Dimension MINIMIZE_TO_TRAY_BUTTON_SIZE = new Dimension(48, 50);
-    private final float MINIMIZE_TO_TRAY_BUTTON_IDLE_SCALE = 0.80f;
-    private final float MINIMIZE_TO_TRAY_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String RUN_ON_STARTUP_BUTTON_TOOLTIP = "Run On Startup";
-    private final Dimension RUN_ON_STARTUP_BUTTON_SIZE = new Dimension(48, 50);
-    private final float RUN_ON_STARTUP_BUTTON_IDLE_SCALE = 0.80f;
-    private final float RUN_ON_STARTUP_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String REFRESH_APP_BUTTON_TOOLTIP = "Refresh App";
-    private final Dimension REFRESH_APP_BUTTON_SIZE = new Dimension(40, 50);
-    private final float REFRESH_APP_BUTTON_IDLE_SCALE = 0.80f;
-    private final float REFRESH_APP_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String CLEAR_ALL_BUTTON_TOOLTIP = "Clear All Slots";
-    private final Dimension CLEAR_ALL_BUTTON_SIZE = new Dimension(44, 50);
-    private final float CLEAR_ALL_BUTTON_IDLE_SCALE = 0.80f;
-    private final float CLEAR_ALL_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String MINIMIZE_BUTTON_TOOLTIP = "Minimize App";
-    private final Dimension MINIMIZE_BUTTON_SIZE = new Dimension(32, 50);
-    private final float MINIMIZE_BUTTON_IDLE_SCALE = 0.80f;
-    private final float MINIMIZE_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String EXIT_BUTTON_TOOLTIP = "Exit App";
-    private final Dimension EXIT_BUTTON_SIZE = new Dimension(34, 50);
-    private final float EXIT_BUTTON_IDLE_SCALE = 0.80f;
-    private final float EXIT_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String PAYPAL_DONATE_BUTTON_TOOLTIP = "PayPal Donate";
-    private final Dimension PAYPAL_DONATE_BUTTON_SIZE = new Dimension(134, 46);
-    private final float PAYPAL_DONATE_BUTTON_IDLE_SCALE = 0.70f;
-    private final float PAYPAL_DONATE_BUTTON_HELD_SCALE = 0.63f;
+    private static final int NUM_OF_SLOT_COMPONENTS = 9;
+    private static final String[] ORIENTATION_MODES = {"Landscape", "Portrait", "iLandscape", "iPortrait"};
+    private static final String[] SCALING_MODES = new String[]{"Preserved", "Stretched", "Centered"};
+    private static final Integer[] DPI_SCALE_PERCENTAGES = new Integer[]{100, 125, 150, 175, 200, 225, 250, 300, 350};
 
     /**
-     * Constructor for the DhkView class.
+     * Constructor for the {@link DhkView} class.
      * 
      * @param model
      *            - The model for the application
@@ -130,6 +92,11 @@ public class DhkView {
 
         // The starting Y-coordinate for slots
         gridYPosForSlotInPanel = 2;
+    }
+
+    @Override
+    public Component getDefaultFocusComponent() {
+        return selectedDisplayLabel;
     }
 
     /**
@@ -408,48 +375,52 @@ public class DhkView {
             numberOfActiveSlotsMap.put(displayIndex, numberOfActiveSlots);
         }
 
-        paypalDonateButton = new ThemeableButton("/paypal_donate_light_idle.svg", "/paypal_donate_light_hover.svg",
-                "/paypal_donate_dark_idle.svg", "/paypal_donate_dark_hover.svg", PAYPAL_DONATE_BUTTON_TOOLTIP,
-                PAYPAL_DONATE_BUTTON_SIZE, PAYPAL_DONATE_BUTTON_IDLE_SCALE, PAYPAL_DONATE_BUTTON_HELD_SCALE, true,
-                model.isDarkMode());
+        ButtonProperties aboutButtonProps = new ButtonProperties("About App", new Dimension(40, 50), 0.70f, 0.60f);
+        aboutButton = new ThemeableButton("/about_idle.svg", "/about_light_hover.svg", "/about_idle.svg",
+                "/about_dark_hover.svg", aboutButtonProps, true, model.isDarkMode());
 
-        themeableButtons.add(paypalDonateButton);
+        themeableButtons.add(aboutButton);
 
+        ButtonProperties themeButtonProps = new ButtonProperties("Change Theme", new Dimension(50, 50), 0.80f, 0.68f);
         themeButton = new ThemeableButton("/light_mode_idle.svg", "/light_mode_hover.svg", "/dark_mode_idle.svg",
-                "/dark_mode_hover.svg", THEME_BUTTON_TOOLTIP, THEME_BUTTON_SIZE, THEME_BUTTON_IDLE_SCALE,
-                THEME_BUTTON_HELD_SCALE, true, model.isDarkMode());
+                "/dark_mode_hover.svg", themeButtonProps, true, model.isDarkMode());
 
         themeableButtons.add(themeButton);
 
+        ButtonProperties minimizeToTrayButtonProps = new ButtonProperties("Minimize To Tray", new Dimension(48, 50),
+                0.80f, 0.68f);
         minimizeToTrayButton = new ThemeableToggleButton("/minimize_to_tray_enabled_idle.svg",
                 "/minimize_to_tray_disabled_idle.svg", "/minimize_to_tray_enabled_light_hover.svg",
                 "/minimize_to_tray_disabled_light_hover.svg", "/minimize_to_tray_enabled_dark_hover.svg",
-                "/minimize_to_tray_disabled_dark_hover.svg", MINIMIZE_TO_TRAY_BUTTON_TOOLTIP,
-                MINIMIZE_TO_TRAY_BUTTON_SIZE, MINIMIZE_TO_TRAY_BUTTON_IDLE_SCALE, MINIMIZE_TO_TRAY_BUTTON_HELD_SCALE,
-                true, model.isDarkMode(), model.isMinimizeToTray());
+                "/minimize_to_tray_disabled_dark_hover.svg", minimizeToTrayButtonProps, true, model.isDarkMode(),
+                model.isMinimizeToTray());
 
         themeableButtons.add(minimizeToTrayButton);
 
+        ButtonProperties runOnStartupButtonProps = new ButtonProperties("Run On Startup", new Dimension(48, 50), 0.80f,
+                0.68f);
         runOnStartupButton = new ThemeableToggleButton("/run_on_startup_enabled_idle.svg",
                 "/run_on_startup_disabled_idle.svg", "/run_on_startup_enabled_light_hover.svg",
                 "/run_on_startup_disabled_light_hover.svg", "/run_on_startup_enabled_dark_hover.svg",
-                "/run_on_startup_disabled_dark_hover.svg", RUN_ON_STARTUP_BUTTON_TOOLTIP, RUN_ON_STARTUP_BUTTON_SIZE,
-                RUN_ON_STARTUP_BUTTON_IDLE_SCALE, RUN_ON_STARTUP_BUTTON_HELD_SCALE, true, model.isDarkMode(),
+                "/run_on_startup_disabled_dark_hover.svg", runOnStartupButtonProps, true, model.isDarkMode(),
                 model.isRunOnStartup());
 
         themeableButtons.add(runOnStartupButton);
 
-        refreshAppButton = new Button("/refresh_app_idle.svg", "/refresh_app_hover.svg", REFRESH_APP_BUTTON_TOOLTIP,
-                REFRESH_APP_BUTTON_SIZE, REFRESH_APP_BUTTON_IDLE_SCALE, REFRESH_APP_BUTTON_HELD_SCALE, true);
+        ButtonProperties refreshAppButtonProps = new ButtonProperties("Refresh App", new Dimension(40, 50), 0.80f,
+                0.68f);
+        refreshAppButton = new Button("/refresh_app_idle.svg", "/refresh_app_hover.svg", refreshAppButtonProps, true);
 
-        clearAllButton = new Button("/clear_all_idle.svg", "/clear_all_hover.svg", CLEAR_ALL_BUTTON_TOOLTIP,
-                CLEAR_ALL_BUTTON_SIZE, CLEAR_ALL_BUTTON_IDLE_SCALE, CLEAR_ALL_BUTTON_HELD_SCALE, true);
+        ButtonProperties clearAllButtonProps = new ButtonProperties("Clear All Slots", new Dimension(44, 50), 0.80f,
+                0.68f);
+        clearAllButton = new Button("/clear_all_idle.svg", "/clear_all_hover.svg", clearAllButtonProps, true);
 
-        minimizeButton = new Button("/minimize_idle.svg", "/minimize_hover.svg", MINIMIZE_BUTTON_TOOLTIP,
-                MINIMIZE_BUTTON_SIZE, MINIMIZE_BUTTON_IDLE_SCALE, MINIMIZE_BUTTON_HELD_SCALE, true);
+        ButtonProperties minimizeButtonProps = new ButtonProperties("Minimize App", new Dimension(32, 50), 0.80f,
+                0.68f);
+        minimizeButton = new Button("/minimize_idle.svg", "/minimize_hover.svg", minimizeButtonProps, true);
 
-        exitButton = new Button("/exit_idle.svg", "/exit_hover.svg", EXIT_BUTTON_TOOLTIP, EXIT_BUTTON_SIZE,
-                EXIT_BUTTON_IDLE_SCALE, EXIT_BUTTON_HELD_SCALE, true);
+        ButtonProperties exitButtonProps = new ButtonProperties("Exit App", new Dimension(34, 50), 0.80f, 0.68f);
+        exitButton = new Button("/exit_idle.svg", "/exit_hover.svg", exitButtonProps, true);
 
         displayModeLabel = new JLabel("Display Mode", SwingConstants.CENTER);
         displayModeLabel.setPreferredSize(new Dimension(256, 28));
@@ -556,7 +527,7 @@ public class DhkView {
     }
 
     /**
-     * This method adds the labels and sub-panels to the main panel.
+     * Adds the labels and sub-panels to the main panel.
      */
     private void addNonSlotComponents() {
         mainPanelConstraints.anchor = GridBagConstraints.WEST;
@@ -596,7 +567,7 @@ public class DhkView {
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 0;
         menuPanelConstraints.gridy = 0;
-        menuPanel.add(paypalDonateButton, menuPanelConstraints);
+        menuPanel.add(aboutButton, menuPanelConstraints);
 
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 1;
@@ -680,15 +651,6 @@ public class DhkView {
     }
 
     /**
-     * Gets the selected display label.
-     * 
-     * @return The label for the selected display combo box in the view
-     */
-    public JLabel getSelectedDisplayLabel() {
-        return selectedDisplayLabel;
-    }
-
-    /**
      * Gets the display IDs combo box.
      * 
      * @return The combo box for the current display ID in the view
@@ -726,6 +688,15 @@ public class DhkView {
      */
     public JComboBox<Integer> getNumberOfActiveSlots(int displayIndex) {
         return numberOfActiveSlotsMap.get(displayIndex);
+    }
+
+    /**
+     * Gets the about button.
+     * 
+     * @return The about button
+     */
+    public ThemeableButton getAboutButton() {
+        return aboutButton;
     }
 
     /**
@@ -789,15 +760,6 @@ public class DhkView {
      */
     public Button getExitButton() {
         return exitButton;
-    }
-
-    /**
-     * Gets the paypal donate button.
-     * 
-     * @return The paypal donate button
-     */
-    public ThemeableButton getPaypalDonateButton() {
-        return paypalDonateButton;
     }
 
     /**

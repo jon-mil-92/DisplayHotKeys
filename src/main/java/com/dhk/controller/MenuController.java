@@ -2,11 +2,12 @@ package com.dhk.controller;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import com.dhk.controller.button.AboutButtonController;
 import com.dhk.controller.button.ClearAllButtonController;
 import com.dhk.controller.button.ExitButtonController;
 import com.dhk.controller.button.MinimizeButtonController;
 import com.dhk.controller.button.MinimizeToTrayButtonController;
-import com.dhk.controller.button.PaypalDonateButtonController;
 import com.dhk.controller.button.RefreshAppButtonController;
 import com.dhk.controller.button.RunOnStartupButtonController;
 import com.dhk.controller.button.ThemeButtonController;
@@ -20,7 +21,7 @@ import com.dhk.view.DhkView;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class MenuController implements IController {
 
@@ -31,7 +32,7 @@ public class MenuController implements IController {
     private List<IController> menuButtonControllers;
 
     /**
-     * Constructor for the MenuController class.
+     * Constructor for the {@link MenuController} class.
      * 
      * @param model
      *            - The model for the application
@@ -49,13 +50,10 @@ public class MenuController implements IController {
         this.settingsMgr = settingsMgr;
     }
 
-    /**
-     * Initializes the button controllers for the menu.
-     */
     @Override
     public void initController() {
         menuButtonControllers = new ArrayList<IController>();
-        menuButtonControllers.add(new PaypalDonateButtonController(view));
+        menuButtonControllers.add(new AboutButtonController(model, view));
         menuButtonControllers.add(new ThemeButtonController(model, view, settingsMgr));
         menuButtonControllers.add(new MinimizeToTrayButtonController(model, view, settingsMgr));
         menuButtonControllers.add(new RunOnStartupButtonController(model, view, settingsMgr));
@@ -69,9 +67,6 @@ public class MenuController implements IController {
         }
     }
 
-    /*
-     * Initializes the listeners for each menu button controller
-     */
     @Override
     public void initListeners() {
         for (IController menuButtonController : menuButtonControllers) {

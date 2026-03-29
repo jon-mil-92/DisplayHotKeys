@@ -6,10 +6,10 @@ import com.dhk.model.DhkModel;
 import com.dhk.model.HotKey;
 import com.dhk.model.Key;
 import com.dhk.view.DhkView;
+import com.dhk.view.FrameUpdater;
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.KeyText;
 import com.dhk.io.SetDisplay;
-import com.dhk.window.FrameUpdater;
 import lc.kra.system.keyboard.event.GlobalKeyEvent;
 import lc.kra.system.keyboard.event.GlobalKeyListener;
 import java.util.ArrayList;
@@ -27,7 +27,7 @@ import java.awt.event.ActionListener;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class HotKeysController implements IController, GlobalKeyListener {
 
@@ -46,18 +46,18 @@ public class HotKeysController implements IController, GlobalKeyListener {
     private boolean showReleaseMessage;
     private boolean anyHotKeySubset;
 
-    private final String CHANGE_HOT_KEY_TEXT = "Change Hot Key";
-    private final String PRESS_HOT_KEY_TEXT = "Press Hot Key";
-    private final String RELEASE_TO_SET_TEXT = "Release To Set";
-    private final String NO_SUBSETS_TEXT = "No Subsets";
-    private final String HOT_KEY_SET_TEXT = "Hot Key Set";
-    private final String HOT_KEY_NOT_SET_TEXT = "Hot Key Not Set";
-    private final int IDLE_INPUT_TIMEOUT = 2500;
-    private final int RELEASE_MESSAGE_TIMEOUT = 1500;
-    private final int MAX_KEY_COUNT = 3;
+    private static final String CHANGE_HOT_KEY_TEXT = "Change Hot Key";
+    private static final String PRESS_HOT_KEY_TEXT = "Press Hot Key";
+    private static final String RELEASE_TO_SET_TEXT = "Release To Set";
+    private static final String NO_SUBSETS_TEXT = "No Subsets";
+    private static final String HOT_KEY_SET_TEXT = "Hot Key Set";
+    private static final String HOT_KEY_NOT_SET_TEXT = "Hot Key Not Set";
+    private static final int IDLE_INPUT_TIMEOUT = 2500;
+    private static final int RELEASE_MESSAGE_TIMEOUT = 1500;
+    private static final int MAX_KEY_COUNT = 3;
 
     /**
-     * Constructor for the HotKeysController class.
+     * Constructor for the {@link HotKeysController} class.
      *
      * @param model
      *            - The model for the application
@@ -75,9 +75,6 @@ public class HotKeysController implements IController, GlobalKeyListener {
         this.settingsMgr = settingsMgr;
     }
 
-    /**
-     * Initializes the variables needed for the hot key controller.
-     */
     @Override
     public void initController() {
         currentKeyCount = 0;
@@ -89,9 +86,6 @@ public class HotKeysController implements IController, GlobalKeyListener {
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
 
-    /**
-     * Initializes the listeners for hot key input.
-     */
     @Override
     public void initListeners() {
         for (int i = 0; i < model.getNumOfConnectedDisplays(); i++) {
@@ -542,7 +536,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
      */
     private void disableComponents() {
         view.getDisplayIds().setEnabled(false);
-        view.getPaypalDonateButton().setEnabled(false);
+        view.getAboutButton().setEnabled(false);
         view.getThemeButton().setEnabled(false);
         view.getMinimizeToTrayButton().setEnabled(false);
         view.getRunOnStartupButton().setEnabled(false);
@@ -571,7 +565,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
      */
     private void enableComponents() {
         view.getDisplayIds().setEnabled(true);
-        view.getPaypalDonateButton().setEnabled(true);
+        view.getAboutButton().setEnabled(true);
         view.getThemeButton().setEnabled(true);
         view.getMinimizeToTrayButton().setEnabled(true);
         view.getRunOnStartupButton().setEnabled(true);

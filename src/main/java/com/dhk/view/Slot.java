@@ -7,13 +7,14 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 import com.dhk.model.button.Button;
+import com.dhk.model.button.ButtonProperties;
 
 /**
  * Defines the view components of a Slot.
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class Slot {
 
@@ -27,18 +28,8 @@ public class Slot {
     private Button slotClearHotKeyButton;
     private JButton slotChangeHotKeyButton;
 
-    private final String APPLY_DISPLAY_MODE_BUTTON_TOOLTIP = "Apply Display Mode";
-    private final Dimension APPLY_DISPLAY_MODE_BUTTON_SIZE = new Dimension(28, 28);
-    private final float APPLY_DISPLAY_MODE_BUTTON_IDLE_SCALE = 0.80f;
-    private final float APPLY_DISPLAY_MODE_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String CLEAR_HOT_KEY_BUTTON_TOOLTIP = "Clear Hot Key";
-    private final Dimension CLEAR_HOT_KEY_BUTTON_SIZE = new Dimension(20, 24);
-    private final float CLEAR_HOT_KEY_BUTTON_IDLE_SCALE = 0.70f;
-    private final float CLEAR_HOT_KEY_BUTTON_HELD_SCALE = 0.60f;
-
     /**
-     * Constructor for the Slot class.
+     * Constructor for the {@link Slot} class.
      * 
      * @param slotIndex
      *            - The index of the slot
@@ -60,9 +51,9 @@ public class Slot {
         slotIndicatorLabel = new JLabel("Slot " + slotID + " :", SwingConstants.CENTER);
         slotIndicatorLabel.setPreferredSize(new Dimension(50, 28));
 
-        applyDisplayModeButton = new Button("/apply_idle.svg", "/apply_hover.svg", APPLY_DISPLAY_MODE_BUTTON_TOOLTIP,
-                APPLY_DISPLAY_MODE_BUTTON_SIZE, APPLY_DISPLAY_MODE_BUTTON_IDLE_SCALE,
-                APPLY_DISPLAY_MODE_BUTTON_HELD_SCALE, true);
+        ButtonProperties applyDisplayModeButtonProps = new ButtonProperties("Apply Display Mode", new Dimension(28, 28),
+                0.80f, 0.68f);
+        applyDisplayModeButton = new Button("/apply_idle.svg", "/apply_hover.svg", applyDisplayModeButtonProps, true);
 
         slotDisplayModes = new JComboBox<DisplayMode>(displayModes);
         slotDisplayModes.setPreferredSize(new Dimension(220, 28));
@@ -78,9 +69,10 @@ public class Slot {
 
         slotHotKey = new JLabel("", SwingConstants.CENTER);
 
+        ButtonProperties slotClearHotKeyButtonProps = new ButtonProperties("Clear Hot Key", new Dimension(20, 24),
+                0.70f, 0.60f);
         slotClearHotKeyButton = new Button("/clear_hot_key_idle.svg", "/clear_hot_key_hover.svg",
-                CLEAR_HOT_KEY_BUTTON_TOOLTIP, CLEAR_HOT_KEY_BUTTON_SIZE, CLEAR_HOT_KEY_BUTTON_IDLE_SCALE,
-                CLEAR_HOT_KEY_BUTTON_HELD_SCALE, false);
+                slotClearHotKeyButtonProps, false);
 
         slotChangeHotKeyButton = new JButton("Change Hot Key");
         slotChangeHotKeyButton.setPreferredSize(new Dimension(150, 28));
