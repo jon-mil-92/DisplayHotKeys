@@ -14,7 +14,7 @@ import com.dhk.view.DhkView;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class OrientationController implements IController {
 
@@ -24,12 +24,12 @@ public class OrientationController implements IController {
     private SettingsManager settingsMgr;
     private AppRefresher appRefresher;
 
-    private final String CONFIRMATION_MESSAGE = "Are you sure you want to change the display orientation for the slot?"
+    private static final String CONFIRMATION_MESSAGE = "Are you sure you want to change the display orientation for the slot?"
             + " Only do this if you can rotate your display!";
-    private final String TITLE_BAR_MESSAGE = "Confirm Display Orientation Change";
+    private static final String TITLE_BAR_MESSAGE = "Confirm Display Orientation Change";
 
     /**
-     * Constructor for the OrientationController class.
+     * Constructor for the {@link OrientationController} class.
      * 
      * @param model
      *            - The model for the application
@@ -47,17 +47,11 @@ public class OrientationController implements IController {
         this.settingsMgr = settingsMgr;
     }
 
-    /**
-     * Initializes fields for the controller.
-     */
     @Override
     public void initController() {
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
 
-    /**
-     * Initializes the listeners for the orientation modes combo box.
-     */
     @Override
     public void initListeners() {
         for (int i = 0; i < model.getNumOfConnectedDisplays(); i++) {
@@ -73,6 +67,10 @@ public class OrientationController implements IController {
         }
     }
 
+    @Override
+    public void cleanUp() {
+    }
+
     /**
      * Changes the orientation mode of the display upon user confirmation.
      * 
@@ -82,8 +80,7 @@ public class OrientationController implements IController {
      *            - The index of the slot to update the orientation mode for
      */
     private void orientationModeAction(int displayIndex, int slotIndex) {
-        // Focus on the selected display label
-        view.getSelectedDisplayLabel().requestFocusInWindow();
+        view.getDefaultFocusComponent().requestFocusInWindow();
 
         int previouslySelectedOrientationMode = model.getSlot(displayIndex, slotIndex).getOrientationMode();
         int selectedOrientationMode = view.getSlot(displayIndex, slotIndex).getOrientationModes().getSelectedIndex();
@@ -152,10 +149,6 @@ public class OrientationController implements IController {
 
             appRefresher.reInitApp();
         }
-    }
-
-    @Override
-    public void cleanUp() {
     }
 
 }

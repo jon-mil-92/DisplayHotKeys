@@ -2,7 +2,7 @@ package com.dhk.controller;
 
 import com.dhk.model.DhkModel;
 import com.dhk.view.DhkView;
-import com.dhk.window.FrameUpdater;
+import com.dhk.view.FrameUpdater;
 
 /**
  * Controls the combo box for the selected display. Listeners are added to the corresponding view component so that when
@@ -10,7 +10,7 @@ import com.dhk.window.FrameUpdater;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class SelectedDisplayController implements IController {
 
@@ -19,7 +19,7 @@ public class SelectedDisplayController implements IController {
     private FrameUpdater frameUpdater;
 
     /**
-     * Constructor for the SelectedDisplayController class.
+     * Constructor for the {@link SelectedDisplayController} class.
      *
      * @param model
      *            - The model for the application
@@ -31,20 +31,18 @@ public class SelectedDisplayController implements IController {
         this.view = view;
     }
 
-    /**
-     * Creates a new frame updater.
-     */
     @Override
     public void initController() {
         frameUpdater = new FrameUpdater(view);
     }
 
-    /**
-     * Initializes the listeners for the display IDs combo box.
-     */
     @Override
     public void initListeners() {
         view.getDisplayIds().addActionListener(e -> updateSlots());
+    }
+
+    @Override
+    public void cleanUp() {
     }
 
     /**
@@ -70,10 +68,6 @@ public class SelectedDisplayController implements IController {
             view.setPreviouslySelectedDisplayIndex(view.getDisplayIds().getSelectedIndex());
             frameUpdater.updateUI();
         }
-    }
-
-    @Override
-    public void cleanUp() {
     }
 
 }

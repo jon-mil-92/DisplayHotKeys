@@ -12,7 +12,7 @@ import com.dhk.view.DhkView;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class FrameDragController implements IController {
 
@@ -27,7 +27,7 @@ public class FrameDragController implements IController {
     private int mouseDraggedY;
 
     /**
-     * Constructor for the FrameDragController class.
+     * Constructor for the {@link FrameDragController} class.
      *
      * @param view
      *            - The view for the application
@@ -50,9 +50,6 @@ public class FrameDragController implements IController {
         mouseDraggedY = 0;
     }
 
-    /**
-     * Initializes the mouse listeners for the frame to enable window dragging.
-     */
     @Override
     public void initListeners() {
         frame.addMouseListener(new MouseAdapter() {
@@ -63,11 +60,7 @@ public class FrameDragController implements IController {
                     mousePressedY = mousePressedEvent.getYOnScreen();
                 }
 
-                /*
-                 * Focus on the selected display label to remove the selection outline around the last selected
-                 * component
-                 */
-                view.getSelectedDisplayLabel().requestFocusInWindow();
+                view.getDefaultFocusComponent().requestFocusInWindow();
             }
         });
 

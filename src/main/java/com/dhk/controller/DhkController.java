@@ -15,7 +15,7 @@ import lc.kra.system.keyboard.GlobalKeyboardHook;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class DhkController implements IController {
 
@@ -28,7 +28,7 @@ public class DhkController implements IController {
     private int frameState;
 
     /**
-     * Constructor for the DhkController class.
+     * Constructor for the {@link DhkController} class.
      * 
      * @param model
      *            - The model for the application
@@ -53,9 +53,6 @@ public class DhkController implements IController {
         keyboardHook = new GlobalKeyboardHook(true);
     }
 
-    /**
-     * Initializes the controllers for the application.
-     */
     @Override
     public void initController() {
         controllers = new ArrayList<IController>();
@@ -83,9 +80,6 @@ public class DhkController implements IController {
         view.getFrame().setExtendedState(frameState);
     }
 
-    /**
-     * Initializes the listeners for each controller.
-     */
     @Override
     public void initListeners() {
         for (IController controller : controllers) {
@@ -93,9 +87,6 @@ public class DhkController implements IController {
         }
     }
 
-    /*
-     * Removes the hot keys controller from the global keyboard listener and clean up after sub-controllers.
-     */
     @Override
     public void cleanUp() {
         keyboardHook.removeKeyListener(hotKeysController);

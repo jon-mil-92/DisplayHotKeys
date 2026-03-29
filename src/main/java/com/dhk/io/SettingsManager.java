@@ -20,7 +20,7 @@ import com.dhk.model.Key;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class SettingsManager {
 
@@ -33,10 +33,10 @@ public class SettingsManager {
     private File settingsFile;
 
     // The max number of visible slots in the application frame
-    private final int MAX_NUM_OF_SLOTS = 12;
+    private static final int MAX_NUM_OF_SLOTS = 12;
 
     /**
-     * Default constructor for the SettingsManager class.
+     * Default constructor for the {@link SettingsManager} class.
      */
     public SettingsManager() {
     }

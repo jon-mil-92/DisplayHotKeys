@@ -12,7 +12,7 @@ import com.dhk.view.DhkView;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class MinimizeToTrayButtonController extends AbstractButtonController implements IController {
 
@@ -21,7 +21,7 @@ public class MinimizeToTrayButtonController extends AbstractButtonController imp
     private SettingsManager settingsMgr;
 
     /**
-     * Constructor for the MinimizeToTrayButtonController class.
+     * Constructor for the {@link MinimizeToTrayButtonController} class.
      *
      * @param model
      *            - The model for the application
@@ -40,14 +40,11 @@ public class MinimizeToTrayButtonController extends AbstractButtonController imp
     public void initController() {
     }
 
-    /**
-     * Initializes the listeners for the minimize to tray button.
-     */
     @Override
     public void initListeners() {
         view.getMinimizeToTrayButton().addActionListener(e -> minimizeToTrayButtonAction());
 
-        initStateChangeListeners(view.getMinimizeToTrayButton(), view.getSelectedDisplayLabel());
+        initStateChangeListeners(view.getMinimizeToTrayButton(), view.getDefaultFocusComponent());
     }
 
     @Override

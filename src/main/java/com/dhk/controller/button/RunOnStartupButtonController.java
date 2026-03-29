@@ -12,7 +12,7 @@ import com.dhk.io.RunOnStartupManager;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class RunOnStartupButtonController extends AbstractButtonController implements IController {
 
@@ -22,7 +22,7 @@ public class RunOnStartupButtonController extends AbstractButtonController imple
     private RunOnStartupManager runOnStartupManager;
 
     /**
-     * Constructor for the RunOnStartupButtonController class.
+     * Constructor for the {@link RunOnStartupButtonController} class.
      *
      * @param model
      *            - The model for the application
@@ -37,22 +37,16 @@ public class RunOnStartupButtonController extends AbstractButtonController imple
         this.settingsMgr = settingsMgr;
     }
 
-    /**
-     * Creates a new run on startup manager.
-     */
     @Override
     public void initController() {
         runOnStartupManager = new RunOnStartupManager();
     }
 
-    /**
-     * Initializes the listeners for the run on startup button.
-     */
     @Override
     public void initListeners() {
         view.getRunOnStartupButton().addActionListener(e -> runOnStartupButtonAction());
 
-        initStateChangeListeners(view.getRunOnStartupButton(), view.getSelectedDisplayLabel());
+        initStateChangeListeners(view.getRunOnStartupButton(), view.getDefaultFocusComponent());
     }
 
     @Override

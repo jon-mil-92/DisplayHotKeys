@@ -13,7 +13,7 @@ import com.dhk.view.DhkView;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class RefreshAppButtonController extends AbstractButtonController implements IController {
 
@@ -24,7 +24,7 @@ public class RefreshAppButtonController extends AbstractButtonController impleme
     private AppRefresher appRefresher;
 
     /**
-     * Constructor for the RefreshAppButtonController class.
+     * Constructor for the {@link RefreshAppButtonController} class.
      *
      * @param model
      *            - The model for the application
@@ -43,22 +43,16 @@ public class RefreshAppButtonController extends AbstractButtonController impleme
         this.settingsMgr = settingsMgr;
     }
 
-    /**
-     * Creates a new app refresher.
-     */
     @Override
     public void initController() {
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
 
-    /**
-     * Initializes the listeners for the refresh app button.
-     */
     @Override
     public void initListeners() {
         view.getRefreshAppButton().addActionListener(e -> refreshAppButtonAction());
 
-        initStateChangeListeners(view.getRefreshAppButton(), view.getSelectedDisplayLabel());
+        initStateChangeListeners(view.getRefreshAppButton(), view.getDefaultFocusComponent());
     }
 
     @Override

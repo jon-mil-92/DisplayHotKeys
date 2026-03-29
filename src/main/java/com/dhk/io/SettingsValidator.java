@@ -18,7 +18,7 @@ import lc.kra.system.keyboard.event.GlobalKeyEvent;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class SettingsValidator {
 
@@ -30,13 +30,13 @@ public class SettingsValidator {
     private List<Integer> validkeyCodes;
     private RunOnStartupManager runOnStartupManager;
 
-    private final int UNSET_KEY_CODE = 0;
-    private final String[] VALID_SCALING_MODES = {"0", "1", "2"};
-    private final String[] VALID_DPI_SCALE_PERCENTAGES = {"100", "125", "150", "175", "200", "225", "250", "300",
+    private static final int UNSET_KEY_CODE = 0;
+    private static final String[] VALID_SCALING_MODES = {"0", "1", "2"};
+    private static final String[] VALID_DPI_SCALE_PERCENTAGES = {"100", "125", "150", "175", "200", "225", "250", "300",
             "350"};
 
     /**
-     * Constructor for the SettingsValidator class.
+     * Constructor for the {@link SettingsValidator} class.
      * 
      * @param settingsMgr
      *            - The manager for the settings file

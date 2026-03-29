@@ -16,7 +16,7 @@ import com.dhk.view.DhkView;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class ApplyDisplayModeButtonController extends AbstractButtonController implements IController {
 
@@ -28,7 +28,7 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
     private AppRefresher appRefresher;
 
     /**
-     * Constructor for the ApplyDisplayModeButtonController class.
+     * Constructor for the {@link ApplyDisplayModeButtonController} class.
      *
      * @param model
      *            - The model for the application
@@ -53,9 +53,6 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
 
-    /**
-     * Initializes the listeners for the apply display mode button.
-     */
     @Override
     public void initListeners() {
         for (int i = 0; i < model.getNumOfConnectedDisplays(); i++) {
@@ -68,7 +65,7 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
                         .addActionListener(e -> applyDisplayModeButtonAction(displayIndex, slotIndex));
 
                 initStateChangeListeners(view.getSlot(displayIndex, slotIndex).getApplyDisplayModeButton(),
-                        view.getSelectedDisplayLabel());
+                        view.getDefaultFocusComponent());
             }
         }
     }

@@ -3,7 +3,7 @@ package com.dhk.controller;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
 import com.dhk.view.DhkView;
-import com.dhk.window.FrameUpdater;
+import com.dhk.view.FrameUpdater;
 
 /**
  * Controls the combo box for the number of active hot key slots. Listeners are added to the corresponding view
@@ -12,7 +12,7 @@ import com.dhk.window.FrameUpdater;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class NumberOfSlotsController implements IController {
 
@@ -22,7 +22,7 @@ public class NumberOfSlotsController implements IController {
     private FrameUpdater frameUpdater;
 
     /**
-     * Constructor for the NumberOfSlotsController class.
+     * Constructor for the {@link NumberOfSlotsController} class.
      *
      * @param model
      *            - The model for the application
@@ -37,17 +37,11 @@ public class NumberOfSlotsController implements IController {
         this.settingsMgr = settingsMgr;
     }
 
-    /**
-     * Creates a new frame updater.
-     */
     @Override
     public void initController() {
         frameUpdater = new FrameUpdater(view);
     }
 
-    /**
-     * Initializes the listeners for the number of slots combo box.
-     */
     @Override
     public void initListeners() {
         for (int i = 0; i < model.getNumOfConnectedDisplays(); i++) {

@@ -11,7 +11,7 @@ import com.dhk.view.DhkView;
  *
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class ConnectedDisplaysController implements IController {
 
@@ -22,10 +22,10 @@ public class ConnectedDisplaysController implements IController {
     private ConnectedDisplaysPoller connectedDisplaysPoller;
 
     // Poll for the number of connected displays every 1000 ms
-    private final int POLL_INTERVAL = 1000;
+    private static final int POLL_INTERVAL = 1000;
 
     /**
-     * Constructor for the ConnectedDisplaysController class.
+     * Constructor for the {@link ConnectedDisplaysController} class.
      * 
      * @param model
      *            - The model for the application
@@ -44,9 +44,6 @@ public class ConnectedDisplaysController implements IController {
         this.settingsMgr = settingsMgr;
     }
 
-    /**
-     * Creates and starts a new connected display poller to check for display configuration changes.
-     */
     @Override
     public void initController() {
         connectedDisplaysPoller = new ConnectedDisplaysPoller(model, view, controller, settingsMgr, POLL_INTERVAL);
@@ -57,9 +54,6 @@ public class ConnectedDisplaysController implements IController {
     public void initListeners() {
     }
 
-    /**
-     * Stops polling for the number of connected displays.
-     */
     @Override
     public void cleanUp() {
         connectedDisplaysPoller.stop();

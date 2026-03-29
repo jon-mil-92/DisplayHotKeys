@@ -1,9 +1,8 @@
-package com.dhk.window;
+package com.dhk.view;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-import com.dhk.view.DhkView;
 
 /**
  * Updates the view for Display Hot Keys. The frame components and UI are updated with this class.

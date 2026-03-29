@@ -10,7 +10,7 @@ import com.dhk.view.DhkView;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class ScalingModeController implements IController {
 
@@ -19,7 +19,7 @@ public class ScalingModeController implements IController {
     private SettingsManager settingsMgr;
 
     /**
-     * Constructor for the ScalingModeController class.
+     * Constructor for the {@link ScalingModeController} class.
      *
      * @param model
      *            - The model for the application
@@ -38,9 +38,6 @@ public class ScalingModeController implements IController {
     public void initController() {
     }
 
-    /**
-     * Initializes the listeners for the scaling mode combo boxes.
-     */
     @Override
     public void initListeners() {
         for (int i = 0; i < model.getNumOfConnectedDisplays(); i++) {

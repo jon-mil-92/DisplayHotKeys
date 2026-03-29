@@ -5,22 +5,22 @@ package com.dhk.controller;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public interface IController {
 
     /**
-     * Initialize the controller.
+     * Initializes the controller.
      */
     public void initController();
 
     /**
-     * Initialize the listeners of the controller.
+     * Initializes the listeners of the controller.
      */
     public void initListeners();
 
     /**
-     * General cleanup before re-initialization.
+     * Cleans up after the controller before re-initialization.
      */
     public void cleanUp();
 

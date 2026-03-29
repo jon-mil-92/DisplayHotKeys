@@ -10,14 +10,14 @@ import com.dhk.view.DhkView;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class MinimizeButtonController extends AbstractButtonController implements IController {
 
     private DhkView view;
 
     /**
-     * Constructor for the MinimizeButtonController class.
+     * Constructor for the {@link MinimizeButtonController} class.
      *
      * @param view
      *            - The view for the application
@@ -30,14 +30,11 @@ public class MinimizeButtonController extends AbstractButtonController implement
     public void initController() {
     }
 
-    /**
-     * Initializes the listeners for the minimize button.
-     */
     @Override
     public void initListeners() {
         view.getMinimizeButton().addActionListener(e -> minimizeButtonAction());
 
-        initStateChangeListeners(view.getMinimizeButton(), view.getSelectedDisplayLabel());
+        initStateChangeListeners(view.getMinimizeButton(), view.getDefaultFocusComponent());
     }
 
     @Override
@@ -50,9 +47,7 @@ public class MinimizeButtonController extends AbstractButtonController implement
     private void minimizeButtonAction() {
         // Minimize the application
         view.getFrame().setExtendedState(Frame.ICONIFIED);
-
-        // Focus on the selected display label so the button is not focused on upon leaving the ICONIFIED state
-        view.getSelectedDisplayLabel().requestFocusInWindow();
+        view.getDefaultFocusComponent().requestFocusInWindow();
 
         // Try to free up resources upon minimizing to the system tray to utilize minimal memory while minimized
         System.gc();

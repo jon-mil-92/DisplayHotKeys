@@ -1,7 +1,6 @@
-package com.dhk.window;
+package com.dhk.view;
 
 import javax.swing.SwingUtilities;
-import com.dhk.view.DhkView;
 
 /**
  * Starts a view refresher on a new thread. When the thread is running, the frame of the application is refreshed at a

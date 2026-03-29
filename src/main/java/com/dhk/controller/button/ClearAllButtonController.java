@@ -17,7 +17,7 @@ import com.dhk.view.DhkView;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class ClearAllButtonController extends AbstractButtonController implements IController {
 
@@ -28,11 +28,11 @@ public class ClearAllButtonController extends AbstractButtonController implement
     private DisplayConfig displayConfig;
     private AppRefresher appRefresher;
 
-    private final String CONFIRMATION_MESSAGE = "Are you sure you want to clear all slots for the selected display?";
-    private final String TITLE_BAR_MESSAGE = "Confirm Clear All Slots";
+    private static final String CONFIRMATION_MESSAGE = "Are you sure you want to clear all slots for the selected display?";
+    private static final String TITLE_BAR_MESSAGE = "Confirm Clear All Slots";
 
     /**
-     * Constructor for the ClearAllButtonController class.
+     * Constructor for the {@link ClearAllButtonController} class.
      * 
      * @param model
      *            - The model for the application
@@ -51,23 +51,17 @@ public class ClearAllButtonController extends AbstractButtonController implement
         this.settingsMgr = settingsMgr;
     }
 
-    /**
-     * Creates a new frame updater.
-     */
     @Override
     public void initController() {
         displayConfig = model.getDisplayConfig();
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
 
-    /**
-     * Initializes the listeners for the clear all button.
-     */
     @Override
     public void initListeners() {
         view.getClearAllButton().addActionListener(e -> clearAllButtonAction());
 
-        initStateChangeListeners(view.getClearAllButton(), view.getSelectedDisplayLabel());
+        initStateChangeListeners(view.getClearAllButton(), view.getDefaultFocusComponent());
     }
 
     @Override
@@ -78,8 +72,7 @@ public class ClearAllButtonController extends AbstractButtonController implement
      * Clears all slots for the selected display and then update the UI.
      */
     private void clearAllButtonAction() {
-        // Focus on the selected display label so the clear all slots button does not flash red after confirmation
-        view.getSelectedDisplayLabel().requestFocusInWindow();
+        view.getDefaultFocusComponent().requestFocusInWindow();
 
         if (getUserConfirmation() == JOptionPane.YES_OPTION) {
             clearAllOrientationModes();

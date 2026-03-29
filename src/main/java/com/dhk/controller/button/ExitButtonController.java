@@ -9,14 +9,14 @@ import com.dhk.view.DhkView;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class ExitButtonController extends AbstractButtonController implements IController {
 
     private DhkView view;
 
     /**
-     * Constructor for the ExitButtonController class.
+     * Constructor for the {@link ExitButtonController} class.
      *
      * @param view
      *            - The view for the application
@@ -29,14 +29,11 @@ public class ExitButtonController extends AbstractButtonController implements IC
     public void initController() {
     }
 
-    /**
-     * Initializes the listeners for the exit button.
-     */
     @Override
     public void initListeners() {
         view.getExitButton().addActionListener(e -> exitButtonAction());
 
-        initStateChangeListeners(view.getExitButton(), view.getSelectedDisplayLabel());
+        initStateChangeListeners(view.getExitButton(), view.getDefaultFocusComponent());
     }
 
     @Override

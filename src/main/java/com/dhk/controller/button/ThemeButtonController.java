@@ -6,7 +6,7 @@ import com.dhk.model.DhkModel;
 import com.dhk.theme.ButtonThemeUpdater;
 import com.dhk.theme.ThemeUpdater;
 import com.dhk.view.DhkView;
-import com.dhk.window.FrameUpdater;
+import com.dhk.view.FrameUpdater;
 
 /**
  * Controls the Theme button. Listeners are added to the corresponding view component so that when the Theme button is
@@ -14,7 +14,7 @@ import com.dhk.window.FrameUpdater;
  * 
  * @author Jonathan Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan Miller
  */
 public class ThemeButtonController extends AbstractButtonController implements IController {
 
@@ -26,7 +26,7 @@ public class ThemeButtonController extends AbstractButtonController implements I
     private FrameUpdater frameUpdater;
 
     /**
-     * Constructor for the ThemeButtonController class.
+     * Constructor for the {@link ThemeButtonController} class.
      *
      * @param model
      *            - The model for the application
@@ -41,9 +41,6 @@ public class ThemeButtonController extends AbstractButtonController implements I
         this.settingsMgr = settingsMgr;
     }
 
-    /**
-     * Creates a new theme chooser, button themes updater, and frame updater.
-     */
     @Override
     public void initController() {
         themeUpdater = new ThemeUpdater();
@@ -51,14 +48,11 @@ public class ThemeButtonController extends AbstractButtonController implements I
         frameUpdater = new FrameUpdater(view);
     }
 
-    /**
-     * Initializes the listeners for the theme button.
-     */
     @Override
     public void initListeners() {
         view.getThemeButton().addActionListener(e -> themeButtonAction());
 
-        initStateChangeListeners(view.getThemeButton(), view.getSelectedDisplayLabel());
+        initStateChangeListeners(view.getThemeButton(), view.getDefaultFocusComponent());
     }
 
     @Override
