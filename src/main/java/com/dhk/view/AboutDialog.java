@@ -133,7 +133,7 @@ public class AboutDialog extends AbstractDraggableDialog {
         aboutDialog.setLayout(mainLayout);
 
         mainConstraints = new GridBagConstraints();
-        mainConstraints.insets = new Insets(10, 20, 10, 20);
+        mainConstraints.insets = new Insets(7, 19, 7, 19);
         mainConstraints.anchor = GridBagConstraints.CENTER;
         mainConstraints.gridwidth = 1;
 
@@ -142,7 +142,7 @@ public class AboutDialog extends AbstractDraggableDialog {
         buttonPanel.setLayout(buttonPanelLayout);
 
         buttonPanelConstraints = new GridBagConstraints();
-        buttonPanelConstraints.insets = new Insets(0, 8, 0, 8);
+        buttonPanelConstraints.insets = new Insets(2, 7, 10, 7);
         buttonPanelConstraints.anchor = GridBagConstraints.CENTER;
         buttonPanelConstraints.gridwidth = 1;
     }
