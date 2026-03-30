@@ -60,8 +60,8 @@ public class DhkView implements IView {
     private Map<Integer, JComboBox<Integer>> numberOfActiveSlotsMap;
     private ThemeableButton aboutButton;
     private ThemeableButton themeButton;
-    private ThemeableToggleButton minimizeToTrayButton;
     private ThemeableToggleButton runOnStartupButton;
+    private ThemeableToggleButton minimizeToTrayButton;
     private Button refreshAppButton;
     private Button clearAllButton;
     private Button minimizeButton;
@@ -375,30 +375,20 @@ public class DhkView implements IView {
             numberOfActiveSlotsMap.put(displayIndex, numberOfActiveSlots);
         }
 
-        ButtonProperties aboutButtonProps = new ButtonProperties("About App", new Dimension(40, 50), 0.70f, 0.60f);
+        ButtonProperties aboutButtonProps = new ButtonProperties("About App", new Dimension(37, 41), 0.70f, 0.60f);
         aboutButton = new ThemeableButton("/about_idle.svg", "/about_light_hover.svg", "/about_idle.svg",
                 "/about_dark_hover.svg", aboutButtonProps, true, model.isDarkMode());
 
         themeableButtons.add(aboutButton);
 
-        ButtonProperties themeButtonProps = new ButtonProperties("Change Theme", new Dimension(50, 50), 0.80f, 0.68f);
+        ButtonProperties themeButtonProps = new ButtonProperties("Change Theme", new Dimension(41, 41), 0.70f, 0.60f);
         themeButton = new ThemeableButton("/light_mode_idle.svg", "/light_mode_hover.svg", "/dark_mode_idle.svg",
                 "/dark_mode_hover.svg", themeButtonProps, true, model.isDarkMode());
 
         themeableButtons.add(themeButton);
 
-        ButtonProperties minimizeToTrayButtonProps = new ButtonProperties("Minimize To Tray", new Dimension(48, 50),
-                0.80f, 0.68f);
-        minimizeToTrayButton = new ThemeableToggleButton("/minimize_to_tray_enabled_idle.svg",
-                "/minimize_to_tray_disabled_idle.svg", "/minimize_to_tray_enabled_light_hover.svg",
-                "/minimize_to_tray_disabled_light_hover.svg", "/minimize_to_tray_enabled_dark_hover.svg",
-                "/minimize_to_tray_disabled_dark_hover.svg", minimizeToTrayButtonProps, true, model.isDarkMode(),
-                model.isMinimizeToTray());
-
-        themeableButtons.add(minimizeToTrayButton);
-
-        ButtonProperties runOnStartupButtonProps = new ButtonProperties("Run On Startup", new Dimension(48, 50), 0.80f,
-                0.68f);
+        ButtonProperties runOnStartupButtonProps = new ButtonProperties("Run On Startup", new Dimension(37, 41), 0.70f,
+                0.60f);
         runOnStartupButton = new ThemeableToggleButton("/run_on_startup_enabled_idle.svg",
                 "/run_on_startup_disabled_idle.svg", "/run_on_startup_enabled_light_hover.svg",
                 "/run_on_startup_disabled_light_hover.svg", "/run_on_startup_enabled_dark_hover.svg",
@@ -407,19 +397,29 @@ public class DhkView implements IView {
 
         themeableButtons.add(runOnStartupButton);
 
-        ButtonProperties refreshAppButtonProps = new ButtonProperties("Refresh App", new Dimension(40, 50), 0.80f,
-                0.68f);
+        ButtonProperties minimizeToTrayButtonProps = new ButtonProperties("Minimize To Tray", new Dimension(37, 41),
+                0.70f, 0.60f);
+        minimizeToTrayButton = new ThemeableToggleButton("/minimize_to_tray_enabled_idle.svg",
+                "/minimize_to_tray_disabled_idle.svg", "/minimize_to_tray_enabled_light_hover.svg",
+                "/minimize_to_tray_disabled_light_hover.svg", "/minimize_to_tray_enabled_dark_hover.svg",
+                "/minimize_to_tray_disabled_dark_hover.svg", minimizeToTrayButtonProps, true, model.isDarkMode(),
+                model.isMinimizeToTray());
+
+        themeableButtons.add(minimizeToTrayButton);
+
+        ButtonProperties refreshAppButtonProps = new ButtonProperties("Refresh App", new Dimension(31, 41), 0.70f,
+                0.60f);
         refreshAppButton = new Button("/refresh_app_idle.svg", "/refresh_app_hover.svg", refreshAppButtonProps, true);
 
-        ButtonProperties clearAllButtonProps = new ButtonProperties("Clear All Slots", new Dimension(44, 50), 0.80f,
-                0.68f);
+        ButtonProperties clearAllButtonProps = new ButtonProperties("Clear All Slots", new Dimension(35, 41), 0.70f,
+                0.60f);
         clearAllButton = new Button("/clear_all_idle.svg", "/clear_all_hover.svg", clearAllButtonProps, true);
 
-        ButtonProperties minimizeButtonProps = new ButtonProperties("Minimize App", new Dimension(32, 50), 0.80f,
-                0.68f);
+        ButtonProperties minimizeButtonProps = new ButtonProperties("Minimize App", new Dimension(25, 41), 0.70f,
+                0.60f);
         minimizeButton = new Button("/minimize_idle.svg", "/minimize_hover.svg", minimizeButtonProps, true);
 
-        ButtonProperties exitButtonProps = new ButtonProperties("Exit App", new Dimension(34, 50), 0.80f, 0.68f);
+        ButtonProperties exitButtonProps = new ButtonProperties("Exit App", new Dimension(25, 41), 0.70f, 0.60f);
         exitButton = new Button("/exit_idle.svg", "/exit_hover.svg", exitButtonProps, true);
 
         displayModeLabel = new JLabel("Display Mode", SwingConstants.CENTER);
@@ -577,12 +577,12 @@ public class DhkView implements IView {
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 2;
         menuPanelConstraints.gridy = 0;
-        menuPanel.add(minimizeToTrayButton, menuPanelConstraints);
+        menuPanel.add(runOnStartupButton, menuPanelConstraints);
 
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 3;
         menuPanelConstraints.gridy = 0;
-        menuPanel.add(runOnStartupButton, menuPanelConstraints);
+        menuPanel.add(minimizeToTrayButton, menuPanelConstraints);
 
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 4;
@@ -709,21 +709,21 @@ public class DhkView implements IView {
     }
 
     /**
-     * Gets the minimize to tray button.
-     * 
-     * @return The minimize to tray button
-     */
-    public ThemeableToggleButton getMinimizeToTrayButton() {
-        return minimizeToTrayButton;
-    }
-
-    /**
      * Gets the run on startup button.
      * 
      * @return The run on startup button
      */
     public ThemeableToggleButton getRunOnStartupButton() {
         return runOnStartupButton;
+    }
+
+    /**
+     * Gets the minimize to tray button.
+     * 
+     * @return The minimize to tray button
+     */
+    public ThemeableToggleButton getMinimizeToTrayButton() {
+        return minimizeToTrayButton;
     }
 
     /**
