@@ -6,9 +6,9 @@ import java.util.List;
  * Defines the model for a Display. The id, active number of hot key slots, and array list of hot key slots are
  * initialized here.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class Display {
 
@@ -17,7 +17,7 @@ public class Display {
     private List<Slot> slots;
 
     /**
-     * Constructor for the Display class.
+     * Constructor for the {@link Display} class.
      * 
      * @param id
      *            - The ID of the display

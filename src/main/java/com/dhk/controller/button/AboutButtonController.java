@@ -9,9 +9,9 @@ import com.dhk.view.DhkView;
  * Controls the About button. Listeners are added to the corresponding view component so that when the About button is
  * pressed, an "About Display Hot Keys" dialog is shown with application information.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class AboutButtonController extends AbstractButtonController implements IController {
 

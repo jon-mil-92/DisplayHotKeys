@@ -18,9 +18,9 @@ import com.dhk.model.Key;
  * mode, the theme state, the minimize to tray state, the run on startup state, the display modes, the scaling modes,
  * the DPI scale percentages, and the hot keys for each display
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class SettingsManager {
 

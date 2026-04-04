@@ -6,9 +6,9 @@ import javax.swing.SwingUtilities;
  * Starts a view refresher on a new thread. When the thread is running, the frame of the application is refreshed at a
  * given interval.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class ViewRefresher implements Runnable {
 
@@ -19,7 +19,7 @@ public class ViewRefresher implements Runnable {
     private int interval;
 
     /**
-     * Constructor for the ViewRefresher class.
+     * Constructor for the {@link ViewRefresher} class.
      * 
      * @param view
      *            - The view for the application

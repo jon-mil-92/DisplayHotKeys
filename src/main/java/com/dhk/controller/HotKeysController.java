@@ -25,9 +25,9 @@ import java.awt.event.ActionListener;
  * functionality of changing hot keys. This class is also responsible for triggering hot key events once a hot key press
  * is detected.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class HotKeysController implements IController, GlobalKeyListener {
 

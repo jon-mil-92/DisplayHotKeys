@@ -8,9 +8,9 @@ import com.dhk.view.FrameUpdater;
  * Controls the combo box for the selected display. Listeners are added to the corresponding view component so that when
  * a new display is selected, the view components are changed to those for the selected display.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class SelectedDisplayController implements IController {
 

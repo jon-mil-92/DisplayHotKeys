@@ -10,9 +10,9 @@ import com.dhk.view.DhkView;
  * Controls the frame of the application. Listeners are added to the frame that enables the user to click, hold, and
  * drag on any empty spot in the frame to move the application window around on the desktop.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class FrameDragController implements IController {
 

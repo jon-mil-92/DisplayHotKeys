@@ -3,9 +3,9 @@ package com.dhk.model;
 /**
  * Defines the model for a Key. The key code, name, and pressed state of the Key is defined here.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class Key {
 
@@ -14,7 +14,7 @@ public class Key {
     private boolean keyPressed;
 
     /**
-     * Constructor for the Key class.
+     * Constructor for the {@link Key} class.
      * 
      * @param key
      *            - The native key even key code for the key

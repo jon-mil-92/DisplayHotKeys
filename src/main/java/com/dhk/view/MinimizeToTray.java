@@ -13,9 +13,9 @@ import dorkbox.systemTray.SystemTray;
 /**
  * Enables the application to be minimized to the system tray and restored from the system tray.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class MinimizeToTray {
 
@@ -27,7 +27,7 @@ public class MinimizeToTray {
     private Image minimizedToTrayIcon;
 
     /**
-     * Constructor for the MinimizeToTray class.
+     * Constructor for the {@link MinimizeToTray} class.
      *
      * @param model
      *            - The model for the application

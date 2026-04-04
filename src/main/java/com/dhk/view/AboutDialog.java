@@ -19,9 +19,9 @@ import dorkbox.systemTray.SystemTray;
 /**
  * Shows an "About Display Hot Keys" dialog on the AWT event dispatching thread.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class AboutDialog extends AbstractDraggableDialog {
 

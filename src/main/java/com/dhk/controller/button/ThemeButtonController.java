@@ -12,9 +12,9 @@ import com.dhk.view.FrameUpdater;
  * Controls the Theme button. Listeners are added to the corresponding view component so that when the Theme button is
  * pressed, the application's theme will be toggled between "Light" and "Dark."
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class ThemeButtonController extends AbstractButtonController implements IController {
 

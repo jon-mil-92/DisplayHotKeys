@@ -9,9 +9,9 @@ import com.dhk.view.DhkView;
  * Provides methods to detect if there was a display configuration change, and if there was, then the settings manager,
  * model, view, and controllers will be re-initialized to reflect the new display configuration.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class DisplayConfigUpdater {
 
@@ -20,7 +20,7 @@ public class DisplayConfigUpdater {
     private AppRefresher appRefresher;
 
     /**
-     * Constructor for the DisplayConfigRefresher class.
+     * Constructor for the {@link DisplayConfigRefresher} class.
      *
      * @param model
      *            - The model for the application

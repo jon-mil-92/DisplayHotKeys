@@ -9,9 +9,9 @@ import com.dhk.io.SettingsManager;
 /**
  * Defines the primary model of Display Hot Keys. Each slot in the application is initialized here.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class DhkModel {
 
@@ -25,7 +25,7 @@ public class DhkModel {
     private boolean runOnStartup;
 
     /**
-     * Default constructor for the DhkModel class.
+     * Default constructor for the {@link DhkModel} class.
      */
     public DhkModel() {
     }

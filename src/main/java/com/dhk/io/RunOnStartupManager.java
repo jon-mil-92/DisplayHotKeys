@@ -11,9 +11,9 @@ import java.nio.file.Files;
  * Gets the application's path and uses it to create or destroy a batch file that will run the application on Windows
  * login.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class RunOnStartupManager {
 
@@ -24,7 +24,7 @@ public class RunOnStartupManager {
     private String jarFilePath;
 
     /**
-     * Constructor for the RunOnStartupManager class.
+     * Constructor for the {@link RunOnStartupManager} class.
      */
     public RunOnStartupManager() {
         startupPath = System.getProperty("user.home")

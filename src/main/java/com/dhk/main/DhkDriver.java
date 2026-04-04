@@ -11,14 +11,14 @@ import com.dhk.view.DhkView;
 /**
  * The main driver for Display Hot Keys that starts the model, view, and controller on the AWT event dispatch thread.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class DhkDriver {
 
     /**
-     * Default constructor for the DhkDriver class.
+     * Default constructor for the {@link DhkDriver} class.
      */
     public DhkDriver() {
     }

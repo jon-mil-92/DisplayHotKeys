@@ -5,14 +5,14 @@ import java.awt.DisplayMode;
 /**
  * Inverts a given display mode by swapping the width and height of the resolution.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class DisplayModeInverter {
 
     /**
-     * Default constructor for the DisplayModeInverter class.
+     * Default constructor for the {@link DisplayModeInverter} class.
      */
     public DisplayModeInverter() {
     }

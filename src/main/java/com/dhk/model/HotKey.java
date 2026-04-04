@@ -5,9 +5,9 @@ import java.util.List;
 /**
  * Defines the model for a Hot Key. States and the string representation of the Hot Key are defined here.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class HotKey {
 
@@ -17,7 +17,7 @@ public class HotKey {
     private boolean changingHotKey;
 
     /**
-     * Constructor for the HotKey class.
+     * Constructor for the {@link HotKey} class.
      * 
      * @param hotKey
      *            - The array list of keys that make up the hot key

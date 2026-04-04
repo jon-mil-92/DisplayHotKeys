@@ -9,9 +9,9 @@ import javax.swing.JFrame;
 /**
  * Defines an abstract draggable dialog that defines a method to initialize the mouse listeners.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public abstract class AbstractDraggableDialog implements IView {
 

@@ -10,14 +10,14 @@ import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
  * Sets the theme for the application. It allows the theme of the application to be switched between Light and Dark
  * themes.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class ThemeUpdater {
 
     /**
-     * Constructor for the ThemeUpdater class.
+     * Constructor for the {@link ThemeUpdater} class.
      */
     public ThemeUpdater() {
         // Set the Roboto font style

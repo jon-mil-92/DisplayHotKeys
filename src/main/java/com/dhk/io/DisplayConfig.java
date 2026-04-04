@@ -10,9 +10,9 @@ import java.util.HashMap;
 /**
  * Gets the current information for the connected displays.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class DisplayConfig {
 
@@ -23,7 +23,7 @@ public class DisplayConfig {
     private int numOfConnectedDisplays;
 
     /**
-     * Constructor for the DisplayConfig class.
+     * Constructor for the {@link DisplayConfig} class.
      */
     public DisplayConfig() {
         getDisplay = new GetDisplay();

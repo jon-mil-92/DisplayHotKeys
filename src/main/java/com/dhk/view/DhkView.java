@@ -31,9 +31,9 @@ import com.formdev.flatlaf.ui.FlatUIUtils;
  * Defines the view for Display Hot Keys. The layout for the view components is defined here. View components are
  * initialized and arranged in a GridBag layout.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class DhkView implements IView {
 

@@ -12,9 +12,9 @@ import com.dhk.view.ViewRefresher;
  * should be refreshed, and it initializes the object that allows the application to be minimized to the system tray and
  * restored from the system tray.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class WindowController implements IController, WindowListener {
 

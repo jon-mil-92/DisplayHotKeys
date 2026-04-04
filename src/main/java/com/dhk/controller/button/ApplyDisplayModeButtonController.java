@@ -14,9 +14,9 @@ import com.dhk.view.DhkView;
  * Controls the Apply Display Mode button. Listeners are added to the corresponding view component so that when the
  * Apply Display Mode button is pressed, the associated display mode is immediately applied.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class ApplyDisplayModeButtonController extends AbstractButtonController implements IController {
 

@@ -16,9 +16,9 @@ import lc.kra.system.keyboard.event.GlobalKeyEvent;
  * positive integer or a boolean, and that it is in the correct range of valid values. If a property value fails
  * validation, then it is reset to the default value.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class SettingsValidator {
 

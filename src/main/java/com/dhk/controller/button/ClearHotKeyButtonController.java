@@ -10,9 +10,9 @@ import com.dhk.view.FrameUpdater;
  * Controls the Clear Hot Key buttons. Listeners are added to the corresponding view components so that when the Clear
  * Hot Key button is pressed, the corresponding hot key is cleared.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class ClearHotKeyButtonController extends AbstractButtonController implements IController {
 

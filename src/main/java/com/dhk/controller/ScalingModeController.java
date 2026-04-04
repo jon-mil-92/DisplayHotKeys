@@ -8,9 +8,9 @@ import com.dhk.view.DhkView;
  * Controls the Scaling Mode combo boxes. Listeners are added to the corresponding view components so that when a new
  * scaling mode is selected from a Scaling Mode combo box, the model is updated.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class ScalingModeController implements IController {
 

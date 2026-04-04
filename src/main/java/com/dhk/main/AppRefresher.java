@@ -11,9 +11,9 @@ import com.formdev.flatlaf.FlatLaf;
 /**
  * Gets the application's model, view, controller, and settings manager, and then it re-initializes them.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class AppRefresher {
 
@@ -23,7 +23,7 @@ public class AppRefresher {
     private SettingsManager settingsMgr;
 
     /**
-     * Constructor for the AppRefresher class.
+     * Constructor for the {@link AppRefresher} class.
      * 
      * @param model
      *            - The model for the application

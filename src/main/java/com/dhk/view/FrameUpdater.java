@@ -7,9 +7,9 @@ import javax.swing.SwingUtilities;
 /**
  * Updates the view for Display Hot Keys. The frame components and UI are updated with this class.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class FrameUpdater {
 
@@ -17,7 +17,7 @@ public class FrameUpdater {
     private JPanel mainPanel;
 
     /**
-     * Constructor for the FrameUpdater class.
+     * Constructor for the {@link FrameUpdater} class.
      * 
      * @param view
      *            - The view for the application

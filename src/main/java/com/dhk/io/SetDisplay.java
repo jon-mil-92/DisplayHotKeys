@@ -4,14 +4,14 @@ package com.dhk.io;
  * Utilizes the SetDisplay JNI library to immediately apply the given display mode, scaling mode, DPI scale percentage,
  * and orientation mode for the given display.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class SetDisplay {
 
     /**
-     * Default constructor for the SetDisplay class.
+     * Default constructor for the {@link SetDisplay} class.
      */
     public SetDisplay() {
     }

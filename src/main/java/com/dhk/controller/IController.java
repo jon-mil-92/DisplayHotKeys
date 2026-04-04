@@ -3,9 +3,9 @@ package com.dhk.controller;
 /**
  * Defines the required methods for a controller.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public interface IController {
 

@@ -10,9 +10,9 @@ import com.dhk.view.DhkView;
  * Minimize To Tray button is pressed, the application will toggle the ability for the application to minimize to the
  * system tray.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class MinimizeToTrayButtonController extends AbstractButtonController implements IController {
 

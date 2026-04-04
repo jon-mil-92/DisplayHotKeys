@@ -15,9 +15,9 @@ import com.dhk.view.DhkView;
  * button is pressed, the display mode, scaling mode, DPI scale percentage, and hot key for each slot for the selected
  * display is set to default.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class ClearAllButtonController extends AbstractButtonController implements IController {
 

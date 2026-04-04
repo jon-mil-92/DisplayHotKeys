@@ -6,9 +6,9 @@ import java.awt.DisplayMode;
  * Defines the model for a Slot. The display mode, scaling mode, DPI scale percentage, orientation mode, and hot key for
  * a slot are initialized here.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class Slot {
 
@@ -20,7 +20,7 @@ public class Slot {
     private boolean clearingSlot;
 
     /**
-     * Constructor for the Slot class.
+     * Constructor for the {@link Slot} class.
      * 
      * @param displayMode
      *            - The display mode for the slot

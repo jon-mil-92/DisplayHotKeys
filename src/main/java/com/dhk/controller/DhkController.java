@@ -13,9 +13,9 @@ import lc.kra.system.keyboard.GlobalKeyboardHook;
 /**
  * The main controller for Display Hot Keys. Creates all of the controllers for the application.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class DhkController implements IController {
 

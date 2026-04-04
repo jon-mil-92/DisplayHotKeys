@@ -7,9 +7,9 @@ import com.dhk.view.DhkView;
 /**
  * Sets the theme for all of the themeable buttons in the view. It aids in setting the theme of the application.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class ButtonThemeUpdater {
 
@@ -17,7 +17,7 @@ public class ButtonThemeUpdater {
     private DhkView view;
 
     /**
-     * Constructor for the ButtonThemesUpdater class.
+     * Constructor for the {@link ButtonThemesUpdater} class.
      * 
      * @param model
      *            - The model for the application

@@ -9,9 +9,9 @@ import com.dhk.view.DhkView;
  * Controls the active display configuration. A connected displays poller is started to check for changes in the number
  * of connected displays.
  *
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class ConnectedDisplaysController implements IController {
 

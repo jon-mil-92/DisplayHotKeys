@@ -10,9 +10,9 @@ import com.dhk.io.RunOnStartupManager;
  * Controls the Run On Startup button. Listeners are added to the corresponding view component so that when the Run On
  * Startup button is pressed, the application will toggle the ability for the application to launch on user login.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class RunOnStartupButtonController extends AbstractButtonController implements IController {
 

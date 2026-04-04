@@ -12,9 +12,9 @@ import com.dhk.view.IView;
  * Controls the PayPal Donate button. Listeners are added to the corresponding view component so that when the PayPal
  * Donate button is pressed, the paypal donation page is opened up in the user's default web browser.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class PaypalDonateButtonController extends AbstractButtonController implements IController {
 

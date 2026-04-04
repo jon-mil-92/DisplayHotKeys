@@ -11,9 +11,9 @@ import com.dhk.view.DhkView;
  * Controls the Refresh App button. Listeners are added to the corresponding view component so that when the Refresh App
  * button is pressed, the application is re-initialized.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class RefreshAppButtonController extends AbstractButtonController implements IController {
 

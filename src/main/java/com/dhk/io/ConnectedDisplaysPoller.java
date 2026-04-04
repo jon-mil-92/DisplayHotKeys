@@ -10,9 +10,9 @@ import com.dhk.view.DhkView;
  * is checked at a given interval. If the number of connected displays has changed, then the application's settings
  * manager, model, view, and controllers are re-initialized to reflect the new display configuration.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class ConnectedDisplaysPoller implements Runnable {
 
@@ -23,7 +23,7 @@ public class ConnectedDisplaysPoller implements Runnable {
     private int interval;
 
     /**
-     * Constructor for the ConnectedDisplaysPoller class.
+     * Constructor for the {@link ConnectedDisplaysPoller} class.
      * 
      * @param model
      *            - The model for the application

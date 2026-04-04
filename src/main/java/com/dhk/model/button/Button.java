@@ -6,9 +6,9 @@ import javax.swing.Icon;
 /**
  * Defines a button with an idle, hover, and held icon.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class Button extends AbstractButton {
 

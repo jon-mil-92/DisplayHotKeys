@@ -2,7 +2,6 @@ package com.dhk.controller;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import com.dhk.controller.button.AboutButtonController;
 import com.dhk.controller.button.ClearAllButtonController;
 import com.dhk.controller.button.ExitButtonController;
@@ -19,9 +18,9 @@ import com.dhk.view.DhkView;
  * Adds menu button controllers to the menu controller. Each menu button controller is created, and their listeners are
  * initialized through this menu controller.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class MenuController implements IController {
 

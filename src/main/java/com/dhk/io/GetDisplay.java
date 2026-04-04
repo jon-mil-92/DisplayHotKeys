@@ -6,14 +6,14 @@ import java.util.Arrays;
 /**
  * Utilizes the GetDisplay JNI library to retrieve current display settings.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public class GetDisplay {
 
     /**
-     * Default constructor for the GetDisplay class.
+     * Default constructor for the {@link GetDisplay} class.
      */
     public GetDisplay() {
     }

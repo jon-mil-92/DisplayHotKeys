@@ -6,9 +6,9 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 /**
  * Defines an abstract button that implements the icon change action and defines the update methods for a button.
  * 
- * @author Jonathan Miller
+ * @author Jonathan R. Miller
  * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan Miller
+ * @copyright © 2026 Jonathan R. Miller
  */
 public abstract class AbstractButton extends JButton {
 
