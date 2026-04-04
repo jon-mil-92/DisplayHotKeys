@@ -4,6 +4,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -25,34 +26,43 @@ import dorkbox.systemTray.SystemTray;
 public class AboutDialog extends AbstractDraggableDialog {
 
     private DhkModel model;
+    private DhkView view;
     private GridBagLayout mainLayout;
     private GridBagConstraints mainConstraints;
     private JPanel buttonPanel;
     private GridBagLayout buttonPanelLayout;
     private GridBagConstraints buttonPanelConstraints;
     private JLabel infoLabel;
+    private JButton licenseButton;
     private JButton releasesButton;
-    private JButton okButton;
+    private JButton closeButton;
     private ThemeableButton paypalDonateButton;
     private PaypalDonateButtonController paypalButtonController;
-    private JPanel darkeningGlassPane;
+    private Component originalGlassPane;
+    private Component darkeningGlassPane;
+    private FrameUpdater frameUpdater;
 
-    private static final String LINK_DOMAIN = "https://github.com";
-    private static final String LINK_PATH = "/jon-mil-92/DisplayHotKeys/releases";
-    private static final String RELEASES_LINK = LINK_DOMAIN + LINK_PATH;
+    private static final String LICENSE_LINK = "https://mit-license.org";
+    private static final String GITHUB_DOMAIN = "https://github.com";
+    private static final String REALEASES_PATH = "/jon-mil-92/DisplayHotKeys/releases";
+    private static final String RELEASES_LINK = GITHUB_DOMAIN + REALEASES_PATH;
 
     /**
      * Constructor for the {@link AboutDialog} class.
      * 
-     * @param parentFrame
-     *            - The parent frame for the about dialog
      * @param model
      *            - The model for the application
+     * @param view
+     *            - The view for the application
      */
-    public AboutDialog(JFrame parentFrame, DhkModel model) {
-        super(parentFrame);
+    public AboutDialog(DhkModel model, DhkView view) {
+        super(view.getFrame());
         this.model = model;
+        this.view = view;
+
+        originalGlassPane = parentFrame.getGlassPane();
         darkeningGlassPane = createDarkeningGlassPane();
+        frameUpdater = new FrameUpdater(view);
     }
 
     /**
@@ -77,9 +87,15 @@ public class AboutDialog extends AbstractDraggableDialog {
                 aboutDialog.setUndecorated(true);
                 aboutDialog.setResizable(false);
 
-                initPanels(aboutDialog);
-                initComponents(aboutDialog, systemTray);
-                addComponents(aboutDialog);
+                initAboutPanels(aboutDialog);
+                initAboutComponents(aboutDialog, systemTray);
+                initAboutComponentListeners(aboutDialog, systemTray);
+                addAboutComponents(aboutDialog);
+
+                frameUpdater.updateUI();
+                view.getDefaultFocusComponent().requestFocusInWindow();
+                parentFrame.setGlassPane(darkeningGlassPane);
+                darkeningGlassPane.setVisible(true);
 
                 aboutDialog.pack();
                 aboutDialog.setLocationRelativeTo(parentFrame);
@@ -101,34 +117,12 @@ public class AboutDialog extends AbstractDraggableDialog {
     }
 
     /**
-     * Creates a semi-transparent darkening panel to overlay the parent frame.
-     * 
-     * @return A semi-transparent darkening panel to overlay the parent frame
-     */
-    private JPanel createDarkeningGlassPane() {
-        JPanel gp = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                g.setColor(new Color(0, 0, 0, 120));
-                g.fillRect(0, 0, getWidth(), getHeight());
-                super.paintComponent(g);
-            }
-        };
-
-        gp.setOpaque(false);
-        gp.addMouseListener(new MouseAdapter() {
-        });
-
-        return gp;
-    }
-
-    /**
-     * Initializes all of the panels that will hold the view components.
+     * Initializes panels for an about dialog.
      * 
      * @param aboutDialog
      *            - The about dialog to initialize panels for
      */
-    private void initPanels(JDialog aboutDialog) {
+    private void initAboutPanels(JDialog aboutDialog) {
         mainLayout = new GridBagLayout();
         aboutDialog.setLayout(mainLayout);
 
@@ -148,18 +142,14 @@ public class AboutDialog extends AbstractDraggableDialog {
     }
 
     /**
-     * Initializes the components for an about dialog.
+     * Initializes components for an about dialog.
      * 
      * @param aboutDialog
      *            - The about dialog to initialize components for
      * @param systemTray
      *            - The system tray (not required)
      */
-    private void initComponents(JDialog aboutDialog, SystemTray systemTray) {
-        Component originalGlassPane = parentFrame.getGlassPane();
-        parentFrame.setGlassPane(darkeningGlassPane);
-        darkeningGlassPane.setVisible(true);
-
+    private void initAboutComponents(JDialog aboutDialog, SystemTray systemTray) {
         infoLabel = new JLabel(buildAboutInfoHtml());
         infoLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
@@ -169,51 +159,180 @@ public class AboutDialog extends AbstractDraggableDialog {
                 model.isDarkMode());
 
         paypalButtonController = new PaypalDonateButtonController(AboutDialog.this, paypalDonateButton);
-        paypalButtonController.initListeners();
-
+        licenseButton = new JButton("License");
         releasesButton = new JButton("Releases");
-        releasesButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                releasesButtonAction();
-            }
-        });
-
-        okButton = new JButton("OK");
-        okButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                okButtonAction(aboutDialog, systemTray, originalGlassPane, darkeningGlassPane);
-            }
-        });
+        closeButton = new JButton("Close");
     }
 
     /**
-     * Adds the components to an about dialog.
+     * Initializes listeners for the components in an about dialog.
+     * 
+     * @param aboutDialog
+     *            - The about dialog to initialize listeners for
+     * @param systemTray
+     *            - The system tray (not required)
+     */
+    private void initAboutComponentListeners(JDialog aboutDialog, SystemTray systemTray) {
+        paypalButtonController.initListeners();
+
+        licenseButton.addActionListener(createLicenseActionListener());
+        releasesButton.addActionListener(createReleasesActionListener());
+        closeButton.addActionListener(createCloseActionListener(aboutDialog, systemTray));
+
+        licenseButton.addMouseListener(createMouseAdapter());
+        releasesButton.addMouseListener(createMouseAdapter());
+        closeButton.addMouseListener(createMouseAdapter());
+    }
+
+    /**
+     * Adds components to an about dialog.
      * 
      * @param aboutDialog
      *            - The about dialog to add components to
      */
-    private void addComponents(JDialog aboutDialog) {
+    private void addAboutComponents(JDialog aboutDialog) {
         buttonPanelConstraints.gridx = 0;
         buttonPanelConstraints.gridy = 0;
-        buttonPanel.add(releasesButton, buttonPanelConstraints);
+        buttonPanel.add(licenseButton, buttonPanelConstraints);
 
         buttonPanelConstraints.gridx = 1;
         buttonPanelConstraints.gridy = 0;
-        buttonPanel.add(okButton, buttonPanelConstraints);
+        buttonPanel.add(releasesButton, buttonPanelConstraints);
+
+        buttonPanelConstraints.gridx = 2;
+        buttonPanelConstraints.gridy = 0;
+        buttonPanel.add(closeButton, buttonPanelConstraints);
 
         mainConstraints.gridx = 0;
         mainConstraints.gridy = 0;
         aboutDialog.add(infoLabel, mainConstraints);
 
         mainConstraints.gridx = 0;
-        mainConstraints.gridy = 1;
+        mainConstraints.gridy = 2;
         aboutDialog.add(paypalDonateButton, mainConstraints);
 
         mainConstraints.gridx = 0;
-        mainConstraints.gridy = 2;
+        mainConstraints.gridy = 3;
         aboutDialog.add(buttonPanel, mainConstraints);
+    }
+
+    /**
+     * Creates an action listener that opens the license link.
+     * 
+     * @return An action listener that opens the license link
+     */
+    private ActionListener createLicenseActionListener() {
+        return new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                openLinkButtonAction(LICENSE_LINK);
+            }
+        };
+    }
+
+    /**
+     * Creates an action listener that opens the releases link.
+     * 
+     * @return An action listener that opens the releases link
+     */
+    private ActionListener createReleasesActionListener() {
+        return new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                openLinkButtonAction(RELEASES_LINK);
+            }
+        };
+    }
+
+    /**
+     * Creates an action listener that closes an about dialog.
+     * 
+     * @param aboutDialog
+     *            - The about dialog to close
+     * @param systemTray
+     *            - The system tray to re-enable (not required)
+     * 
+     * @return An action listener that closes an about dialog
+     */
+    private ActionListener createCloseActionListener(JDialog aboutDialog, SystemTray systemTray) {
+        return new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                closeButtonAction(aboutDialog, systemTray);
+            }
+        };
+    }
+
+    /**
+     * Creates a mouse adapter that gives focus to the default focus component upon mouse exit.
+     * 
+     * @return A mouse adapter that gives focus to the default focus component upon mouse exit
+     */
+    private MouseAdapter createMouseAdapter() {
+        return new MouseAdapter() {
+            @Override
+            public void mouseExited(MouseEvent e) {
+                getDefaultFocusComponent().requestFocusInWindow();
+            }
+        };
+    }
+
+    /**
+     * Opens up a link in the user's default web browser.
+     * 
+     * @param link
+     *            - The link to open
+     */
+    private void openLinkButtonAction(String link) {
+        getDefaultFocusComponent().requestFocusInWindow();
+
+        try {
+            Desktop.getDesktop().browse(new URI(link));
+        } catch (IOException | URISyntaxException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Closes an about dialog.
+     * 
+     * @param aboutDialog
+     *            - The about dialog to close
+     * @param systemTray
+     *            - The system tray to re-enable (not required)
+     */
+    private void closeButtonAction(JDialog aboutDialog, SystemTray systemTray) {
+        getDefaultFocusComponent().requestFocusInWindow();
+
+        if (systemTray != null) {
+            systemTray.setEnabled(true);
+        }
+
+        darkeningGlassPane.setVisible(false);
+        parentFrame.setGlassPane(originalGlassPane);
+
+        aboutDialog.dispose();
+    }
+
+    /**
+     * Creates a semi-transparent darkening panel to overlay the parent frame.
+     * 
+     * @return A semi-transparent darkening panel to overlay the parent frame
+     */
+    private Component createDarkeningGlassPane() {
+        JPanel darkeningPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics graphics) {
+                graphics.setColor(new Color(0, 0, 0, 110));
+                graphics.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+
+        darkeningPanel.setOpaque(false);
+        darkeningPanel.addMouseListener(new MouseAdapter() {
+        });
+
+        return darkeningPanel;
     }
 
     /**
@@ -229,48 +348,6 @@ public class AboutDialog extends AbstractDraggableDialog {
         String htmlEnd = "</div></html>";
 
         return htmlBegin + header + version + developedBy + htmlEnd;
-    }
-
-    /**
-     * Opens up the GitHub Releases page for Display Hot Keys in the user's default web browser.
-     */
-    private void releasesButtonAction() {
-        try {
-            Desktop.getDesktop().browse(new URI(RELEASES_LINK));
-        } catch (IOException | URISyntaxException e) {
-            e.printStackTrace();
-        }
-
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                getDefaultFocusComponent().requestFocusInWindow();
-            }
-        });
-    }
-
-    /**
-     * Re-enables the system tray, removes the darkening glass pane from the parent frame, and disposes this dialog.
-     * 
-     * @param aboutDialog
-     *            - The about dialog to dispose of
-     * @param systemTray
-     *            - The system tray to re-enable
-     * @param originalGlassPane
-     *            - The original glass pane for the parent frame
-     * @param glassPan
-     *            - The darkening glass pane for the parent frame
-     */
-    private void okButtonAction(JDialog aboutDialog, SystemTray systemTray, Component originalGlassPane,
-            JPanel darkeningGlassPane) {
-        if (systemTray != null) {
-            systemTray.setEnabled(true);
-        }
-
-        darkeningGlassPane.setVisible(false);
-        parentFrame.setGlassPane(originalGlassPane);
-
-        aboutDialog.dispose();
     }
 
 }

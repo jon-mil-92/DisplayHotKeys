@@ -43,7 +43,7 @@ public class MinimizeToTray {
         this.viewRefresher = viewRefresher;
 
         frame = view.getFrame();
-        aboutDialog = new AboutDialog(frame, model);
+        aboutDialog = new AboutDialog(model, view);
 
         // Get the minimized-to-tray icon image
         minimizedToTrayIcon = Toolkit.getDefaultToolkit().getImage(getClass().getResource(iconResourcePath));

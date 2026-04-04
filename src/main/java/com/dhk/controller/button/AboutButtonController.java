@@ -51,7 +51,7 @@ public class AboutButtonController extends AbstractButtonController implements I
      * Shows an "About Display Hot Keys" dialog with application information.
      */
     private void aboutButtonAction() {
-        aboutDialog = new AboutDialog(view.getFrame(), model);
+        aboutDialog = new AboutDialog(model, view);
         aboutDialog.showAboutDialog();
     }
 
