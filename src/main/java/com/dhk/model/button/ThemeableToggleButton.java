@@ -27,7 +27,7 @@ public class ThemeableToggleButton extends ThemeableButton {
     private boolean on;
 
     /**
-     * Constructor for the {@link ThemeableToggle} button class.
+     * Constructor for the {@link ThemeableToggleButton} button class.
      * 
      * @param onIdleIconPath
      *            - The resource path for the idle icon in the on state

@@ -35,7 +35,10 @@ public abstract class AbstractDraggableDialog implements IView {
     }
 
     /**
-     * Initializes the mouse listeners for the dialog to enable window dragging.
+     * Initializes the mouse listeners for a dialog to enable window dragging.
+     * 
+     * @param dialog
+     *            - The dialog to initialize mouse listeners for
      */
     public void initMouseListeners(JDialog dialog) {
         dialogLocation = new Point();

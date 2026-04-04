@@ -17,7 +17,7 @@ public class ButtonThemeUpdater {
     private DhkView view;
 
     /**
-     * Constructor for the {@link ButtonThemesUpdater} class.
+     * Constructor for the {@link ButtonThemeUpdater} class.
      * 
      * @param model
      *            - The model for the application

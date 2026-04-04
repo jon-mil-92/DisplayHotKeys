@@ -20,7 +20,7 @@ public class DisplayConfigUpdater {
     private AppRefresher appRefresher;
 
     /**
-     * Constructor for the {@link DisplayConfigRefresher} class.
+     * Constructor for the {@link DisplayConfigUpdater} class.
      *
      * @param model
      *            - The model for the application
