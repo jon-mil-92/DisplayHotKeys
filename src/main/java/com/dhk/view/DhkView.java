@@ -359,13 +359,13 @@ public class DhkView implements IView {
      */
     private void initComponents() {
         selectedDisplayLabel = new JLabel("Selected Display :", SwingConstants.LEFT);
-        selectedDisplayLabel.setPreferredSize(new Dimension(110, 28));
+        selectedDisplayLabel.setPreferredSize(new Dimension(112, 28));
 
         displayIds = new JComboBox<Integer>(generateDisplayIds());
         displayIds.setPreferredSize(new Dimension(60, 28));
 
         numberOfActiveSlotsLabel = new JLabel("Active Slots :", SwingConstants.LEFT);
-        numberOfActiveSlotsLabel.setPreferredSize(new Dimension(81, 28));
+        numberOfActiveSlotsLabel.setPreferredSize(new Dimension(82, 28));
 
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             JComboBox<Integer> numberOfActiveSlots = new JComboBox<Integer>(generateNumOfSlotsValues());
