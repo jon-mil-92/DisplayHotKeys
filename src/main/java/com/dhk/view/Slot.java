@@ -51,7 +51,7 @@ public class Slot {
         slotIndicatorLabel = new JLabel("Slot " + slotID + " :", SwingConstants.CENTER);
         slotIndicatorLabel.setPreferredSize(new Dimension(50, 28));
 
-        ButtonProperties applyDisplayModeButtonProps = new ButtonProperties("Apply Display Mode", new Dimension(28, 28),
+        ButtonProperties applyDisplayModeButtonProps = new ButtonProperties("Apply Display Mode", new Dimension(20, 20),
                 0.80f, 0.68f);
         applyDisplayModeButton = new Button("/apply_idle.svg", "/apply_hover.svg", applyDisplayModeButtonProps, true);
 
@@ -69,7 +69,7 @@ public class Slot {
 
         slotHotKey = new JLabel("", SwingConstants.CENTER);
 
-        ButtonProperties slotClearHotKeyButtonProps = new ButtonProperties("Clear Hot Key", new Dimension(20, 24),
+        ButtonProperties slotClearHotKeyButtonProps = new ButtonProperties("Clear Hot Key", new Dimension(17, 20),
                 0.70f, 0.60f);
         slotClearHotKeyButton = new Button("/clear_hot_key_idle.svg", "/clear_hot_key_hover.svg",
                 slotClearHotKeyButtonProps, false);

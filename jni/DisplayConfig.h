@@ -1,10 +1,10 @@
 /*
  * Defines various aspects of the current display configuration.
  *
- * Author: Jonathan Miller
+ * Author: Jonathan R. Miller
  * License: The MIT License - https://mit-license.org/
  *
- * Copyright © 2025 Jonathan Miller
+ * Copyright © 2026 Jonathan R. Miller
  */
 
 #pragma once

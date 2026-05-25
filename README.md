@@ -227,7 +227,7 @@ Distributed under the [MIT License]. See LICENSE.txt for more information.
 
 ## Contact
 
-Jonathan Miller - jonRock1992@gmail.com
+Jonathan R. Miller - jonRock1992@gmail.com
 
 <p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 

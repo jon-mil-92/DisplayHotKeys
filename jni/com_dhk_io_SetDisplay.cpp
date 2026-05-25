@@ -1,10 +1,10 @@
 /*
  * Immediately applies display settings for a given display.
  *
- * Author: Jonathan Miller
+ * Author: Jonathan R. Miller
  * License: The MIT License - https://mit-license.org/
  *
- * Copyright © 2025 Jonathan Miller
+ * Copyright © 2026 Jonathan R. Miller
  */
 
 #include <jni.h>
@@ -52,6 +52,8 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv *env, jobjec
     setDisplayMode(enumDisplayDevicesDisplayIdIndex, resWidth, resHeight, bitDepth, refreshRate);
     setDisplayScalingMode(queryDisplayConfigDisplayIdIndex, scalingMode);
     setDpiScalePercentage(queryDisplayConfigDisplayIdIndex, dpiScalePercentage);
+
+    env->ReleaseStringUTFChars(displayId, displayIdChars);
 }
 
 /*
@@ -75,6 +77,8 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setOrientation(JNIEnv *env, jo
     int queryDisplayConfigDisplayIdIndex = getQueryDisplayConfigDisplayIdIndex(displayIdString);
 
     setDisplayOrientation(queryDisplayConfigDisplayIdIndex, orientation);
+
+    env->ReleaseStringUTFChars(displayId, displayIdChars);
 }
 
 /*

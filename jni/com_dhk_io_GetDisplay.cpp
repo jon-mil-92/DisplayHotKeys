@@ -1,10 +1,10 @@
 /*
  * Gets current display settings for a given display.
  *
- * Author: Jonathan Miller
+ * Author: Jonathan R. Miller
  * License: The MIT License - https://mit-license.org/
  *
- * Copyright © 2025 Jonathan Miller
+ * Copyright © 2026 Jonathan R. Miller
  */
 
 #include <jni.h>
@@ -41,18 +41,20 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
     const char *displayIdChars = (env)->GetStringUTFChars(displayId, &isCopy);
     string displayIdString = displayIdChars;
     int displayIndex = getEnumDisplayDevicesDisplayIdIndex(displayIdString);
+    BOOL enumDisplayDevicesResult = EnumDisplayDevices(NULL, displayIndex, &displayDevice, 0);
 
-    EnumDisplayDevices(NULL, displayIndex, &displayDevice, 0);
+    if (!enumDisplayDevicesResult) {
+        env->ReleaseStringUTFChars(displayId, displayIdChars);
+        return NULL;
+    }
 
-    bool enumDisplaySettingsResult = true;
     UINT32 displayModeIndex = 0;
     vector<DEVMODE> displayModesVector;
 
-    while (enumDisplaySettingsResult == true) {
-        if (displayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
-            enumDisplaySettingsResult = EnumDisplaySettings(displayDevice.DeviceName, displayModeIndex, &displayMode);
+    // Only attempt to enumerate display modes if the device is attached to the desktop
+    if (displayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
+        while (EnumDisplaySettings(displayDevice.DeviceName, displayModeIndex, &displayMode)) {
             displayModesVector.push_back(displayMode);
-
             displayModeIndex++;
         }
     }
@@ -60,18 +62,23 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
     jclass displayModeClass = env->FindClass("java/awt/DisplayMode");
 
     if (displayModeClass == NULL) {
+        env->ReleaseStringUTFChars(displayId, displayIdChars);
         return NULL;
     }
 
     jmethodID displayModeConstructor = env->GetMethodID(displayModeClass, "<init>", "(IIII)V");
 
     if (displayModeConstructor == NULL) {
+        env->DeleteLocalRef(displayModeClass);
+        env->ReleaseStringUTFChars(displayId, displayIdChars);
         return NULL;
     }
 
     jobjectArray displayModeArray = env->NewObjectArray(displayModesVector.size(), displayModeClass, NULL);
 
     if (displayModeArray == NULL) {
+        env->DeleteLocalRef(displayModeClass);
+        env->ReleaseStringUTFChars(displayId, displayIdChars);
         return NULL;
     }
 
@@ -88,6 +95,8 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
             }
 
             env->DeleteLocalRef(displayModeArray);
+            env->DeleteLocalRef(displayModeClass);
+            env->ReleaseStringUTFChars(displayId, displayIdChars);
 
             return NULL;
         }
@@ -97,6 +106,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
 
         displayModeIndex++;
     }
+
+    env->DeleteLocalRef(displayModeClass);
+    env->ReleaseStringUTFChars(displayId, displayIdChars);
 
     return displayModeArray;
 }
@@ -142,6 +154,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayIds(JNIEnv 
     jobjectArray displayIdsArray = env->NewObjectArray(displayIdsVector.size(), stringClass, NULL);
 
     if (displayIdsArray == NULL) {
+        env->DeleteLocalRef(stringClass);
         return NULL;
     }
 
@@ -155,6 +168,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayIds(JNIEnv 
             }
 
             env->DeleteLocalRef(displayIdsArray);
+            env->DeleteLocalRef(stringClass);
 
             return NULL;
         }
@@ -162,6 +176,8 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayIds(JNIEnv 
         env->SetObjectArrayElement(displayIdsArray, displayIndex, displayId);
         env->DeleteLocalRef(displayId);
     }
+
+    env->DeleteLocalRef(stringClass);
 
     return displayIdsArray;
 }
