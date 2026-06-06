@@ -34,6 +34,7 @@ public class SettingsValidator {
     private static final String[] VALID_SCALING_MODES = {"0", "1", "2"};
     private static final String[] VALID_DPI_SCALE_PERCENTAGES = {"100", "125", "150", "175", "200", "225", "250", "300",
             "350"};
+    private static final DisplayMode DEFAULT_DISPLAY_MODE = new DisplayMode(0, 0, 0, 0);
 
     /**
      * Constructor for the {@link SettingsValidator} class.
@@ -267,7 +268,13 @@ public class SettingsValidator {
     private void writeDefaultDisplayMode(boolean landscapeOrientation, String displayId, int slotId) {
         DisplayMode[] landscapeDisplayModes = landscapeDisplayModesMap.get(displayId);
         DisplayMode[] portraitDisplayModes = portraitDisplayModesMap.get(displayId);
-        DisplayMode defaultDisplayMode = landscapeOrientation ? landscapeDisplayModes[0] : portraitDisplayModes[0];
+        DisplayMode defaultDisplayMode = DEFAULT_DISPLAY_MODE;
+
+        if (landscapeOrientation && landscapeDisplayModes.length > 0) {
+            defaultDisplayMode = landscapeDisplayModes[0];
+        } else if (!landscapeOrientation && portraitDisplayModes.length > 0) {
+            defaultDisplayMode = portraitDisplayModes[0];
+        }
 
         settingsMgr.saveIniSlotDisplayMode(displayId, slotId, defaultDisplayMode.getWidth(),
                 defaultDisplayMode.getHeight(), defaultDisplayMode.getBitDepth(), defaultDisplayMode.getRefreshRate());
