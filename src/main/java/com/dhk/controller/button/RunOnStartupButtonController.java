@@ -44,7 +44,7 @@ public class RunOnStartupButtonController extends AbstractButtonController imple
 
     @Override
     public void initListeners() {
-        view.getRunOnStartupButton().addActionListener(e -> runOnStartupButtonAction());
+        view.getRunOnStartupButton().addActionListener(_ -> runOnStartupButtonAction());
 
         initStateChangeListeners(view.getRunOnStartupButton(), view.getDefaultFocusComponent());
     }

@@ -31,7 +31,7 @@ public class ExitButtonController extends AbstractButtonController implements IC
 
     @Override
     public void initListeners() {
-        view.getExitButton().addActionListener(e -> exitButtonAction());
+        view.getExitButton().addActionListener(_ -> exitButtonAction());
 
         initStateChangeListeners(view.getExitButton(), view.getDefaultFocusComponent());
     }

@@ -49,7 +49,7 @@ public class DisplayModeController implements IController {
                 int slotIndex = j;
 
                 view.getSlot(displayIndex, slotIndex).getDisplayModes()
-                        .addActionListener(e -> saveSlotDisplayMode(displayIndex, slotIndex));
+                        .addActionListener(_ -> saveSlotDisplayMode(displayIndex, slotIndex));
             }
         }
     }

@@ -46,7 +46,7 @@ public class Button extends AbstractButton {
         setPreferredSize(properties.getSize());
         setEnabled(enabled);
 
-        addChangeListener(e -> super.iconChangeAction());
+        addChangeListener(_ -> super.iconChangeAction());
     }
 
     /**

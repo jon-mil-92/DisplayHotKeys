@@ -47,7 +47,7 @@ public class NumberOfSlotsController implements IController {
         for (int i = 0; i < model.getNumOfConnectedDisplays(); i++) {
             int displayIndex = i;
 
-            view.getNumberOfActiveSlots(displayIndex).addActionListener(e -> saveNumberOfSlots(displayIndex));
+            view.getNumberOfActiveSlots(displayIndex).addActionListener(_ -> saveNumberOfSlots(displayIndex));
         }
     }
 

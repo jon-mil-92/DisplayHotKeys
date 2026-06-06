@@ -32,7 +32,7 @@ public class MinimizeButtonController extends AbstractButtonController implement
 
     @Override
     public void initListeners() {
-        view.getMinimizeButton().addActionListener(e -> minimizeButtonAction());
+        view.getMinimizeButton().addActionListener(_ -> minimizeButtonAction());
 
         initStateChangeListeners(view.getMinimizeButton(), view.getDefaultFocusComponent());
     }

@@ -48,7 +48,7 @@ public class DpiScaleController implements IController {
                 int slotIndex = j;
 
                 view.getSlot(displayIndex, slotIndex).getDpiScalePercentages()
-                        .addActionListener(e -> saveSlotDpiScalePercentage(displayIndex, slotIndex));
+                        .addActionListener(_ -> saveSlotDpiScalePercentage(displayIndex, slotIndex));
             }
         }
     }

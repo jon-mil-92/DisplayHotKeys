@@ -14,7 +14,10 @@ import lc.kra.system.keyboard.event.GlobalKeyEvent;
 import lc.kra.system.keyboard.event.GlobalKeyListener;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import java.awt.event.ActionEvent;
@@ -96,7 +99,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
                 int slotIndex = j;
 
                 view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton()
-                        .addActionListener(e -> slotHotKeyChangeEvent(displayIndex, slotIndex));
+                        .addActionListener(_ -> slotHotKeyChangeEvent(displayIndex, slotIndex));
             }
         }
     }
@@ -107,9 +110,19 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     @Override
     public void keyPressed(GlobalKeyEvent keyEvent) {
+        /*
+         * If this key event is not relevant to any hot key and no hot key is currently being changed, skip scheduling
+         * work on the EDT entirely
+         */
+        if (keyEvent == null || !isKeyEventRelevant(keyEvent.getVirtualKeyCode())) {
+            return;
+        }
+
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
+                Map<Integer, Integer> displayToSlotMap = new HashMap<>();
+
                 for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
                     for (int slotIndex = 0; slotIndex < maxNumOfSlots; slotIndex++) {
                         setPressedKeys(keyEvent, model.getSlot(displayIndex, slotIndex).getHotKey().getKeys());
@@ -129,7 +142,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
                                         anyHotKeySubset = true;
                                     } else {
-                                        // Update the Change Hot Key button text to notify the user to input keys
+                                        // Update the Change Hot Key button text to notify the user to release keys
                                         view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton()
                                                 .setText(RELEASE_TO_SET_TEXT);
 
@@ -141,11 +154,20 @@ public class HotKeysController implements IController, GlobalKeyListener {
                                 if (!changingHotKey()
                                         && model.getSlot(displayIndex, slotIndex).getHotKey().isHotKeyPressed()
                                         && !model.getSlot(displayIndex, slotIndex).getHotKey().isHotKeyHeldDown()) {
-                                    setDisplaySettings(displayIndex, slotIndex);
+                                    /*
+                                     * Defer applying settings until after we finish scanning all slots to ensure
+                                     * multiple displays using the same hot key are all applied
+                                     */
+                                    displayToSlotMap.put(displayIndex, slotIndex);
                                 }
                             }
                         }
                     }
+                }
+
+                // Apply settings for all collected slots
+                for (Entry<Integer, Integer> displayToSlot : displayToSlotMap.entrySet()) {
+                    setDisplaySettings(displayToSlot.getKey(), displayToSlot.getValue());
                 }
             }
         });
@@ -153,6 +175,14 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     @Override
     public void keyReleased(GlobalKeyEvent keyEvent) {
+        /*
+         * If this key event is not relevant to any hot key and no hot key is currently being changed, skip scheduling
+         * work on the EDT entirely
+         */
+        if (keyEvent == null || !isKeyEventRelevant(keyEvent.getVirtualKeyCode())) {
+            return;
+        }
+
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -173,6 +203,43 @@ public class HotKeysController implements IController, GlobalKeyListener {
                 }
             }
         });
+    }
+
+    /**
+     * Lightweight check to determine whether the given key code is relevant to any hot key (either already set or
+     * currently being changed). This method performs minimal work and avoids allocations so it can be called directly
+     * from the global key thread.
+     *
+     * @param eventKeyCode
+     *            - The key code for the key event that we are checking
+     * @return
+     */
+    private boolean isKeyEventRelevant(int eventKeyCode) {
+        // If any hot key is in the process of being changed we must handle all key events
+        for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
+            for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
+                HotKey hk = model.getSlot(displayIndex, slotIndex).getHotKey();
+
+                if (hk.isChangingHotKey()) {
+                    return true;
+                }
+            }
+        }
+
+        // Otherwise, only handle events where the key code is part of any configured hot key
+        for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
+            for (int slotIndex = 0; slotIndex < maxNumOfSlots; slotIndex++) {
+                List<Key> keys = model.getSlot(displayIndex, slotIndex).getHotKey().getKeys();
+
+                for (int k = 0; k < keys.size(); k++) {
+                    if (keys.get(k).getKey() == eventKeyCode) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

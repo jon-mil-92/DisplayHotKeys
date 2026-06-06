@@ -47,7 +47,7 @@ public class ScalingModeController implements IController {
                 int slotIndex = j;
 
                 view.getSlot(displayIndex, slotIndex).getScalingModes()
-                        .addActionListener(e -> saveSlotScalingMode(displayIndex, slotIndex));
+                        .addActionListener(_ -> saveSlotScalingMode(displayIndex, slotIndex));
             }
         }
     }

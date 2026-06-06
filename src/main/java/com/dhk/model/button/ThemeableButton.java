@@ -54,7 +54,7 @@ public class ThemeableButton extends Button {
             super.removeChangeListener(changeListener);
         }
 
-        addChangeListener(e -> super.iconChangeAction());
+        addChangeListener(_ -> super.iconChangeAction());
     }
 
     /**

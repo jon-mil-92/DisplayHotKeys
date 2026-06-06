@@ -62,7 +62,7 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
                 int slotIndex = j;
 
                 view.getSlot(displayIndex, slotIndex).getApplyDisplayModeButton()
-                        .addActionListener(e -> applyDisplayModeButtonAction(displayIndex, slotIndex));
+                        .addActionListener(_ -> applyDisplayModeButtonAction(displayIndex, slotIndex));
 
                 initStateChangeListeners(view.getSlot(displayIndex, slotIndex).getApplyDisplayModeButton(),
                         view.getDefaultFocusComponent());
