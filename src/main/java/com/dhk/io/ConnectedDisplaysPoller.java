@@ -16,7 +16,7 @@ import com.dhk.view.DhkView;
  */
 public class ConnectedDisplaysPoller implements Runnable {
 
-    private Thread refresher;
+    private Thread pollingThread;
     private DisplayConfigUpdater displayConfigUpdater;
     private volatile boolean threadSuspended;
     private volatile boolean threadStopped;
@@ -48,8 +48,9 @@ public class ConnectedDisplaysPoller implements Runnable {
      * Creates and starts a new thread for this runnable to run on.
      */
     public void start() {
-        refresher = new Thread(this);
-        refresher.start();
+        pollingThread = new Thread(this);
+        pollingThread.setDaemon(true);
+        pollingThread.start();
     }
 
     /**
@@ -67,7 +68,7 @@ public class ConnectedDisplaysPoller implements Runnable {
                     }
                 }
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                // Expected when force stopping the thread
             }
 
             SwingUtilities.invokeLater(new Runnable() {
@@ -102,6 +103,21 @@ public class ConnectedDisplaysPoller implements Runnable {
      */
     public void stop() {
         threadStopped = true;
+
+        // Interrupt the thread in case it's sleeping so it can exit promptly
+        if (pollingThread != null) {
+            pollingThread.interrupt();
+
+            try {
+                // Wait for the thread to terminate to avoid thread leaks on re-init
+                pollingThread.join(1000);
+            } catch (InterruptedException e) {
+                // Restore interrupt status
+                Thread.currentThread().interrupt();
+            }
+
+            pollingThread = null;
+        }
     }
 
 }

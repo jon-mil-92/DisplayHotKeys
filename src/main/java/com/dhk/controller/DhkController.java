@@ -3,6 +3,7 @@ package com.dhk.controller;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 import com.dhk.controller.button.ApplyDisplayModeButtonController;
 import com.dhk.controller.button.ClearHotKeyButtonController;
 import com.dhk.io.SettingsManager;
@@ -56,13 +57,16 @@ public class DhkController implements IController {
     @Override
     public void initController() {
         controllers = new ArrayList<IController>();
+
+        // Create the hot keys controller early so other controllers can notify it
+        hotKeysController = new HotKeysController(model, view, this, settingsMgr);
+
         controllers.add(new ApplyDisplayModeButtonController(model, view, this, settingsMgr));
-        controllers.add(new ClearHotKeyButtonController(model, view, settingsMgr));
+        controllers.add(new ClearHotKeyButtonController(model, view, settingsMgr, hotKeysController));
         controllers.add(new ConnectedDisplaysController(model, view, this, settingsMgr));
         controllers.add(new DisplayModeController(model, view, settingsMgr));
         controllers.add(new DpiScaleController(model, view, settingsMgr));
         controllers.add(new FrameDragController(view));
-        hotKeysController = new HotKeysController(model, view, this, settingsMgr);
         controllers.add(hotKeysController);
         controllers.add(new MenuController(model, view, this, settingsMgr));
         controllers.add(new NumberOfSlotsController(model, view, settingsMgr));
@@ -74,6 +78,11 @@ public class DhkController implements IController {
         // Initialize all sub-controllers
         for (IController controller : controllers) {
             controller.initController();
+        }
+
+        // Ensure keyboard hook exists (may have been shutdown during previous cleanup)
+        if (keyboardHook == null) {
+            keyboardHook = new GlobalKeyboardHook(true);
         }
 
         keyboardHook.addKeyListener(hotKeysController);
@@ -89,11 +98,40 @@ public class DhkController implements IController {
 
     @Override
     public void cleanUp() {
-        keyboardHook.removeKeyListener(hotKeysController);
+        // Attempt to shutdown the native keyboard hook to free native resources and stop incoming events
+        if (keyboardHook != null) {
+            try {
+                keyboardHook.removeKeyListener(hotKeysController);
+                keyboardHook.shutdownHook();
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                keyboardHook = null;
+            }
+        }
 
-        for (IController controller : controllers) {
-            controller.cleanUp();
-            controller = null;
+        // Ensure EDT tasks that may access controllers have been processed before we clean up references
+        if (!SwingUtilities.isEventDispatchThread()) {
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (controllers != null) {
+            for (IController controller : controllers) {
+                try {
+                    controller.cleanUp();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            // Remove references to allow GC
+            controllers.clear();
+            controllers = null;
         }
     }
 

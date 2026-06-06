@@ -1,5 +1,6 @@
 package com.dhk.controller.button;
 
+import com.dhk.controller.HotKeysController;
 import com.dhk.controller.IController;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
@@ -20,6 +21,7 @@ public class ClearHotKeyButtonController extends AbstractButtonController implem
     private DhkView view;
     private SettingsManager settingsMgr;
     private FrameUpdater frameUpdater;
+    private HotKeysController hotKeysController;
 
     /**
      * Constructor for the {@link ClearHotKeyButtonController} class.
@@ -30,11 +32,15 @@ public class ClearHotKeyButtonController extends AbstractButtonController implem
      *            - The view for the application
      * @param settingsMgr
      *            - The settings manager for the application
+     * @param hotKeysController
+     *            - The controller for hot key management
      */
-    public ClearHotKeyButtonController(DhkModel model, DhkView view, SettingsManager settingsMgr) {
+    public ClearHotKeyButtonController(DhkModel model, DhkView view, SettingsManager settingsMgr,
+            HotKeysController hotKeysController) {
         this.model = model;
         this.view = view;
         this.settingsMgr = settingsMgr;
+        this.hotKeysController = hotKeysController;
     }
 
     @Override
@@ -85,6 +91,10 @@ public class ClearHotKeyButtonController extends AbstractButtonController implem
         view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().setEnabled(false);
         settingsMgr.saveIniSlotHotKey(displayId, slotId, model.getSlot(displayIndex, slotIndex).getHotKey());
         frameUpdater.updateUI();
+
+        if (hotKeysController != null) {
+            hotKeysController.rebuildActiveKeyCodes();
+        }
 
         view.getDefaultFocusComponent().requestFocusInWindow();
     }

@@ -15,9 +15,11 @@ import lc.kra.system.keyboard.event.GlobalKeyListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import java.awt.event.ActionEvent;
@@ -48,7 +50,8 @@ public class HotKeysController implements IController, GlobalKeyListener {
     private int maxNumOfSlots;
     private boolean showReleaseMessage;
     private boolean anyHotKeySubset;
-
+    private volatile boolean anyHotKeyChanging;
+    private Set<Integer> activeKeyCodes;
     private static final String CHANGE_HOT_KEY_TEXT = "Change Hot Key";
     private static final String PRESS_HOT_KEY_TEXT = "Press Hot Key";
     private static final String RELEASE_TO_SET_TEXT = "Release To Set";
@@ -86,6 +89,9 @@ public class HotKeysController implements IController, GlobalKeyListener {
         setDisplay = new SetDisplay();
         showReleaseMessage = false;
         anyHotKeySubset = false;
+        anyHotKeyChanging = false;
+        activeKeyCodes = new HashSet<>();
+        rebuildActiveKeyCodes();
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
 
@@ -106,6 +112,16 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     @Override
     public void cleanUp() {
+        // Stop and null any timers to prevent leaked Swing Timer threads/listeners
+        if (idleTimer != null) {
+            idleTimer.stop();
+            idleTimer = null;
+        }
+
+        if (releaseMessageTimer != null) {
+            releaseMessageTimer.stop();
+            releaseMessageTimer = null;
+        }
     }
 
     @Override
@@ -216,30 +232,33 @@ public class HotKeysController implements IController, GlobalKeyListener {
      */
     private boolean isKeyEventRelevant(int eventKeyCode) {
         // If any hot key is in the process of being changed we must handle all key events
-        for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
-            for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
-                HotKey hk = model.getSlot(displayIndex, slotIndex).getHotKey();
-
-                if (hk.isChangingHotKey()) {
-                    return true;
-                }
-            }
+        if (anyHotKeyChanging) {
+            return true;
         }
 
-        // Otherwise, only handle events where the key code is part of any configured hot key
+        // Otherwise, use a cached set for O(1) membership checks
+        return activeKeyCodes != null && activeKeyCodes.contains(eventKeyCode);
+    }
+
+    /**
+     * Rebuild the cached set of active key codes from the model. Call this whenever hot keys change.
+     */
+    public void rebuildActiveKeyCodes() {
+        if (activeKeyCodes == null) {
+            activeKeyCodes = new HashSet<>();
+        }
+
+        activeKeyCodes.clear();
+
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             for (int slotIndex = 0; slotIndex < maxNumOfSlots; slotIndex++) {
                 List<Key> keys = model.getSlot(displayIndex, slotIndex).getHotKey().getKeys();
 
                 for (int k = 0; k < keys.size(); k++) {
-                    if (keys.get(k).getKey() == eventKeyCode) {
-                        return true;
-                    }
+                    activeKeyCodes.add(keys.get(k).getKey());
                 }
             }
         }
-
-        return false;
     }
 
     /**
@@ -262,6 +281,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
             disableComponents();
 
             model.getSlot(displayIndex, slotIndex).getHotKey().setChangingHotKey(true);
+            anyHotKeyChanging = true;
 
             startIdleTimer(IDLE_INPUT_TIMEOUT, slotIndex);
         }
@@ -364,6 +384,13 @@ public class HotKeysController implements IController, GlobalKeyListener {
                 view.getSlot(selectedDisplayIndex, slotIndex).getHotKey()
                         .setText(model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().getHotKeyString());
                 frameUpdater.updateUI();
+
+                // Update cached active key codes
+                if (activeKeyCodes == null) {
+                    activeKeyCodes = new HashSet<>();
+                }
+
+                activeKeyCodes.add(pressedKey.getKey());
 
                 currentKeyCount += 1;
             }
@@ -522,6 +549,11 @@ public class HotKeysController implements IController, GlobalKeyListener {
     private void leaveChangingHotKeyState(int slotIndex) {
         currentKeyCount = 0;
 
+        if (idleTimer != null) {
+            idleTimer.stop();
+            idleTimer = null;
+        }
+
         int selectedDisplayIndex = view.getDisplayIds().getSelectedIndex();
         String displayId = model.getDisplayIds()[selectedDisplayIndex];
         int slotId = slotIndex + 1;
@@ -543,7 +575,12 @@ public class HotKeysController implements IController, GlobalKeyListener {
         }
 
         model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().setChangingHotKey(false);
+        anyHotKeyChanging = false;
+
         settingsMgr.saveIniSlotHotKey(displayId, slotId, model.getSlot(selectedDisplayIndex, slotIndex).getHotKey());
+
+        // Hot key definitions may have changed; rebuild the membership cache
+        rebuildActiveKeyCodes();
 
         if (!showReleaseMessage) {
             view.getSlot(selectedDisplayIndex, slotIndex).getChangeHotKeyButton().setText(CHANGE_HOT_KEY_TEXT);

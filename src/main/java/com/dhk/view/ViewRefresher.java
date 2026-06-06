@@ -12,7 +12,7 @@ import javax.swing.SwingUtilities;
  */
 public class ViewRefresher implements Runnable {
 
-    private Thread refresher;
+    private Thread refresherThread;
     private FrameUpdater frameUpdater;
     private volatile boolean threadSuspended;
     private volatile boolean threadStopped;
@@ -38,8 +38,9 @@ public class ViewRefresher implements Runnable {
      * Creates and starts a new thread for this runnable to run on.
      */
     public void start() {
-        refresher = new Thread(this);
-        refresher.start();
+        refresherThread = new Thread(this);
+        refresherThread.setDaemon(true);
+        refresherThread.start();
     }
 
     /**
@@ -57,7 +58,7 @@ public class ViewRefresher implements Runnable {
                     }
                 }
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                // Expected when force stopping the thread
             }
 
             SwingUtilities.invokeLater(new Runnable() {
@@ -93,6 +94,21 @@ public class ViewRefresher implements Runnable {
      */
     public void stop() {
         threadStopped = true;
+
+        // Interrupt the thread in case it's sleeping so it can exit promptly
+        if (refresherThread != null) {
+            refresherThread.interrupt();
+
+            try {
+                // Wait for the thread to terminate to avoid thread leaks on re-init
+                refresherThread.join(1000);
+            } catch (InterruptedException e) {
+                // Restore interrupt status
+                Thread.currentThread().interrupt();
+            }
+
+            refresherThread = null;
+        }
     }
 
 }
