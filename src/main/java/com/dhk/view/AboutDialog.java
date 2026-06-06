@@ -42,9 +42,11 @@ public class AboutDialog extends AbstractDraggableDialog {
     private Component darkeningGlassPane;
     private FrameUpdater frameUpdater;
 
-    private static final String LICENSE_LINK = "https://mit-license.org";
     private static final String GITHUB_DOMAIN = "https://github.com";
+    private static final String GITHUB_CONTENT_DOMAIN = "https://raw.githubusercontent.com";
+    private static final String LICENSE_PATH = "/jon-mil-92/DisplayHotKeys/refs/heads/main/LICENSE.txt";
     private static final String REALEASES_PATH = "/jon-mil-92/DisplayHotKeys/releases";
+    private static final String LICENSE_LINK = GITHUB_CONTENT_DOMAIN + LICENSE_PATH;
     private static final String RELEASES_LINK = GITHUB_DOMAIN + REALEASES_PATH;
 
     /**
