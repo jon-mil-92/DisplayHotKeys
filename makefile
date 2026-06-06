@@ -8,9 +8,9 @@ header:
 	rm -f src/main/java/com/dhk/io/SetDisplay.class
 
 dll:
-	# The JNI libraries will only build if JDK 21 is installed in the default path.
-	g++ --std=c++20 jni/com_dhk_io_GetDisplay.cpp jni/DisplayConfig.cpp -I"C:\Program Files\Java\jdk-21\include" -I"C:\Program Files\Java\jdk-21\include\win32" -shared -o GetDisplay.dll -static
-	g++ --std=c++20 jni/com_dhk_io_SetDisplay.cpp jni/DisplayConfig.cpp -I"C:\Program Files\Java\jdk-21\include" -I"C:\Program Files\Java\jdk-21\include\win32" -shared -o SetDisplay.dll -static
+	# Update the JDK include paths to your JDK install location
+	g++ --std=c++20 jni/com_dhk_io_GetDisplay.cpp jni/DisplayConfig.cpp -I"C:\jdk25\include" -I"C:\jdk25\include\win32" -shared -o GetDisplay.dll -static
+	g++ --std=c++20 jni/com_dhk_io_SetDisplay.cpp jni/DisplayConfig.cpp -I"C:\jdk25\include" -I"C:\jdk25\include\win32" -shared -o SetDisplay.dll -static
 
 clean:
 	rm -f jni/com_dhk_io_GetDisplay.h

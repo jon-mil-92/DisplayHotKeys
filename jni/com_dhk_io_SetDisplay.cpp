@@ -128,13 +128,54 @@ void setDisplayMode(UINT32 displayIndex, UINT32 resWidth, UINT32 resHeight, UINT
     devModeW.dmBitsPerPel = bitDepth;
     devModeW.dmDisplayFrequency = refreshRate;
     devModeW.dmDriverExtra = 0;
+
+    // Try to set all fields first; if the mode is not supported, progressively relax fields and retry
     devModeW.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
 
-    LONG changeDisplaySettingsResult = ChangeDisplaySettingsExW(sourceName.viewGdiDeviceName, &devModeW, NULL,
-    CDS_UPDATEREGISTRY, NULL);
+    // First validate the requested mode using CDS_TEST to get a specific error code
+    LONG testResult = ChangeDisplaySettingsExW(sourceName.viewGdiDeviceName, &devModeW, NULL, CDS_TEST, NULL);
 
-    if (changeDisplaySettingsResult != DISP_CHANGE_SUCCESSFUL) {
-        cerr << "Failed to set the display mode! Error Code: " << changeDisplaySettingsResult << endl;
+    if (testResult == DISP_CHANGE_SUCCESSFUL) {
+        LONG changeDisplaySettingsResult = ChangeDisplaySettingsExW(sourceName.viewGdiDeviceName, &devModeW, NULL,
+        CDS_UPDATEREGISTRY, NULL);
+
+        if (changeDisplaySettingsResult != DISP_CHANGE_SUCCESSFUL) {
+            cerr << "Failed to set the display mode! Error Code: " << changeDisplaySettingsResult << endl;
+        }
+    } else {
+        bool applied = false;
+
+        // Try without refresh rate
+        devModeW.dmFields &= ~DM_DISPLAYFREQUENCY;
+        devModeW.dmDisplayFrequency = 0;
+        testResult = ChangeDisplaySettingsExW(sourceName.viewGdiDeviceName, &devModeW, NULL, CDS_TEST, NULL);
+
+        if (testResult == DISP_CHANGE_SUCCESSFUL) {
+            LONG changeDisplaySettingsResult = ChangeDisplaySettingsExW(sourceName.viewGdiDeviceName, &devModeW, NULL,
+            CDS_UPDATEREGISTRY, NULL);
+
+            if (changeDisplaySettingsResult == DISP_CHANGE_SUCCESSFUL) {
+                applied = true;
+            }
+        } else {
+            cerr << "Failed to set the display mode without refresh rate! Error Code: " << testResult << endl;
+        }
+
+        // If still not applied, try without bit depth as well
+        if (!applied) {
+            devModeW.dmFields &= ~DM_BITSPERPEL;
+            devModeW.dmBitsPerPel = 0;
+            testResult = ChangeDisplaySettingsExW(sourceName.viewGdiDeviceName, &devModeW, NULL, CDS_TEST, NULL);
+
+            if (testResult == DISP_CHANGE_SUCCESSFUL) {
+                LONG changeDisplaySettingsResult = ChangeDisplaySettingsExW(sourceName.viewGdiDeviceName, &devModeW,
+                NULL,
+                CDS_UPDATEREGISTRY, NULL);
+            } else {
+                cerr << "Failed to set the display mode without refresh rate and bit depth! Error Code: " << testResult
+                        << endl;
+            }
+        }
     }
 }
 

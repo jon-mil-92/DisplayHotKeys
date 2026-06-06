@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.swing.JComboBox;
+import javax.swing.ToolTipManager;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -119,7 +120,6 @@ public class DhkView implements IView {
         frame = new JFrame();
         frame.setUndecorated(true);
         frame.setResizable(false);
-        frame.setVisible(true);
 
         initPanels();
         initComponents();
@@ -133,6 +133,7 @@ public class DhkView implements IView {
             // Set the location of the frame to the center of the screen during the "launching" state
             frame.setLocationRelativeTo(null);
         } else {
+            // Place the re-initialized frame at the previous location
             frame.setLocation(frameLocation);
 
             // Force a redraw to prevent window corruption
@@ -141,6 +142,18 @@ public class DhkView implements IView {
 
         // Set the taskbar icon
         frame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
+
+        // Force lightweight popups for tooltips to avoid heavyweight window flashes
+        ToolTipManager.sharedInstance().setLightWeightPopupEnabled(true);
+
+        // Re-enable tooltips and prefer lightweight popups (prevents creation of separate heavyweight windows)
+        ToolTipManager.sharedInstance().setEnabled(true);
+
+        /*
+         * Make the frame visible after all components are added and the frame is packed. Showing the frame earlier can
+         * cause transient artifacts (ghost copies) during repaint
+         */
+        frame.setVisible(true);
 
         selectedDisplayLabel.requestFocusInWindow();
     }
