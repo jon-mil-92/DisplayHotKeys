@@ -46,10 +46,9 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv *env, jobjec
     jboolean isCopy;
     const char *displayIdChars = (env)->GetStringUTFChars(displayId, &isCopy);
     string displayIdString = displayIdChars;
-    int enumDisplayDevicesDisplayIdIndex = getEnumDisplayDevicesDisplayIdIndex(displayIdString);
     int queryDisplayConfigDisplayIdIndex = getQueryDisplayConfigDisplayIdIndex(displayIdString);
 
-    setDisplayMode(enumDisplayDevicesDisplayIdIndex, resWidth, resHeight, bitDepth, refreshRate);
+    setDisplayMode(queryDisplayConfigDisplayIdIndex, resWidth, resHeight, bitDepth, refreshRate);
     setDisplayScalingMode(queryDisplayConfigDisplayIdIndex, scalingMode);
     setDpiScalePercentage(queryDisplayConfigDisplayIdIndex, dpiScalePercentage);
 
@@ -73,7 +72,6 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setOrientation(JNIEnv *env, jo
     jboolean isCopy;
     const char *displayIdChars = (env)->GetStringUTFChars(displayId, &isCopy);
     string displayIdString = displayIdChars;
-    int enumDisplayDevicesDisplayIdIndex = getEnumDisplayDevicesDisplayIdIndex(displayIdString);
     int queryDisplayConfigDisplayIdIndex = getQueryDisplayConfigDisplayIdIndex(displayIdString);
 
     setDisplayOrientation(queryDisplayConfigDisplayIdIndex, orientation);
@@ -96,26 +94,43 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setOrientation(JNIEnv *env, jo
  *            - The new refresh rate to apply for the given display
  */
 void setDisplayMode(UINT32 displayIndex, UINT32 resWidth, UINT32 resHeight, UINT32 bitDepth, UINT32 refreshRate) {
-    DEVMODE devMode;
+    /*
+     * Map the displayIndex (QueryDisplayConfig index) to the source/GDI device name and use the Unicode
+     * ChangeDisplaySettingsExW API with a DEVMODEW structure. This is required for virtual displays
+     * where EnumDisplayDevices indices/strings may not match.
+     */
+    DisplayConfig displayConfig = getDisplayConfig();
 
-    SecureZeroMemory(&devMode, sizeof(DEVMODE));
-    devMode.dmSize = sizeof(devMode);
+    if ((UINT32) displayIndex >= displayConfig.numPathInfoArrayElements) {
+        cerr << "Invalid display index for setDisplayMode: " << displayIndex << endl;
+        return;
+    }
 
-    DISPLAY_DEVICE displayDevice;
+    DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName = { };
+    sourceName.header.adapterId = displayConfig.pathInfoArray[displayIndex].sourceInfo.adapterId;
+    sourceName.header.id = displayConfig.pathInfoArray[displayIndex].sourceInfo.id;
+    sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+    sourceName.header.size = sizeof(sourceName);
 
-    SecureZeroMemory(&displayDevice, sizeof(DISPLAY_DEVICE));
-    displayDevice.cb = sizeof(displayDevice);
+    LONG displayConfigGetDeviceInfoResult = DisplayConfigGetDeviceInfo(&sourceName.header);
 
-    devMode.dmPelsWidth = resWidth;
-    devMode.dmPelsHeight = resHeight;
-    devMode.dmBitsPerPel = bitDepth;
-    devMode.dmDisplayFrequency = refreshRate;
-    devMode.dmDriverExtra = 0;
-    devMode.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
+    if (displayConfigGetDeviceInfoResult != ERROR_SUCCESS) {
+        cerr << "Failed to get source device name for setDisplayMode! Error Code: " << displayConfigGetDeviceInfoResult
+                << endl;
+        return;
+    }
 
-    EnumDisplayDevices(NULL, displayIndex, &displayDevice, 0);
+    DEVMODEW devModeW;
+    SecureZeroMemory(&devModeW, sizeof(DEVMODEW));
+    devModeW.dmSize = sizeof(devModeW);
+    devModeW.dmPelsWidth = resWidth;
+    devModeW.dmPelsHeight = resHeight;
+    devModeW.dmBitsPerPel = bitDepth;
+    devModeW.dmDisplayFrequency = refreshRate;
+    devModeW.dmDriverExtra = 0;
+    devModeW.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
 
-    LONG changeDisplaySettingsResult = ChangeDisplaySettingsEx(displayDevice.DeviceName, &devMode, NULL,
+    LONG changeDisplaySettingsResult = ChangeDisplaySettingsExW(sourceName.viewGdiDeviceName, &devModeW, NULL,
     CDS_UPDATEREGISTRY, NULL);
 
     if (changeDisplaySettingsResult != DISP_CHANGE_SUCCESSFUL) {

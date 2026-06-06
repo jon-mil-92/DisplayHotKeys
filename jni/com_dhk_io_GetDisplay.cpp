@@ -27,10 +27,13 @@ using namespace std;
  */
 JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEnv *env, jobject obj,
         jstring displayId) {
-    DEVMODE displayMode;
-
-    SecureZeroMemory(&displayMode, sizeof(DEVMODE));
-    displayMode.dmSize = sizeof(displayMode);
+    // We'll collect mode fields into a small POD so we can enumerate using either ANSI or Unicode DEVMODE
+    struct ModeInfo {
+        int width;
+        int height;
+        int bitsPerPel;
+        int frequency;
+    };
 
     DISPLAY_DEVICE displayDevice;
 
@@ -40,22 +43,75 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
     jboolean isCopy;
     const char *displayIdChars = (env)->GetStringUTFChars(displayId, &isCopy);
     string displayIdString = displayIdChars;
-    int displayIndex = getEnumDisplayDevicesDisplayIdIndex(displayIdString);
-    BOOL enumDisplayDevicesResult = EnumDisplayDevices(NULL, displayIndex, &displayDevice, 0);
 
-    if (!enumDisplayDevicesResult) {
-        env->ReleaseStringUTFChars(displayId, displayIdChars);
-        return NULL;
-    }
+    /*
+     * Try to map the incoming display ID (which comes from QueryDisplayConfig/DisplayConfigGetDeviceInfo)
+     * to a source/GDI device name and enumerate modes from that. This avoids mixing ID formats between
+     * QueryDisplayConfig and EnumDisplayDevices which can fail for virtual displays.
+     */
+    DisplayConfig displayConfig = getDisplayConfig();
+    int qIndex = getQueryDisplayConfigDisplayIdIndex(displayIdString);
 
     UINT32 displayModeIndex = 0;
-    vector<DEVMODE> displayModesVector;
+    vector<ModeInfo> displayModesVector;
 
-    // Only attempt to enumerate display modes if the device is attached to the desktop
-    if (displayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
-        while (EnumDisplaySettings(displayDevice.DeviceName, displayModeIndex, &displayMode)) {
-            displayModesVector.push_back(displayMode);
-            displayModeIndex++;
+    bool enumerated = false;
+
+    if (qIndex >= 0 && (UINT32) qIndex < displayConfig.numPathInfoArrayElements) {
+        // Build a source name structure to get the GDI device name (viewGdiDeviceName)
+        DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName = { };
+        sourceName.header.adapterId = displayConfig.pathInfoArray[qIndex].sourceInfo.adapterId;
+        sourceName.header.id = displayConfig.pathInfoArray[qIndex].sourceInfo.id;
+        sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+        sourceName.header.size = sizeof(sourceName);
+
+        LONG displayConfigGetDeviceInfoResult = DisplayConfigGetDeviceInfo(&sourceName.header);
+
+        if (displayConfigGetDeviceInfoResult == ERROR_SUCCESS) {
+            // Use the wide-character GDI name directly with EnumDisplaySettingsW
+            DEVMODEW displayModeW;
+            SecureZeroMemory(&displayModeW, sizeof(DEVMODEW));
+            displayModeW.dmSize = sizeof(displayModeW);
+
+            while (EnumDisplaySettingsW(sourceName.viewGdiDeviceName, displayModeIndex, &displayModeW)) {
+                ModeInfo modeInfo;
+                modeInfo.width = displayModeW.dmPelsWidth;
+                modeInfo.height = displayModeW.dmPelsHeight;
+                modeInfo.bitsPerPel = displayModeW.dmBitsPerPel;
+                modeInfo.frequency = displayModeW.dmDisplayFrequency;
+                displayModesVector.push_back(modeInfo);
+                displayModeIndex++;
+            }
+
+            enumerated = true;
+        }
+    }
+
+    // If we couldn't enumerate via QueryDisplayConfig mapping, fall back to EnumDisplayDevices logic
+    if (!enumerated) {
+        int displayIndex = getEnumDisplayDevicesDisplayIdIndex(displayIdString);
+        BOOL enumDisplayDevicesResult = EnumDisplayDevices(NULL, displayIndex, &displayDevice, 0);
+
+        if (!enumDisplayDevicesResult) {
+            env->ReleaseStringUTFChars(displayId, displayIdChars);
+            return NULL;
+        }
+
+        // Only attempt to enumerate display modes if the device is attached to the desktop
+        if (displayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
+            DEVMODEA displayModeA;
+            SecureZeroMemory(&displayModeA, sizeof(DEVMODEA));
+            displayModeA.dmSize = sizeof(displayModeA);
+
+            while (EnumDisplaySettingsA(displayDevice.DeviceName, displayModeIndex, &displayModeA)) {
+                ModeInfo modeInfo;
+                modeInfo.width = displayModeA.dmPelsWidth;
+                modeInfo.height = displayModeA.dmPelsHeight;
+                modeInfo.bitsPerPel = displayModeA.dmBitsPerPel;
+                modeInfo.frequency = displayModeA.dmDisplayFrequency;
+                displayModesVector.push_back(modeInfo);
+                displayModeIndex++;
+            }
         }
     }
 
@@ -84,9 +140,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
 
     displayModeIndex = 0;
 
-    for (const DEVMODE &displayMode : displayModesVector) {
-        jobject displayModeObject = env->NewObject(displayModeClass, displayModeConstructor, displayMode.dmPelsWidth,
-                displayMode.dmPelsHeight, displayMode.dmBitsPerPel, displayMode.dmDisplayFrequency);
+    for (const ModeInfo &modeInfo : displayModesVector) {
+        jobject displayModeObject = env->NewObject(displayModeClass, displayModeConstructor, modeInfo.width,
+                modeInfo.height, modeInfo.bitsPerPel, modeInfo.frequency);
 
         if (displayModeObject == NULL) {
             for (int j = 0; j < displayModeIndex; j++) {
