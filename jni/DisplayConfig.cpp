@@ -58,10 +58,21 @@ DisplayConfig getDisplayConfig() {
  * @return The string version of the wide string
  */
 string wStrToStr(const wstring &wideString) {
-    using convert_typeX = codecvt_utf8<wchar_t>;
-    wstring_convert<convert_typeX, wchar_t> strConverter;
+    if (wideString.empty()) {
+        return string();
+    }
 
-    return strConverter.to_bytes(wideString);
+    int sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, wideString.c_str(), -1, NULL, 0, NULL, NULL);
+
+    if (sizeNeeded <= 0) {
+        return string();
+    }
+
+    string result(sizeNeeded - 1, '\0');
+
+    WideCharToMultiByte(CP_UTF8, 0, wideString.c_str(), -1, &result[0], sizeNeeded, NULL, NULL);
+
+    return result;
 }
 
 /*
