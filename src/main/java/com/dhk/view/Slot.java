@@ -1,20 +1,39 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.view;
 
 import java.awt.Dimension;
 import java.awt.DisplayMode;
+
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
+
 import com.dhk.model.button.Button;
 import com.dhk.model.button.ButtonProperties;
 
 /**
  * Defines the view components of a Slot.
- * 
+ *
  * @author Jonathan R. Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan R. Miller
  */
 public class Slot {
 
@@ -30,7 +49,7 @@ public class Slot {
 
     /**
      * Constructor for the {@link Slot} class.
-     * 
+     *
      * @param slotIndex
      *            - The index of the slot
      * @param displayIndex
@@ -80,7 +99,7 @@ public class Slot {
 
     /**
      * Gets the indicator label of the slot.
-     * 
+     *
      * @return The indicator label of the slot
      */
     public JLabel getIndicatorLabel() {
@@ -89,7 +108,7 @@ public class Slot {
 
     /**
      * Gets the apply display mode button.
-     * 
+     *
      * @return The apply display mode button
      */
     public Button getApplyDisplayModeButton() {
@@ -98,7 +117,7 @@ public class Slot {
 
     /**
      * Gets the display modes combo box of the slot.
-     * 
+     *
      * @return The display modes combo box of the slot
      */
     public JComboBox<DisplayMode> getDisplayModes() {
@@ -107,7 +126,7 @@ public class Slot {
 
     /**
      * Gets the scaling modes combo box of the slot.
-     * 
+     *
      * @return The scaling modes combo box of the slot
      */
     public JComboBox<String> getScalingModes() {
@@ -116,7 +135,7 @@ public class Slot {
 
     /**
      * Gets the DPI scale percentages combo box of the slot.
-     * 
+     *
      * @return The DPI scale percentages combo box of the slot
      */
     public JComboBox<Integer> getDpiScalePercentages() {
@@ -125,7 +144,7 @@ public class Slot {
 
     /**
      * Gets the orientation modes combo box of the slot.
-     * 
+     *
      * @return The orientation modes combo box of the slot
      */
     public JComboBox<String> getOrientationModes() {
@@ -134,7 +153,7 @@ public class Slot {
 
     /**
      * Gets the hot key of the slot.
-     * 
+     *
      * @return The hot key of the slot
      */
     public JLabel getHotKey() {
@@ -143,7 +162,7 @@ public class Slot {
 
     /**
      * Gets the clear hot key button of the slot.
-     * 
+     *
      * @return The clear hot key button of the slot
      */
     public Button getClearHotKeyButton() {
@@ -152,7 +171,7 @@ public class Slot {
 
     /**
      * Gets the change hot key button of the slot.
-     * 
+     *
      * @return The change hot key button of the slot
      */
     public JButton getChangeHotKeyButton() {

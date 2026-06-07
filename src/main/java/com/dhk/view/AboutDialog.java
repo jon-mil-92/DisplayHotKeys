@@ -1,6 +1,32 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.view;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Desktop;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -8,20 +34,26 @@ import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import javax.swing.*;
+
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+
 import com.dhk.controller.button.PaypalDonateButtonController;
 import com.dhk.model.DhkModel;
 import com.dhk.model.button.ButtonProperties;
 import com.dhk.model.button.ThemeableButton;
 import com.dhk.utility.VersionRetriever;
+
 import dorkbox.systemTray.SystemTray;
 
 /**
  * Shows an "About Display Hot Keys" dialog on the AWT event dispatching thread.
- * 
+ *
  * @author Jonathan R. Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan R. Miller
  */
 public class AboutDialog extends AbstractDraggableDialog {
 
@@ -51,7 +83,7 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Constructor for the {@link AboutDialog} class.
-     * 
+     *
      * @param model
      *            - The model for the application
      * @param view
@@ -76,7 +108,7 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Shows an "About Display Hot Keys" dialog on the AWT event dispatching thread.
-     * 
+     *
      * @param systemTray
      *            - The system tray (not required)
      */
@@ -120,7 +152,7 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Initializes panels for an about dialog.
-     * 
+     *
      * @param aboutDialog
      *            - The about dialog to initialize panels for
      */
@@ -145,7 +177,7 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Initializes components for an about dialog.
-     * 
+     *
      * @param aboutDialog
      *            - The about dialog to initialize components for
      * @param systemTray
@@ -168,7 +200,7 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Initializes listeners for the components in an about dialog.
-     * 
+     *
      * @param aboutDialog
      *            - The about dialog to initialize listeners for
      * @param systemTray
@@ -188,7 +220,7 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Adds components to an about dialog.
-     * 
+     *
      * @param aboutDialog
      *            - The about dialog to add components to
      */
@@ -220,7 +252,7 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Creates an action listener that opens the license link.
-     * 
+     *
      * @return An action listener that opens the license link
      */
     private ActionListener createLicenseActionListener() {
@@ -234,7 +266,7 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Creates an action listener that opens the releases link.
-     * 
+     *
      * @return An action listener that opens the releases link
      */
     private ActionListener createReleasesActionListener() {
@@ -248,12 +280,12 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Creates an action listener that closes an about dialog.
-     * 
+     *
      * @param aboutDialog
      *            - The about dialog to close
      * @param systemTray
      *            - The system tray to re-enable (not required)
-     * 
+     *
      * @return An action listener that closes an about dialog
      */
     private ActionListener createCloseActionListener(JDialog aboutDialog, SystemTray systemTray) {
@@ -267,7 +299,7 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Creates a mouse adapter that gives focus to the default focus component upon mouse exit.
-     * 
+     *
      * @return A mouse adapter that gives focus to the default focus component upon mouse exit
      */
     private MouseAdapter createMouseAdapter() {
@@ -281,7 +313,7 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Opens up a link in the user's default web browser.
-     * 
+     *
      * @param link
      *            - The link to open
      */
@@ -297,7 +329,7 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Closes an about dialog.
-     * 
+     *
      * @param aboutDialog
      *            - The about dialog to close
      * @param systemTray
@@ -318,7 +350,7 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Creates a semi-transparent darkening panel to overlay the parent frame.
-     * 
+     *
      * @return A semi-transparent darkening panel to overlay the parent frame
      */
     private Component createDarkeningGlassPane() {
@@ -339,7 +371,7 @@ public class AboutDialog extends AbstractDraggableDialog {
 
     /**
      * Builds an HTML string for information about the application.
-     * 
+     *
      * @return An HTML string for information about the application
      */
     private String buildAboutInfoHtml() {

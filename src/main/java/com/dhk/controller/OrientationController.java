@@ -1,7 +1,28 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.controller;
 
 import java.awt.DisplayMode;
+
 import javax.swing.JOptionPane;
+
 import com.dhk.io.SettingsManager;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
@@ -11,10 +32,8 @@ import com.dhk.view.DhkView;
 /**
  * Controls the orientation mode combo boxes. Listeners are added to the corresponding view components so that when a
  * new orientation mode is selected from an orientation mode combo box, the model is updated.
- * 
+ *
  * @author Jonathan R. Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan R. Miller
  */
 public class OrientationController implements IController {
 
@@ -30,7 +49,7 @@ public class OrientationController implements IController {
 
     /**
      * Constructor for the {@link OrientationController} class.
-     * 
+     *
      * @param model
      *            - The model for the application
      * @param view
@@ -73,7 +92,7 @@ public class OrientationController implements IController {
 
     /**
      * Changes the orientation mode of the display upon user confirmation.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to change the orientation mode for
      * @param slotIndex
@@ -98,7 +117,7 @@ public class OrientationController implements IController {
 
     /**
      * Shows a confirmation window that asks if the user wants to clear all slots.
-     * 
+     *
      * @return The return value from the option pane
      */
     private int getUserConfirmation() {
@@ -108,7 +127,7 @@ public class OrientationController implements IController {
 
     /**
      * Updates the given slot for the selected orientation mode.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to change the orientation mode for
      * @param slotIndex

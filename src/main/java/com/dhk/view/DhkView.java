@@ -1,3 +1,22 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.view;
 
 import java.awt.Component;
@@ -13,13 +32,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.swing.JComboBox;
-import javax.swing.ToolTipManager;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
+import javax.swing.ToolTipManager;
 import javax.swing.UIManager;
+
 import com.dhk.io.DisplayConfig;
 import com.dhk.model.DhkModel;
 import com.dhk.model.button.Button;
@@ -32,10 +53,8 @@ import com.formdev.flatlaf.ui.FlatUIUtils;
 /**
  * Defines the view for Display Hot Keys. The layout for the view components is defined here. View components are
  * initialized and arranged in a GridBag layout.
- * 
+ *
  * @author Jonathan R. Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan R. Miller
  */
 public class DhkView implements IView {
 
@@ -84,7 +103,7 @@ public class DhkView implements IView {
 
     /**
      * Constructor for the {@link DhkView} class.
-     * 
+     *
      * @param model
      *            - The model for the application
      */
@@ -108,7 +127,7 @@ public class DhkView implements IView {
     /**
      * Initializes the view of the application. It creates a new frame, sets the frame properties, initializes the
      * panels, and initializes the view components.
-     * 
+     *
      * @param frameLocation
      *            - The point to spawn the view's frame at
      */
@@ -171,7 +190,7 @@ public class DhkView implements IView {
 
     /**
      * Adds slots to the main panel until the number of active slots for the given display is reached.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to add slots in the view for
      * @param startIndex
@@ -224,7 +243,7 @@ public class DhkView implements IView {
 
     /**
      * Removes the specified number of slots from the end of the main panel.
-     * 
+     *
      * @param numOfSlotsToRemove
      *            - The number of slots to remove from the end of the main panel
      */
@@ -316,7 +335,7 @@ public class DhkView implements IView {
 
     /**
      * Removes the current number of active slots combo box and adds the correct one for the selected display.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to show the number of active slots combo box for
      */
@@ -484,7 +503,7 @@ public class DhkView implements IView {
 
     /**
      * Generates the array of connected display IDs.
-     * 
+     *
      * @return The array of display IDs for all actively connected displays
      */
     private Integer[] generateDisplayIds() {
@@ -499,7 +518,7 @@ public class DhkView implements IView {
 
     /**
      * Generates the array of number of active slots values.
-     * 
+     *
      * @return The array of number of active slots values
      */
     private Integer[] generateNumOfSlotsValues() {
@@ -648,7 +667,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the frame of the view.
-     * 
+     *
      * @return The frame of the view
      */
     public JFrame getFrame() {
@@ -657,7 +676,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the frame's main panel.
-     * 
+     *
      * @return The frame's main panel
      */
     public JPanel getMainPanel() {
@@ -666,7 +685,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the display IDs combo box.
-     * 
+     *
      * @return The combo box for the current display ID in the view
      */
     public JComboBox<Integer> getDisplayIds() {
@@ -675,7 +694,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the previously selected display index.
-     * 
+     *
      * @return The previously selected display index
      */
     public int getPreviouslySelectedDisplayIndex() {
@@ -684,7 +703,7 @@ public class DhkView implements IView {
 
     /**
      * Sets the previously selected display index.
-     * 
+     *
      * @param previouslySelectedDisplayIndex
      *            - The previously selected display index
      */
@@ -694,7 +713,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the number of active slots combo box for the given display index.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to get the number of active slots combo box for
      *
@@ -706,7 +725,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the about button.
-     * 
+     *
      * @return The about button
      */
     public ThemeableButton getAboutButton() {
@@ -715,7 +734,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the theme button.
-     * 
+     *
      * @return The theme button
      */
     public ThemeableButton getThemeButton() {
@@ -724,7 +743,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the run on startup button.
-     * 
+     *
      * @return The run on startup button
      */
     public ThemeableToggleButton getRunOnStartupButton() {
@@ -733,7 +752,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the minimize to tray button.
-     * 
+     *
      * @return The minimize to tray button
      */
     public ThemeableToggleButton getMinimizeToTrayButton() {
@@ -742,7 +761,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the refresh app button.
-     * 
+     *
      * @return The refresh app button
      */
     public Button getRefreshAppButton() {
@@ -751,7 +770,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the clear all button.
-     * 
+     *
      * @return The clear all button
      */
     public Button getClearAllButton() {
@@ -760,7 +779,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the minimize button.
-     * 
+     *
      * @return The minimize button
      */
     public Button getMinimizeButton() {
@@ -769,7 +788,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the exit button.
-     * 
+     *
      * @return The exit button
      */
     public Button getExitButton() {
@@ -778,7 +797,7 @@ public class DhkView implements IView {
 
     /**
      * Gets a list of themeable buttons in the view.
-     * 
+     *
      * @return A list of themeable buttons in the view
      */
     public List<ThemeableButton> getThemeableButtons() {
@@ -787,7 +806,7 @@ public class DhkView implements IView {
 
     /**
      * Gets the specified slot.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to get the slot for
      * @param slotIndex

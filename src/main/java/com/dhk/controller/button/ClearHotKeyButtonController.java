@@ -1,3 +1,22 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.controller.button;
 
 import com.dhk.controller.HotKeysController;
@@ -10,10 +29,8 @@ import com.dhk.view.FrameUpdater;
 /**
  * Controls the Clear Hot Key buttons. Listeners are added to the corresponding view components so that when the Clear
  * Hot Key button is pressed, the corresponding hot key is cleared.
- * 
+ *
  * @author Jonathan R. Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan R. Miller
  */
 public class ClearHotKeyButtonController extends AbstractButtonController implements IController {
 
@@ -25,7 +42,7 @@ public class ClearHotKeyButtonController extends AbstractButtonController implem
 
     /**
      * Constructor for the {@link ClearHotKeyButtonController} class.
-     * 
+     *
      * @param model
      *            - The model for the application
      * @param view
@@ -76,7 +93,7 @@ public class ClearHotKeyButtonController extends AbstractButtonController implem
 
     /**
      * Clears the hot key for the specified slot for the given display.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to clear the hot key for
      * @param slotIndex

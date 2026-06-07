@@ -1,17 +1,26 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.controller;
 
-import com.dhk.io.SettingsManager;
-import com.dhk.main.AppRefresher;
-import com.dhk.model.DhkModel;
-import com.dhk.model.HotKey;
-import com.dhk.model.Key;
-import com.dhk.view.DhkView;
-import com.dhk.view.FrameUpdater;
-import com.dhk.io.DisplayConfig;
-import com.dhk.io.KeyText;
-import com.dhk.io.SetDisplay;
-import lc.kra.system.keyboard.event.GlobalKeyEvent;
-import lc.kra.system.keyboard.event.GlobalKeyListener;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -20,19 +29,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+
+import com.dhk.io.DisplayConfig;
+import com.dhk.io.KeyText;
+import com.dhk.io.SetDisplay;
+import com.dhk.io.SettingsManager;
+import com.dhk.main.AppRefresher;
+import com.dhk.model.DhkModel;
+import com.dhk.model.HotKey;
+import com.dhk.model.Key;
+import com.dhk.view.DhkView;
+import com.dhk.view.FrameUpdater;
+
+import lc.kra.system.keyboard.event.GlobalKeyEvent;
+import lc.kra.system.keyboard.event.GlobalKeyListener;
 
 /**
  * Controls the hot keys for the application. Listeners are added to the Change Hot Key buttons to enable the
  * functionality of changing hot keys. This class is also responsible for triggering hot key events once a hot key press
  * is detected.
- * 
+ *
  * @author Jonathan R. Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan R. Miller
  */
 public class HotKeysController implements IController, GlobalKeyListener {
 
@@ -263,7 +283,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     /**
      * Changes the specified slot's Change Hot Key button text and updates the model's corresponding boolean.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to update the hot key for
      * @param slotIndex
@@ -289,7 +309,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     /**
      * Sets hot key keys as pressed if the given key event matches a key in the hot key.
-     * 
+     *
      * @param keyEvent
      *            - The key event that occurred
      * @param keys
@@ -305,7 +325,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     /**
      * Sets hot key keys as not pressed if the given key event matches a key in the hot key.
-     * 
+     *
      * @param keyEvent
      *            - The key event that occurred
      * @param keys
@@ -321,10 +341,10 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     /**
      * Updates the state of the given hot key.
-     * 
+     *
      * @param hotKey
      *            - The hot key for the keys to check
-     * 
+     *
      * @return Whether or not all keys in a hot key are pressed
      */
     private boolean updateHotKeyState(HotKey hotKey) {
@@ -358,7 +378,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     /**
      * Builds the new hot key that will be used to change display settings.
-     * 
+     *
      * @param keyEvent
      *            - The native key event that was fired
      * @param hotKey
@@ -399,7 +419,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     /**
      * Checks if any hot key is a subset of another hot key.
-     * 
+     *
      * @return Whether or not any hot key is a subset of another hot key
      */
     private boolean anyHotKeySubset() {
@@ -427,10 +447,10 @@ public class HotKeysController implements IController, GlobalKeyListener {
     /**
      * Checks if the hot key for the specified slot in the selected display is a subset of another hot key in the
      * selected display.
-     * 
+     *
      * @param slotIndexToCheck
      *            - The index of the slot containing the hot key to check
-     * 
+     *
      * @return Whether or not the hot key for the specified slot in the selected display is a subset of another hot key
      *         in the selected display
      */
@@ -458,10 +478,10 @@ public class HotKeysController implements IController, GlobalKeyListener {
     /**
      * Checks if the hot key for the specified slot in the selected display is a subset of another hot key in another
      * display.
-     * 
+     *
      * @param slotIndexToCheck
      *            - The index of the slot containing the hot key to check
-     * 
+     *
      * @return Whether or not the hot key for the specified slot in the selected display is a subset of another hot key
      *         in another display
      */
@@ -496,7 +516,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     /**
      * Checks to see if any slots are in the "changing hot key" state.
-     * 
+     *
      * @return Whether or not any active slots are in the "changing hot key" state
      */
     private boolean changingHotKey() {
@@ -512,7 +532,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     /**
      * Sets the display settings if the display is connected.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to set the display settings for
      * @param slotIndex
@@ -542,7 +562,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     /**
      * Leaves the "changing hot key" state for the specified slot's hot key.
-     * 
+     *
      * @param slotIndex
      *            - The slot index for the hot key that is leaving the "changing hot key" state
      */
@@ -591,7 +611,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     /**
      * Starts a timer to stop displaying the release message after attempting to change a hot key.
-     * 
+     *
      * @param milliseconds
      *            - The timeout value
      * @param slotIndex
@@ -616,7 +636,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     /**
      * Starts a timer to leave the "changing hot key" state when the user is idle while changing a hot key.
-     * 
+     *
      * @param milliseconds
      *            - The timeout value
      * @param slotIndex

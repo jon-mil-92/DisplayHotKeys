@@ -1,3 +1,22 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.io;
 
 import java.awt.DisplayMode;
@@ -9,7 +28,9 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.ini4j.Wini;
+
 import com.dhk.model.HotKey;
 import com.dhk.model.Key;
 
@@ -17,10 +38,8 @@ import com.dhk.model.Key;
  * Saves the application settings to an ini file. It enables the saving of the active number of slots, the orientation
  * mode, the theme state, the minimize to tray state, the run on startup state, the display modes, the scaling modes,
  * the DPI scale percentages, and the hot keys for each display
- * 
+ *
  * @author Jonathan R. Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan R. Miller
  */
 public class SettingsManager {
 
@@ -51,7 +70,7 @@ public class SettingsManager {
 
     /**
      * Gets the dark mode property value from the settings file object.
-     * 
+     *
      * @return The value for the dark mode property
      */
     public boolean getIniDarkMode() {
@@ -60,7 +79,7 @@ public class SettingsManager {
 
     /**
      * Sets the dark mode property value in the settings file object.
-     * 
+     *
      * @param darkMode
      *            - The new value for the dark mode property
      */
@@ -72,7 +91,7 @@ public class SettingsManager {
 
     /**
      * Gets the minimize to tray property value from the settings file object.
-     * 
+     *
      * @return The value for the minimize to tray property
      */
     public boolean getIniMinimizeToTray() {
@@ -81,7 +100,7 @@ public class SettingsManager {
 
     /**
      * Sets the minimize to tray property value in the settings file object.
-     * 
+     *
      * @param minimizeToTray
      *            - The new value for the minimize to tray property
      */
@@ -93,7 +112,7 @@ public class SettingsManager {
 
     /**
      * Gets the run on startup property value from the settings file object.
-     * 
+     *
      * @return The value for the run on startup property
      */
     public boolean getIniRunOnStartup() {
@@ -102,7 +121,7 @@ public class SettingsManager {
 
     /**
      * Sets the run on startup property value in the settings file object.
-     * 
+     *
      * @param runOnStartup
      *            - The new value for the run on startup property
      */
@@ -114,10 +133,10 @@ public class SettingsManager {
 
     /**
      * Gets the number of slots property value for the given display from the settings file object.
-     * 
+     *
      * @param displayId
      *            - The ID of the display to get the number of slots for
-     * 
+     *
      * @return The value for the number of slots property
      */
     public int getIniNumOfSlotsForDisplay(String displayId) {
@@ -126,7 +145,7 @@ public class SettingsManager {
 
     /**
      * Sets the number of slots property value for the given display in the settings file object.
-     * 
+     *
      * @param displayId
      *            - The ID of the display to set the number of slots for
      * @param numOfSlots
@@ -140,12 +159,12 @@ public class SettingsManager {
 
     /**
      * Gets the specified slot's display mode built from the display mode properties in the settings file object.
-     * 
+     *
      * @param displayId
      *            - The ID of the display to get the display mode for
      * @param slotId
      *            - The ID of the slot to get the display mode for
-     * 
+     *
      * @return The display mode from the display property values for the specified slot ID
      */
     public DisplayMode getIniSlotDisplayMode(String displayId, int slotId) {
@@ -161,7 +180,7 @@ public class SettingsManager {
 
     /**
      * Sets the specified slot's display mode properties in the settings file object.
-     * 
+     *
      * @param displayId
      *            - The ID of the display to set the display mode for
      * @param slotId
@@ -189,12 +208,12 @@ public class SettingsManager {
 
     /**
      * Gets the specified slot's scaling mode property value from the settings file object.
-     * 
+     *
      * @param displayId
      *            - The ID of the display to get the scaling mode for
      * @param slotId
      *            - The ID of the slot to get the scaling mode for
-     * 
+     *
      * @return The specified slot's scaling mode property value
      */
     public int getIniSlotScalingMode(String displayId, int slotId) {
@@ -205,7 +224,7 @@ public class SettingsManager {
 
     /**
      * Sets the specified slot's scaling mode property value in the settings file object.
-     * 
+     *
      * @param displayId
      *            - The ID of the display to set the scaling mode for
      * @param slotId
@@ -222,12 +241,12 @@ public class SettingsManager {
 
     /**
      * Gets the specified slot's DPI scale percentage property value from the settings file object.
-     * 
+     *
      * @param displayId
      *            - The ID of the display to get the DPI scale percentage for
      * @param slotId
      *            - The ID of the slot to get the DPI scale percentage for
-     * 
+     *
      * @return The specified slot's DPI scale percentage property value
      */
     public int getIniSlotDpiScalePercentage(String displayId, int slotId) {
@@ -238,7 +257,7 @@ public class SettingsManager {
 
     /**
      * Sets the specified slot's DPI scale percentage property value in the settings file object.
-     * 
+     *
      * @param displayId
      *            - The ID of the display to set the DPI scale percentage for
      * @param slotId
@@ -255,12 +274,12 @@ public class SettingsManager {
 
     /**
      * Gets the specified slot's orientation mode property value from the settings file object.
-     * 
+     *
      * @param displayId
      *            - The ID of the display to get the orientation mode for
      * @param slotId
      *            - The ID of the slot to get the orientation mode for
-     * 
+     *
      * @return The specified slot's orientation mode property value
      */
     public int getIniSlotOrientationMode(String displayId, int slotId) {
@@ -271,7 +290,7 @@ public class SettingsManager {
 
     /**
      * Sets the specified slot's orientation mode property value in the settings file object.
-     * 
+     *
      * @param displayId
      *            - The ID of the display to set the orientation mode for
      * @param slotId
@@ -288,12 +307,12 @@ public class SettingsManager {
 
     /**
      * Gets the specified slot's hot key built from the hot key properties in the settings file object.
-     * 
+     *
      * @param displayId
      *            - The ID of the display to get the hot key for
      * @param slotId
      *            - The ID of the slot to get the hot key for
-     * 
+     *
      * @return The specified slot's hot key
      */
     public HotKey getIniSlotHotKey(String displayId, int slotId) {
@@ -311,7 +330,7 @@ public class SettingsManager {
 
     /**
      * Sets the specified slot's hot key properties in the settings file object.
-     * 
+     *
      * @param displayId
      *            - The ID of the display to set the hot key for
      * @param slotId
@@ -339,7 +358,7 @@ public class SettingsManager {
 
     /**
      * Gets the ini file that holds the application settings.
-     * 
+     *
      * @return The settings ini file.
      */
     public Wini getIni() {
@@ -348,7 +367,7 @@ public class SettingsManager {
 
     /**
      * Gets the object containing the current display configuration.
-     * 
+     *
      * @return The object containing the current display configuration
      */
     public DisplayConfig getDisplayConfig() {
@@ -357,7 +376,7 @@ public class SettingsManager {
 
     /**
      * Gets the number of actively connected display devices.
-     * 
+     *
      * @return The number of actively connected display devices
      */
     public int getNumOfConnectedDisplays() {
@@ -366,7 +385,7 @@ public class SettingsManager {
 
     /**
      * Gets the array of display IDs.
-     * 
+     *
      * @return The array of display IDs
      */
     public String[] getDisplayIds() {
@@ -375,7 +394,7 @@ public class SettingsManager {
 
     /**
      * Gets the map of display IDs to supported landscape display modes array.
-     * 
+     *
      * @return The map of display IDs to supported landscape display modes array
      */
     public Map<String, DisplayMode[]> getLandscapeDisplayModesMap() {
@@ -384,7 +403,7 @@ public class SettingsManager {
 
     /**
      * Gets the map of display IDs to supported portrait display modes array.
-     * 
+     *
      * @return The map of display IDs to supported portrait display modes array
      */
     public Map<String, DisplayMode[]> getPortraitDisplayModesMap() {
@@ -393,7 +412,7 @@ public class SettingsManager {
 
     /**
      * Gets the max number of slots.
-     * 
+     *
      * @return The max number of slots
      */
     public int getMaxNumOfSlots() {

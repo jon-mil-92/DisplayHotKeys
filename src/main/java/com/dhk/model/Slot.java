@@ -1,3 +1,22 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.model;
 
 import java.awt.DisplayMode;
@@ -5,10 +24,8 @@ import java.awt.DisplayMode;
 /**
  * Defines the model for a Slot. The display mode, scaling mode, DPI scale percentage, orientation mode, and hot key for
  * a slot are initialized here.
- * 
+ *
  * @author Jonathan R. Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan R. Miller
  */
 public class Slot {
 
@@ -21,7 +38,7 @@ public class Slot {
 
     /**
      * Constructor for the {@link Slot} class.
-     * 
+     *
      * @param displayMode
      *            - The display mode for the slot
      * @param scalingMode
@@ -47,7 +64,7 @@ public class Slot {
 
     /**
      * Gets the display mode of the slot.
-     * 
+     *
      * @return The display mode of the slot
      */
     public DisplayMode getDisplayMode() {
@@ -56,7 +73,7 @@ public class Slot {
 
     /**
      * Sets the display mode of the slot.
-     * 
+     *
      * @param displayMode
      *            - The new display mode for the slot
      */
@@ -66,7 +83,7 @@ public class Slot {
 
     /**
      * Gets the scaling mode of the slot.
-     * 
+     *
      * @return The scaling mode of the slot
      */
     public int getScalingMode() {
@@ -75,7 +92,7 @@ public class Slot {
 
     /**
      * Sets the scaling mode of the slot.
-     * 
+     *
      * @param scalingMode
      *            - The new scaling mode of the slot
      */
@@ -85,7 +102,7 @@ public class Slot {
 
     /**
      * Gets the DPI scale percentage of the slot.
-     * 
+     *
      * @return The DPI scale percentage of the slot
      */
     public int getDpiScalePercentage() {
@@ -94,7 +111,7 @@ public class Slot {
 
     /**
      * Sets the DPI scale percentage of the slot.
-     * 
+     *
      * @param dpiScalePercentage
      *            - The new DPI scale percentage of the slot
      */
@@ -104,7 +121,7 @@ public class Slot {
 
     /**
      * Gets the orientation mode for the slot.
-     * 
+     *
      * @return The orientation mode for the slot
      */
     public int getOrientationMode() {
@@ -113,7 +130,7 @@ public class Slot {
 
     /**
      * Sets the orientation mode for the slot.
-     * 
+     *
      * @param orientationMode
      *            - The orientation mode for the slot
      */
@@ -123,7 +140,7 @@ public class Slot {
 
     /**
      * Gets the hot key for the slot.
-     * 
+     *
      * @return The hot key for the slot
      */
     public HotKey getHotKey() {
@@ -132,7 +149,7 @@ public class Slot {
 
     /**
      * Sets the hot key for the slot.
-     * 
+     *
      * @param hotKey
      *            - The new hot key for the slot
      */
@@ -142,7 +159,7 @@ public class Slot {
 
     /**
      * Gets whether or not the slot is being cleared.
-     * 
+     *
      * @return Whether or not the slot is being cleared
      */
     public boolean isClearingSlot() {
@@ -151,7 +168,7 @@ public class Slot {
 
     /**
      * Sets whether or not the slot is being cleared.
-     * 
+     *
      * @param clearingSlot
      *            - Whether or not the slot is being cleared
      */

@@ -1,3 +1,22 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.io;
 
 import java.awt.DisplayMode;
@@ -8,17 +27,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+
 import org.ini4j.Wini;
+
 import lc.kra.system.keyboard.event.GlobalKeyEvent;
 
 /**
  * Validates all of the property values in the settings file. It makes sure that each property value is either a
  * positive integer or a boolean, and that it is in the correct range of valid values. If a property value fails
  * validation, then it is reset to the default value.
- * 
+ *
  * @author Jonathan R. Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan R. Miller
  */
 public class SettingsValidator {
 
@@ -38,7 +57,7 @@ public class SettingsValidator {
 
     /**
      * Constructor for the {@link SettingsValidator} class.
-     * 
+     *
      * @param settingsMgr
      *            - The manager for the settings file
      */
@@ -106,10 +125,10 @@ public class SettingsValidator {
 
     /**
      * Checks if a given string is a string representation of a positive integer.
-     * 
+     *
      * @param intString
      *            - The supposed string representation of a positive integer
-     * 
+     *
      * @return Whether or not the given string is a string representation of a positive integer
      */
     private boolean isPositiveInt(String intString) {
@@ -257,7 +276,7 @@ public class SettingsValidator {
 
     /**
      * Writes the default display mode property values to the give slot section in the settings file.
-     * 
+     *
      * @param landscapeOrientation
      *            - Whether or not to write a landscape display mode
      * @param displayId

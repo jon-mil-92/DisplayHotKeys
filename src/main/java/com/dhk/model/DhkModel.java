@@ -1,17 +1,35 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.model;
 
 import java.awt.DisplayMode;
 import java.util.ArrayList;
 import java.util.List;
+
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.SettingsManager;
 
 /**
  * Defines the primary model of Display Hot Keys. Each slot in the application is initialized here.
- * 
+ *
  * @author Jonathan R. Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2026 Jonathan R. Miller
  */
 public class DhkModel {
 
@@ -32,7 +50,7 @@ public class DhkModel {
 
     /**
      * Initializes the slots for each display from the settings file.
-     * 
+     *
      * @param settingsMgr
      *            - The manager of the application's settings file
      */
@@ -68,7 +86,7 @@ public class DhkModel {
 
     /**
      * Gets the object containing the current display configuration.
-     * 
+     *
      * @return The object containing the current display configuration
      */
     public DisplayConfig getDisplayConfig() {
@@ -77,7 +95,7 @@ public class DhkModel {
 
     /**
      * Gets the array of display IDs for the connected displays.
-     * 
+     *
      * @return The array of display IDs for the connected displays
      */
     public String[] getDisplayIds() {
@@ -86,7 +104,7 @@ public class DhkModel {
 
     /**
      * Gets the active number of connected displays.
-     * 
+     *
      * @return The active number of connected displays
      */
     public int getNumOfConnectedDisplays() {
@@ -95,7 +113,7 @@ public class DhkModel {
 
     /**
      * Gets the active number of slots for the given display.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to get the active number of slots for
      *
@@ -107,7 +125,7 @@ public class DhkModel {
 
     /**
      * Sets the active number of slots for the given display.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to set the active number of slots for
      * @param numberOfSlots
@@ -119,7 +137,7 @@ public class DhkModel {
 
     /**
      * Gets the specified slot for the given display.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to get the slot for
      * @param slotIndex
@@ -133,7 +151,7 @@ public class DhkModel {
 
     /**
      * Gets the max number of slots.
-     * 
+     *
      * @return The max number of slots
      */
     public int getMaxNumOfSlots() {
@@ -142,7 +160,7 @@ public class DhkModel {
 
     /**
      * Gets the current "dark mode" state of the UI.
-     * 
+     *
      * @return The current "dark mode" state of the UI
      */
     public boolean isDarkMode() {
@@ -165,7 +183,7 @@ public class DhkModel {
 
     /**
      * Gets the "minimize to tray" state.
-     * 
+     *
      * @return The "minimize to tray" state
      */
     public boolean isMinimizeToTray() {
@@ -181,7 +199,7 @@ public class DhkModel {
 
     /**
      * Gets the "run on startup" state.
-     * 
+     *
      * @return The "run on startup" state
      */
     public boolean isRunOnStartup() {
