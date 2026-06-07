@@ -18,20 +18,17 @@
   </p>
 </div>
 
-<!-- TABLE OF CONTENTS -->
-
 ## Table of Contents
 <ol>
   <li><a href="#about-the-project">About The Project</a></li>
   <li><a href="#getting-started">Getting Started</a></li>
   <li><a href="#usage">Usage</a></li>
+  <li><a href="#screenshots">Screenshots</a></li>
   <li><a href="#roadmap">Roadmap</a></li>
   <li><a href="#license">License</a></li>
   <li><a href="#contact">Contact</a></li>
   <li><a href="#dependencies">Dependencies</a></li>
 </ol>
-
-<!-- ABOUT THE PROJECT -->
 
 ## About The Project
 
@@ -51,18 +48,6 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 * Instantly set a display mode while in a video game. (This is useful if a video game does not support changing the resolution or refresh rate while in-game.)
 
-### Light Mode
-
-![screenshot](src/main/resources/images/product_screenshot_light.png)
-
-### Dark Mode
-
-![screenshot](src/main/resources/images/product_screenshot_dark.png)
-
-<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
-
-<!-- GETTING STARTED -->
-
 ## Getting Started
 
 This application was made only for the Windows platform. Display Hot Keys also uses elevated privileges to set display modes while in video games. Therefore, if you have UAC enabled, you will get a UAC prompt upon launching the application. If you no longer wish to see this prompt, you can [disable UAC]. The sections that follow will help you get the application up and running on your PC!
@@ -71,11 +56,9 @@ This application was made only for the Windows platform. Display Hot Keys also u
 
 * Native Windows 10 x64 or Windows 11 x64 operating system installation. Running the app through virtualization software is not fully supported.
 
-* If using multiple displays, then the "Multiple displays" setting must be set to "Extend these displays" in the Windows "Display" settings menu!
-
 ### Installation
 
-This application will be distributed as a portable package and as an installer.
+This application will be distributed as a portable package and as an installer. Only one of either the portable package or installer is needed.
 
 #### Portable
 
@@ -96,8 +79,6 @@ This application will be distributed as a portable package and as an installer.
 4. Double-click the created shortcut or the DisplayHotKeys executable file in the install directory to run the application.
 
 <p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
-
-<!-- USAGE -->
 
 ## Usage
 
@@ -155,6 +136,8 @@ This application will be distributed as a portable package and as an installer.
 	
 **Note:** Make sure you can rotate your display before changing the orientation; otherwise, it may be difficult to operate your computer.
 
+<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
+
 ### Button Interaction
 
 #### Apply Display Mode
@@ -165,21 +148,17 @@ The display settings can be immediately applied by clicking on the "Apply Displa
 
 Individual hot keys can be cleared by clicking on the "Clear Hot Key" button for a hot key slot when a hot key is set.
 
-#### PayPal Donate
-
-If you find the application useful and wish to donate, there is a "PayPal Donate" button that will open a PayPal donation web page.
-
 #### Change Theme
 
 The theme can be changed between "Light Mode" and "Dark Mode" by clicking on the "Change Theme" button. The icon will change to indicate the current theme.
 
-#### Minimize To Tray
-
-The application will be minimized to the system tray when the "Minimize To Tray" button is toggled on. To restore the application, click the system tray icon and select "Restore".
-
 #### Run On Startup
 
 The application can start automatically when the user logs into Windows by clicking on the "Run On Startup" button. The arrow will turn green to indicate that this option is enabled. The application will start minimized to the system tray.
+
+#### Minimize To Tray
+
+The application will be minimized to the system tray when the "Minimize To Tray" button is toggled on. To restore the application, click the system tray icon and select "Restore".
 
 #### Refresh App
 
@@ -197,9 +176,37 @@ The application will be minimized to the task bar or system tray depending on th
 
 To exit the application, click on the "Exit App" button. You can also exit the application from the system tray by clicking on the system tray icon and selecting "Exit".
 
+#### About App
+
+Opens a window to display the current version, PayPal donate button, license button, and releases button.
+
+#### PayPal Donate
+
+If you find the application useful and wish to donate, the "PayPal Donate" button will open a PayPal donation web page.
+
+#### License
+
+Opens a web page in the default browser to display the current license information.
+
+#### Releases
+
+Opens a web page in the default browser to display the releases for Display Hot Keys in descending order.
+
 <p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
-<!-- ROADMAP -->
+### Screenshots
+
+#### Light Mode
+
+<img src="src/main/resources/images/product_screenshot_light_main.png" alt="Light Main" width="800"></p>
+<img src="src/main/resources/images/product_screenshot_light_about.png" alt="Light About" width="800">
+
+#### Dark Mode
+
+<img src="src/main/resources/images/product_screenshot_dark_main.png" alt="Dark Main" width="800"></p>
+<img src="src/main/resources/images/product_screenshot_dark_about.png" alt="Dark About" width="800">
+
+<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
 ## Roadmap
 
@@ -210,28 +217,18 @@ To exit the application, click on the "Exit App" button. You can also exit the a
 - [x] &thinsp; Add button to immediately apply display modes.
 - [x] &thinsp; Add a minimize to tray toggle.
 - [x] &thinsp; Add ability to change display orientation with hot keys.
+- [x] &thinsp; Add an "About" view to display current app information.
+- [x] &thinsp; Add support for virtual displays and display duplication.
 
 See [open issues] for a full list of proposed features (and known issues).
-
-<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
-
-<!-- LICENSE -->
 
 ## License
 
 Distributed under the [MIT License]. See LICENSE.txt for more information.
 
-<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
-
-<!-- CONTACT -->
-
 ## Contact
 
 Jonathan R. Miller - jonRock1992@gmail.com
-
-<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
-
-<!-- DEPENDENCIES -->
 
 ## Dependencies
 
