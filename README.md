@@ -148,6 +148,10 @@ The display settings can be immediately applied by clicking on the "Apply Displa
 
 Individual hot keys can be cleared by clicking on the "Clear Hot Key" button for a hot key slot when a hot key is set.
 
+#### About App
+
+Opens a window to display the current version, PayPal donate button, license button, and releases button.
+
 #### Change Theme
 
 The theme can be changed between "Light Mode" and "Dark Mode" by clicking on the "Change Theme" button. The icon will change to indicate the current theme.
@@ -176,17 +180,9 @@ The application will be minimized to the task bar or system tray depending on th
 
 To exit the application, click on the "Exit App" button. You can also exit the application from the system tray by clicking on the system tray icon and selecting "Exit".
 
-#### About App
-
-Opens a window to display the current version, PayPal donate button, license button, and releases button.
-
 #### PayPal Donate
 
 If you find the application useful and wish to donate, the "PayPal Donate" button will open a PayPal donation web page.
-
-#### License
-
-Opens a web page in the default browser to display the current license information.
 
 #### Releases
 
