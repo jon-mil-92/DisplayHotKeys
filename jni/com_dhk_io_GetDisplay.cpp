@@ -1,5 +1,5 @@
 /*
- * Gets current display settings for a given display.
+ * Gets display settings for a given display.
  *
  * License:
  *

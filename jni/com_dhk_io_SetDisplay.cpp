@@ -1,5 +1,5 @@
 /*
- * Immediately applies display settings for a given display.
+ * Sets display settings for a given display.
  *
  * License:
  *
@@ -117,7 +117,6 @@ void setDisplayMode(UINT32 displayIndex, UINT32 resWidth, UINT32 resHeight, UINT
     DisplayConfig displayConfig = getDisplayConfig();
 
     if ((UINT32) displayIndex >= displayConfig.numPathInfoArrayElements) {
-        cerr << "Invalid display index for setDisplayMode: " << displayIndex << endl;
         return;
     }
 
@@ -130,8 +129,6 @@ void setDisplayMode(UINT32 displayIndex, UINT32 resWidth, UINT32 resHeight, UINT
     LONG displayConfigGetDeviceInfoResult = DisplayConfigGetDeviceInfo(&sourceName.header);
 
     if (displayConfigGetDeviceInfoResult != ERROR_SUCCESS) {
-        cerr << "Failed to get source device name for setDisplayMode! Error Code: " << displayConfigGetDeviceInfoResult
-                << endl;
         return;
     }
 
@@ -153,10 +150,6 @@ void setDisplayMode(UINT32 displayIndex, UINT32 resWidth, UINT32 resHeight, UINT
     if (testResult == DISP_CHANGE_SUCCESSFUL) {
         LONG changeDisplaySettingsResult = ChangeDisplaySettingsExW(sourceName.viewGdiDeviceName, &devModeW, NULL,
         CDS_UPDATEREGISTRY, NULL);
-
-        if (changeDisplaySettingsResult != DISP_CHANGE_SUCCESSFUL) {
-            cerr << "Failed to set the display mode! Error Code: " << changeDisplaySettingsResult << endl;
-        }
     } else {
         bool applied = false;
 
@@ -172,8 +165,6 @@ void setDisplayMode(UINT32 displayIndex, UINT32 resWidth, UINT32 resHeight, UINT
             if (changeDisplaySettingsResult == DISP_CHANGE_SUCCESSFUL) {
                 applied = true;
             }
-        } else {
-            cerr << "Failed to set the display mode without refresh rate! Error Code: " << testResult << endl;
         }
 
         // If still not applied, try without bit depth as well
@@ -186,9 +177,6 @@ void setDisplayMode(UINT32 displayIndex, UINT32 resWidth, UINT32 resHeight, UINT
                 LONG changeDisplaySettingsResult = ChangeDisplaySettingsExW(sourceName.viewGdiDeviceName, &devModeW,
                 NULL,
                 CDS_UPDATEREGISTRY, NULL);
-            } else {
-                cerr << "Failed to set the display mode without refresh rate and bit depth! Error Code: " << testResult
-                        << endl;
             }
         }
     }
@@ -227,10 +215,6 @@ void setDisplayScalingMode(UINT32 displayIndex, UINT32 scalingMode) {
             displayConfig.numModeInfoArrayElements, displayConfig.modeInfoArray,
             SDC_APPLY |
             SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE);
-
-    if (setDisplayConfigResult != ERROR_SUCCESS) {
-        cerr << "Failed to set the scaling mode! Error Code: " << setDisplayConfigResult << endl;
-    }
 }
 
 /*
@@ -272,10 +256,6 @@ void setDpiScalePercentage(UINT32 displayIndex, int32_t dpiScalePercentage) {
     setDpiScaleIndex.relativeDpiScaleIndex = relativeDpiScaleIndex;
 
     bool setDpiScaleResult = DisplayConfigSetDeviceInfo(&setDpiScaleIndex.header);
-
-    if (setDpiScaleResult != ERROR_SUCCESS) {
-        cerr << "Failed to set the DPI scale percentage! Error Code : " << setDpiScaleResult << endl;
-    }
 }
 
 /*
@@ -314,8 +294,4 @@ void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation) {
             displayConfig.numModeInfoArrayElements, displayConfig.modeInfoArray,
             SDC_APPLY |
             SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE);
-
-    if (setDisplayConfigResult != ERROR_SUCCESS) {
-        cerr << "Failed to set the display orientation! Error Code: " << setDisplayConfigResult << endl;
-    }
 }

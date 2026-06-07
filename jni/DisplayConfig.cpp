@@ -39,20 +39,11 @@ DisplayConfig getDisplayConfig() {
     LONG getDisplayConfigBufferSizesResult = GetDisplayConfigBufferSizes(QDC_DATABASE_CURRENT,
             &numPathInfoArrayElements, &numModeInfoArrayElements);
 
-    if (getDisplayConfigBufferSizesResult != ERROR_SUCCESS) {
-        cerr << "Failed to get the display config buffer sizes! Error Code: " << getDisplayConfigBufferSizesResult
-                << endl;
-    }
-
     DISPLAYCONFIG_PATH_INFO *pathInfoArray = new DISPLAYCONFIG_PATH_INFO[numPathInfoArrayElements];
     DISPLAYCONFIG_MODE_INFO *modeInfoArray = new DISPLAYCONFIG_MODE_INFO[numModeInfoArrayElements];
 
     LONG queryDisplayConfigResult = QueryDisplayConfig(QDC_DATABASE_CURRENT, &numPathInfoArrayElements, pathInfoArray,
             &numModeInfoArrayElements, modeInfoArray, currentTopology);
-
-    if (queryDisplayConfigResult != ERROR_SUCCESS) {
-        cerr << "Failed to query the display configuration! Error Code: " << queryDisplayConfigResult << endl;
-    }
 
     displayConfig.numPathInfoArrayElements = numPathInfoArrayElements;
     displayConfig.numModeInfoArrayElements = numModeInfoArrayElements;
