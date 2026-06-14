@@ -69,21 +69,28 @@ static HWND messageWindow = NULL;
 static HDEVNOTIFY deviceNotificationHandle = NULL;
 
 /*
+ * Registered window class name and registration flag so we can unregister at shutdown.
+ */
+static const wchar_t CLASS_NAME[] = L"DHK_DisplayEventNotifier_MessageWindow";
+static atomic_bool classRegistered(false);
+
+/*
  * Debounce interval (milliseconds) to suppress rapid duplicate notifications. This limits how often Java can be
  * notified even after stabilization.
  */
-static constexpr long DEBOUNCE_MS = 150;
+static constexpr long DEBOUNCE_MS = 200;
 
 /*
  * Stabilization interval (milliseconds) to ensure the display configuration has remained unchanged before notifying
  * Java.
  */
-static constexpr long STABILIZATION_MS = 250;
+static constexpr long STABILIZATION_MS = 600;
 
 /*
- * Polling interval (milliseconds) for periodically querying visible display paths.
+ * Polling interval (milliseconds) for periodically querying visible display paths. Increased to reduce CPU usage
+ * while remaining responsive.
  */
-static constexpr long POLL_INTERVAL_MS = 200;
+static constexpr long POLL_INTERVAL_MS = 400;
 
 /*
  * Timestamp of the last notification forwarded to Java, used for debounce logic.
@@ -102,9 +109,14 @@ static chrono::steady_clock::time_point lastPollTime;
 
 /*
  * Last-known set of visible display IDs used to detect real changes in display configuration. These IDs are already
- * stable because DisplayConfig.cpp now returns stable IDs.
+ * stable because DisplayConfig now returns stable IDs.
  */
 static vector<string> lastVisibleDisplayIds;
+
+/*
+ * Cached normalized version of lastVisibleDisplayIds to avoid re-normalizing repeatedly.
+ */
+static vector<string> lastNormalizedVisibleIds;
 
 /*
  * Last-known normalized set that was actually notified to Java. This prevents repeated notifications for the same
@@ -131,7 +143,7 @@ static void notifyJava();
 
 /**
  * Normalize display ID lists: trim whitespace from each ID and sort the resulting list so comparisons are
- * order-insensitive. IDs are already stable because DisplayConfig.cpp returns stable IDs.
+ * order-insensitive. IDs are already stable because DisplayConfig returns stable IDs.
  *
  * @param rawDisplayIds
  *        - The list of display ID strings to normalize (trim + sort)
@@ -153,7 +165,7 @@ static vector<string> normalizeDisplayIds(const vector<string> &rawDisplayIds) {
             trimmedId.pop_back();
         }
 
-        normalizedIds.push_back(trimmedId);
+        normalizedIds.push_back(std::move(trimmedId));
     }
 
     sort(normalizedIds.begin(), normalizedIds.end());
@@ -182,65 +194,26 @@ static bool processPotentialDisplayChange() {
         currentVisibleIds.clear();
     }
 
+    // Normalize once and reuse
     auto normalizedCurrent = normalizeDisplayIds(currentVisibleIds);
-    auto normalizedLast = normalizeDisplayIds(lastVisibleDisplayIds);
 
-    // If we've already notified Java about this exact normalized configuration, do nothing
-    if (!lastNotifiedNormalizedIds.empty() && normalizedCurrent == lastNotifiedNormalizedIds) {
+    // If normalized differs from lastNormalizedVisibleIds, update state and reset stabilization timer
+    if (normalizedCurrent != lastNormalizedVisibleIds) {
+        lastVisibleDisplayIds = currentVisibleIds;
+        lastNormalizedVisibleIds = normalizedCurrent;
+        lastStateChangeTime = now;
+
         return false;
     }
 
-    /*
-     * Detect transition from one or more visible displays to zero visible displays. A headless state represents a
-     * definitive configuration change and must notify Java immediately without applying stabilization or debounce
-     * rules
-     */
-    if (normalizedCurrent.empty() && !normalizedLast.empty()) {
-        lastVisibleDisplayIds = currentVisibleIds;
-        lastStateChangeTime = now;
-
-        // Notify immediately for headless transition
-        notifyJava();
-
-        // Record that we've notified for this normalized state
-        lastNotifiedNormalizedIds = normalizedCurrent;
-
-        // Now update lastNotifyTime AFTER notifying
-        lastNotifyTime = now;
-
-        return true;
-    }
-
-    /*
-     * Detect any change in the set of visible display IDs. When a change is detected, update the stored state and reset
-     * the stabilization timer. Notification is deferred until the configuration remains unchanged for the required
-     * stabilization interval
-     */
-    if (normalizedCurrent != normalizedLast) {
-        lastVisibleDisplayIds = currentVisibleIds;
-        lastStateChangeTime = now;
-        return false;
-    }
-
-    /*
-     * At this point normalizedCurrent == normalizedLast. If we already notified for this normalized state above we
-     * would have returned earlier. Continue with stabilization and debounce checks
-     */
-
-    /*
-     * Determine whether the display configuration has remained unchanged for the required stabilization interval. If
-     * not stabilized, do not notify Java yet
-     */
+    // At this point normalizedCurrent == lastNormalizedVisibleIds. Check stabilization
     auto elapsedSinceStateChange = chrono::duration_cast<chrono::milliseconds>(now - lastStateChangeTime).count();
 
     if (elapsedSinceStateChange < STABILIZATION_MS) {
         return false;
     }
 
-    /*
-     * Apply time-based debounce to prevent excessive notifications when the display configuration remains stable but
-     * repeated events or polls occur within a short interval
-     */
+    // Debounce check: ensure we don't notify too frequently
     auto elapsedSinceLastNotify = chrono::duration_cast<chrono::milliseconds>(now - lastNotifyTime).count();
 
     if (elapsedSinceLastNotify < DEBOUNCE_MS) {
@@ -248,11 +221,21 @@ static bool processPotentialDisplayChange() {
     }
 
     /*
-     * The display configuration is stable, outside the debounce interval, and we have not yet notified for this
-     * normalized state -> notify Java and record the notified normalized set
+     * Suppress notification if the normalized set equals the last-notified set. This prevents re-notifying the same
+     * stable configuration repeatedly and matches the user's preference to only care about current state
+     */
+    if (!lastNotifiedNormalizedIds.empty() && normalizedCurrent == lastNotifiedNormalizedIds) {
+        return false;
+    }
+
+    /*
+     * Update lastNotifyTime before calling notifyJava so elapsed calculations remain consistent even if notifyJava
+     * blocks briefly.
      */
     lastNotifyTime = now;
     notifyJava();
+
+    // Record what we notified
     lastNotifiedNormalizedIds = normalizedCurrent;
 
     return true;
@@ -286,6 +269,7 @@ static void notifyJava() {
         if (attachedToJvm) {
             jvm->DetachCurrentThread();
         }
+
         return;
     }
 
@@ -307,18 +291,24 @@ static void notifyJava() {
  * display configuration using getVisibleDisplayIds().
  */
 static void runMessageLoopThread() {
-    const wchar_t CLASS_NAME[] = L"DHK_DisplayEventNotifier_MessageWindow";
-
     WNDCLASSW windowClass = {};
     windowClass.lpfnWndProc = handleEvents;
     windowClass.hInstance = GetModuleHandleW(NULL);
     windowClass.lpszClassName = CLASS_NAME;
 
-    RegisterClassW(&windowClass);
+    if (RegisterClassW(&windowClass) != 0) {
+        classRegistered.store(true);
+    }
 
     messageWindow = CreateWindowExW(0, CLASS_NAME, L"", 0, 0, 0, 0, 0, NULL, NULL, GetModuleHandleW(NULL), NULL);
 
     if (!messageWindow) {
+        // If window creation failed, ensure we unregister class if we registered it
+        if (classRegistered.load()) {
+            UnregisterClassW(CLASS_NAME, GetModuleHandleW(NULL));
+            classRegistered.store(false);
+        }
+
         return;
     }
 
@@ -331,25 +321,26 @@ static void runMessageLoopThread() {
     deviceNotificationHandle =
         RegisterDeviceNotificationW(messageWindow, &notificationFilter, DEVICE_NOTIFY_WINDOW_HANDLE);
 
+    // Initialize timers so first notify is not blocked by debounce or poll
     lastNotifyTime = chrono::steady_clock::now() - chrono::milliseconds(DEBOUNCE_MS);
     lastPollTime = chrono::steady_clock::now() - chrono::milliseconds(POLL_INTERVAL_MS);
 
     try {
-        // Already stable IDs
         lastVisibleDisplayIds = getVisibleDisplayIds();
     } catch (...) {
         lastVisibleDisplayIds.clear();
     }
 
-    // Initialize the last-notified normalized set to the current normalized state so we don't notify on startup
-    lastNotifiedNormalizedIds = normalizeDisplayIds(lastVisibleDisplayIds);
+    // Cache normalized initial state and avoid notifying on startup
+    lastNormalizedVisibleIds = normalizeDisplayIds(lastVisibleDisplayIds);
+    lastNotifiedNormalizedIds = lastNormalizedVisibleIds;
 
-    // Initialize state change time to "now" so stabilization logic starts from the initial state
     lastStateChangeTime = chrono::steady_clock::now();
 
     MSG message;
 
     while (isRunning.load()) {
+        // Process all pending messages first
         while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
             if (message.message == WM_QUIT) {
                 isRunning.store(false);
@@ -360,6 +351,7 @@ static void runMessageLoopThread() {
             DispatchMessage(&message);
         }
 
+        // Poll at a modest interval to reduce CPU usage
         auto now = chrono::steady_clock::now();
         auto elapsedSinceLastPoll = chrono::duration_cast<chrono::milliseconds>(now - lastPollTime).count();
 
@@ -368,9 +360,11 @@ static void runMessageLoopThread() {
             lastPollTime = now;
         }
 
+        // Sleep briefly to avoid busy-waiting; keep responsive to messages
         this_thread::sleep_for(chrono::milliseconds(50));
     }
 
+    // Cleanup resources deterministically
     if (messageWindow) {
         DestroyWindow(messageWindow);
         messageWindow = NULL;
@@ -379,6 +373,11 @@ static void runMessageLoopThread() {
     if (deviceNotificationHandle) {
         UnregisterDeviceNotification(deviceNotificationHandle);
         deviceNotificationHandle = NULL;
+    }
+
+    if (classRegistered.load()) {
+        UnregisterClassW(CLASS_NAME, GetModuleHandleW(NULL));
+        classRegistered.store(false);
     }
 }
 
@@ -407,8 +406,10 @@ LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType,
                 processPotentialDisplayChange();
             }
         }
+
         return 0;
     }
+
     case WM_DISPLAYCHANGE:
         processPotentialDisplayChange();
         return 0;
@@ -436,6 +437,7 @@ LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType,
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     (void) reserved;
     jvm = vm;
+
     return JNI_VERSION_1_6;
 }
 
@@ -457,17 +459,20 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeSta
 
     // Create a global ref and validate it
     jobject globalRef = env->NewGlobalRef(obj);
+
     if (!globalRef) {
         return;
     }
 
     jclass notifierClass = env->GetObjectClass(obj);
+
     if (!notifierClass) {
         env->DeleteGlobalRef(globalRef);
         return;
     }
 
     jmethodID methodId = env->GetMethodID(notifierClass, "onNativeNotify", "()V");
+
     if (!methodId) {
         env->DeleteGlobalRef(globalRef);
         return;
@@ -512,4 +517,38 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeSto
     }
 
     onNativeNotifyMethodId = nullptr;
+}
+
+/**
+ * JNI_OnUnload is called when the native library is unloaded. Ensure global references are released and the JVM
+ * pointer is cleared to avoid leaks.
+ */
+extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
+    (void) vm;
+    (void) reserved;
+
+    // Ensure the notifier is stopped and resources are released
+    isRunning.store(false);
+
+    if (messageWindow) {
+        PostMessage(messageWindow, WM_QUIT, 0, 0);
+    }
+
+    if (messageLoopThread.joinable()) {
+        messageLoopThread.join();
+    }
+
+    // Delete global ref if present
+    if (displayEventNotifierGlobalRef && jvm) {
+        JNIEnv *env = nullptr;
+
+        if (jvm->GetEnv((void **) &env, JNI_VERSION_1_6) == JNI_OK && env) {
+            env->DeleteGlobalRef(displayEventNotifierGlobalRef);
+        }
+
+        displayEventNotifierGlobalRef = NULL;
+    }
+
+    onNativeNotifyMethodId = nullptr;
+    jvm = nullptr;
 }
