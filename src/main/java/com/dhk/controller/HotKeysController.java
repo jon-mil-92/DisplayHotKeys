@@ -540,7 +540,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
      */
     private void setDisplaySettings(int displayIndex, int slotIndex) {
         DisplayConfig displayConfig = new DisplayConfig();
-        displayConfig.updateDisplayIds();
+        displayConfig.updateConnectedDisplays();
 
         String displayId = model.getDisplayIds()[displayIndex];
 
@@ -666,8 +666,6 @@ public class HotKeysController implements IController, GlobalKeyListener {
         view.getRunOnStartupButton().setEnabled(false);
         view.getRefreshAppButton().setEnabled(false);
         view.getClearAllButton().setEnabled(false);
-        view.getMinimizeButton().setEnabled(false);
-        view.getExitButton().setEnabled(false);
 
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             view.getNumberOfActiveSlots(displayIndex).setEnabled(false);
@@ -695,8 +693,6 @@ public class HotKeysController implements IController, GlobalKeyListener {
         view.getRunOnStartupButton().setEnabled(true);
         view.getRefreshAppButton().setEnabled(true);
         view.getClearAllButton().setEnabled(true);
-        view.getMinimizeButton().setEnabled(true);
-        view.getExitButton().setEnabled(true);
 
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             view.getNumberOfActiveSlots(displayIndex).setEnabled(true);

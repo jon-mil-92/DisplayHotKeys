@@ -1,8 +1,4 @@
 /*
- * Gets display settings for a given display.
- *
- * License:
- *
  * The MIT License (MIT)
  *
  * Copyright © 2026 Jonathan R. Miller
@@ -21,28 +17,32 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
+#include "com_dhk_io_GetDisplay.h"
+#include "DisplayConfig.h"
 
 #include <jni.h>
-#include "DisplayConfig.h"
-#include "com_dhk_io_GetDisplay.h"
+#include <windows.h>
 
 using namespace std;
 
-/*
- * Outputs an array of supported display modes for the given display
+/**
+ * Enumerates supported display modes for the given display. DisplayConfigGetDeviceInfo is used to obtain the GDI device
+ * name, and modes are enumerated with EnumDisplaySettingsW. If that fails, fall back to an EnumDisplayDevices index and
+ * enumerate modes with EnumDisplaySettingsW. Wide-character Windows APIs (Unicode) are used throughout to avoid
+ * ANSI/Unicode mismatches.
  *
  * @param env
- *            - The structure containing methods to use to to access Java elements
+ *        - The JNI environment pointer
  * @param obj
- *            - The reference to the Java native object instance
+ *        - The Java GetDisplay instance
  * @param displayId
- *            - The ID of the display to get the display modes for
+ *        - The stable display ID to enumerate modes for
  *
- * @return The array of supported display modes for the given display
+ * @return A DisplayMode[] containing the supported display modes, an empty array if
+ *         no modes are reported, or null on unrecoverable native failure
  */
 JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEnv *env, jobject obj,
-        jstring displayId) {
-    // We'll collect mode fields into a small POD so we can enumerate using either ANSI or Unicode DEVMODE
+                                                                           jstring displayId) {
     struct ModeInfo {
         int width;
         int height;
@@ -50,220 +50,177 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
         int frequency;
     };
 
-    DISPLAY_DEVICE displayDevice;
+    if (displayId == nullptr) {
+        return nullptr;
+    }
 
-    SecureZeroMemory(&displayDevice, sizeof(DISPLAY_DEVICE));
-    displayDevice.cb = sizeof(displayDevice);
+    // Acquire UTF chars for the incoming jstring and ensure we release them on all paths
+    jboolean isCopy = JNI_FALSE;
+    const char *displayIdChars = env->GetStringUTFChars(displayId, &isCopy);
 
-    jboolean isCopy;
-    const char *displayIdChars = (env)->GetStringUTFChars(displayId, &isCopy);
-    string displayIdString = displayIdChars;
+    if (displayIdChars == nullptr) {
+        return nullptr;
+    }
 
-    /*
-     * Try to map the incoming display ID (which comes from QueryDisplayConfig/DisplayConfigGetDeviceInfo)
-     * to a source/GDI device name and enumerate modes from that. This avoids mixing ID formats between
-     * QueryDisplayConfig and EnumDisplayDevices which can fail for virtual displays.
-     */
+    string stableDisplayId = displayIdChars;
+
+    vector<ModeInfo> modeList;
+    UINT32 modeEnumIndex = 0;
+    bool enumeratedFromQueryConfig = false;
+
+    // Primary path: QueryDisplayConfig -> DisplayConfigGetDeviceInfo -> EnumDisplaySettingsW
     DisplayConfig displayConfig = getDisplayConfig();
-    int qIndex = getQueryDisplayConfigDisplayIdIndex(displayIdString);
+    int queryConfigIndex = getQueryDisplayConfigDisplayIdIndex(stableDisplayId);
 
-    UINT32 displayModeIndex = 0;
-    vector<ModeInfo> displayModesVector;
-
-    bool enumerated = false;
-
-    if (qIndex >= 0 && (UINT32) qIndex < displayConfig.numPathInfoArrayElements) {
-        // Build a source name structure to get the GDI device name (viewGdiDeviceName)
-        DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName = { };
-        sourceName.header.adapterId = displayConfig.pathInfoArray[qIndex].sourceInfo.adapterId;
-        sourceName.header.id = displayConfig.pathInfoArray[qIndex].sourceInfo.id;
+    if (queryConfigIndex >= 0 && (UINT32) queryConfigIndex < displayConfig.numPathInfoArrayElements) {
+        DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName = {};
+        sourceName.header.adapterId = displayConfig.pathInfoArray[queryConfigIndex].sourceInfo.adapterId;
+        sourceName.header.id = displayConfig.pathInfoArray[queryConfigIndex].sourceInfo.id;
         sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
         sourceName.header.size = sizeof(sourceName);
 
-        LONG displayConfigGetDeviceInfoResult = DisplayConfigGetDeviceInfo(&sourceName.header);
+        if (DisplayConfigGetDeviceInfo(&sourceName.header) == ERROR_SUCCESS) {
+            DEVMODEW devModeW;
+            SecureZeroMemory(&devModeW, sizeof(DEVMODEW));
+            devModeW.dmSize = sizeof(devModeW);
 
-        if (displayConfigGetDeviceInfoResult == ERROR_SUCCESS) {
-            // Use the wide-character GDI name directly with EnumDisplaySettingsW
-            DEVMODEW displayModeW;
-            SecureZeroMemory(&displayModeW, sizeof(DEVMODEW));
-            displayModeW.dmSize = sizeof(displayModeW);
+            modeEnumIndex = 0;
 
-            while (EnumDisplaySettingsW(sourceName.viewGdiDeviceName, displayModeIndex, &displayModeW)) {
-                ModeInfo modeInfo;
-                modeInfo.width = displayModeW.dmPelsWidth;
-                modeInfo.height = displayModeW.dmPelsHeight;
-                modeInfo.bitsPerPel = displayModeW.dmBitsPerPel;
-                modeInfo.frequency = displayModeW.dmDisplayFrequency;
-                displayModesVector.push_back(modeInfo);
-                displayModeIndex++;
+            while (EnumDisplaySettingsW(sourceName.viewGdiDeviceName, modeEnumIndex, &devModeW)) {
+                modeList.push_back({static_cast<int>(devModeW.dmPelsWidth), static_cast<int>(devModeW.dmPelsHeight),
+                                    static_cast<int>(devModeW.dmBitsPerPel),
+                                    static_cast<int>(devModeW.dmDisplayFrequency)});
+                modeEnumIndex++;
             }
 
-            enumerated = true;
+            enumeratedFromQueryConfig = true;
         }
     }
 
-    // If we couldn't enumerate via QueryDisplayConfig mapping, fall back to EnumDisplayDevices logic
-    if (!enumerated) {
-        int displayIndex = getEnumDisplayDevicesDisplayIdIndex(displayIdString);
-        BOOL enumDisplayDevicesResult = EnumDisplayDevices(NULL, displayIndex, &displayDevice, 0);
+    // Fallback path: EnumDisplayDevicesW -> EnumDisplaySettingsW
+    if (!enumeratedFromQueryConfig) {
+        DISPLAY_DEVICEW displayDeviceW;
+        SecureZeroMemory(&displayDeviceW, sizeof(DISPLAY_DEVICEW));
+        displayDeviceW.cb = sizeof(displayDeviceW);
 
-        if (!enumDisplayDevicesResult) {
+        int enumDisplayIndex = getEnumDisplayDevicesDisplayIdIndex(stableDisplayId);
+
+        if (EnumDisplayDevicesW(NULL, enumDisplayIndex, &displayDeviceW, 0)) {
+            if (displayDeviceW.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
+                DEVMODEW devModeW;
+                SecureZeroMemory(&devModeW, sizeof(DEVMODEW));
+                devModeW.dmSize = sizeof(devModeW);
+
+                modeEnumIndex = 0;
+
+                while (EnumDisplaySettingsW(displayDeviceW.DeviceName, modeEnumIndex, &devModeW)) {
+                    modeList.push_back({static_cast<int>(devModeW.dmPelsWidth), static_cast<int>(devModeW.dmPelsHeight),
+                                        static_cast<int>(devModeW.dmBitsPerPel),
+                                        static_cast<int>(devModeW.dmDisplayFrequency)});
+                    modeEnumIndex++;
+                }
+            }
+        } else {
+            // Fallback enumeration failed; release and return null
             env->ReleaseStringUTFChars(displayId, displayIdChars);
-            return NULL;
-        }
-
-        // Only attempt to enumerate display modes if the device is attached to the desktop
-        if (displayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
-            DEVMODEA displayModeA;
-            SecureZeroMemory(&displayModeA, sizeof(DEVMODEA));
-            displayModeA.dmSize = sizeof(displayModeA);
-
-            while (EnumDisplaySettingsA(displayDevice.DeviceName, displayModeIndex, &displayModeA)) {
-                ModeInfo modeInfo;
-                modeInfo.width = displayModeA.dmPelsWidth;
-                modeInfo.height = displayModeA.dmPelsHeight;
-                modeInfo.bitsPerPel = displayModeA.dmBitsPerPel;
-                modeInfo.frequency = displayModeA.dmDisplayFrequency;
-                displayModesVector.push_back(modeInfo);
-                displayModeIndex++;
-            }
+            return nullptr;
         }
     }
 
+    env->ReleaseStringUTFChars(displayId, displayIdChars);
+
+    // Prepare Java DisplayMode class and constructor
     jclass displayModeClass = env->FindClass("java/awt/DisplayMode");
 
-    if (displayModeClass == NULL) {
-        env->ReleaseStringUTFChars(displayId, displayIdChars);
-        return NULL;
+    if (displayModeClass == nullptr) {
+        return nullptr;
     }
 
-    jmethodID displayModeConstructor = env->GetMethodID(displayModeClass, "<init>", "(IIII)V");
+    jmethodID displayModeCtor = env->GetMethodID(displayModeClass, "<init>", "(IIII)V");
 
-    if (displayModeConstructor == NULL) {
+    if (displayModeCtor == nullptr) {
         env->DeleteLocalRef(displayModeClass);
-        env->ReleaseStringUTFChars(displayId, displayIdChars);
-        return NULL;
+        return nullptr;
     }
 
-    jobjectArray displayModeArray = env->NewObjectArray(displayModesVector.size(), displayModeClass, NULL);
+    // Create the Java array (may be empty if no modes found)
+    jsize modeCount = static_cast<jsize>(modeList.size());
+    jobjectArray displayModeArray = env->NewObjectArray(modeCount, displayModeClass, nullptr);
 
-    if (displayModeArray == NULL) {
+    if (displayModeArray == nullptr) {
         env->DeleteLocalRef(displayModeClass);
-        env->ReleaseStringUTFChars(displayId, displayIdChars);
-        return NULL;
+        return nullptr;
     }
 
-    displayModeIndex = 0;
+    // Populate the Java array
+    for (jsize i = 0; i < modeCount; ++i) {
+        const ModeInfo &modeInfo = modeList[static_cast<size_t>(i)];
+        jobject displayModeObj = env->NewObject(displayModeClass, displayModeCtor, modeInfo.width, modeInfo.height,
+                                                modeInfo.bitsPerPel, modeInfo.frequency);
 
-    for (const ModeInfo &modeInfo : displayModesVector) {
-        jobject displayModeObject = env->NewObject(displayModeClass, displayModeConstructor, modeInfo.width,
-                modeInfo.height, modeInfo.bitsPerPel, modeInfo.frequency);
-
-        if (displayModeObject == NULL) {
-            for (int j = 0; j < displayModeIndex; j++) {
-                jobject displayModeToDelete = (jobject) env->GetObjectArrayElement(displayModeArray, j);
-                env->DeleteLocalRef(displayModeToDelete);
+        if (displayModeObj == nullptr) {
+            // Clean up created local refs and return null
+            for (jsize j = 0; j < i; ++j) {
+                jobject tmp = (jobject) env->GetObjectArrayElement(displayModeArray, j);
+                env->DeleteLocalRef(tmp);
             }
 
             env->DeleteLocalRef(displayModeArray);
             env->DeleteLocalRef(displayModeClass);
-            env->ReleaseStringUTFChars(displayId, displayIdChars);
 
-            return NULL;
+            return nullptr;
         }
 
-        env->SetObjectArrayElement(displayModeArray, displayModeIndex, displayModeObject);
-        env->DeleteLocalRef(displayModeObject);
-
-        displayModeIndex++;
+        env->SetObjectArrayElement(displayModeArray, i, displayModeObj);
+        env->DeleteLocalRef(displayModeObj);
     }
 
     env->DeleteLocalRef(displayModeClass);
-    env->ReleaseStringUTFChars(displayId, displayIdChars);
 
     return displayModeArray;
 }
 
-/*
- * Gets the current number of connected displays.
+/**
+ * Gets the stabilized IDs for visible displays.
  *
  * @param env
- *            - The structure containing methods to use to to access Java elements
+ *        - The JNI environment pointer
  * @param obj
- *            - The reference to the Java native object instance
+ *        - The Java GetDisplay instance
  *
- * @return The current number of connected displays
+ * @return A Java String[] containing stable display IDs for visible displays
  */
-JNIEXPORT jint JNICALL Java_com_dhk_io_GetDisplay_queryNumOfConnectedDisplays(JNIEnv *env, jobject obj) {
-    /*
-     * Initialize a structure to hold the active paths as defined in the persistence database for the currently
-     * connected displays.
-     */
-    DisplayConfig displayConfig = getDisplayConfig();
+JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumVisibleDisplayIds(JNIEnv *env, jobject obj) {
+    (void) obj;
+    vector<string> visibleIds = getVisibleDisplayIds();
+    jclass strClass = env->FindClass("java/lang/String");
+    jobjectArray displayIds = env->NewObjectArray(visibleIds.size(), strClass, NULL);
 
-    return displayConfig.numPathInfoArrayElements;
+    for (int i = 0; i < (int) visibleIds.size(); i++) {
+        jstring visibleId = env->NewStringUTF(visibleIds[i].c_str());
+        env->SetObjectArrayElement(displayIds, i, visibleId);
+        env->DeleteLocalRef(visibleId);
+    }
+
+    return displayIds;
 }
 
-/*
- * Gets the IDs for the connected displays.
- *
- * @param env
- *            - The structure containing methods to use to to access Java elements
- * @param obj
- *            - The reference to the Java native object instance
- *
- * @return An array of IDs for the connected displays
- */
-JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayIds(JNIEnv *env, jobject obj) {
-    vector<string> displayIdsVector = getQueryDisplayConfigDisplayIds();
-    jclass stringClass = env->FindClass("java/lang/String");
-
-    if (stringClass == NULL) {
-        return NULL;
-    }
-
-    jobjectArray displayIdsArray = env->NewObjectArray(displayIdsVector.size(), stringClass, NULL);
-
-    if (displayIdsArray == NULL) {
-        env->DeleteLocalRef(stringClass);
-        return NULL;
-    }
-
-    for (int displayIndex = 0; displayIndex < displayIdsVector.size(); displayIndex++) {
-        jstring displayId = env->NewStringUTF(displayIdsVector.at(displayIndex).c_str());
-
-        if (displayId == NULL) {
-            for (int j = 0; j < displayIndex; j++) {
-                jstring displayIdToDelete = (jstring) env->GetObjectArrayElement(displayIdsArray, j);
-                env->DeleteLocalRef(displayIdToDelete);
-            }
-
-            env->DeleteLocalRef(displayIdsArray);
-            env->DeleteLocalRef(stringClass);
-
-            return NULL;
-        }
-
-        env->SetObjectArrayElement(displayIdsArray, displayIndex, displayId);
-        env->DeleteLocalRef(displayId);
-    }
-
-    env->DeleteLocalRef(stringClass);
-
-    return displayIdsArray;
-}
-
-/*
+/**
  * Gets the orientation for the given display.
  *
- * @param displayIndex
- *            - The index of the display to get the orientation for
+ * @param env
+ *        - The JNI environment pointer
+ * @param obj
+ *        - The Java GetDisplay instance
+ * @param index
+ *        - The index of the display to query
  *
- * @return 1 for Landscape, 2 for Portrait, 3 for Inverted Landscape, 4 for Inverted Portrait
+ * @return The orientation value (1 = Landscape, 2 = Portrait, etc.)
  */
-JNIEXPORT jint JNICALL Java_com_dhk_io_GetDisplay_queryDisplayOrientation(JNIEnv *env, jobject obj, jint displayIndex) {
-    DisplayConfig displayConfig = getDisplayConfig();
-    DISPLAYCONFIG_ROTATION orientation = displayConfig.pathInfoArray[displayIndex].targetInfo.rotation;
+JNIEXPORT jint JNICALL Java_com_dhk_io_GetDisplay_queryDisplayOrientation(JNIEnv *env, jobject obj, jint index) {
+    (void) env;
+    (void) obj;
+    DisplayConfig config = getDisplayConfig();
 
-    return orientation;
+    return (jint) config.pathInfoArray[index].targetInfo.rotation;
 }

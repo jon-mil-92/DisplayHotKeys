@@ -23,7 +23,8 @@ import java.awt.DisplayMode;
 import java.util.Arrays;
 
 /**
- * Utilizes the GetDisplay JNI library to retrieve current display settings.
+ * Utilizes the GetDisplay JNI library to retrieve current display settings, including supported display modes,
+ * connected display IDs, visible display IDs, and display orientations.
  *
  * @author Jonathan R. Miller
  */
@@ -54,20 +55,6 @@ public class GetDisplay {
     private native DisplayMode[] enumDisplayModes(String displayId);
 
     /**
-     * Defines a JNI function to get the current number of connected displays.
-     *
-     * @return The current number of connected displays
-     */
-    private native int queryNumOfConnectedDisplays();
-
-    /**
-     * Defines a JNI function to enumerate the display IDs for the connected displays.
-     *
-     * @return The array of display IDs for the connected displays
-     */
-    private native String[] enumDisplayIds();
-
-    /**
      * Defines a JNI function to get the current orientation for the given display.
      *
      * @param displayIndex
@@ -76,6 +63,13 @@ public class GetDisplay {
      * @return The current orientation for the given display
      */
     private native int queryDisplayOrientation(int displayIndex);
+
+    /**
+     * Defines a JNI function to enumerate the display IDs for the displays that are currently visible.
+     *
+     * @return The array of display IDs for the currently visible displays
+     */
+    private native String[] enumVisibleDisplayIds();
 
     /**
      * Gets the current supported display modes for the given display.
@@ -91,24 +85,6 @@ public class GetDisplay {
     }
 
     /**
-     * This method gets the current number connected displays.
-     *
-     * @return The current number of connected displays
-     */
-    public int getNumOfConnectedDisplays() {
-        return queryNumOfConnectedDisplays();
-    }
-
-    /**
-     * Gets the display IDs for the connected displays.
-     *
-     * @return The array of display IDs for the connected displays
-     */
-    public String[] getDisplayIds() {
-        return enumDisplayIds();
-    }
-
-    /**
      * Gets the current orientation for the given display.
      *
      * @param displayIndex
@@ -118,6 +94,15 @@ public class GetDisplay {
      */
     public int getDisplayOrientation(int displayIndex) {
         return queryDisplayOrientation(displayIndex);
+    }
+
+    /**
+     * Gets the display IDs for the displays that are currently visible.
+     *
+     * @return The array of display IDs for the currently visible displays
+     */
+    public String[] getVisibleDisplayIds() {
+        return enumVisibleDisplayIds();
     }
 
 }

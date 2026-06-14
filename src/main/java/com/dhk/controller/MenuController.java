@@ -23,9 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.dhk.controller.button.AboutButtonController;
-import com.dhk.controller.button.ClearAllButtonController;
-import com.dhk.controller.button.ExitButtonController;
-import com.dhk.controller.button.MinimizeButtonController;
 import com.dhk.controller.button.MinimizeToTrayButtonController;
 import com.dhk.controller.button.RefreshAppButtonController;
 import com.dhk.controller.button.RunOnStartupButtonController;
@@ -75,9 +72,6 @@ public class MenuController implements IController {
         menuButtonControllers.add(new MinimizeToTrayButtonController(model, view, settingsMgr));
         menuButtonControllers.add(new RunOnStartupButtonController(model, view, settingsMgr));
         menuButtonControllers.add(new RefreshAppButtonController(model, view, controller, settingsMgr));
-        menuButtonControllers.add(new ClearAllButtonController(model, view, controller, settingsMgr));
-        menuButtonControllers.add(new MinimizeButtonController(view));
-        menuButtonControllers.add(new ExitButtonController(view));
 
         for (IController menuButtonController : menuButtonControllers) {
             menuButtonController.initController();

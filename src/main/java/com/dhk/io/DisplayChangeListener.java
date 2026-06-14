@@ -17,51 +17,18 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-package com.dhk.controller.button;
-
-import com.dhk.controller.IController;
-import com.dhk.view.DhkView;
+package com.dhk.io;
 
 /**
- * Controls the Exit button. Listeners are added to the corresponding view component so that when a user hovers over or
- * clicks the Exit button, its icon changes, and when a user clicks on the button, the application is stopped.
+ * Listener for display configuration change notifications delivered from native code.
  *
  * @author Jonathan R. Miller
  */
-public class ExitButtonController extends AbstractButtonController implements IController {
-
-    private DhkView view;
+public interface DisplayChangeListener {
 
     /**
-     * Constructor for the {@link ExitButtonController} class.
-     *
-     * @param view
-     *            - The view for the application
+     * Called when the native layer detects a display configuration change (hot-plug or mode change).
      */
-    public ExitButtonController(DhkView view) {
-        this.view = view;
-    }
-
-    @Override
-    public void initController() {
-    }
-
-    @Override
-    public void initListeners() {
-        view.getExitButton().addActionListener(_ -> exitButtonAction());
-
-        initStateChangeListeners(view.getExitButton(), view.getDefaultFocusComponent());
-    }
-
-    @Override
-    public void cleanUp() {
-    }
-
-    /**
-     * Exits the application.
-     */
-    private void exitButtonAction() {
-        System.exit(0);
-    }
+    void displayConfigurationChanged();
 
 }

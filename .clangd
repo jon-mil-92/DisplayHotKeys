@@ -1,0 +1,21 @@
+QueryDriver:
+  - C:/msys64/mingw64/bin/g++.exe
+CompileFlags:
+  Add:
+    - -std=gnu++20
+    - -D_WIN32
+    - -D_WINDOWS
+    - -DUNICODE
+    - -D_UNICODE
+    - -DWIN32_LEAN_AND_MEAN
+    - -D__MINGW64__
+    - -D__x86_64__
+    - -IC:/jdk25/include
+    - -IC:/jdk25/include/win32
+    - -I${workspaceFolder}/jni
+    - -isystem C:/msys64/mingw64/include
+    - -isystem C:/msys64/mingw64/include/c++/16.1.0
+    - -isystem C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/16.1.0/include
+    - -isystem C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/16.1.0/include-fixed
+    - --gcc-toolchain=C:/msys64/mingw64
+    - --target=x86_64-w64-mingw32

@@ -26,7 +26,10 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 import com.dhk.controller.button.ApplyDisplayModeButtonController;
+import com.dhk.controller.button.ClearAllButtonController;
 import com.dhk.controller.button.ClearHotKeyButtonController;
+import com.dhk.io.DisplayConfigUpdater;
+import com.dhk.io.DisplayEventNotifier;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
 import com.dhk.view.DhkView;
@@ -47,6 +50,8 @@ public class DhkController implements IController {
     private HotKeysController hotKeysController;
     private List<IController> controllers;
     private int frameState;
+    private DisplayConfigUpdater displayConfigUpdater;
+    private DisplayEventNotifier displayNotifications;
 
     /**
      * Constructor for the {@link DhkController} class.
@@ -81,12 +86,11 @@ public class DhkController implements IController {
         // Create the hot keys controller early so other controllers can notify it
         hotKeysController = new HotKeysController(model, view, this, settingsMgr);
 
+        controllers.add(new ClearAllButtonController(model, view, this, settingsMgr));
         controllers.add(new ApplyDisplayModeButtonController(model, view, this, settingsMgr));
         controllers.add(new ClearHotKeyButtonController(model, view, settingsMgr, hotKeysController));
-        controllers.add(new ConnectedDisplaysController(model, view, this, settingsMgr));
         controllers.add(new DisplayModeController(model, view, settingsMgr));
         controllers.add(new DpiScaleController(model, view, settingsMgr));
-        controllers.add(new FrameDragController(view));
         controllers.add(hotKeysController);
         controllers.add(new MenuController(model, view, this, settingsMgr));
         controllers.add(new NumberOfSlotsController(model, view, settingsMgr));
@@ -99,6 +103,12 @@ public class DhkController implements IController {
         for (IController controller : controllers) {
             controller.initController();
         }
+
+        // Start event-driven display notifications
+        displayConfigUpdater = new DisplayConfigUpdater(model, view, this, settingsMgr);
+        displayNotifications = new DisplayEventNotifier();
+        displayNotifications.registerListener(displayConfigUpdater);
+        displayNotifications.start();
 
         // Ensure keyboard hook exists (may have been shutdown during previous cleanup)
         if (keyboardHook == null) {
@@ -152,6 +162,17 @@ public class DhkController implements IController {
             // Remove references to allow GC
             controllers.clear();
             controllers = null;
+        }
+
+        // Stop native display notifications
+        if (displayNotifications != null) {
+            try {
+                displayNotifications.stop();
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                displayNotifications = null;
+            }
         }
     }
 

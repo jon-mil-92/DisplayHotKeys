@@ -148,7 +148,7 @@ public class MinimizeToTray {
             }
         });
 
-        systemTray.shutdown();
+        hideSystemTray();
         viewRefresher.resume();
     }
 
@@ -156,7 +156,7 @@ public class MinimizeToTray {
      * Shows an "About App" dialog.
      */
     private void aboutAction() {
-        systemTray.setEnabled(false);
+        hideSystemTray();
         aboutDialog.showAboutDialog(systemTray);
     }
 
@@ -164,9 +164,19 @@ public class MinimizeToTray {
      * Exits the application.
      */
     private void exitAction() {
-        // Disable the system tray before exiting the program so it does not stay in the taskbar
-        systemTray.setEnabled(false);
+        hideSystemTray();
+        systemTray.shutdown();
+        viewRefresher.stop();
         System.exit(0);
+    }
+
+    /**
+     * Hides the system tray.
+     */
+    private void hideSystemTray() {
+        if (systemTray != null) {
+            systemTray.setEnabled(false);
+        }
     }
 
 }

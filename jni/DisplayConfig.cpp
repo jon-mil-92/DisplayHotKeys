@@ -1,8 +1,4 @@
 /*
- * Defines various aspects of the current display configuration.
- *
- * License:
- *
  * The MIT License (MIT)
  *
  * Copyright © 2026 Jonathan R. Miller
@@ -21,47 +17,333 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-
 #include "DisplayConfig.h"
 
-/*
- * Queries the display configuration to initialize a structure that holds the active paths as defined in
- * the persistence database for the currently connected displays.
+#include <algorithm>
+#include <cctype>
+#include <string>
+#include <vector>
+#include <windows.h>
+
+using namespace std;
+
+/**
+ * Queries the display configuration to initialize a structure that holds the persisted paths and modes as defined in
+ * the Windows display persistence database. This uses QDC_DATABASE_CURRENT to retrieve the full configuration,
+ * including displays that may not currently be active.
  *
- * @return A structure that holds the display configuration paths for the currently connected displays
+ * @return A DisplayConfig structure containing the display paths and modes for the current configuration
  */
 DisplayConfig getDisplayConfig() {
-    DisplayConfig displayConfig = { };
-    UINT32 numPathInfoArrayElements = 0;
-    UINT32 numModeInfoArrayElements = 0;
-    DISPLAYCONFIG_TOPOLOGY_ID *currentTopology = new DISPLAYCONFIG_TOPOLOGY_ID;
+    DisplayConfig displayConfig = {};
+    displayConfig.numPathInfoArrayElements = 0;
+    displayConfig.numModeInfoArrayElements = 0;
+    displayConfig.pathInfoArray = nullptr;
+    displayConfig.modeInfoArray = nullptr;
 
-    LONG getDisplayConfigBufferSizesResult = GetDisplayConfigBufferSizes(QDC_DATABASE_CURRENT,
-            &numPathInfoArrayElements, &numModeInfoArrayElements);
+    UINT32 numPath = 0;
+    UINT32 numMode = 0;
+    DISPLAYCONFIG_TOPOLOGY_ID topology = {};
 
-    DISPLAYCONFIG_PATH_INFO *pathInfoArray = new DISPLAYCONFIG_PATH_INFO[numPathInfoArrayElements];
-    DISPLAYCONFIG_MODE_INFO *modeInfoArray = new DISPLAYCONFIG_MODE_INFO[numModeInfoArrayElements];
+    LONG sizeResult = GetDisplayConfigBufferSizes(QDC_DATABASE_CURRENT, &numPath, &numMode);
 
-    LONG queryDisplayConfigResult = QueryDisplayConfig(QDC_DATABASE_CURRENT, &numPathInfoArrayElements, pathInfoArray,
-            &numModeInfoArrayElements, modeInfoArray, currentTopology);
+    if (sizeResult != ERROR_SUCCESS || numPath == 0 || numMode == 0) {
+        return displayConfig;
+    }
 
-    displayConfig.numPathInfoArrayElements = numPathInfoArrayElements;
-    displayConfig.numModeInfoArrayElements = numModeInfoArrayElements;
-    displayConfig.pathInfoArray = pathInfoArray;
-    displayConfig.modeInfoArray = modeInfoArray;
+    DISPLAYCONFIG_PATH_INFO *pathArray = new DISPLAYCONFIG_PATH_INFO[numPath];
+    DISPLAYCONFIG_MODE_INFO *modeArray = new DISPLAYCONFIG_MODE_INFO[numMode];
 
-    delete currentTopology;
+    SecureZeroMemory(pathArray, sizeof(DISPLAYCONFIG_PATH_INFO) * numPath);
+    SecureZeroMemory(modeArray, sizeof(DISPLAYCONFIG_MODE_INFO) * numMode);
+
+    LONG queryResult = QueryDisplayConfig(QDC_DATABASE_CURRENT, &numPath, pathArray, &numMode, modeArray, &topology);
+
+    if (queryResult != ERROR_SUCCESS) {
+        delete[] pathArray;
+        delete[] modeArray;
+        return displayConfig;
+    }
+
+    displayConfig.numPathInfoArrayElements = numPath;
+    displayConfig.numModeInfoArrayElements = numMode;
+    displayConfig.pathInfoArray = pathArray;
+    displayConfig.modeInfoArray = modeArray;
 
     return displayConfig;
 }
 
-/*
- * Converts a wide string to a string.
+/**
+ * Internal helper that queries display paths using the specified flags and applies visibility rules to determine which
+ * displays are currently visible. Over-allocation is used to avoid ERROR_INVALID_PARAMETER caused by driver
+ * under-reporting buffer sizes. Returned IDs are converted into stable IDs.
+ *
+ * Visibility rules:
+ *  - A path must be active (DISPLAYCONFIG_PATH_ACTIVE)
+ *  - The path's sourceInfo.modeInfoIdx must be valid and reference a DISPLAYCONFIG_MODE_INFO entry
+ *  - The referenced DISPLAYCONFIG_MODE_INFO must be of type DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE
+ *  - The source mode must have non-zero width and height (width != 0 && height != 0)
+ *  - The source position must not be an extreme offscreen sentinel (we treat large negative positions as offscreen)
+ *
+ * If any of the above fail, the path is considered not visible for the purposes of getVisibleDisplayIds().
+ *
+ * @param flags
+ *        - The QueryDisplayConfig flags (e.g., QDC_ONLY_ACTIVE_PATHS or QDC_DATABASE_CURRENT)
+ *
+ * @return A vector of stable display IDs for the visible displays according to the given flags
+ */
+static vector<string> queryVisibleDisplayIdsWithFlags(UINT32 flags) {
+    vector<string> visible;
+
+    UINT32 numPath = 0;
+    UINT32 numMode = 0;
+    DISPLAYCONFIG_TOPOLOGY_ID topology = {};
+
+    LONG sizeResult = GetDisplayConfigBufferSizes(flags, &numPath, &numMode);
+
+    if (sizeResult != ERROR_SUCCESS || numPath == 0 || numMode == 0) {
+        return visible;
+    }
+
+    UINT32 allocPath = numPath + 4;
+    UINT32 allocMode = numMode + 8;
+
+    DISPLAYCONFIG_PATH_INFO *pathArray = new DISPLAYCONFIG_PATH_INFO[allocPath];
+    DISPLAYCONFIG_MODE_INFO *modeArray = new DISPLAYCONFIG_MODE_INFO[allocMode];
+
+    SecureZeroMemory(pathArray, sizeof(DISPLAYCONFIG_PATH_INFO) * allocPath);
+    SecureZeroMemory(modeArray, sizeof(DISPLAYCONFIG_MODE_INFO) * allocMode);
+
+    UINT32 queryPath = allocPath;
+    UINT32 queryMode = allocMode;
+
+    LONG queryResult = QueryDisplayConfig(flags, &queryPath, pathArray, &queryMode, modeArray, &topology);
+
+    if (queryResult != ERROR_SUCCESS) {
+        delete[] pathArray;
+        delete[] modeArray;
+        return visible;
+    }
+
+    for (UINT32 i = 0; i < queryPath; i++) {
+        const auto &path = pathArray[i];
+
+        if ((path.flags & DISPLAYCONFIG_PATH_ACTIVE) == 0) {
+            continue;
+        }
+
+        // Validate mode index
+        if (path.sourceInfo.modeInfoIdx == DISPLAYCONFIG_PATH_MODE_IDX_INVALID ||
+            path.sourceInfo.modeInfoIdx >= queryMode) {
+            continue;
+        }
+
+        const auto &mode = modeArray[path.sourceInfo.modeInfoIdx];
+
+        if (mode.infoType != DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE) {
+            continue;
+        }
+
+        const auto &src = mode.sourceMode;
+
+        // Treat zero-size or offscreen as not visible
+        bool zeroSize = (src.width == 0 || src.height == 0);
+        bool offscreen = (src.position.x <= -30000 || src.position.y <= -30000);
+
+        if (zeroSize || offscreen) {
+            continue;
+        }
+
+        DISPLAYCONFIG_TARGET_DEVICE_NAME target = {};
+        target.header.adapterId = path.targetInfo.adapterId;
+        target.header.id = path.targetInfo.id;
+        target.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
+        target.header.size = sizeof(target);
+
+        if (DisplayConfigGetDeviceInfo(&target.header) == ERROR_SUCCESS) {
+            visible.push_back(buildStableDisplayId(target.monitorDevicePath));
+        }
+    }
+
+    delete[] pathArray;
+    delete[] modeArray;
+
+    return visible;
+}
+
+/**
+ * Gets a vector of display IDs for displays that are currently visible. A display is considered visible if it has an
+ * active display path and its source mode reports a non-zero resolution and a valid desktop position. If
+ * QDC_ONLY_ACTIVE_PATHS fails due to driver behavior, the function falls back to QDC_DATABASE_CURRENT while applying
+ * the same visibility rules. Returned IDs are converted into stable IDs.
+ *
+ * @return A vector of stable display IDs for the currently visible displays
+ */
+vector<string> getVisibleDisplayIds() {
+    vector<string> displayIds = queryVisibleDisplayIdsWithFlags(QDC_ONLY_ACTIVE_PATHS);
+
+    if (!displayIds.empty()) {
+        return displayIds;
+    }
+
+    return queryVisibleDisplayIdsWithFlags(QDC_DATABASE_CURRENT);
+}
+
+/**
+ * Gets a vector of display IDs by utilizing QueryDisplayConfig and DisplayConfigGetDeviceInfo. This reflects the
+ * persisted display configuration in the Windows display database. The returned IDs are converted into stable IDs.
+ *
+ * @return A vector of stable display IDs for the current persisted display configuration
+ */
+vector<string> getQueryDisplayConfigDisplayIds() {
+    DisplayConfig config = getDisplayConfig();
+    vector<string> displayIds;
+
+    for (UINT32 i = 0; i < config.numPathInfoArrayElements; i++) {
+        DISPLAYCONFIG_TARGET_DEVICE_NAME target = {};
+        target.header.adapterId = config.pathInfoArray[i].targetInfo.adapterId;
+        target.header.id = config.pathInfoArray[i].targetInfo.id;
+        target.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
+        target.header.size = sizeof(target);
+
+        if (DisplayConfigGetDeviceInfo(&target.header) != ERROR_SUCCESS) {
+            continue;
+        }
+
+        displayIds.push_back(buildStableDisplayId(target.monitorDevicePath));
+    }
+
+    return displayIds;
+}
+
+/**
+ * Gets a vector of display IDs by utilizing the EnumDisplayDevices API. Only devices attached to the desktop are
+ * included. The returned IDs are converted into stable IDs.
+ *
+ * @return A vector of stable display IDs for devices attached to the desktop
+ */
+vector<string> getEnumDisplayDevicesDisplayIds() {
+    DISPLAY_DEVICE displayDevice;
+    SecureZeroMemory(&displayDevice, sizeof(DISPLAY_DEVICE));
+    displayDevice.cb = sizeof(displayDevice);
+
+    vector<string> displayIds;
+    UINT32 index = 0;
+
+    while (EnumDisplayDevices(NULL, index, &displayDevice, 0)) {
+        if (displayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
+            WCHAR nameBuf[32];
+            lstrcpyW(nameBuf, displayDevice.DeviceName);
+
+            EnumDisplayDevices(nameBuf, 0, &displayDevice, EDD_GET_DEVICE_INTERFACE_NAME);
+
+            displayIds.push_back(buildStableDisplayId(displayDevice.DeviceID));
+        }
+
+        index++;
+    }
+
+    return displayIds;
+}
+
+/**
+ * Gets the index in the EnumDisplayDevices display ID vector for the given display ID.
+ *
+ * @param displayId
+ *        - The stable ID of the display to get the index for
+ *
+ * @return The index in the EnumDisplayDevices display ID vector for the given display ID, or 0 if not found
+ */
+int getEnumDisplayDevicesDisplayIdIndex(string displayId) {
+    vector<string> displayIds = getEnumDisplayDevicesDisplayIds();
+
+    for (int i = 0; i < (int) displayIds.size(); i++) {
+        if (displayIds[i] == displayId) {
+            return i;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * Gets the index in the QueryDisplayConfig display ID vector for the given display ID.
+ *
+ * @param displayId
+ *        - The stable ID of the display to get the index for
+ *
+ * @return The index in the QueryDisplayConfig display ID vector for the given display ID, or 0 if not found
+ */
+int getQueryDisplayConfigDisplayIdIndex(string displayId) {
+    vector<string> displayIds = getQueryDisplayConfigDisplayIds();
+
+    for (int i = 0; i < (int) displayIds.size(); i++) {
+        if (displayIds[i] == displayId) {
+            return i;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * Builds a stable display ID from a monitor device path by removing the volatile UID segment and optional trailing
+ * GUID. This produces a consistent identifier across device instance changes (e.g., virtual display re-creations).
+ *
+ * @param monitorDevicePath
+ *        - The raw monitor device path as returned by DisplayConfigGetDeviceInfo
+ *
+ * @return A normalized, stable display ID string
+ */
+string buildStableDisplayId(const wstring &monitorDevicePath) {
+    string path = wStrToStr(monitorDevicePath);
+
+    // Strip trailing GUID (#{...})
+    size_t guidPos = path.find("#{");
+
+    if (guidPos != string::npos) {
+        path.erase(guidPos);
+    }
+
+    // Remove &UID#### segment
+    size_t uidPos = path.find("&UID");
+
+    if (uidPos != string::npos) {
+        size_t endPos = uidPos + 4;
+
+        while (endPos < path.size() && isdigit(static_cast<unsigned char>(path[endPos]))) {
+            endPos++;
+        }
+
+        path.erase(uidPos, endPos - uidPos);
+    }
+
+    // Trim whitespace
+    auto trim = [](string &s) {
+        while (!s.empty() && isspace(static_cast<unsigned char>(s.front()))) {
+            s.erase(s.begin());
+        }
+
+        while (!s.empty() && isspace(static_cast<unsigned char>(s.back()))) {
+            s.pop_back();
+        }
+    };
+
+    trim(path);
+
+    // Normalize case
+    transform(path.begin(), path.end(), path.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+
+    return path;
+}
+
+/**
+ * Converts a wide string (UTF-16) to a UTF-8 encoded string.
  *
  * @param wideString
- *            - The wide string to convert
+ *        - The wide string to convert
  *
- * @return The string version of the wide string
+ * @return A UTF-8 encoded string, or an empty string if conversion fails
  */
 string wStrToStr(const wstring &wideString) {
     if (wideString.empty()) {
@@ -75,115 +357,7 @@ string wStrToStr(const wstring &wideString) {
     }
 
     string result(sizeNeeded - 1, '\0');
-
     WideCharToMultiByte(CP_UTF8, 0, wideString.c_str(), -1, &result[0], sizeNeeded, NULL, NULL);
 
     return result;
-}
-
-/*
- * Gets a vector of display IDs by utilizing the EnumDisplayDevices API.
- *
- * @return The vector of display IDs
- */
-vector<string> getEnumDisplayDevicesDisplayIds() {
-    DISPLAY_DEVICE displayDevice;
-
-    SecureZeroMemory(&displayDevice, sizeof(DISPLAY_DEVICE));
-    displayDevice.cb = sizeof(displayDevice);
-
-    bool enumDisplayDevicesResult = true;
-    UINT32 displayDeviceIndex = 0;
-    vector<string> displayIdsVector;
-    string displayId;
-
-    while (enumDisplayDevicesResult == true) {
-        enumDisplayDevicesResult = EnumDisplayDevices(NULL, displayDeviceIndex, &displayDevice, 0);
-
-        if (displayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
-            LPSTR monitorName = new CHAR[32];
-
-            lstrcpy(monitorName, displayDevice.DeviceName);
-            EnumDisplayDevices(monitorName, 0, &displayDevice, EDD_GET_DEVICE_INTERFACE_NAME);
-
-            displayId = displayDevice.DeviceID;
-            displayIdsVector.push_back(displayId);
-
-            delete[] monitorName;
-        }
-
-        displayDeviceIndex++;
-    }
-
-    return displayIdsVector;
-}
-
-/*
- * Gets a vector of display IDs by utilizing the QueryDisplayConfig and DisplayConfigGetDeviceInfo APIs.
- *
- * @return The vector of display IDs
- */
-vector<string> getQueryDisplayConfigDisplayIds() {
-    DisplayConfig displayConfig = getDisplayConfig();
-    vector<string> displayIdsVector;
-    wstringstream displayIdStream;
-
-    for (int i = 0; i < displayConfig.numPathInfoArrayElements; i++) {
-        DISPLAYCONFIG_TARGET_DEVICE_NAME targetName = { };
-        targetName.header.adapterId = displayConfig.pathInfoArray[i].targetInfo.adapterId;
-        targetName.header.id = displayConfig.pathInfoArray[i].targetInfo.id;
-        targetName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
-        targetName.header.size = sizeof(targetName);
-
-        DisplayConfigGetDeviceInfo(&targetName.header);
-
-        displayIdStream << targetName.monitorDevicePath;
-        displayIdsVector.push_back(wStrToStr(displayIdStream.str()));
-        displayIdStream.str(wstring());
-        displayIdStream.clear();
-    }
-
-    return displayIdsVector;
-}
-
-/*
- * Gets the index in the EnumDisplayDevices display ID vector for the given display ID.
- *
- * @param displayId
- *            - The ID of the display to get the index for
- *
- * @return The index in the EnumDisplayDevices display ID vector for the given display ID
- */
-int getEnumDisplayDevicesDisplayIdIndex(string displayId) {
-    vector<string> displayIdsVector = getEnumDisplayDevicesDisplayIds();
-    int displayIdIndex = 0;
-
-    for (int i = 0; i < displayIdsVector.size(); i++) {
-        if (displayIdsVector.at(i).compare(displayId) == 0) {
-            displayIdIndex = i;
-        }
-    }
-
-    return displayIdIndex;
-}
-
-/*
- * Gets the index in the QueryDisplayConfig display ID vector for the given display ID.
- *
- * @param displayId
- *            - The ID of the display to get the index for
- *
- * @return The index in the QueryDisplayConfig display ID vector for the given display ID
- */
-int getQueryDisplayConfigDisplayIdIndex(string displayId) {
-    vector<string> displayIdsVector = getQueryDisplayConfigDisplayIds();
-    int displayIdIndex = 0;
-
-    for (int i = 0; i < displayIdsVector.size(); i++) {
-        if (displayIdsVector.at(i).compare(displayId) == 0) {
-            displayIdIndex = i;
-        }
-    }
-
-    return displayIdIndex;
 }

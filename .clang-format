@@ -1,0 +1,53 @@
+# Base style: K&R
+BasedOnStyle: LLVM
+BraceWrapping:
+  AfterClass: false
+  AfterControlStatement: false
+  AfterEnum: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterObjCDeclaration: false
+  AfterStruct: false
+  AfterUnion: false
+  BeforeCatch: false
+  BeforeElse: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+# Indentation
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+# Column and wrapping
+ColumnLimit: 120
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+
+# Spaces
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpacesInAngles: false
+SpaceAfterCStyleCast: true
+
+# Pointer and reference alignment
+PointerAlignment: Right
+ReferenceAlignment: Right
+
+# Include sorting
+SortIncludes: true
+
+# Comment formatting
+ReflowComments: true              # Wrap long comments to ColumnLimit
+CommentPragmas: '^ IWYU pragma:'  # Keep special pragmas intact
+SpacesBeforeTrailingComments: 1   # Space before trailing // comments
+AlignTrailingComments: true       # Align trailing comments vertically
+IndentWrappedFunctionNames: false # Avoid indenting wrapped function names in comments
+
+# Language-specific
+Language: Cpp

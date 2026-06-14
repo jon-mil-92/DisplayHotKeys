@@ -28,6 +28,8 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Toolkit;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -71,7 +73,6 @@ public class DhkView implements IView {
     private GridBagConstraints menuPanelConstraints;
     private JLabel selectedDisplayLabel;
     private JLabel numberOfActiveSlotsLabel;
-    private JLabel slotIndicatorHeader;
     private JLabel displayModeHeader;
     private JLabel scalingModeHeader;
     private JLabel dpiScaleHeader;
@@ -83,14 +84,12 @@ public class DhkView implements IView {
     private Map<Integer, JComboBox<Integer>> numberOfActiveSlotsMap;
     private JComboBox<Integer> noDisplayIdsPlaceholder;
     private JComboBox<Integer> noActiveSlotsPlaceholder;
+    private Button clearAllButton;
+    private ThemeableButton refreshAppButton;
     private ThemeableButton aboutButton;
     private ThemeableButton themeButton;
-    private ThemeableToggleButton runOnStartupButton;
     private ThemeableToggleButton minimizeToTrayButton;
-    private Button refreshAppButton;
-    private Button clearAllButton;
-    private Button minimizeButton;
-    private Button exitButton;
+    private ThemeableToggleButton runOnStartupButton;
     private List<ThemeableButton> themeableButtons;
     private boolean appLaunching;
     private int previouslySelectedDisplayIndex;
@@ -137,7 +136,7 @@ public class DhkView implements IView {
         previouslySelectedDisplayIndex = 0;
 
         frame = new JFrame();
-        frame.setUndecorated(true);
+        frame.setTitle("Display Hot Keys");
         frame.setResizable(false);
 
         initPanels();
@@ -167,6 +166,13 @@ public class DhkView implements IView {
 
         // Re-enable tooltips and prefer lightweight popups (prevents creation of separate heavyweight windows)
         ToolTipManager.sharedInstance().setEnabled(true);
+
+        frame.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent mousePressedEvent) {
+                getDefaultFocusComponent().requestFocusInWindow();
+            }
+        });
 
         /*
          * Make the frame visible after all components are added and the frame is packed. Showing the frame earlier can
@@ -421,27 +427,23 @@ public class DhkView implements IView {
             numberOfActiveSlotsMap.put(-1, noActiveSlotsPlaceholder);
         }
 
+        ButtonProperties clearAllButtonProps = new ButtonProperties("Clear All Slots", new Dimension(50, 28), 0.70f,
+                0.60f);
+        clearAllButton = new Button("/clear_all_idle.svg", "/clear_all_hover.svg", clearAllButtonProps, true);
+
+        ButtonProperties refreshAppButtonProps = new ButtonProperties("Refresh App", new Dimension(31, 40), 0.70f,
+                0.60f);
+        refreshAppButton = new ThemeableButton("/refresh_app_idle.svg", "/refresh_app_light_hover.svg",
+                "/refresh_app_idle.svg", "/refresh_app_dark_hover.svg", refreshAppButtonProps, true,
+                model.isDarkMode());
+
         ButtonProperties aboutButtonProps = new ButtonProperties("About App", new Dimension(36, 40), 0.70f, 0.60f);
         aboutButton = new ThemeableButton("/about_idle.svg", "/about_light_hover.svg", "/about_idle.svg",
                 "/about_dark_hover.svg", aboutButtonProps, true, model.isDarkMode());
 
-        themeableButtons.add(aboutButton);
-
         ButtonProperties themeButtonProps = new ButtonProperties("Change Theme", new Dimension(40, 40), 0.70f, 0.60f);
         themeButton = new ThemeableButton("/light_mode_idle.svg", "/light_mode_hover.svg", "/dark_mode_idle.svg",
                 "/dark_mode_hover.svg", themeButtonProps, true, model.isDarkMode());
-
-        themeableButtons.add(themeButton);
-
-        ButtonProperties runOnStartupButtonProps = new ButtonProperties("Run On Startup", new Dimension(36, 40), 0.70f,
-                0.60f);
-        runOnStartupButton = new ThemeableToggleButton("/run_on_startup_enabled_idle.svg",
-                "/run_on_startup_disabled_idle.svg", "/run_on_startup_enabled_light_hover.svg",
-                "/run_on_startup_disabled_light_hover.svg", "/run_on_startup_enabled_dark_hover.svg",
-                "/run_on_startup_disabled_dark_hover.svg", runOnStartupButtonProps, true, model.isDarkMode(),
-                model.isRunOnStartup());
-
-        themeableButtons.add(runOnStartupButton);
 
         ButtonProperties minimizeToTrayButtonProps = new ButtonProperties("Minimize To Tray", new Dimension(36, 40),
                 0.70f, 0.60f);
@@ -451,26 +453,19 @@ public class DhkView implements IView {
                 "/minimize_to_tray_disabled_dark_hover.svg", minimizeToTrayButtonProps, true, model.isDarkMode(),
                 model.isMinimizeToTray());
 
+        ButtonProperties runOnStartupButtonProps = new ButtonProperties("Run On Startup", new Dimension(36, 40), 0.70f,
+                0.60f);
+        runOnStartupButton = new ThemeableToggleButton("/run_on_startup_enabled_idle.svg",
+                "/run_on_startup_disabled_idle.svg", "/run_on_startup_enabled_light_hover.svg",
+                "/run_on_startup_disabled_light_hover.svg", "/run_on_startup_enabled_dark_hover.svg",
+                "/run_on_startup_disabled_dark_hover.svg", runOnStartupButtonProps, true, model.isDarkMode(),
+                model.isRunOnStartup());
+
+        themeableButtons.add(refreshAppButton);
+        themeableButtons.add(aboutButton);
+        themeableButtons.add(themeButton);
         themeableButtons.add(minimizeToTrayButton);
-
-        ButtonProperties refreshAppButtonProps = new ButtonProperties("Refresh App", new Dimension(31, 40), 0.70f,
-                0.60f);
-        refreshAppButton = new Button("/refresh_app_idle.svg", "/refresh_app_hover.svg", refreshAppButtonProps, true);
-
-        ButtonProperties clearAllButtonProps = new ButtonProperties("Clear All Slots", new Dimension(33, 40), 0.70f,
-                0.60f);
-        clearAllButton = new Button("/clear_all_idle.svg", "/clear_all_hover.svg", clearAllButtonProps, true);
-
-        ButtonProperties minimizeButtonProps = new ButtonProperties("Minimize App", new Dimension(24, 40), 0.70f,
-                0.60f);
-        minimizeButton = new Button("/minimize_idle.svg", "/minimize_hover.svg", minimizeButtonProps, true);
-
-        ButtonProperties exitButtonProps = new ButtonProperties("Exit App", new Dimension(25, 40), 0.70f, 0.60f);
-        exitButton = new Button("/exit_idle.svg", "/exit_hover.svg", exitButtonProps, true);
-
-        slotIndicatorHeader = new JLabel("", SwingConstants.CENTER);
-        slotIndicatorHeader.setPreferredSize(new Dimension(50, 28));
-        makeLabelBold(slotIndicatorHeader);
+        themeableButtons.add(runOnStartupButton);
 
         displayModeHeader = new JLabel("Display Mode", SwingConstants.CENTER);
         displayModeHeader.setPreferredSize(new Dimension(256, 28));
@@ -608,28 +603,19 @@ public class DhkView implements IView {
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 0;
         menuPanelConstraints.gridy = 0;
-        menuPanel.add(aboutButton, menuPanelConstraints);
+        menuPanel.add(refreshAppButton, menuPanelConstraints);
 
         menuPanelConstraints.gridx = 1;
-        menuPanel.add(themeButton, menuPanelConstraints);
+        menuPanel.add(aboutButton, menuPanelConstraints);
 
         menuPanelConstraints.gridx = 2;
-        menuPanel.add(runOnStartupButton, menuPanelConstraints);
+        menuPanel.add(themeButton, menuPanelConstraints);
 
         menuPanelConstraints.gridx = 3;
         menuPanel.add(minimizeToTrayButton, menuPanelConstraints);
 
         menuPanelConstraints.gridx = 4;
-        menuPanel.add(refreshAppButton, menuPanelConstraints);
-
-        menuPanelConstraints.gridx = 5;
-        menuPanel.add(clearAllButton, menuPanelConstraints);
-
-        menuPanelConstraints.gridx = 6;
-        menuPanel.add(minimizeButton, menuPanelConstraints);
-
-        menuPanelConstraints.gridx = 7;
-        menuPanel.add(exitButton, menuPanelConstraints);
+        menuPanel.add(runOnStartupButton, menuPanelConstraints);
 
         mainPanelConstraints.anchor = GridBagConstraints.WEST;
         mainPanelConstraints.gridwidth = 8;
@@ -643,7 +629,7 @@ public class DhkView implements IView {
         mainPanelConstraints.anchor = GridBagConstraints.CENTER;
         mainPanelConstraints.gridwidth = 1;
         mainPanelConstraints.gridy = 1;
-        mainPanel.add(slotIndicatorHeader, mainPanelConstraints);
+        mainPanel.add(clearAllButton, mainPanelConstraints);
 
         mainPanelConstraints.gridwidth = 1;
         mainPanelConstraints.gridx = 1;
@@ -724,6 +710,24 @@ public class DhkView implements IView {
     }
 
     /**
+     * Gets the clear all button.
+     *
+     * @return The clear all button
+     */
+    public Button getClearAllButton() {
+        return clearAllButton;
+    }
+
+    /**
+     * Gets the refresh app button.
+     *
+     * @return The refresh app button
+     */
+    public ThemeableButton getRefreshAppButton() {
+        return refreshAppButton;
+    }
+
+    /**
      * Gets the about button.
      *
      * @return The about button
@@ -742,15 +746,6 @@ public class DhkView implements IView {
     }
 
     /**
-     * Gets the run on startup button.
-     *
-     * @return The run on startup button
-     */
-    public ThemeableToggleButton getRunOnStartupButton() {
-        return runOnStartupButton;
-    }
-
-    /**
      * Gets the minimize to tray button.
      *
      * @return The minimize to tray button
@@ -760,39 +755,12 @@ public class DhkView implements IView {
     }
 
     /**
-     * Gets the refresh app button.
+     * Gets the run on startup button.
      *
-     * @return The refresh app button
+     * @return The run on startup button
      */
-    public Button getRefreshAppButton() {
-        return refreshAppButton;
-    }
-
-    /**
-     * Gets the clear all button.
-     *
-     * @return The clear all button
-     */
-    public Button getClearAllButton() {
-        return clearAllButton;
-    }
-
-    /**
-     * Gets the minimize button.
-     *
-     * @return The minimize button
-     */
-    public Button getMinimizeButton() {
-        return minimizeButton;
-    }
-
-    /**
-     * Gets the exit button.
-     *
-     * @return The exit button
-     */
-    public Button getExitButton() {
-        return exitButton;
+    public ThemeableToggleButton getRunOnStartupButton() {
+        return runOnStartupButton;
     }
 
     /**

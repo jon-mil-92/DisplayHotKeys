@@ -31,12 +31,15 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
@@ -51,11 +54,12 @@ import com.dhk.utility.VersionRetriever;
 import dorkbox.systemTray.SystemTray;
 
 /**
- * Shows an "About Display Hot Keys" dialog on the AWT event dispatching thread.
+ * Shows an "About Display Hot Keys" dialog on the AWT event dispatching thread. Creates a semi-transparent darkening
+ * panel to overlay the parent frame.
  *
  * @author Jonathan R. Miller
  */
-public class AboutDialog extends AbstractDraggableDialog {
+public class AboutDialog implements IView {
 
     private DhkModel model;
     private DhkView view;
@@ -70,6 +74,7 @@ public class AboutDialog extends AbstractDraggableDialog {
     private JButton closeButton;
     private ThemeableButton paypalDonateButton;
     private PaypalDonateButtonController paypalButtonController;
+    private JFrame parentFrame;
     private Component originalGlassPane;
     private Component darkeningGlassPane;
     private FrameUpdater frameUpdater;
@@ -90,9 +95,9 @@ public class AboutDialog extends AbstractDraggableDialog {
      *            - The view for the application
      */
     public AboutDialog(DhkModel model, DhkView view) {
-        super(view.getFrame());
         this.model = model;
         this.view = view;
+        this.parentFrame = view.getFrame();
 
         originalGlassPane = parentFrame.getGlassPane();
         darkeningGlassPane = createDarkeningGlassPane();
@@ -116,9 +121,8 @@ public class AboutDialog extends AbstractDraggableDialog {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                JDialog aboutDialog = new JDialog(parentFrame, "About Display Hot Keys", true);
-                initMouseListeners(aboutDialog);
-                aboutDialog.setUndecorated(true);
+                // Create the dialog and initialize components
+                final JDialog aboutDialog = new JDialog(parentFrame, true);
                 aboutDialog.setResizable(false);
 
                 initAboutPanels(aboutDialog);
@@ -126,11 +130,13 @@ public class AboutDialog extends AbstractDraggableDialog {
                 initAboutComponentListeners(aboutDialog, systemTray);
                 addAboutComponents(aboutDialog);
 
+                // Update UI and show darkening glass pane on parent
                 frameUpdater.updateUI();
                 view.getDefaultFocusComponent().requestFocusInWindow();
                 parentFrame.setGlassPane(darkeningGlassPane);
                 darkeningGlassPane.setVisible(true);
 
+                // Pack and position BEFORE showing so native peer exists; HTML will be set in windowOpened
                 aboutDialog.pack();
                 aboutDialog.setLocationRelativeTo(parentFrame);
                 aboutDialog.setVisible(true);
@@ -184,7 +190,8 @@ public class AboutDialog extends AbstractDraggableDialog {
      *            - The system tray (not required)
      */
     private void initAboutComponents(JDialog aboutDialog, SystemTray systemTray) {
-        infoLabel = new JLabel(buildAboutInfoHtml());
+        // Create label empty; set HTML later when dialog is shown (windowOpened)
+        infoLabel = new JLabel();
         infoLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         ButtonProperties paypalButtonProperties = new ButtonProperties(null, new Dimension(134, 46), 0.70f, 0.63f);
@@ -206,7 +213,7 @@ public class AboutDialog extends AbstractDraggableDialog {
      * @param systemTray
      *            - The system tray (not required)
      */
-    private void initAboutComponentListeners(JDialog aboutDialog, SystemTray systemTray) {
+    private void initAboutComponentListeners(final JDialog aboutDialog, final SystemTray systemTray) {
         paypalButtonController.initListeners();
 
         licenseButton.addActionListener(createLicenseActionListener());
@@ -216,6 +223,42 @@ public class AboutDialog extends AbstractDraggableDialog {
         licenseButton.addMouseListener(createMouseAdapter());
         releasesButton.addMouseListener(createMouseAdapter());
         closeButton.addMouseListener(createMouseAdapter());
+
+        // Prevent default close and handle the title-bar close ourselves
+        aboutDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        aboutDialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                // Call the same method used by the Close button
+                closeButtonAction(aboutDialog, systemTray);
+            }
+
+            @Override
+            public void windowOpened(WindowEvent e) {
+                /*
+                 * Set the HTML text only after the dialog is shown on the target monitor so the HTML renderer uses the
+                 * correct GraphicsConfiguration/font metrics.
+                 */
+                SwingUtilities.invokeLater(() -> {
+                    // Only set the HTML if it hasn't been set already
+                    if (infoLabel.getText() == null || infoLabel.getText().isEmpty()) {
+                        infoLabel.setText(buildAboutInfoHtml());
+
+                        // Recompute layout and sizes for the new HTML content
+                        aboutDialog.pack();
+                        aboutDialog.revalidate();
+                        aboutDialog.repaint();
+                    }
+                });
+            }
+        });
+
+        aboutDialog.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent mousePressedEvent) {
+                getDefaultFocusComponent().requestFocusInWindow();
+            }
+        });
     }
 
     /**

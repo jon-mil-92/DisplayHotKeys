@@ -102,7 +102,7 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
      */
     private void applyDisplayModeButtonAction(int displayIndex, int slotIndex) {
         DisplayConfig displayConfig = new DisplayConfig();
-        displayConfig.updateDisplayIds();
+        displayConfig.updateConnectedDisplays();
 
         String displayId = model.getDisplayIds()[displayIndex];
 

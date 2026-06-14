@@ -8,3 +8,4 @@ target/
 # JNI DLLs
 GetDisplay.dll
 SetDisplay.dll
+DisplayEventNotifier.dll

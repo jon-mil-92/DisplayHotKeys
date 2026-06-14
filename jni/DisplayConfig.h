@@ -1,25 +1,35 @@
 /*
- * Defines various aspects of the current display configuration.
- *
- * Author: Jonathan R. Miller
- * License: The MIT License - https://mit-license.org/
+ * The MIT License (MIT)
  *
  * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
  */
-
 #pragma once
 
 #include <Windows.h>
-#include <iostream>
 #include <cstdint>
-#include <vector>
 #include <string>
-#include <sstream>
-#include <locale>
+#include <vector>
 
 using namespace std;
 
-static const vector<int32_t> DPI_SCALE_PERCENTAGES = { 100, 125, 150, 175, 200, 225, 250, 300, 350 };
+/*
+ * Supported DPI scale percentages and related constants.
+ */
+static const vector<int32_t> DPI_SCALE_PERCENTAGES = {100, 125, 150, 175, 200, 225, 250, 300, 350};
 static const int32_t NUM_OF_DPI_SCALE_PERCENTAGES = 9;
 static const int32_t DISPLAYCONFIG_DEVICE_INFO_HEADER_GET_DPI_TYPE = -3;
 static const int32_t DISPLAYCONFIG_DEVICE_INFO_HEADER_SET_DPI_TYPE = -4;
@@ -43,7 +53,7 @@ struct DISPLAYCONFIG_SET_DPI_SCALE_INDEX {
 };
 
 /*
- * Holds the display configuration information for the connected displays.
+ * Holds the display configuration information for the connected displays as returned by QueryDisplayConfig.
  */
 struct DisplayConfig {
     UINT32 numPathInfoArrayElements;
@@ -57,54 +67,76 @@ struct DisplayConfig {
     }
 };
 
-/*
- * Queries the display configuration to initialize a structure that holds the active paths as defined in
- * the persistence database for the currently connected displays.
+/**
+ * Queries the display configuration to initialize a structure that holds the persisted paths and modes as defined in
+ * the Windows display persistence database.
  *
- * @return A structure that holds the display configuration paths for the currently connected displays
+ * @return A DisplayConfig structure containing the display paths and modes for the current configuration
  */
 DisplayConfig getDisplayConfig();
 
-/*
- * Converts a wide string to a string.
+/**
+ * Gets a vector of display IDs by utilizing the EnumDisplayDevices API. Only devices attached to the desktop are
+ * included. The returned IDs are converted into stable IDs.
  *
- * @param wideString
- *            - The wide string to convert
- *
- * @return The string version of the wide string
- */
-string wStrToStr(const wstring &wideString);
-
-/*
- * Gets a vector of display IDs by utilizing the EnumDisplayDevices API.
- *
- * @return The vector of display IDs
+ * @return A vector of stable display IDs for devices attached to the desktop
  */
 vector<string> getEnumDisplayDevicesDisplayIds();
 
-/*
- * Gets a vector of display IDs by utilizing the QueryDisplayConfig and DisplayConfigGetDeviceInfo APIs.
+/**
+ * Gets a vector of display IDs by utilizing QueryDisplayConfig and DisplayConfigGetDeviceInfo. This reflects the
+ * persisted display configuration in the Windows display database. The returned IDs are converted into stable IDs.
  *
- * @return The vector of display IDs
+ * @return A vector of stable display IDs for the current persisted display configuration
  */
 vector<string> getQueryDisplayConfigDisplayIds();
 
-/*
+/**
+ * Gets a vector of display IDs for displays that are currently visible. A display is considered visible if it has an
+ * active display path and its source mode reports a non-zero resolution and a valid desktop position. Returned IDs are
+ * converted into stable IDs.
+ *
+ * @return A vector of stable display IDs for the currently visible displays
+ */
+vector<string> getVisibleDisplayIds();
+
+/**
  * Gets the index in the EnumDisplayDevices display ID vector for the given display ID.
  *
  * @param displayId
- *            - The ID of the display to get the index for
+ *        - The stable ID of the display to get the index for
  *
- * @return The index in the EnumDisplayDevices display ID vector for the given display ID
+ * @return The index in the EnumDisplayDevices display ID vector for the given display ID, or 0 if not found
  */
 int getEnumDisplayDevicesDisplayIdIndex(string displayId);
 
-/*
+/**
  * Gets the index in the QueryDisplayConfig display ID vector for the given display ID.
  *
  * @param displayId
- *            - The ID of the display to get the index for
+ *        - The stable ID of the display to get the index for
  *
- * @return The index in the QueryDisplayConfig display ID vector for the given display ID
+ * @return The index in the QueryDisplayConfig display ID vector for the given display ID, or 0 if not found
  */
 int getQueryDisplayConfigDisplayIdIndex(string displayId);
+
+/**
+ * Builds a stable display ID from a monitor device path by removing the volatile UID segment and optional trailing
+ * GUID. This produces a consistent identifier across device instance changes (e.g., virtual display re-creations).
+ *
+ * @param monitorDevicePath
+ *        - The raw monitor device path as returned by DisplayConfigGetDeviceInfo
+ *
+ * @return A normalized, stable display ID string
+ */
+string buildStableDisplayId(const wstring &monitorDevicePath);
+
+/**
+ * Converts a wide string (UTF-16) to a UTF-8 encoded string.
+ *
+ * @param wideString
+ *        - The wide string to convert
+ *
+ * @return A UTF-8 encoded string, or an empty string if conversion fails
+ */
+string wStrToStr(const wstring &wideString);

@@ -70,17 +70,20 @@ public class WindowController implements IController, WindowListener {
 
     @Override
     public void cleanUp() {
+        shutDownSystemTray();
         viewRefresher.stop();
-
-        if (minimizeToTray.getSystemTray() != null) {
-            minimizeToTray.getSystemTray().shutdown();
-        }
     }
 
     @Override
     public void windowIconified(WindowEvent e) {
         if (model.isMinimizeToTray()) {
-            minimizeToTray.execute();
+            if (minimizeToTray.getSystemTray() != null) {
+                // Hide the taskbar icon
+                view.getFrame().setVisible(false);
+                minimizeToTray.getSystemTray().setEnabled(true);
+            } else {
+                minimizeToTray.execute();
+            }
         }
 
         viewRefresher.suspend();
@@ -97,6 +100,9 @@ public class WindowController implements IController, WindowListener {
 
     @Override
     public void windowClosing(WindowEvent e) {
+        shutDownSystemTray();
+        viewRefresher.stop();
+        System.exit(0);
     }
 
     @Override
@@ -109,6 +115,16 @@ public class WindowController implements IController, WindowListener {
 
     @Override
     public void windowDeactivated(WindowEvent e) {
+    }
+
+    /**
+     * Shuts down the system tray.
+     */
+    private void shutDownSystemTray() {
+        if (minimizeToTray.getSystemTray() != null) {
+            minimizeToTray.getSystemTray().setEnabled(false);
+            minimizeToTray.getSystemTray().shutdown();
+        }
     }
 
 }

@@ -28,7 +28,9 @@ import java.util.Map;
 import com.dhk.utility.DisplayModeInverter;
 
 /**
- * Gets the current information for the connected displays.
+ * Gets the current information for the connected displays, including display IDs, supported display modes, and
+ * orientation-aware landscape/portrait mode mappings. Uses visible display IDs to reflect the current desktop
+ * configuration.
  *
  * @author Jonathan R. Miller
  */
@@ -50,57 +52,66 @@ public class DisplayConfig {
     }
 
     /**
-     * Updates the current display configuration.
+     * Updates the current display configuration, including connected displays and their supported display modes.
      */
     public void updateDisplayConfig() {
-        updateDisplayIds();
+        updateConnectedDisplays();
         updateDisplayModes();
     }
 
     /**
-     * Gets the current number of connected displays.
+     * Updates the current array of unique visible display IDs and stores the number of connected (visible) displays.
      */
-    public void checkNumOfConnectedDisplays() {
-        numOfConnectedDisplays = getDisplay.getNumOfConnectedDisplays();
+    public void updateConnectedDisplays() {
+        String[] rawDisplayIds = getDisplay.getVisibleDisplayIds();
+        int count = 0;
+
+        for (String displayId : rawDisplayIds) {
+            if (displayId != null && !displayId.isBlank()) {
+                count++;
+            }
+        }
+
+        String[] filteredDisplayIds = new String[count];
+        int filteredDisplayIdsIndex = 0;
+
+        for (String s : rawDisplayIds) {
+            if (s != null && !s.isBlank()) {
+                filteredDisplayIds[filteredDisplayIdsIndex++] = s;
+            }
+        }
+
+        displayIds = filteredDisplayIds;
+        numOfConnectedDisplays = filteredDisplayIds.length;
     }
 
     /**
-     * Updates the current array of unique display IDs and stores the number of connected displays.
-     */
-    public void updateDisplayIds() {
-        displayIds = getDisplay.getDisplayIds();
-        numOfConnectedDisplays = displayIds.length;
-    }
-
-    /**
-     * Gets the current array of landscape and portrait display modes for each connected display.
+     * Gets the current array of landscape and portrait display modes for each connected (visible) display.
      */
     private void updateDisplayModes() {
-        int displayIndex = 0;
-        landscapeDisplayModesMap = new HashMap<String, DisplayMode[]>();
-        portraitDisplayModesMap = new HashMap<String, DisplayMode[]>();
+        landscapeDisplayModesMap = new HashMap<String, DisplayMode[]>(numOfConnectedDisplays);
+        portraitDisplayModesMap = new HashMap<String, DisplayMode[]>(numOfConnectedDisplays);
 
-        for (String displayId : displayIds) {
+        for (int displayIndex = 0; displayIndex < numOfConnectedDisplays; displayIndex++) {
+            String displayId = displayIds[displayIndex];
             int orientation = getDisplay.getDisplayOrientation(displayIndex);
-            boolean landscapeOrientation = orientation == 1 || orientation == 3;
+            boolean landscapeOrientation = (orientation == 1 || orientation == 3);
+
             DisplayMode[] displayModes = getDisplay.getDisplayModes(displayId);
+            Arrays.sort(displayModes, DISPLAY_MODE_COMPARATOR);
+            DisplayMode[] invertedDisplayModes = DisplayModeInverter.invertDisplayModes(displayModes);
 
-            Arrays.sort(displayModes, Comparator.comparing(DisplayMode::getWidth).thenComparing(DisplayMode::getHeight)
-                    .thenComparing(DisplayMode::getBitDepth).thenComparing(DisplayMode::getRefreshRate).reversed());
-
-            DisplayMode[] landscapeDisplayModes = landscapeOrientation
-                    ? displayModes
-                    : DisplayModeInverter.invertDisplayModes(displayModes);
-            DisplayMode[] portraitDisplayModes = landscapeOrientation
-                    ? DisplayModeInverter.invertDisplayModes(displayModes)
-                    : displayModes;
-
-            landscapeDisplayModesMap.put(displayId, landscapeDisplayModes);
-            portraitDisplayModesMap.put(displayId, portraitDisplayModes);
-
-            displayIndex++;
+            landscapeDisplayModesMap.put(displayId, landscapeOrientation ? displayModes : invertedDisplayModes);
+            portraitDisplayModesMap.put(displayId, landscapeOrientation ? invertedDisplayModes : displayModes);
         }
     }
+
+    /**
+     * Comparator for display mode sorting.
+     */
+    private static final Comparator<DisplayMode> DISPLAY_MODE_COMPARATOR = Comparator
+            .comparingInt(DisplayMode::getWidth).thenComparingInt(DisplayMode::getHeight)
+            .thenComparingInt(DisplayMode::getBitDepth).thenComparingInt(DisplayMode::getRefreshRate).reversed();
 
     /**
      * Gets the array of display IDs.
@@ -136,9 +147,9 @@ public class DisplayConfig {
     }
 
     /**
-     * Gets the number of connected displays.
+     * Gets the number of connected (visible) displays.
      *
-     * @return The number of connected displays
+     * @return The number of connected (visible) displays
      */
     public int getNumOfConnectedDisplays() {
         return numOfConnectedDisplays;

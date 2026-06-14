@@ -1,0 +1,515 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
+#include "com_dhk_io_DisplayEventNotifier.h"
+#include "DisplayConfig.h"
+
+#include <algorithm>
+#include <atomic>
+#include <cctype>
+#include <chrono>
+#include <dbt.h>
+#include <jni.h>
+#include <string>
+#include <thread>
+#include <vector>
+#include <windows.h>
+
+using namespace std;
+
+/*
+ * Global Java VM pointer used to attach native threads when invoking Java callbacks.
+ */
+static JavaVM *jvm = nullptr;
+
+/*
+ * Global reference to the Java DisplayEventNotifier instance used for callbacks from native code.
+ */
+static jobject displayEventNotifierGlobalRef = nullptr;
+
+/*
+ * Cached method ID for the Java callback method DisplayEventNotifier.onNativeNotify().
+ */
+static jmethodID onNativeNotifyMethodId = nullptr;
+
+/*
+ * Thread that runs the Windows message loop and polling logic.
+ */
+static thread messageLoopThread;
+
+/*
+ * Atomic flag indicating whether the message loop thread should continue running.
+ */
+static atomic_bool isRunning(false);
+
+/*
+ * Hidden message window used to receive broadcast messages such as WM_DEVICECHANGE and WM_DISPLAYCHANGE.
+ */
+static HWND messageWindow = NULL;
+
+/*
+ * Handle returned by RegisterDeviceNotification for monitor device interface notifications.
+ */
+static HDEVNOTIFY deviceNotificationHandle = NULL;
+
+/*
+ * Debounce interval (milliseconds) to suppress rapid duplicate notifications. This limits how often Java can be
+ * notified even after stabilization.
+ */
+static constexpr long DEBOUNCE_MS = 150;
+
+/*
+ * Stabilization interval (milliseconds) to ensure the display configuration has remained unchanged before notifying
+ * Java.
+ */
+static constexpr long STABILIZATION_MS = 250;
+
+/*
+ * Polling interval (milliseconds) for periodically querying visible display paths.
+ */
+static constexpr long POLL_INTERVAL_MS = 200;
+
+/*
+ * Timestamp of the last notification forwarded to Java, used for debounce logic.
+ */
+static chrono::steady_clock::time_point lastNotifyTime;
+
+/*
+ * Timestamp of the last time the visible display ID set changed, used for stabilization logic.
+ */
+static chrono::steady_clock::time_point lastStateChangeTime;
+
+/*
+ * Timestamp of the last poll of the display configuration, used to control polling frequency.
+ */
+static chrono::steady_clock::time_point lastPollTime;
+
+/*
+ * Last-known set of visible display IDs used to detect real changes in display configuration. These IDs are already
+ * stable because DisplayConfig.cpp now returns stable IDs.
+ */
+static vector<string> lastVisibleDisplayIds;
+
+/*
+ * Last-known normalized set that was actually notified to Java. This prevents repeated notifications for the same
+ * stable configuration across multiple polls.
+ */
+static vector<string> lastNotifiedNormalizedIds;
+
+/*
+ * Device interface class GUID for monitor devices. Used with RegisterDeviceNotification to receive DBT_DEVICEARRIVAL
+ * and DBT_DEVICEREMOVECOMPLETE notifications specifically for monitors.
+ */
+static constexpr GUID MONITOR_DEVICE_INTERFACE_GUID = {
+    0xe6f07b5f, 0xee97, 0x4a90, {0xb0, 0x76, 0x33, 0xf5, 0x7b, 0xf4, 0xea, 0xa7}};
+
+/*
+ * Forward declaration of the window procedure used by the hidden message window.
+ */
+LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData);
+
+/*
+ * Forward declaration of the helper that notifies Java of a display configuration change.
+ */
+static void notifyJava();
+
+/**
+ * Normalize display ID lists: trim whitespace from each ID and sort the resulting list so comparisons are
+ * order-insensitive. IDs are already stable because DisplayConfig.cpp returns stable IDs.
+ *
+ * @param rawDisplayIds
+ *        - The list of display ID strings to normalize (trim + sort)
+ *
+ * @return A new vector containing the trimmed, sorted display IDs
+ */
+static vector<string> normalizeDisplayIds(const vector<string> &rawDisplayIds) {
+    vector<string> normalizedIds;
+    normalizedIds.reserve(rawDisplayIds.size());
+
+    for (const auto &id : rawDisplayIds) {
+        string trimmedId = id;
+
+        while (!trimmedId.empty() && isspace((unsigned char) trimmedId.front())) {
+            trimmedId.erase(trimmedId.begin());
+        }
+
+        while (!trimmedId.empty() && isspace((unsigned char) trimmedId.back())) {
+            trimmedId.pop_back();
+        }
+
+        normalizedIds.push_back(trimmedId);
+    }
+
+    sort(normalizedIds.begin(), normalizedIds.end());
+
+    return normalizedIds;
+}
+
+/**
+ * Perform the common stabilization, debounce, query and compare logic used by both event-driven notifications
+ * (WM_DEVICECHANGE, WM_DISPLAYCHANGE) and periodic polling. This method:
+ *
+ * 1. Compares the current set of visible display IDs to the last-known set
+ * 2. If the set changed, records the new state and timestamp but does not notify Java yet
+ * 3. If the set is unchanged, checks whether it has remained stable for STABILIZATION_MS
+ * 4. If stable and debounced, notifies Java exactly once per real configuration change
+ *
+ * @return true if a real display configuration change was detected and Java was notified; false otherwise
+ */
+static bool processPotentialDisplayChange() {
+    auto now = chrono::steady_clock::now();
+    vector<string> currentVisibleIds;
+
+    try {
+        currentVisibleIds = getVisibleDisplayIds();
+    } catch (...) {
+        currentVisibleIds.clear();
+    }
+
+    auto normalizedCurrent = normalizeDisplayIds(currentVisibleIds);
+    auto normalizedLast = normalizeDisplayIds(lastVisibleDisplayIds);
+
+    // If we've already notified Java about this exact normalized configuration, do nothing
+    if (!lastNotifiedNormalizedIds.empty() && normalizedCurrent == lastNotifiedNormalizedIds) {
+        return false;
+    }
+
+    /*
+     * Detect transition from one or more visible displays to zero visible displays. A headless state represents a
+     * definitive configuration change and must notify Java immediately without applying stabilization or debounce
+     * rules
+     */
+    if (normalizedCurrent.empty() && !normalizedLast.empty()) {
+        lastVisibleDisplayIds = currentVisibleIds;
+        lastStateChangeTime = now;
+
+        // Notify immediately for headless transition
+        notifyJava();
+
+        // Record that we've notified for this normalized state
+        lastNotifiedNormalizedIds = normalizedCurrent;
+
+        // Now update lastNotifyTime AFTER notifying
+        lastNotifyTime = now;
+
+        return true;
+    }
+
+    /*
+     * Detect any change in the set of visible display IDs. When a change is detected, update the stored state and reset
+     * the stabilization timer. Notification is deferred until the configuration remains unchanged for the required
+     * stabilization interval
+     */
+    if (normalizedCurrent != normalizedLast) {
+        lastVisibleDisplayIds = currentVisibleIds;
+        lastStateChangeTime = now;
+        return false;
+    }
+
+    /*
+     * At this point normalizedCurrent == normalizedLast. If we already notified for this normalized state above we
+     * would have returned earlier. Continue with stabilization and debounce checks
+     */
+
+    /*
+     * Determine whether the display configuration has remained unchanged for the required stabilization interval. If
+     * not stabilized, do not notify Java yet
+     */
+    auto elapsedSinceStateChange = chrono::duration_cast<chrono::milliseconds>(now - lastStateChangeTime).count();
+
+    if (elapsedSinceStateChange < STABILIZATION_MS) {
+        return false;
+    }
+
+    /*
+     * Apply time-based debounce to prevent excessive notifications when the display configuration remains stable but
+     * repeated events or polls occur within a short interval
+     */
+    auto elapsedSinceLastNotify = chrono::duration_cast<chrono::milliseconds>(now - lastNotifyTime).count();
+
+    if (elapsedSinceLastNotify < DEBOUNCE_MS) {
+        return false;
+    }
+
+    /*
+     * The display configuration is stable, outside the debounce interval, and we have not yet notified for this
+     * normalized state -> notify Java and record the notified normalized set
+     */
+    lastNotifyTime = now;
+    notifyJava();
+    lastNotifiedNormalizedIds = normalizedCurrent;
+
+    return true;
+}
+
+/**
+ * Notify Java by calling the cached onNativeNotify method on the stored Java DisplayEventNotifier instance. Attaches
+ * the current thread to the JVM if necessary and detaches it when done.
+ */
+static void notifyJava() {
+    if (!jvm || !displayEventNotifierGlobalRef || !onNativeNotifyMethodId) {
+        return;
+    }
+
+    JNIEnv *env = nullptr;
+    bool attachedToJvm = false;
+    jint getEnvResult = jvm->GetEnv((void **) &env, JNI_VERSION_1_6);
+
+    if (getEnvResult == JNI_EDETACHED) {
+        if (jvm->AttachCurrentThread((void **) &env, nullptr) != 0) {
+            return;
+        }
+
+        attachedToJvm = true;
+    } else if (getEnvResult != JNI_OK) {
+        return;
+    }
+
+    // Re-check the global ref after attaching
+    if (!displayEventNotifierGlobalRef) {
+        if (attachedToJvm) {
+            jvm->DetachCurrentThread();
+        }
+        return;
+    }
+
+    env->CallVoidMethod(displayEventNotifierGlobalRef, onNativeNotifyMethodId);
+
+    if (env->ExceptionCheck()) {
+        env->ExceptionDescribe();
+        env->ExceptionClear();
+    }
+
+    if (attachedToJvm) {
+        jvm->DetachCurrentThread();
+    }
+}
+
+/**
+ * Message loop runner executed on a dedicated thread. Creates a hidden top-level window to receive WM_DISPLAYCHANGE and
+ * WM_DEVICECHANGE broadcasts, registers for monitor device interface notifications, and periodically polls the visible
+ * display configuration using getVisibleDisplayIds().
+ */
+static void runMessageLoopThread() {
+    const wchar_t CLASS_NAME[] = L"DHK_DisplayEventNotifier_MessageWindow";
+
+    WNDCLASSW windowClass = {};
+    windowClass.lpfnWndProc = handleEvents;
+    windowClass.hInstance = GetModuleHandleW(NULL);
+    windowClass.lpszClassName = CLASS_NAME;
+
+    RegisterClassW(&windowClass);
+
+    messageWindow = CreateWindowExW(0, CLASS_NAME, L"", 0, 0, 0, 0, 0, NULL, NULL, GetModuleHandleW(NULL), NULL);
+
+    if (!messageWindow) {
+        return;
+    }
+
+    DEV_BROADCAST_DEVICEINTERFACE_W notificationFilter;
+    SecureZeroMemory(&notificationFilter, sizeof(notificationFilter));
+    notificationFilter.dbcc_size = sizeof(notificationFilter);
+    notificationFilter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
+    notificationFilter.dbcc_classguid = MONITOR_DEVICE_INTERFACE_GUID;
+
+    deviceNotificationHandle =
+        RegisterDeviceNotificationW(messageWindow, &notificationFilter, DEVICE_NOTIFY_WINDOW_HANDLE);
+
+    lastNotifyTime = chrono::steady_clock::now() - chrono::milliseconds(DEBOUNCE_MS);
+    lastPollTime = chrono::steady_clock::now() - chrono::milliseconds(POLL_INTERVAL_MS);
+
+    try {
+        // Already stable IDs
+        lastVisibleDisplayIds = getVisibleDisplayIds();
+    } catch (...) {
+        lastVisibleDisplayIds.clear();
+    }
+
+    // Initialize the last-notified normalized set to the current normalized state so we don't notify on startup
+    lastNotifiedNormalizedIds = normalizeDisplayIds(lastVisibleDisplayIds);
+
+    // Initialize state change time to "now" so stabilization logic starts from the initial state
+    lastStateChangeTime = chrono::steady_clock::now();
+
+    MSG message;
+
+    while (isRunning.load()) {
+        while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE)) {
+            if (message.message == WM_QUIT) {
+                isRunning.store(false);
+                break;
+            }
+
+            TranslateMessage(&message);
+            DispatchMessage(&message);
+        }
+
+        auto now = chrono::steady_clock::now();
+        auto elapsedSinceLastPoll = chrono::duration_cast<chrono::milliseconds>(now - lastPollTime).count();
+
+        if (elapsedSinceLastPoll >= POLL_INTERVAL_MS) {
+            processPotentialDisplayChange();
+            lastPollTime = now;
+        }
+
+        this_thread::sleep_for(chrono::milliseconds(50));
+    }
+
+    if (messageWindow) {
+        DestroyWindow(messageWindow);
+        messageWindow = NULL;
+    }
+
+    if (deviceNotificationHandle) {
+        UnregisterDeviceNotification(deviceNotificationHandle);
+        deviceNotificationHandle = NULL;
+    }
+}
+
+/**
+ * Window procedure for the hidden message window. Handles monitor arrival/removal and display change broadcasts and
+ * forwards meaningful changes to Java by invoking the common display-change processing logic.
+ *
+ * @param windowHandle
+ *        - The handle to the hidden message window
+ * @param message
+ *        - The message identifier
+ * @param eventType
+ *        - The WPARAM event type
+ * @param eventData
+ *        - The LPARAM event data
+ *
+ * @return The result of message processing
+ */
+LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData) {
+    switch (message) {
+    case WM_DEVICECHANGE: {
+        if (eventType == DBT_DEVICEARRIVAL || eventType == DBT_DEVICEREMOVECOMPLETE) {
+            DEV_BROADCAST_HDR *broadcastHeader = (DEV_BROADCAST_HDR *) eventData;
+
+            if (broadcastHeader != NULL && broadcastHeader->dbch_devicetype == DBT_DEVTYP_DEVICEINTERFACE) {
+                processPotentialDisplayChange();
+            }
+        }
+        return 0;
+    }
+    case WM_DISPLAYCHANGE:
+        processPotentialDisplayChange();
+        return 0;
+
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        return 0;
+
+    default:
+        return DefWindowProcW(windowHandle, message, eventType, eventData);
+    }
+}
+
+/**
+ * JNI_OnLoad is called when the native library is loaded. Caches the JavaVM pointer for later use when attaching native
+ * threads to invoke Java callbacks.
+ *
+ * @param vm
+ *        - The JavaVM pointer
+ * @param reserved
+ *        - Reserved for future use
+ *
+ * @return The JNI version supported by this library
+ */
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    (void) reserved;
+    jvm = vm;
+    return JNI_VERSION_1_6;
+}
+
+/**
+ * Start native display event notifications. Stores a global reference to the provided Java DisplayEventNotifier
+ * instance, resolves the onNativeNotify callback method, and launches the message loop thread.
+ *
+ * Performs basic error checks on JNI operations and avoids starting the thread if setup fails.
+ *
+ * @param env
+ *        - The JNI environment pointer
+ * @param obj
+ *        - The Java DisplayEventNotifier instance
+ */
+extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeStart(JNIEnv *env, jobject obj) {
+    if (isRunning.load()) {
+        return;
+    }
+
+    // Create a global ref and validate it
+    jobject globalRef = env->NewGlobalRef(obj);
+    if (!globalRef) {
+        return;
+    }
+
+    jclass notifierClass = env->GetObjectClass(obj);
+    if (!notifierClass) {
+        env->DeleteGlobalRef(globalRef);
+        return;
+    }
+
+    jmethodID methodId = env->GetMethodID(notifierClass, "onNativeNotify", "()V");
+    if (!methodId) {
+        env->DeleteGlobalRef(globalRef);
+        return;
+    }
+
+    // All JNI setup succeeded; commit to globals and start thread
+    displayEventNotifierGlobalRef = globalRef;
+    onNativeNotifyMethodId = methodId;
+
+    isRunning.store(true);
+    messageLoopThread = thread(runMessageLoopThread);
+}
+
+/**
+ * Stop native display event notifications, shut down the message loop thread, and release the global Java reference.
+ *
+ * @param env
+ *        - The JNI environment pointer
+ * @param obj
+ *        - The Java DisplayEventNotifier instance
+ */
+extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeStop(JNIEnv *env, jobject obj) {
+    (void) obj;
+
+    if (!isRunning.load()) {
+        return;
+    }
+
+    isRunning.store(false);
+
+    if (messageWindow) {
+        PostMessage(messageWindow, WM_QUIT, 0, 0);
+    }
+
+    if (messageLoopThread.joinable()) {
+        messageLoopThread.join();
+    }
+
+    if (displayEventNotifierGlobalRef) {
+        env->DeleteGlobalRef(displayEventNotifierGlobalRef);
+        displayEventNotifierGlobalRef = NULL;
+    }
+
+    onNativeNotifyMethodId = nullptr;
+}

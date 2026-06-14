@@ -215,6 +215,7 @@ Opens a web page in the default browser to display the releases for Display Hot 
 - [x] &thinsp; Add ability to change display orientation with hot keys.
 - [x] &thinsp; Add an "About" view to display current app information.
 - [x] &thinsp; Add support for virtual displays and display duplication.
+- [x] &thinsp; Add event-driven display configuration detection.
 
 See [open issues] for a full list of proposed features (and known issues).
 
