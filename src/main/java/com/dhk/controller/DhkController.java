@@ -189,9 +189,6 @@ public class DhkController implements IController {
         cleanUp();
         initController();
         initListeners();
-
-        // Clean up memory after re-initializing the controller
-        System.gc();
     }
 
 }

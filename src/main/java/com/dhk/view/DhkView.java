@@ -23,10 +23,13 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.DisplayMode;
 import java.awt.FlowLayout;
+import java.awt.GraphicsConfiguration;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.IllegalComponentStateException;
 import java.awt.Insets;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -40,6 +43,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import javax.swing.UIManager;
 
@@ -49,6 +53,7 @@ import com.dhk.model.button.Button;
 import com.dhk.model.button.ButtonProperties;
 import com.dhk.model.button.ThemeableButton;
 import com.dhk.model.button.ThemeableToggleButton;
+import com.dhk.utility.FrameUtil;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.ui.FlatUIUtils;
 
@@ -91,7 +96,6 @@ public class DhkView implements IView {
     private ThemeableToggleButton minimizeToTrayButton;
     private ThemeableToggleButton runOnStartupButton;
     private List<ThemeableButton> themeableButtons;
-    private boolean appLaunching;
     private int previouslySelectedDisplayIndex;
     private int gridYPosForSlotInPanel;
 
@@ -108,7 +112,6 @@ public class DhkView implements IView {
      */
     public DhkView(DhkModel model) {
         this.model = model;
-        appLaunching = true;
         themeableButtons = new ArrayList<>();
 
         // Disable logging for icons
@@ -128,35 +131,49 @@ public class DhkView implements IView {
      * panels, and initializes the view components.
      *
      * @param frameLocation
-     *            - The point to spawn the view's frame at
+     *            - Optional screen-coordinate hint for placement (may be null)
      */
     public void initView(Point frameLocation) {
-        displayMap = new HashMap<Integer, List<Slot>>();
-        numberOfActiveSlotsMap = new HashMap<Integer, JComboBox<Integer>>();
-        previouslySelectedDisplayIndex = 0;
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(() -> initView(frameLocation));
+            return;
+        }
 
-        frame = new JFrame();
-        frame.setTitle("Display Hot Keys");
-        frame.setResizable(false);
+        final JFrame previousFrame = frame;
+
+        // Reset view state used by initComponents
+        displayMap = new HashMap<>();
+        numberOfActiveSlotsMap = new HashMap<>();
+        previouslySelectedDisplayIndex = 0;
+        gridYPosForSlotInPanel = 2;
+
+        // Build and populate the frame
+        final JFrame newFrame = new JFrame("Display Hot Keys");
+        newFrame.setResizable(false);
 
         initPanels();
         initComponents();
 
-        frame.add(mainPanel);
-        frame.pack();
+        newFrame.setContentPane(mainPanel);
+        newFrame.pack();
 
-        if (appLaunching) {
-            appLaunching = false;
+        Dimension packedSize = newFrame.getSize();
 
-            // Set the location of the frame to the center of the screen during the "launching" state
-            frame.setLocationRelativeTo(null);
-        } else {
-            // Place the re-initialized frame at the previous location
-            frame.setLocation(frameLocation);
+        // Compute the initial placement (transform-aware)
+        Point initialPlacement = FrameUtil.computePlacementWithTransforms(previousFrame, frameLocation, packedSize);
+        newFrame.setLocation(initialPlacement);
 
-            // Force a redraw to prevent window corruption
-            frame.setSize(0, 0);
-        }
+        // Expected target configuration used as the "intent" for visual center
+        final GraphicsConfiguration expectedTargetConfiguration = (previousFrame != null
+                && previousFrame.isDisplayable())
+                        ? previousFrame.getGraphicsConfiguration()
+                        : FrameUtil.getTargetGraphicsConfiguration(
+                                new Point((int) Math.round(initialPlacement.x + packedSize.width / 2.0),
+                                        (int) Math.round(initialPlacement.y + packedSize.height / 2.0)));
+
+        final Rectangle expectedTargetBounds = (expectedTargetConfiguration != null)
+                ? expectedTargetConfiguration.getBounds()
+                : null;
 
         // Set the taskbar icon
         frame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
@@ -167,7 +184,7 @@ public class DhkView implements IView {
         // Re-enable tooltips and prefer lightweight popups (prevents creation of separate heavyweight windows)
         ToolTipManager.sharedInstance().setEnabled(true);
 
-        frame.addMouseListener(new MouseAdapter() {
+        newFrame.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent mousePressedEvent) {
                 getDefaultFocusComponent().requestFocusInWindow();
@@ -178,20 +195,63 @@ public class DhkView implements IView {
          * Make the frame visible after all components are added and the frame is packed. Showing the frame earlier can
          * cause transient artifacts (ghost copies) during repaint
          */
-        frame.setVisible(true);
+        newFrame.setVisible(true);
 
-        selectedDisplayLabel.requestFocusInWindow();
+        // Intended visual center (screen coordinates)
+        final Point intendedVisualCenter = new Point((int) Math.round(initialPlacement.x + packedSize.width / 2.0),
+                (int) Math.round(initialPlacement.y + packedSize.height / 2.0));
+
+        // Immediate post-show correction (EDT)
+        SwingUtilities.invokeLater(() -> {
+            try {
+                FrameUtil.correctPlacement(newFrame, intendedVisualCenter, packedSize, expectedTargetConfiguration,
+                        expectedTargetBounds);
+            } catch (IllegalComponentStateException e) {
+                e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
+        // Dispose of the previous frame
+        if (previousFrame != null) {
+            try {
+                previousFrame.setVisible(false);
+                previousFrame.dispose();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        frame = newFrame;
+
+        getDefaultFocusComponent().requestFocusInWindow();
     }
 
     /**
-     * Re-initializes the view of the application.
+     * Re-initialize the view by creating a new frame and disposing the old one. Preserves the previous frame's
+     * on-screen center location when possible.
      */
     public void reInitView() {
-        Point oldFrameLocation = frame.getLocation();
-        frame.dispose();
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::reInitView);
+            return;
+        }
+
+        Point oldCenter = null;
+
+        if (frame != null && frame.isDisplayable()) {
+            try {
+                Rectangle frameBounds = frame.getBounds();
+                oldCenter = new Point(frameBounds.x + frameBounds.width / 2, frameBounds.y + frameBounds.height / 2);
+            } catch (Exception e) {
+                e.printStackTrace();
+                oldCenter = null;
+            }
+        }
 
         // Re-initialize the view and place the frame in the same location
-        initView(oldFrameLocation);
+        initView(oldCenter);
     }
 
     /**

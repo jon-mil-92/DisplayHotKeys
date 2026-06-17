@@ -77,6 +77,9 @@ public class AppRefresher {
         }
 
         FlatLaf.updateUI();
+
+        // Clean up memory after re-initializing the app
+        System.gc();
     }
 
 }
