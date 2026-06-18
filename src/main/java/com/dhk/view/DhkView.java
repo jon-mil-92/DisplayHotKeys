@@ -196,15 +196,14 @@ public class DhkView implements IView {
         newFrame.setVisible(true);
 
         // Intended center of the new frame
-        final Point intendedFrameCenter = new Point(
-                (int) Math.round(initialLocation.x + expectedFrameSize.width / 2.0),
+        final Point intendedFrameCenter = new Point((int) Math.round(initialLocation.x + expectedFrameSize.width / 2.0),
                 (int) Math.round(initialLocation.y + expectedFrameSize.height / 2.0));
 
         // Immediate post-show correction (EDT)
         SwingUtilities.invokeLater(() -> {
             try {
-                FrameUtil.correctLocation(newFrame, intendedFrameCenter, expectedFrameSize,
-                        expectedTargetConfiguration, expectedTargetBounds);
+                FrameUtil.correctLocation(newFrame, intendedFrameCenter, expectedFrameSize, expectedTargetConfiguration,
+                        expectedTargetBounds);
             } catch (IllegalComponentStateException e) {
                 e.printStackTrace();
             } catch (Exception e) {
