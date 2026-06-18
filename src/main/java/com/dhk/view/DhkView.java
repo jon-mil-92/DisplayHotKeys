@@ -130,18 +130,18 @@ public class DhkView implements IView {
      * Initializes the view of the application. It creates a new frame, sets the frame properties, initializes the
      * panels, and initializes the view components.
      *
-     * @param frameLocation
-     *            - Optional screen-coordinate hint for placement (may be null)
+     * @param previousFrameCenter
+     *            - The center of the previous frame
      */
-    public void initView(Point frameLocation) {
+    public void initView(Point previousFrameCenter) {
         if (!SwingUtilities.isEventDispatchThread()) {
-            SwingUtilities.invokeLater(() -> initView(frameLocation));
+            SwingUtilities.invokeLater(() -> initView(previousFrameCenter));
             return;
         }
 
         final JFrame previousFrame = frame;
 
-        // Reset view state used by initComponents
+        // Reset view state used by component initialization
         displayMap = new HashMap<>();
         numberOfActiveSlotsMap = new HashMap<>();
         previouslySelectedDisplayIndex = 0;
@@ -157,26 +157,24 @@ public class DhkView implements IView {
         newFrame.setContentPane(mainPanel);
         newFrame.pack();
 
-        Dimension packedSize = newFrame.getSize();
-
-        // Compute the initial placement (transform-aware)
-        Point initialPlacement = FrameUtil.computePlacementWithTransforms(previousFrame, frameLocation, packedSize);
-        newFrame.setLocation(initialPlacement);
+        Dimension expectedFrameSize = newFrame.getSize();
+        Point initialLocation = FrameUtil.computeLocation(previousFrame, previousFrameCenter, expectedFrameSize);
+        newFrame.setLocation(initialLocation);
 
         // Expected target configuration used as the "intent" for visual center
         final GraphicsConfiguration expectedTargetConfiguration = (previousFrame != null
                 && previousFrame.isDisplayable())
                         ? previousFrame.getGraphicsConfiguration()
                         : FrameUtil.getTargetGraphicsConfiguration(
-                                new Point((int) Math.round(initialPlacement.x + packedSize.width / 2.0),
-                                        (int) Math.round(initialPlacement.y + packedSize.height / 2.0)));
+                                new Point((int) Math.round(initialLocation.x + expectedFrameSize.width / 2.0),
+                                        (int) Math.round(initialLocation.y + expectedFrameSize.height / 2.0)));
 
         final Rectangle expectedTargetBounds = (expectedTargetConfiguration != null)
                 ? expectedTargetConfiguration.getBounds()
                 : null;
 
         // Set the taskbar icon
-        frame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
+        newFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
 
         // Force lightweight popups for tooltips to avoid heavyweight window flashes
         ToolTipManager.sharedInstance().setLightWeightPopupEnabled(true);
@@ -197,15 +195,16 @@ public class DhkView implements IView {
          */
         newFrame.setVisible(true);
 
-        // Intended visual center (screen coordinates)
-        final Point intendedVisualCenter = new Point((int) Math.round(initialPlacement.x + packedSize.width / 2.0),
-                (int) Math.round(initialPlacement.y + packedSize.height / 2.0));
+        // Intended center of the new frame
+        final Point intendedFrameCenter = new Point(
+                (int) Math.round(initialLocation.x + expectedFrameSize.width / 2.0),
+                (int) Math.round(initialLocation.y + expectedFrameSize.height / 2.0));
 
         // Immediate post-show correction (EDT)
         SwingUtilities.invokeLater(() -> {
             try {
-                FrameUtil.correctPlacement(newFrame, intendedVisualCenter, packedSize, expectedTargetConfiguration,
-                        expectedTargetBounds);
+                FrameUtil.correctLocation(newFrame, intendedFrameCenter, expectedFrameSize,
+                        expectedTargetConfiguration, expectedTargetBounds);
             } catch (IllegalComponentStateException e) {
                 e.printStackTrace();
             } catch (Exception e) {
@@ -238,20 +237,20 @@ public class DhkView implements IView {
             return;
         }
 
-        Point oldCenter = null;
+        Point previousFrameCenter = null;
 
         if (frame != null && frame.isDisplayable()) {
             try {
-                Rectangle frameBounds = frame.getBounds();
-                oldCenter = new Point(frameBounds.x + frameBounds.width / 2, frameBounds.y + frameBounds.height / 2);
+                Rectangle previousFrameBounds = frame.getBounds();
+                previousFrameCenter = new Point(previousFrameBounds.x + previousFrameBounds.width / 2,
+                        previousFrameBounds.y + previousFrameBounds.height / 2);
             } catch (Exception e) {
                 e.printStackTrace();
-                oldCenter = null;
             }
         }
 
         // Re-initialize the view and place the frame in the same location
-        initView(oldCenter);
+        initView(previousFrameCenter);
     }
 
     /**
