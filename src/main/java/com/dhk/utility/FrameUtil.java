@@ -190,7 +190,8 @@ public class FrameUtil {
     public static void correctLocation(JFrame frameToCorrect, Point intendedFrameCenter, Dimension expectedFrameSize,
             GraphicsConfiguration expectedConfiguration, Rectangle expectedBounds) {
         try {
-            if (frameToCorrect != null && frameToCorrect.isDisplayable()) {
+            if (frameToCorrect != null && frameToCorrect.isDisplayable()
+                    && frameToCorrect.getExtendedState() == JFrame.NORMAL) {
                 Point currentLocationOnScreen = frameToCorrect.getLocationOnScreen();
                 GraphicsConfiguration actualConfiguration = frameToCorrect.getGraphicsConfiguration();
                 Rectangle actualBounds = (actualConfiguration != null)
