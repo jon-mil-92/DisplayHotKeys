@@ -44,7 +44,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.ToolTipManager;
 import javax.swing.UIManager;
 
 import com.dhk.io.DisplayConfig;
@@ -95,7 +94,7 @@ public class DhkView implements IView {
     private ThemeableButton themeButton;
     private ThemeableToggleButton minimizeToTrayButton;
     private ThemeableToggleButton runOnStartupButton;
-    private List<ThemeableButton> themeableButtons;
+    private List<Button> buttons;
     private int previouslySelectedDisplayIndex;
     private int gridYPosForSlotInPanel;
 
@@ -112,7 +111,7 @@ public class DhkView implements IView {
      */
     public DhkView(DhkModel model) {
         this.model = model;
-        themeableButtons = new ArrayList<>();
+        buttons = new ArrayList<>();
 
         // Disable logging for icons
         FlatSVGIcon.setLoggingEnabled(false);
@@ -175,12 +174,6 @@ public class DhkView implements IView {
 
         // Set the taskbar icon
         newFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
-
-        // Force lightweight popups for tooltips to avoid heavyweight window flashes
-        ToolTipManager.sharedInstance().setLightWeightPopupEnabled(true);
-
-        // Re-enable tooltips and prefer lightweight popups (prevents creation of separate heavyweight windows)
-        ToolTipManager.sharedInstance().setEnabled(true);
 
         newFrame.addMouseListener(new MouseAdapter() {
             @Override
@@ -519,11 +512,12 @@ public class DhkView implements IView {
                 "/run_on_startup_disabled_dark_hover.svg", runOnStartupButtonProps, true, model.isDarkMode(),
                 model.isRunOnStartup());
 
-        themeableButtons.add(refreshAppButton);
-        themeableButtons.add(aboutButton);
-        themeableButtons.add(themeButton);
-        themeableButtons.add(minimizeToTrayButton);
-        themeableButtons.add(runOnStartupButton);
+        buttons.add(clearAllButton);
+        buttons.add(refreshAppButton);
+        buttons.add(aboutButton);
+        buttons.add(themeButton);
+        buttons.add(minimizeToTrayButton);
+        buttons.add(runOnStartupButton);
 
         displayModeHeader = new JLabel("Display Mode", SwingConstants.CENTER);
         displayModeHeader.setPreferredSize(new Dimension(256, 28));
@@ -822,12 +816,40 @@ public class DhkView implements IView {
     }
 
     /**
-     * Gets a list of themeable buttons in the view.
+     * Gets the list of buttons used by the view, including toolbar buttons and buttons from all active slots.
      *
-     * @return A list of themeable buttons in the view
+     * @return The list of buttons used by the view
      */
-    public List<ThemeableButton> getThemeableButtons() {
-        return themeableButtons;
+    public List<Button> getButtons() {
+        List<Button> allButtons = new ArrayList<Button>();
+
+        try {
+            if (buttons != null) {
+                allButtons.addAll(buttons);
+            }
+
+            if (displayMap != null && model.getNumOfConnectedDisplays() > 0) {
+                for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
+                    List<Slot> slots = displayMap.get(displayIndex);
+
+                    if (slots != null) {
+                        int activeSlots = model.getNumOfSlotsForDisplay(displayIndex);
+
+                        for (int slotIndex = 0; slotIndex < activeSlots; slotIndex++) {
+                            List<Button> slotButtons = slots.get(slotIndex).getButtons();
+
+                            if (slotButtons != null) {
+                                allButtons.addAll(slotButtons);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return allButtons;
     }
 
     /**

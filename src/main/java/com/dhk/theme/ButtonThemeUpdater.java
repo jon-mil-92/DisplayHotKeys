@@ -20,6 +20,7 @@
 package com.dhk.theme;
 
 import com.dhk.model.DhkModel;
+import com.dhk.model.button.Button;
 import com.dhk.model.button.ThemeableButton;
 import com.dhk.view.DhkView;
 
@@ -50,9 +51,11 @@ public class ButtonThemeUpdater {
      * Applies the current theme to all of the themeable buttons in the view.
      */
     public void updateButtonThemes() {
-        for (ThemeableButton button : view.getThemeableButtons()) {
-            button.setDarkMode(model.isDarkMode());
-            button.updateIdleIcon();
+        for (Button button : view.getButtons()) {
+            if (button instanceof ThemeableButton themeableButton) {
+                themeableButton.setDarkMode(model.isDarkMode());
+                themeableButton.updateIdleIcon();
+            }
         }
     }
 

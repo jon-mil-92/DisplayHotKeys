@@ -21,6 +21,8 @@ package com.dhk.view;
 
 import java.awt.Dimension;
 import java.awt.DisplayMode;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -46,6 +48,7 @@ public class Slot {
     private JLabel slotHotKey;
     private Button slotClearHotKeyButton;
     private JButton slotChangeHotKeyButton;
+    private List<Button> buttons;
 
     /**
      * Constructor for the {@link Slot} class.
@@ -95,6 +98,10 @@ public class Slot {
 
         slotChangeHotKeyButton = new JButton("Change Hot Key");
         slotChangeHotKeyButton.setPreferredSize(new Dimension(150, 28));
+
+        buttons = new ArrayList<>();
+        buttons.add(applyDisplayModeButton);
+        buttons.add(slotClearHotKeyButton);
     }
 
     /**
@@ -176,6 +183,15 @@ public class Slot {
      */
     public JButton getChangeHotKeyButton() {
         return slotChangeHotKeyButton;
+    }
+
+    /**
+     * Gets a list of buttons in the slot.
+     *
+     * @return A list of buttons in the slot
+     */
+    public List<Button> getButtons() {
+        return buttons;
     }
 
 }

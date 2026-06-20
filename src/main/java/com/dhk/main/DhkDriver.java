@@ -20,6 +20,7 @@
 package com.dhk.main;
 
 import javax.swing.SwingUtilities;
+import javax.swing.ToolTipManager;
 
 import com.dhk.controller.DhkController;
 import com.dhk.io.RunOnStartupManager;
@@ -48,6 +49,7 @@ public class DhkDriver {
      *            - Command line arguments
      */
     public static void main(final String[] args) {
+        ToolTipManager.sharedInstance().setEnabled(false);
         SettingsManager settingsMgr = new SettingsManager();
         settingsMgr.initSettingsManager();
         RunOnStartupManager runOnStartupManager = new RunOnStartupManager();
