@@ -41,6 +41,7 @@ import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
 import com.dhk.model.HotKey;
 import com.dhk.model.Key;
+import com.dhk.model.button.Button;
 import com.dhk.view.DhkView;
 import com.dhk.view.FrameUpdater;
 
@@ -72,6 +73,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
     private boolean anyHotKeySubset;
     private volatile boolean anyHotKeyChanging;
     private Set<Integer> activeKeyCodes;
+
     private static final String CHANGE_HOT_KEY_TEXT = "Change Hot Key";
     private static final String PRESS_HOT_KEY_TEXT = "Press Hot Key";
     private static final String RELEASE_TO_SET_TEXT = "Release To Set";
@@ -655,62 +657,91 @@ public class HotKeysController implements IController, GlobalKeyListener {
     }
 
     /**
-     * Disables all interactive view components except the exit button component to avoid unintended selection during
-     * changing the hot key.
+     * Disables all interactive view components to avoid unintended selection during changing the hot key.
      */
     private void disableComponents() {
-        view.getDisplayIds().setEnabled(false);
-        view.getAboutButton().setEnabled(false);
-        view.getThemeButton().setEnabled(false);
-        view.getMinimizeToTrayButton().setEnabled(false);
-        view.getRunOnStartupButton().setEnabled(false);
-        view.getRefreshAppButton().setEnabled(false);
-        view.getClearAllButton().setEnabled(false);
+        // Ensure we run on the EDT
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::disableComponents);
+            return;
+        }
 
+        if (view.getFrame() == null) {
+            return;
+        }
+
+        // Prevent the window from accepting input and causing focus traversal while we toggle components
+        view.getFrame().setEnabled(false);
+
+        // Disable top-level controls
+        view.getDisplayIds().setEnabled(false);
+
+        // Disable custom buttons
+        for (Button button : view.getButtons()) {
+            button.setEnabled(false);
+        }
+
+        // Disable slot controls
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             view.getNumberOfActiveSlots(displayIndex).setEnabled(false);
 
             for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
-                view.getSlot(displayIndex, slotIndex).getApplyDisplayModeButton().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getDisplayModes().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getScalingModes().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getDpiScalePercentages().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getOrientationModes().setEnabled(false);
-                view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton().setEnabled(false);
             }
         }
+
+        // One consolidated refresh to avoid incremental repaints
+        view.getFrame().revalidate();
+        view.getFrame().repaint();
     }
 
     /**
-     * Re-enables all interactive view components except the exit button component because it is already enabled.
+     * Re-enables all interactive view components.
      */
     private void enableComponents() {
-        view.getDisplayIds().setEnabled(true);
-        view.getAboutButton().setEnabled(true);
-        view.getThemeButton().setEnabled(true);
-        view.getMinimizeToTrayButton().setEnabled(true);
-        view.getRunOnStartupButton().setEnabled(true);
-        view.getRefreshAppButton().setEnabled(true);
-        view.getClearAllButton().setEnabled(true);
+        // Ensure we run on the EDT
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::enableComponents);
+            return;
+        }
 
+        // Enable top-level controls
+        view.getDisplayIds().setEnabled(true);
+
+        // Enable custom buttons
+        for (Button button : view.getButtons()) {
+            button.setEnabled(true);
+        }
+
+        // Enable slot controls
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             view.getNumberOfActiveSlots(displayIndex).setEnabled(true);
 
             for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
-                view.getSlot(displayIndex, slotIndex).getApplyDisplayModeButton().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getDisplayModes().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getScalingModes().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getDpiScalePercentages().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getOrientationModes().setEnabled(true);
+                view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton().setEnabled(true);
 
-                // Enable the Clear Hot Key button after getting user input if the hot key is set
+                // Enable the Clear Hot Key button only if a hot key is set for this slot
                 if (model.getSlot(displayIndex, slotIndex).getHotKey().getKeys().size() > 0) {
                     view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().setEnabled(true);
+                } else {
+                    view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().setEnabled(false);
                 }
-
-                view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton().setEnabled(true);
             }
+        }
+
+        // Re-enable the frame last so focus changes happen after component states are stable
+        if (view.getFrame() != null) {
+            view.getFrame().setEnabled(true);
+            view.getFrame().revalidate();
+            view.getFrame().repaint();
         }
     }
 
