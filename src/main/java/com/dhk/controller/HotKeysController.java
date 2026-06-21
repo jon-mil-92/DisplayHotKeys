@@ -309,6 +309,9 @@ public class HotKeysController implements IController, GlobalKeyListener {
     private void slotHotKeyChangeEvent(int displayIndex, int slotIndex) {
         // Do not allow changing multiple hot keys at the same time
         if (!changingHotKey()) {
+            // Reset the key counter so a new hot key starts fresh, even if a prior change ended without finalizing
+            currentKeyCount = 0;
+
             hotKeyBackup = new HotKey(new ArrayList<Key>());
             hotKeyBackup.getKeys().addAll(model.getSlot(displayIndex, slotIndex).getHotKey().getKeys());
 

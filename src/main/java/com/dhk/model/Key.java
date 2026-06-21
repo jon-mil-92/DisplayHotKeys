@@ -43,7 +43,7 @@ public class Key {
     public Key(int key, String name, boolean keyPressed) {
         this.key = key;
         this.name = name;
-        this.keyPressed = false;
+        this.keyPressed = keyPressed;
     }
 
     @Override
