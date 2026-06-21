@@ -256,39 +256,113 @@ void setDisplayScalingMode(UINT32 displayIndex, UINT32 scalingMode) {
  *        - The DPI scale percentage to apply (e.g., 100, 125, 150)
  */
 void setDpiScalePercentage(UINT32 displayIndex, int32_t dpiScalePercentage) {
-    DisplayConfig displayConfig = getDisplayConfig();
-
-    if (displayIndex >= displayConfig.numPathInfoArrayElements) {
-        return;
-    }
-
-    DISPLAYCONFIG_GET_DPI_SCALE_INDICES getIndices = {};
-    getIndices.header.type = (DISPLAYCONFIG_DEVICE_INFO_TYPE) DISPLAYCONFIG_DEVICE_INFO_HEADER_GET_DPI_TYPE;
-    getIndices.header.size = sizeof(getIndices);
-    getIndices.header.adapterId = displayConfig.pathInfoArray[displayIndex].sourceInfo.adapterId;
-    getIndices.header.id = displayConfig.pathInfoArray[displayIndex].sourceInfo.id;
-
-    DisplayConfigGetDeviceInfo(&getIndices.header);
-
-    int32_t defaultIndex = abs(getIndices.relativeMinimumDpiScaleIndex);
-    int32_t dpiIndex = 0;
+    // Map the requested percentage to its absolute index in the supported list
+    int32_t targetAbsoluteIndex = -1;
 
     for (int32_t i = 0; i < NUM_OF_DPI_SCALE_PERCENTAGES; i++) {
         if (dpiScalePercentage == DPI_SCALE_PERCENTAGES.at(i)) {
-            dpiIndex = i;
+            targetAbsoluteIndex = i;
+            break;
         }
     }
 
-    int32_t relativeIndex = dpiIndex - defaultIndex;
+    // Ignore unsupported percentages rather than applying a wrong value
+    if (targetAbsoluteIndex < 0) {
+        return;
+    }
 
-    DISPLAYCONFIG_SET_DPI_SCALE_INDEX setIndex = {};
-    setIndex.header.type = (DISPLAYCONFIG_DEVICE_INFO_TYPE) DISPLAYCONFIG_DEVICE_INFO_HEADER_SET_DPI_TYPE;
-    setIndex.header.size = sizeof(setIndex);
-    setIndex.header.adapterId = displayConfig.pathInfoArray[displayIndex].sourceInfo.adapterId;
-    setIndex.header.id = displayConfig.pathInfoArray[displayIndex].sourceInfo.id;
-    setIndex.relativeDpiScaleIndex = relativeIndex;
+    /*
+     * Applying a DPI scale immediately after a resolution change is racy. The recommended DPI baseline is
+     * resolution-dependent and Windows may not have finished recomputing it, and the DPI query/set calls can
+     * transiently fail under back-to-back reconfigurations. Recompute everything from a freshly queried configuration
+     * on each attempt and verify the applied scale, retrying briefly until the target is in effect
+     */
+    const int MAX_ATTEMPTS = 5;
+    const DWORD RETRY_DELAY_MS = 50;
 
-    DisplayConfigSetDeviceInfo(&setIndex.header);
+    for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        DisplayConfig displayConfig = getDisplayConfig();
+
+        if (displayIndex >= displayConfig.numPathInfoArrayElements) {
+            return;
+        }
+
+        LUID adapterId = displayConfig.pathInfoArray[displayIndex].sourceInfo.adapterId;
+        UINT32 sourceId = displayConfig.pathInfoArray[displayIndex].sourceInfo.id;
+
+        DISPLAYCONFIG_GET_DPI_SCALE_INDICES getIndices = {};
+        getIndices.header.type = (DISPLAYCONFIG_DEVICE_INFO_TYPE) DISPLAYCONFIG_DEVICE_INFO_HEADER_GET_DPI_TYPE;
+        getIndices.header.size = sizeof(getIndices);
+        getIndices.header.adapterId = adapterId;
+        getIndices.header.id = sourceId;
+
+        // Acting on a zeroed baseline would apply a wrong value, so wait briefly and retry on failure
+        if (DisplayConfigGetDeviceInfo(&getIndices.header) != ERROR_SUCCESS) {
+            Sleep(RETRY_DELAY_MS);
+            continue;
+        }
+
+        /*
+         * DPI indices are reported relative to the display's recommended scale. The minimum supported scale is the
+         * first entry in the global list (absolute index 0), so the recommended scale's absolute index is the magnitude
+         * of the relative minimum. Work in absolute indices so the math is independent of which scale is currently
+         * recommended
+         */
+        int32_t recommendedAbsoluteIndex = abs(getIndices.relativeMinimumDpiScaleIndex);
+        int32_t maxAbsoluteIndex = recommendedAbsoluteIndex + getIndices.relativeMaximumDpiScaleIndex;
+
+        // Clamp to the range this display actually supports, otherwise the set is silently rejected
+        int32_t desiredAbsoluteIndex = targetAbsoluteIndex;
+
+        if (desiredAbsoluteIndex < 0) {
+            desiredAbsoluteIndex = 0;
+        } else if (desiredAbsoluteIndex > maxAbsoluteIndex) {
+            desiredAbsoluteIndex = maxAbsoluteIndex;
+        }
+
+        int32_t currentAbsoluteIndex = recommendedAbsoluteIndex + getIndices.relativeCurrentDpiScaleIndex;
+
+        // Already at the desired scale; nothing to do
+        if (currentAbsoluteIndex == desiredAbsoluteIndex) {
+            return;
+        }
+
+        DISPLAYCONFIG_SET_DPI_SCALE_INDEX setIndex = {};
+        setIndex.header.type = (DISPLAYCONFIG_DEVICE_INFO_TYPE) DISPLAYCONFIG_DEVICE_INFO_HEADER_SET_DPI_TYPE;
+        setIndex.header.size = sizeof(setIndex);
+        setIndex.header.adapterId = adapterId;
+        setIndex.header.id = sourceId;
+        setIndex.relativeDpiScaleIndex = desiredAbsoluteIndex - recommendedAbsoluteIndex;
+
+        // On failure, wait briefly and retry against a freshly queried configuration
+        if (DisplayConfigSetDeviceInfo(&setIndex.header) != ERROR_SUCCESS) {
+            Sleep(RETRY_DELAY_MS);
+            continue;
+        }
+
+        /*
+         * Verify against the absolute scale actually in effect. If the baseline was still stale when this attempt
+         * computed the relative index, the applied absolute scale will not match, so re-query (which also lets the
+         * reconfiguration settle) and try again
+         */
+        DISPLAYCONFIG_GET_DPI_SCALE_INDICES verifyIndices = {};
+        verifyIndices.header.type = (DISPLAYCONFIG_DEVICE_INFO_TYPE) DISPLAYCONFIG_DEVICE_INFO_HEADER_GET_DPI_TYPE;
+        verifyIndices.header.size = sizeof(verifyIndices);
+        verifyIndices.header.adapterId = adapterId;
+        verifyIndices.header.id = sourceId;
+
+        if (DisplayConfigGetDeviceInfo(&verifyIndices.header) == ERROR_SUCCESS) {
+            int32_t verifyRecommended = abs(verifyIndices.relativeMinimumDpiScaleIndex);
+            int32_t verifyCurrentAbsolute = verifyRecommended + verifyIndices.relativeCurrentDpiScaleIndex;
+
+            if (verifyCurrentAbsolute == desiredAbsoluteIndex) {
+                return;
+            }
+        }
+
+        // Not yet applied; let the reconfiguration settle and try again
+        Sleep(RETRY_DELAY_MS);
+    }
 }
 
 /**

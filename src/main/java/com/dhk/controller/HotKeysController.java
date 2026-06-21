@@ -39,9 +39,11 @@ import com.dhk.io.SetDisplay;
 import com.dhk.io.SettingsManager;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
+import com.dhk.model.FramePlacement;
 import com.dhk.model.HotKey;
 import com.dhk.model.Key;
 import com.dhk.model.button.Button;
+import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
 import com.dhk.view.FrameUpdater;
 
@@ -83,6 +85,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
     private static final int IDLE_INPUT_TIMEOUT = 2500;
     private static final int RELEASE_MESSAGE_TIMEOUT = 1500;
     private static final int MAX_KEY_COUNT = 3;
+    private static final int REINIT_DELAY_MS = 250;
 
     /**
      * Constructor for the {@link HotKeysController} class.
@@ -189,7 +192,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
                                 }
 
                                 // If no hot key is being changed, and a hot key is pressed but not held down
-                                if (!changingHotKey()
+                                if (!anyHotKeyChanging
                                         && model.getSlot(displayIndex, slotIndex).getHotKey().isHotKeyPressed()
                                         && !model.getSlot(displayIndex, slotIndex).getHotKey().isHotKeyHeldDown()) {
                                     /*
@@ -203,9 +206,21 @@ public class HotKeysController implements IController, GlobalKeyListener {
                     }
                 }
 
+                // Capture the frame placement before any display reconfiguration relocates the window
+                FramePlacement placement = displayToSlotMap.isEmpty()
+                        ? null
+                        : FrameUtil.capturePlacement(view.getFrame());
+
                 // Apply settings for all collected slots
+                boolean displaySettingsApplied = false;
+
                 for (Entry<Integer, Integer> displayToSlot : displayToSlotMap.entrySet()) {
-                    setDisplaySettings(displayToSlot.getKey(), displayToSlot.getValue());
+                    displaySettingsApplied |= setDisplaySettings(displayToSlot.getKey(), displayToSlot.getValue());
+                }
+
+                // Re-initialize the app once, after every targeted display has been updated
+                if (displaySettingsApplied) {
+                    scheduleReInit(placement);
                 }
             }
         });
@@ -533,14 +548,16 @@ public class HotKeysController implements IController, GlobalKeyListener {
     }
 
     /**
-     * Sets the display settings if the display is connected.
+     * Sets the display settings if the display is connected. Does not re-initialize the app; the caller is responsible
+     * for triggering a single rebuild after all targeted displays have been updated.
      *
      * @param displayIndex
      *            - The index of the display to set the display settings for
      * @param slotIndex
      *            - The index of the slot to set the display settings for
+     * @return Whether the display settings were applied (the display is still connected and unchanged)
      */
-    private void setDisplaySettings(int displayIndex, int slotIndex) {
+    private boolean setDisplaySettings(int displayIndex, int slotIndex) {
         DisplayConfig displayConfig = new DisplayConfig();
         displayConfig.updateConnectedDisplays();
 
@@ -557,9 +574,26 @@ public class HotKeysController implements IController, GlobalKeyListener {
                     model.getSlot(displayIndex, slotIndex).getScalingMode(),
                     model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
 
-            // Re-initialize the app to prevent window corruption
-            appRefresher.reInitApp();
+            return true;
         }
+
+        return false;
+    }
+
+    /**
+     * Schedules a single, deferred re-initialization of the app to prevent window corruption after a display mode is
+     * applied. Applying a display mode reconfigures the display asynchronously, so the rebuild is delayed briefly to
+     * let the new geometry settle; otherwise the rebuilt frame is placed against stale display bounds and jumps up and
+     * to the left. The Timer fires once on the EDT.
+     *
+     * @param placement
+     *            - The frame placement captured before applying the display settings, reproduced after
+     *            re-initialization because the OS will have moved the existing frame during the reconfiguration
+     */
+    private void scheduleReInit(FramePlacement placement) {
+        Timer reInitTimer = new Timer(REINIT_DELAY_MS, _ -> appRefresher.reInitApp(placement));
+        reInitTimer.setRepeats(false);
+        reInitTimer.start();
     }
 
     /**

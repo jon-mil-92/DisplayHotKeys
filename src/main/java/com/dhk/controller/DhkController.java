@@ -68,7 +68,7 @@ public class DhkController implements IController {
         this.view = view;
         this.settingsMgr = settingsMgr;
         model.initModel(settingsMgr);
-        view.initView(null);
+        view.initView(null, 0);
 
         if (settingsMgr.getIniMinimizeToTray()) {
             frameState = JFrame.ICONIFIED;

@@ -23,13 +23,9 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.DisplayMode;
 import java.awt.FlowLayout;
-import java.awt.GraphicsConfiguration;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.IllegalComponentStateException;
 import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -48,6 +44,7 @@ import javax.swing.UIManager;
 
 import com.dhk.io.DisplayConfig;
 import com.dhk.model.DhkModel;
+import com.dhk.model.FramePlacement;
 import com.dhk.model.button.Button;
 import com.dhk.model.button.ButtonProperties;
 import com.dhk.model.button.ThemeableButton;
@@ -129,21 +126,27 @@ public class DhkView implements IView {
      * Initializes the view of the application. It creates a new frame, sets the frame properties, initializes the
      * panels, and initializes the view components.
      *
-     * @param previousFrameCenter
-     *            - The center of the previous frame
+     * @param previousPlacement
+     *            - The captured placement of the previous frame, or null to center on the default screen
+     * @param selectedDisplayIndex
+     *            - The index of the display to select in the new view; clamped to the current number of connected
+     *            displays so the selection is preserved across re-initialization even if displays were added or removed
      */
-    public void initView(Point previousFrameCenter) {
-        if (!SwingUtilities.isEventDispatchThread()) {
-            SwingUtilities.invokeLater(() -> initView(previousFrameCenter));
-            return;
-        }
-
+    public void initView(FramePlacement previousPlacement, int selectedDisplayIndex) {
         final JFrame previousFrame = frame;
+
+        /*
+         * Clamp the requested selection to a valid display index. When displays were removed since the previous view
+         * was built the requested index may now be out of range; fall back to index 0 when no displays are connected
+         */
+        int desiredDisplayIndex = (model.getNumOfConnectedDisplays() > 0)
+                ? Math.max(0, Math.min(selectedDisplayIndex, model.getNumOfConnectedDisplays() - 1))
+                : 0;
 
         // Reset view state used by component initialization
         displayMap = new HashMap<>();
         numberOfActiveSlotsMap = new HashMap<>();
-        previouslySelectedDisplayIndex = 0;
+        previouslySelectedDisplayIndex = desiredDisplayIndex;
         gridYPosForSlotInPanel = 2;
 
         // Build and populate the frame
@@ -156,21 +159,8 @@ public class DhkView implements IView {
         newFrame.setContentPane(mainPanel);
         newFrame.pack();
 
-        Dimension expectedFrameSize = newFrame.getSize();
-        Point initialLocation = FrameUtil.computeLocation(previousFrame, previousFrameCenter, expectedFrameSize);
-        newFrame.setLocation(initialLocation);
-
-        // Expected target configuration used as the "intent" for visual center
-        final GraphicsConfiguration expectedTargetConfiguration = (previousFrame != null
-                && previousFrame.isDisplayable())
-                        ? previousFrame.getGraphicsConfiguration()
-                        : FrameUtil.getTargetGraphicsConfiguration(
-                                new Point((int) Math.round(initialLocation.x + expectedFrameSize.width / 2.0),
-                                        (int) Math.round(initialLocation.y + expectedFrameSize.height / 2.0)));
-
-        final Rectangle expectedTargetBounds = (expectedTargetConfiguration != null)
-                ? expectedTargetConfiguration.getBounds()
-                : null;
+        final Dimension expectedFrameSize = newFrame.getSize();
+        newFrame.setLocation(FrameUtil.computeLocation(previousPlacement, expectedFrameSize));
 
         // Set the taskbar icon
         newFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
@@ -188,30 +178,13 @@ public class DhkView implements IView {
          */
         newFrame.setVisible(true);
 
-        // Intended center of the new frame
-        final Point intendedFrameCenter = new Point((int) Math.round(initialLocation.x + expectedFrameSize.width / 2.0),
-                (int) Math.round(initialLocation.y + expectedFrameSize.height / 2.0));
-
-        // Immediate post-show correction (EDT)
-        SwingUtilities.invokeLater(() -> {
-            try {
-                FrameUtil.correctLocation(newFrame, intendedFrameCenter, expectedFrameSize, expectedTargetConfiguration,
-                        expectedTargetBounds);
-            } catch (IllegalComponentStateException e) {
-                e.printStackTrace();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
+        // Re-assert the placement after the frame is shown, in case the OS positioned it elsewhere
+        SwingUtilities.invokeLater(() -> FrameUtil.correctLocation(newFrame, previousPlacement));
 
         // Dispose of the previous frame
         if (previousFrame != null) {
-            try {
-                previousFrame.setVisible(false);
-                previousFrame.dispose();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            previousFrame.setVisible(false);
+            previousFrame.dispose();
         }
 
         frame = newFrame;
@@ -220,29 +193,32 @@ public class DhkView implements IView {
     }
 
     /**
-     * Re-initialize the view by creating a new frame and disposing the old one. Preserves the previous frame's
-     * on-screen center location when possible.
+     * Re-initialize the view by creating a new frame and disposing the old one. Captures the current frame's placement
+     * live and reproduces it. Suitable when the display geometry is unchanged.
      */
     public void reInitView() {
-        if (!SwingUtilities.isEventDispatchThread()) {
-            SwingUtilities.invokeLater(this::reInitView);
-            return;
-        }
+        reInitView(null);
+    }
 
-        Point previousFrameCenter = null;
+    /**
+     * Re-initialize the view by creating a new frame and disposing the old one. Preserves the previous frame's
+     * on-screen placement and selected display, even when the display it was on has just been reconfigured.
+     *
+     * @param preCapturedPlacement
+     *            - A frame placement captured before a display reconfiguration, or null to capture the current frame's
+     *            placement live. A pre-captured placement is required after a resolution or DPI change, because the OS
+     *            moves the existing frame as part of the change, so capturing here would record the wrong position.
+     */
+    public void reInitView(FramePlacement preCapturedPlacement) {
+        FramePlacement previousPlacement = (preCapturedPlacement != null)
+                ? preCapturedPlacement
+                : FrameUtil.capturePlacement(frame);
 
-        if (frame != null && frame.isDisplayable()) {
-            try {
-                Rectangle previousFrameBounds = frame.getBounds();
-                previousFrameCenter = new Point(previousFrameBounds.x + previousFrameBounds.width / 2,
-                        previousFrameBounds.y + previousFrameBounds.height / 2);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
+        // Capture the currently selected display so it stays selected after the view is rebuilt
+        int previousSelectedDisplayIndex = (displayIds != null) ? displayIds.getSelectedIndex() : 0;
 
-        // Re-initialize the view and place the frame in the same location
-        initView(previousFrameCenter);
+        // Re-initialize the view, reproducing the previous frame's placement and selected display
+        initView(previousPlacement, previousSelectedDisplayIndex);
     }
 
     /**
@@ -463,6 +439,11 @@ public class DhkView implements IView {
                 : noDisplayIdsPlaceholder;
         displayIds.setPreferredSize(new Dimension(60, 28));
 
+        // Select the preserved display before the dependent components are added so the view is built for it directly
+        if (model.getNumOfConnectedDisplays() > 0) {
+            displayIds.setSelectedIndex(previouslySelectedDisplayIndex);
+        }
+
         numberOfActiveSlotsLabel = new JLabel("Active Slots :", SwingConstants.LEFT);
         numberOfActiveSlotsLabel.setPreferredSize(new Dimension(82, 28));
 
@@ -545,7 +526,7 @@ public class DhkView implements IView {
 
         initSlotComponents();
         addNonSlotComponents();
-        pushSlots(0, 0);
+        pushSlots(previouslySelectedDisplayIndex, 0);
     }
 
     /**

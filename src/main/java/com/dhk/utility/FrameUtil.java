@@ -23,21 +23,17 @@ import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
-import java.awt.IllegalComponentStateException;
-import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.awt.geom.AffineTransform;
-import java.awt.geom.NoninvertibleTransformException;
-import java.awt.geom.Point2D;
 
 import javax.swing.JFrame;
 
+import com.dhk.model.FramePlacement;
+
 /**
- * Provides placement and mapping utilities for frames across displays and DPI transforms. This class preserves the
- * visual center of a previous frame when creating a new frame, mapping across graphics configurations and DPI
- * transforms. It uses affine mapping with a scale-ratio fallback and clamps the resulting top-left to the target
- * configuration bounds.
+ * Provides placement utilities for frames across displays. This class preserves a previous frame's position when a new
+ * frame is created, even when the display it was on has had its resolution, DPI scale, or virtual-desktop origin
+ * changed (for example, immediately after applying a new display mode).
  *
  * @author Jonathan R. Miller
  */
@@ -50,100 +46,167 @@ public class FrameUtil {
     }
 
     /**
-     * Compute a placement that preserves the previous frame's visual center across graphics configurations.
+     * Capture the placement of a frame so it can be reproduced after the view is re-initialized. The frame's top-left
+     * is recorded as a fraction of its current display's available space (bounds minus the frame size), along with that
+     * display's graphics configuration, so the placement can be reproduced even after the display is resized or
+     * rescaled, and so a frame anchored against an edge or corner stays anchored there.
      *
-     * @param previousFrame
-     *            - Previous frame
-     * @param expectedCenterLocation
-     *            - Expected location for the center of the frame
-     * @param expectedFrameSize
-     *            - Expected size of the frame
-     * @return Top-left Point for new frame placement in screen coordinates
+     * @param frame
+     *            - The frame to capture the placement of (may be null)
+     * @return The captured placement, or null if the frame is null or not displayable
      */
-    public static Point computeLocation(JFrame previousFrame, Point expectedCenterLocation,
-            Dimension expectedFrameSize) {
-        double centerX;
-        double centerY;
-        GraphicsConfiguration previousConfiguration = null;
+    public static FramePlacement capturePlacement(JFrame frame) {
+        if (frame == null || !frame.isDisplayable()) {
+            return null;
+        }
 
-        if (expectedCenterLocation != null) {
-            centerX = expectedCenterLocation.x;
-            centerY = expectedCenterLocation.y;
-        } else if (previousFrame != null && previousFrame.isDisplayable()) {
-            try {
-                Point previousLocation = previousFrame.getLocationOnScreen();
-                Dimension previousSize = previousFrame.getSize();
-                centerX = previousLocation.x + previousSize.width / 2.0;
-                centerY = previousLocation.y + previousSize.height / 2.0;
-                previousConfiguration = previousFrame.getGraphicsConfiguration();
-            } catch (IllegalComponentStateException e) {
-                e.printStackTrace();
-                Rectangle previousBounds = previousFrame.getBounds();
-                centerX = previousBounds.x + previousBounds.width / 2.0;
-                centerY = previousBounds.y + previousBounds.height / 2.0;
-                previousConfiguration = previousFrame.getGraphicsConfiguration();
-            } catch (Exception e) {
-                e.printStackTrace();
-                centerX = 0;
-                centerY = 0;
+        try {
+            GraphicsConfiguration configuration = frame.getGraphicsConfiguration();
+
+            /*
+             * Use the frame's AWT bounds rather than getLocationOnScreen() so the frame position and the display bounds
+             * are read from the same coordinate space. getLocationOnScreen() is a native query that, during a DPI
+             * transition, can momentarily report a different scale than the cached GraphicsConfiguration; mixing the
+             * two corrupts the placement and makes the rebuilt frame jump. getBounds() and the GraphicsConfiguration
+             * bounds always move together, so the placement stays correct even mid-transition
+             */
+            Rectangle frameBounds = frame.getBounds();
+            double centerX = frameBounds.x + frameBounds.width / 2.0;
+            double centerY = frameBounds.y + frameBounds.height / 2.0;
+            Point absoluteCenter = new Point((int) Math.round(centerX), (int) Math.round(centerY));
+
+            if (configuration == null) {
+                return new FramePlacement(null, 0.5, 0.5, absoluteCenter);
             }
-        } else {
-            GraphicsConfiguration defaultConfiguration = GraphicsEnvironment.getLocalGraphicsEnvironment()
-                    .getDefaultScreenDevice().getDefaultConfiguration();
-            Rectangle defaultBounds = defaultConfiguration.getBounds();
-            centerX = defaultBounds.x + defaultBounds.width / 2.0;
-            centerY = defaultBounds.y + defaultBounds.height / 2.0;
-            previousConfiguration = defaultConfiguration;
+
+            /*
+             * Anchor the top-left within the available space (display bounds minus the frame size) so edge and corner
+             * positioning is preserved when the bounds change size relative to the frame. Recording the center as a
+             * fraction of the bounds instead would lose the fixed half-frame edge gap when the bounds grow (as on a
+             * high-to-low DPI change), pulling an edge-anchored frame toward the center
+             */
+            Rectangle bounds = configuration.getBounds();
+            int availableWidth = bounds.width - frameBounds.width;
+            int availableHeight = bounds.height - frameBounds.height;
+            double leftFraction = (availableWidth > 0) ? (double) (frameBounds.x - bounds.x) / availableWidth : 0.5;
+            double topFraction = (availableHeight > 0) ? (double) (frameBounds.y - bounds.y) / availableHeight : 0.5;
+
+            // Guard against an off-screen capture producing a fraction outside the placeable range
+            leftFraction = Math.max(0.0, Math.min(1.0, leftFraction));
+            topFraction = Math.max(0.0, Math.min(1.0, topFraction));
+
+            return new FramePlacement(configuration, leftFraction, topFraction, absoluteCenter);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
+    }
 
-        GraphicsConfiguration targetConfiguration = (previousConfiguration != null)
-                ? previousConfiguration
-                : getTargetGraphicsConfiguration(new Point((int) Math.round(centerX), (int) Math.round(centerY)));
+    /**
+     * Compute a top-left placement for a new frame that reproduces the captured placement against the current bounds of
+     * the target display.
+     *
+     * @param placement
+     *            - The captured placement to reproduce (may be null to center on the default screen)
+     * @param frameSize
+     *            - The size of the frame to place
+     * @return The top-left Point for the new frame in screen coordinates
+     */
+    public static Point computeLocation(FramePlacement placement, Dimension frameSize) {
+        GraphicsConfiguration configuration = resolveConfiguration(placement);
 
-        if (targetConfiguration == null) {
-            targetConfiguration = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice()
-                    .getDefaultConfiguration();
+        return locationForConfiguration(placement, configuration.getBounds(), frameSize);
+    }
+
+    /**
+     * Re-assert the captured placement on a frame that is already showing. This reproduces the placement against the
+     * current bounds of its intended display, correcting cases where the OS positioned the new frame somewhere other
+     * than intended.
+     *
+     * @param frame
+     *            - The frame to correct
+     * @param placement
+     *            - The captured placement to reproduce (may be null to center on the default screen)
+     */
+    public static void correctLocation(JFrame frame, FramePlacement placement) {
+        try {
+            if (frame == null || !frame.isDisplayable() || frame.getExtendedState() != JFrame.NORMAL) {
+                return;
+            }
+
+            /*
+             * Recompute against the frame's actual, current geometry now that it is showing. Reading the real size and
+             * the frame's own display bounds from a single settled snapshot keeps the placement and the on-screen clamp
+             * in the same coordinate space, even after a DPI change where the pre-show packed size differs from the
+             * final scaled size. Using the stale pre-show size here was letting the frame land out of bounds
+             */
+            GraphicsConfiguration configuration = frame.getGraphicsConfiguration();
+            Dimension actualFrameSize = frame.getSize();
+
+            Point desiredLocation = (configuration != null)
+                    ? locationForConfiguration(placement, configuration.getBounds(), actualFrameSize)
+                    : computeLocation(placement, actualFrameSize);
+
+            Point currentLocation = frame.getLocationOnScreen();
+
+            if (!currentLocation.equals(desiredLocation)) {
+                frame.setLocation(desiredLocation);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
 
-        if (previousConfiguration != null) {
-            Rectangle previousBounds = previousConfiguration.getBounds();
-            Rectangle targetBounds = targetConfiguration.getBounds();
-            boolean boundsDiffer = (previousBounds == null && targetBounds != null)
-                    || (previousBounds != null && !previousBounds.equals(targetBounds));
+    /**
+     * Resolve the graphics configuration that the placement targets. Prefers the display the frame was captured on,
+     * then the display containing the captured absolute center, and finally the default screen device.
+     *
+     * @param placement
+     *            - The captured placement to resolve a configuration for (may be null)
+     * @return The graphics configuration for the target display
+     */
+    private static GraphicsConfiguration resolveConfiguration(FramePlacement placement) {
+        if (placement != null && placement.getConfiguration() != null) {
+            GraphicsConfiguration liveConfiguration = liveConfigurationFor(placement.getConfiguration());
 
-            if (boundsDiffer) {
-                try {
-                    double previousLocalX = centerX - previousBounds.x;
-                    double previousLocalY = centerY - previousBounds.y;
-
-                    AffineTransform previousToDevice = previousConfiguration.getDefaultTransform();
-                    Point2D devicePoint = previousToDevice.transform(new Point2D.Double(previousLocalX, previousLocalY),
-                            null);
-
-                    AffineTransform targetToDevice = targetConfiguration.getDefaultTransform();
-                    AffineTransform deviceToTarget = targetToDevice.createInverse();
-                    Point2D targetUserPoint = deviceToTarget.transform(devicePoint, null);
-
-                    centerX = targetUserPoint.getX() + targetBounds.x;
-                    centerY = targetUserPoint.getY() + targetBounds.y;
-                } catch (NoninvertibleTransformException e) {
-                    e.printStackTrace();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+            if (liveConfiguration != null) {
+                return liveConfiguration;
             }
         }
 
-        Rectangle finalTargetBounds = targetConfiguration.getBounds();
-        int left = (int) Math.round(centerX - expectedFrameSize.width / 2.0);
-        int top = (int) Math.round(centerY - expectedFrameSize.height / 2.0);
+        if (placement != null && placement.getAbsoluteCenter() != null) {
+            return getTargetGraphicsConfiguration(placement.getAbsoluteCenter());
+        }
 
-        left = Math.max(finalTargetBounds.x,
-                Math.min(left, finalTargetBounds.x + finalTargetBounds.width - expectedFrameSize.width));
-        top = Math.max(finalTargetBounds.y,
-                Math.min(top, finalTargetBounds.y + finalTargetBounds.height - expectedFrameSize.height));
+        return GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
+    }
 
-        return new Point(left, top);
+    /**
+     * Find the current default configuration for the same device as the captured configuration. After a display mode
+     * change, AWT may replace a device's {@link GraphicsConfiguration} instance, leaving the captured reference
+     * orphaned and reporting stale bounds. Re-resolving by device id returns the live configuration whose bounds
+     * reflect the new display geometry.
+     *
+     * @param captured
+     *            - The configuration captured before the display was reconfigured
+     * @return The live configuration for the captured device, or null if the device can no longer be found
+     */
+    private static GraphicsConfiguration liveConfigurationFor(GraphicsConfiguration captured) {
+        GraphicsDevice capturedDevice = captured.getDevice();
+
+        if (capturedDevice == null) {
+            return null;
+        }
+
+        String capturedId = capturedDevice.getIDstring();
+
+        for (GraphicsDevice device : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+            if (device.getIDstring().equals(capturedId)) {
+                return device.getDefaultConfiguration();
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -151,10 +214,10 @@ public class FrameUtil {
      * configuration.
      *
      * @param frameLocation
-     *            - Location of the frame used to select the graphics configuration
-     * @return The graphics configuration for the device containing the frame location, or the default configuration
+     *            - Location used to select the graphics configuration
+     * @return The graphics configuration for the device containing the location, or the default configuration
      */
-    public static GraphicsConfiguration getTargetGraphicsConfiguration(Point frameLocation) {
+    private static GraphicsConfiguration getTargetGraphicsConfiguration(Point frameLocation) {
         GraphicsEnvironment graphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment();
 
         if (frameLocation == null) {
@@ -173,183 +236,51 @@ public class FrameUtil {
     }
 
     /**
-     * Corrects the location for a frame so it stays in the screen bounds and preserves visual-center intent when the OS
-     * reassigns the window.
+     * Compute the clamped top-left location for a frame inside the given bounds, reproducing the placement's
+     * proportional position within the available space. Falls back to the captured absolute center, then to the center
+     * of the bounds, when no proportional position is available.
      *
-     * @param frameToCorrect
-     *            - Frame to correct
-     * @param intendedFrameCenter
-     *            - Intended center of the frame in screen coordinates
-     * @param expectedFrameSize
-     *            - Expected size of the frame
-     * @param expectedConfiguration
-     *            - Expected graphics configuration (may be null)
-     * @param expectedBounds
-     *            - Bounds of the expected graphics configuration (may be null)
+     * @param placement
+     *            - The captured placement (may be null)
+     * @param bounds
+     *            - The current bounds of the target display
+     * @param frameSize
+     *            - The size of the frame to place
+     * @return The clamped top-left Point in screen coordinates
      */
-    public static void correctLocation(JFrame frameToCorrect, Point intendedFrameCenter, Dimension expectedFrameSize,
-            GraphicsConfiguration expectedConfiguration, Rectangle expectedBounds) {
-        try {
-            if (frameToCorrect != null && frameToCorrect.isDisplayable()
-                    && frameToCorrect.getExtendedState() == JFrame.NORMAL) {
-                Point currentLocationOnScreen = frameToCorrect.getLocationOnScreen();
-                GraphicsConfiguration actualConfiguration = frameToCorrect.getGraphicsConfiguration();
-                Rectangle actualBounds = (actualConfiguration != null)
-                        ? actualConfiguration.getBounds()
-                        : GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice()
-                                .getDefaultConfiguration().getBounds();
+    private static Point locationForConfiguration(FramePlacement placement, Rectangle bounds, Dimension frameSize) {
+        int left;
+        int top;
 
-                boolean configurationChanged = (expectedBounds != null && !expectedBounds.equals(actualBounds));
+        if (placement != null && placement.getConfiguration() != null) {
+            /*
+             * Reproduce the top-left within the available space (bounds minus frame size) so edge and corner anchoring
+             * is preserved against the current frame size, even when the bounds changed size (as on a DPI change)
+             */
+            int availableWidth = bounds.width - frameSize.width;
+            int availableHeight = bounds.height - frameSize.height;
+            left = (int) Math.round(bounds.x + placement.getLeftFraction() * availableWidth);
+            top = (int) Math.round(bounds.y + placement.getTopFraction() * availableHeight);
+        } else {
+            double centerX;
+            double centerY;
 
-                if (configurationChanged && expectedConfiguration != null && actualConfiguration != null) {
-                    mapLocationOnScreen(frameToCorrect, intendedFrameCenter, expectedFrameSize, expectedConfiguration,
-                            actualConfiguration, actualBounds);
-                } else {
-                    clampLocationOnScreen(frameToCorrect, currentLocationOnScreen, actualBounds);
-                }
-            }
-        } catch (IllegalComponentStateException e) {
-            e.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Maps the intended frame center from an expected graphics configuration into the actual graphics configuration and
-     * set the frame location so the visual center is preserved. This method performs the affine mapping (with fallback)
-     * and clamps the resulting top-left to the actual bounds.
-     *
-     * @param frame
-     *            - Frame to position
-     * @param intendedFrameCenter
-     *            - Intended center of the frame in screen coordinates (relative to the expected configuration)
-     * @param expectedFrameSize
-     *            - Expected size of the frame
-     * @param expectedConfiguration
-     *            - Expected graphics configuration
-     * @param actualConfiguration
-     *            - Graphics configuration currently assigned to the frame
-     * @param actualBounds
-     *            - Bounds of the actual configuration
-     */
-    private static void mapLocationOnScreen(JFrame frame, Point intendedFrameCenter, Dimension expectedFrameSize,
-            GraphicsConfiguration expectedConfiguration, GraphicsConfiguration actualConfiguration,
-            Rectangle actualBounds) {
-        Insets frameInsets = frame.getInsets();
-        Point2D mappedCenter = mapCenterBetweenConfigs(intendedFrameCenter.x, intendedFrameCenter.y,
-                expectedConfiguration, actualConfiguration);
-        int mappedLeft = (int) Math.round(mappedCenter.getX() - expectedFrameSize.width / 2.0);
-        int mappedTop = (int) Math.round(mappedCenter.getY() - expectedFrameSize.height / 2.0);
-
-        mappedLeft = Math.max(actualBounds.x,
-                Math.min(mappedLeft, actualBounds.x + actualBounds.width - expectedFrameSize.width));
-        mappedTop = Math.max(actualBounds.y,
-                Math.min(mappedTop, actualBounds.y + actualBounds.height - expectedFrameSize.height));
-
-        if (mappedTop + frameInsets.top < actualBounds.y + 1) {
-            mappedTop = actualBounds.y + 1 - frameInsets.top;
-        }
-
-        frame.setLocation(mappedLeft, mappedTop);
-    }
-
-    /**
-     * Clamps the current frame location so the frame remains fully inside the provided bounds. This corrects cases
-     * where the OS assigned the frame to the same graphics configuration but the top-left would be off-screen.
-     *
-     * @param frame
-     *            - Frame to clamp
-     * @param currentLocationOnScreen
-     *            - Current top-left location of the frame in screen coordinates
-     * @param actualBounds
-     *            - Bounds to clamp against
-     */
-    private static void clampLocationOnScreen(JFrame frame, Point currentLocationOnScreen, Rectangle actualBounds) {
-        boolean isOffTop = currentLocationOnScreen.y < actualBounds.y + 1;
-        boolean isOffLeft = currentLocationOnScreen.x < actualBounds.x;
-        boolean isOffRight = currentLocationOnScreen.x + frame.getWidth() > actualBounds.x + actualBounds.width;
-        boolean isOffBottom = currentLocationOnScreen.y + frame.getHeight() > actualBounds.y + actualBounds.height;
-
-        if (isOffTop || isOffLeft || isOffRight || isOffBottom) {
-            Insets frameInsets = frame.getInsets();
-            int clampedLeft = Math.max(actualBounds.x,
-                    Math.min(currentLocationOnScreen.x, actualBounds.x + actualBounds.width - frame.getWidth()));
-            int clampedTop = Math.max(actualBounds.y,
-                    Math.min(currentLocationOnScreen.y, actualBounds.y + actualBounds.height - frame.getHeight()));
-
-            if (clampedTop + frameInsets.top < actualBounds.y + 1) {
-                clampedTop = actualBounds.y + 1 - frameInsets.top;
+            if (placement != null && placement.getAbsoluteCenter() != null) {
+                centerX = placement.getAbsoluteCenter().x;
+                centerY = placement.getAbsoluteCenter().y;
+            } else {
+                centerX = bounds.x + bounds.width / 2.0;
+                centerY = bounds.y + bounds.height / 2.0;
             }
 
-            frame.setLocation(clampedLeft, clampedTop);
+            left = (int) Math.round(centerX - frameSize.width / 2.0);
+            top = (int) Math.round(centerY - frameSize.height / 2.0);
         }
-    }
 
-    /**
-     * Map a screen-space center from one graphics configuration to another using transforms. Falls back to scale-based
-     * mapping if affine inversion fails.
-     *
-     * @param centerX
-     *            - Screen X in source configuration
-     * @param centerY
-     *            - Screen Y in source configuration
-     * @param sourceConfiguration
-     *            - Source graphics configuration
-     * @param targetConfiguration
-     *            - Target graphics configuration
-     * @return Mapped center as Point2D.Double
-     */
-    public static Point2D mapCenterBetweenConfigs(double centerX, double centerY,
-            GraphicsConfiguration sourceConfiguration, GraphicsConfiguration targetConfiguration) {
-        try {
-            Rectangle sourceBounds = sourceConfiguration.getBounds();
-            Rectangle targetBounds = targetConfiguration.getBounds();
+        left = Math.max(bounds.x, Math.min(left, bounds.x + bounds.width - frameSize.width));
+        top = Math.max(bounds.y, Math.min(top, bounds.y + bounds.height - frameSize.height));
 
-            double sourceLocalX = centerX - sourceBounds.x;
-            double sourceLocalY = centerY - sourceBounds.y;
-
-            AffineTransform sourceToDevice = sourceConfiguration.getDefaultTransform();
-            Point2D devicePoint = sourceToDevice.transform(new Point2D.Double(sourceLocalX, sourceLocalY), null);
-
-            AffineTransform targetToDevice = targetConfiguration.getDefaultTransform();
-            AffineTransform deviceToTarget = targetToDevice.createInverse();
-            Point2D targetUserPoint = deviceToTarget.transform(devicePoint, null);
-
-            double mappedX = targetUserPoint.getX() + targetBounds.x;
-            double mappedY = targetUserPoint.getY() + targetBounds.y;
-
-            return new Point2D.Double(mappedX, mappedY);
-        } catch (NoninvertibleTransformException e) {
-            e.printStackTrace();
-
-            try {
-                AffineTransform sourceTransform = sourceConfiguration.getDefaultTransform();
-                AffineTransform targetTransform = targetConfiguration.getDefaultTransform();
-                double scaleXRatio = sourceTransform.getScaleX() / Math.max(1e-6, targetTransform.getScaleX());
-                double scaleYRatio = sourceTransform.getScaleY() / Math.max(1e-6, targetTransform.getScaleY());
-
-                Rectangle sourceBounds = sourceConfiguration.getBounds();
-                Rectangle targetBounds = targetConfiguration.getBounds();
-
-                double sourceLocalX = centerX - sourceBounds.x;
-                double sourceLocalY = centerY - sourceBounds.y;
-
-                double targetLocalX = sourceLocalX * scaleXRatio;
-                double targetLocalY = sourceLocalY * scaleYRatio;
-
-                double mappedX = targetLocalX + targetBounds.x;
-                double mappedY = targetLocalY + targetBounds.y;
-
-                return new Point2D.Double(mappedX, mappedY);
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                return new Point2D.Double(centerX, centerY);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return new Point2D.Double(centerX, centerY);
-        }
+        return new Point(left, top);
     }
 
 }

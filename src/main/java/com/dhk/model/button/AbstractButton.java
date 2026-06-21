@@ -56,7 +56,7 @@ public abstract class AbstractButton extends JButton {
     private transient Timer tooltipDelayTimer;
     private volatile boolean tooltipCreating;
 
-    private static final int TOOLTIP_DELAY_MS = 200;
+    private static final int TOOLTIP_DELAY_MS = 300;
 
     /**
      * Default constructor for the {@link AbstractButton} class.

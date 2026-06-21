@@ -21,6 +21,8 @@ package com.dhk.controller.button;
 
 import java.util.Arrays;
 
+import javax.swing.Timer;
+
 import com.dhk.controller.DhkController;
 import com.dhk.controller.IController;
 import com.dhk.io.DisplayConfig;
@@ -28,6 +30,8 @@ import com.dhk.io.SetDisplay;
 import com.dhk.io.SettingsManager;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
+import com.dhk.model.FramePlacement;
+import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
 
 /**
@@ -44,6 +48,8 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
     private SettingsManager settingsMgr;
     private SetDisplay setDisplay;
     private AppRefresher appRefresher;
+
+    private static final int REINIT_DELAY_MS = 250;
 
     /**
      * Constructor for the {@link ApplyDisplayModeButtonController} class.
@@ -108,6 +114,9 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
 
         // If the connected displays have not changed
         if (Arrays.equals(model.getDisplayIds(), displayConfig.getDisplayIds())) {
+            // Capture the frame placement before the display reconfiguration relocates the window
+            FramePlacement placement = FrameUtil.capturePlacement(view.getFrame());
+
             setDisplay.applyDisplayOrientation(displayId, model.getSlot(displayIndex, slotIndex).getOrientationMode());
             setDisplay.applyDisplaySettings(displayId,
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getWidth(),
@@ -117,8 +126,15 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
                     model.getSlot(displayIndex, slotIndex).getScalingMode(),
                     model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
 
-            // Re-initialize the app to prevent window corruption
-            appRefresher.reInitApp();
+            /*
+             * Re-initialize the app to prevent window corruption, but defer briefly so the display reconfiguration
+             * settles first; otherwise the rebuilt frame is placed against stale display bounds and jumps up and to the
+             * left. The Timer fires once on the EDT. The placement captured above is reproduced, since the OS will have
+             * moved the existing frame
+             */
+            Timer reInitTimer = new Timer(REINIT_DELAY_MS, _ -> appRefresher.reInitApp(placement));
+            reInitTimer.setRepeats(false);
+            reInitTimer.start();
         }
     }
 
