@@ -49,7 +49,10 @@ public class DhkDriver {
      *            - Command line arguments
      */
     public static void main(final String[] args) {
+        System.setProperty("sun.java2d.d3d", "false");
+        System.setProperty("sun.java2d.noddraw", "true");
         ToolTipManager.sharedInstance().setEnabled(false);
+
         SettingsManager settingsMgr = new SettingsManager();
         settingsMgr.initSettingsManager();
         RunOnStartupManager runOnStartupManager = new RunOnStartupManager();

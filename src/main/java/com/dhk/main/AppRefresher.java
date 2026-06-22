@@ -20,6 +20,7 @@
 package com.dhk.main;
 
 import com.dhk.controller.DhkController;
+import com.dhk.io.DisplayConfig;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
 import com.dhk.model.FramePlacement;
@@ -39,6 +40,7 @@ public class AppRefresher {
     private DhkView view;
     private DhkController controller;
     private SettingsManager settingsMgr;
+    private DisplayConfig displayConfig;
 
     /**
      * Constructor for the {@link AppRefresher} class.
@@ -57,6 +59,8 @@ public class AppRefresher {
         this.view = view;
         this.controller = controller;
         this.settingsMgr = settingsMgr;
+
+        displayConfig = new DisplayConfig();
     }
 
     /**
@@ -69,7 +73,8 @@ public class AppRefresher {
 
     /**
      * Re-initializes the settings manager, model, view, and controllers for the application, and then sets up the "look
-     * and feel" for the GUI.
+     * and feel" for the GUI. The app is only re-initialized if there is an active display to prevent a JVM error from
+     * occurring.
      *
      * @param capturedPlacement
      *            - A frame placement captured before a display reconfiguration, used to reproduce the frame's position;
@@ -78,6 +83,12 @@ public class AppRefresher {
      *            existing frame as part of the change, making a live capture during re-initialization unreliable
      */
     public void reInitApp(FramePlacement capturedPlacement) {
+        displayConfig.updateConnectedDisplays();
+
+        if (displayConfig.getNumOfConnectedDisplays() == 0) {
+            return;
+        }
+
         int previousFrameState = view.getFrame().getExtendedState();
 
         settingsMgr.initSettingsManager();
