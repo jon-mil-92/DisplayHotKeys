@@ -23,6 +23,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -68,7 +69,12 @@ public class AboutDialog implements IView {
     private JPanel buttonPanel;
     private GridBagLayout buttonPanelLayout;
     private GridBagConstraints buttonPanelConstraints;
-    private JLabel infoLabel;
+    private JPanel infoPanel;
+    private GridBagLayout infoPanelLayout;
+    private GridBagConstraints infoPanelConstraints;
+    private JLabel headerLabel;
+    private JLabel versionLabel;
+    private JLabel developedByLabel;
     private JButton licenseButton;
     private JButton releasesButton;
     private JButton closeButton;
@@ -85,6 +91,7 @@ public class AboutDialog implements IView {
     private static final String REALEASES_PATH = "/jon-mil-92/DisplayHotKeys/releases";
     private static final String LICENSE_LINK = GITHUB_CONTENT_DOMAIN + LICENSE_PATH;
     private static final String RELEASES_LINK = GITHUB_DOMAIN + REALEASES_PATH;
+    private static final float HEADER_FONT_SCALE = 1.6f;
 
     /**
      * Constructor for the {@link AboutDialog} class.
@@ -136,7 +143,7 @@ public class AboutDialog implements IView {
                 parentFrame.setGlassPane(darkeningGlassPane);
                 darkeningGlassPane.setVisible(true);
 
-                // Pack and position BEFORE showing so native peer exists; HTML will be set in windowOpened
+                // Pack and position to fit the info text, then show
                 aboutDialog.pack();
                 aboutDialog.setLocationRelativeTo(parentFrame);
                 aboutDialog.setVisible(true);
@@ -153,7 +160,7 @@ public class AboutDialog implements IView {
 
     @Override
     public Component getDefaultFocusComponent() {
-        return infoLabel;
+        return headerLabel;
     }
 
     /**
@@ -179,6 +186,15 @@ public class AboutDialog implements IView {
         buttonPanelConstraints.insets = new Insets(2, 7, 10, 7);
         buttonPanelConstraints.anchor = GridBagConstraints.CENTER;
         buttonPanelConstraints.gridwidth = 1;
+
+        infoPanel = new JPanel();
+        infoPanelLayout = new GridBagLayout();
+        infoPanel.setLayout(infoPanelLayout);
+
+        infoPanelConstraints = new GridBagConstraints();
+        infoPanelConstraints.insets = new Insets(3, 7, 3, 7);
+        infoPanelConstraints.anchor = GridBagConstraints.CENTER;
+        infoPanelConstraints.gridwidth = 1;
     }
 
     /**
@@ -190,9 +206,17 @@ public class AboutDialog implements IView {
      *            - The system tray (not required)
      */
     private void initAboutComponents(JDialog aboutDialog, SystemTray systemTray) {
-        // Create label empty; set HTML later when dialog is shown (windowOpened)
-        infoLabel = new JLabel();
-        infoLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        headerLabel = new JLabel("About Display Hot Keys");
+        headerLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+        Font headerFont = headerLabel.getFont();
+        headerLabel.setFont(headerFont.deriveFont(Font.BOLD, headerFont.getSize2D() * HEADER_FONT_SCALE));
+
+        versionLabel = new JLabel("Version: " + VersionRetriever.getVersion());
+        versionLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+        developedByLabel = new JLabel("Developed by Jonathan R. Miller");
+        developedByLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         ButtonProperties paypalButtonProperties = new ButtonProperties(null, new Dimension(134, 46), 0.70f, 0.63f);
         paypalDonateButton = new ThemeableButton("/paypal_donate_light_idle.svg", "/paypal_donate_light_hover.svg",
@@ -232,25 +256,6 @@ public class AboutDialog implements IView {
                 // Call the same method used by the Close button
                 closeButtonAction(aboutDialog, systemTray);
             }
-
-            @Override
-            public void windowOpened(WindowEvent e) {
-                /*
-                 * Set the HTML text only after the dialog is shown on the target monitor so the HTML renderer uses the
-                 * correct GraphicsConfiguration/font metrics.
-                 */
-                SwingUtilities.invokeLater(() -> {
-                    // Only set the HTML if it hasn't been set already
-                    if (infoLabel.getText() == null || infoLabel.getText().isEmpty()) {
-                        infoLabel.setText(buildAboutInfoHtml());
-
-                        // Recompute layout and sizes for the new HTML content
-                        aboutDialog.pack();
-                        aboutDialog.revalidate();
-                        aboutDialog.repaint();
-                    }
-                });
-            }
         });
 
         aboutDialog.addMouseListener(new MouseAdapter() {
@@ -280,16 +285,28 @@ public class AboutDialog implements IView {
         buttonPanelConstraints.gridy = 0;
         buttonPanel.add(closeButton, buttonPanelConstraints);
 
-        mainConstraints.gridx = 0;
-        mainConstraints.gridy = 0;
-        aboutDialog.add(infoLabel, mainConstraints);
+        infoPanelConstraints.gridx = 0;
+        infoPanelConstraints.gridy = 0;
+        infoPanel.add(headerLabel, infoPanelConstraints);
+
+        infoPanelConstraints.gridx = 0;
+        infoPanelConstraints.gridy = 1;
+        infoPanel.add(versionLabel, infoPanelConstraints);
+
+        infoPanelConstraints.gridx = 0;
+        infoPanelConstraints.gridy = 2;
+        infoPanel.add(developedByLabel, infoPanelConstraints);
 
         mainConstraints.gridx = 0;
-        mainConstraints.gridy = 2;
+        mainConstraints.gridy = 0;
+        aboutDialog.add(infoPanel, mainConstraints);
+
+        mainConstraints.gridx = 0;
+        mainConstraints.gridy = 1;
         aboutDialog.add(paypalDonateButton, mainConstraints);
 
         mainConstraints.gridx = 0;
-        mainConstraints.gridy = 3;
+        mainConstraints.gridy = 2;
         aboutDialog.add(buttonPanel, mainConstraints);
     }
 
@@ -410,21 +427,6 @@ public class AboutDialog implements IView {
         });
 
         return darkeningPanel;
-    }
-
-    /**
-     * Builds an HTML string for information about the application.
-     *
-     * @return An HTML string for information about the application
-     */
-    private String buildAboutInfoHtml() {
-        String htmlBegin = "<html><div style=\"text-align: center;\">";
-        String header = "<h1>About Display Hot Keys</h1>";
-        String version = "<p>Version: " + VersionRetriever.getVersion() + "</p>";
-        String developedBy = "<p>Developed by Jonathan R. Miller</p>";
-        String htmlEnd = "</div></html>";
-
-        return htmlBegin + header + version + developedBy + htmlEnd;
     }
 
 }

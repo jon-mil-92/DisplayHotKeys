@@ -21,6 +21,7 @@ package com.dhk.controller;
 
 import java.awt.DisplayMode;
 
+import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 
 import com.dhk.io.SettingsManager;
@@ -121,8 +122,24 @@ public class OrientationController implements IController {
      * @return The return value from the option pane
      */
     private int getUserConfirmation() {
-        return JOptionPane.showConfirmDialog(view.getFrame(), CONFIRMATION_MESSAGE, TITLE_BAR_MESSAGE,
-                JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE);
+        // Create the JOptionPane with the confirmation message
+        final JOptionPane optionPane = new JOptionPane(CONFIRMATION_MESSAGE, JOptionPane.PLAIN_MESSAGE,
+                JOptionPane.YES_NO_OPTION);
+
+        // Create a dialog for the option pane using the application's frame as parent
+        final JDialog dialog = optionPane.createDialog(view.getFrame(), TITLE_BAR_MESSAGE);
+        dialog.setModal(true);
+        dialog.setResizable(false);
+        dialog.setVisible(true);
+
+        // Retrieve the user's choice from the option pane
+        Object selectedValue = optionPane.getValue();
+
+        if (selectedValue instanceof Integer) {
+            return (Integer) selectedValue;
+        } else {
+            return JOptionPane.CLOSED_OPTION;
+        }
     }
 
     /**

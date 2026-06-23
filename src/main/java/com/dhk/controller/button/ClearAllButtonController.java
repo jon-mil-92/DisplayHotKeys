@@ -20,12 +20,9 @@
 package com.dhk.controller.button;
 
 import java.awt.DisplayMode;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 
 import javax.swing.JDialog;
 import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 
 import com.dhk.controller.DhkController;
 import com.dhk.controller.IController;
@@ -114,31 +111,19 @@ public class ClearAllButtonController extends AbstractButtonController implement
      * @return The return value from the option pane
      */
     private int getUserConfirmation() {
-        // Create the JOptionPane with an empty message initially.
-        final JOptionPane optionPane = new JOptionPane("", JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION);
+        // Create the JOptionPane with the confirmation message
+        final JOptionPane optionPane = new JOptionPane(CONFIRMATION_MESSAGE, JOptionPane.PLAIN_MESSAGE,
+                JOptionPane.YES_NO_OPTION);
 
         // Create a dialog for the option pane using the application's frame as parent
         final JDialog dialog = optionPane.createDialog(view.getFrame(), TITLE_BAR_MESSAGE);
         dialog.setModal(true);
         dialog.setResizable(false);
-
-        // When the dialog is opened, set the actual message and re-pack so layout uses the correct font metrics
-        dialog.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowOpened(WindowEvent e) {
-                // Run on EDT after native show sequence to ensure correct graphics configuration
-                SwingUtilities.invokeLater(() -> {
-                    optionPane.setMessage(CONFIRMATION_MESSAGE);
-                    dialog.pack();
-                    dialog.setLocationRelativeTo(view.getFrame());
-                });
-            }
-        });
-
         dialog.setVisible(true);
 
         // Retrieve the user's choice from the option pane
         Object selectedValue = optionPane.getValue();
+
         if (selectedValue instanceof Integer) {
             return (Integer) selectedValue;
         } else {
