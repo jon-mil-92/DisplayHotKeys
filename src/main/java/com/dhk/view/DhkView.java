@@ -160,8 +160,10 @@ public class DhkView implements IView {
         initPanels();
         initComponents();
 
-        // Scroll the content so every component stays reachable when the frame is capped to a small display; the
-        // borderless, as-needed scroll bars are invisible at normal resolutions where the whole frame fits
+        /*
+         * Scroll the content so every component stays reachable when the frame is capped to a small display; the
+         * borderless, as-needed scroll bars are invisible at normal resolutions where the whole frame fits
+         */
         JScrollPane scrollPane = new JScrollPane(mainPanel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
                 JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
@@ -171,8 +173,10 @@ public class DhkView implements IView {
         newFrame.setContentPane(scrollPane);
         newFrame.pack();
 
-        // Cap the packed size to the display's working area (reserving room for any needed scroll bars) before
-        // computing the location, so the frame fits on screen immediately and the location uses the final size
+        /*
+         * Cap the packed size to the display's working area (reserving room for any needed scroll bars) before
+         * computing the location, so the frame fits on screen immediately and the location uses the final size
+         */
         Dimension fittedFrameSize = FrameUtil.fitToWorkingArea(newFrame.getSize(), scrollPane,
                 FrameUtil.workingAreaSize(previousPlacement));
 
@@ -186,12 +190,20 @@ public class DhkView implements IView {
         // Set the taskbar icon
         newFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
 
-        newFrame.addMouseListener(new MouseAdapter() {
+        /*
+         * Clear focus when clicking empty space. The listener is added to the panel and viewport, not only the frame,
+         * because the scroll pane consumes the press before it can bubble up to the frame
+         */
+        MouseAdapter clearFocusOnPress = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent mousePressedEvent) {
                 getDefaultFocusComponent().requestFocusInWindow();
             }
-        });
+        };
+
+        newFrame.addMouseListener(clearFocusOnPress);
+        mainPanel.addMouseListener(clearFocusOnPress);
+        scrollPane.getViewport().addMouseListener(clearFocusOnPress);
 
         /*
          * Make the frame visible after all components are added and the frame is packed. Showing the frame earlier can
