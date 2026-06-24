@@ -34,10 +34,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -74,11 +76,13 @@ public class DhkView implements IView {
     private GridBagConstraints menuPanelConstraints;
     private JLabel selectedDisplayLabel;
     private JLabel numberOfActiveSlotsLabel;
+    private JLabel applyDisplayModeHeader;
     private JLabel displayModeHeader;
     private JLabel scalingModeHeader;
     private JLabel dpiScaleHeader;
     private JLabel orientationHeader;
     private JLabel hotKeyHeader;
+    private JLabel clearHotKeyHeader;
     private JLabel changeHotKeyHeader;
     private JComboBox<Integer> displayIds;
     private Map<Integer, List<Slot>> displayMap;
@@ -156,8 +160,25 @@ public class DhkView implements IView {
         initPanels();
         initComponents();
 
-        newFrame.setContentPane(mainPanel);
+        // Scroll the content so every component stays reachable when the frame is capped to a small display; the
+        // borderless, as-needed scroll bars are invisible at normal resolutions where the whole frame fits
+        JScrollPane scrollPane = new JScrollPane(mainPanel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        scrollPane.getHorizontalScrollBar().setUnitIncrement(16);
+
+        newFrame.setContentPane(scrollPane);
         newFrame.pack();
+
+        // Cap the packed size to the display's working area (reserving room for any needed scroll bars) before
+        // computing the location, so the frame fits on screen immediately and the location uses the final size
+        Dimension fittedFrameSize = FrameUtil.fitToWorkingArea(newFrame.getSize(), scrollPane,
+                FrameUtil.workingAreaSize(previousPlacement));
+
+        if (!fittedFrameSize.equals(newFrame.getSize())) {
+            newFrame.setSize(fittedFrameSize);
+        }
 
         final Dimension expectedFrameSize = newFrame.getSize();
         newFrame.setLocation(FrameUtil.computeLocation(previousPlacement, expectedFrameSize));
@@ -238,33 +259,30 @@ public class DhkView implements IView {
                 mainPanelConstraints.gridy = gridYPosForSlotInPanel;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getIndicatorLabel(), mainPanelConstraints);
 
-                mainPanelConstraints.anchor = GridBagConstraints.WEST;
                 mainPanelConstraints.gridx = 1;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplyDisplayModeButton(),
                         mainPanelConstraints);
 
-                mainPanelConstraints.anchor = GridBagConstraints.EAST;
+                mainPanelConstraints.gridx = 2;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDisplayModes(), mainPanelConstraints);
 
-                mainPanelConstraints.anchor = GridBagConstraints.CENTER;
-                mainPanelConstraints.gridx = 2;
+                mainPanelConstraints.gridx = 3;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getScalingModes(), mainPanelConstraints);
 
-                mainPanelConstraints.gridx = 3;
+                mainPanelConstraints.gridx = 4;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDpiScalePercentages(),
                         mainPanelConstraints);
 
-                mainPanelConstraints.gridx = 4;
+                mainPanelConstraints.gridx = 5;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getOrientationModes(), mainPanelConstraints);
 
-                mainPanelConstraints.gridx = 5;
+                mainPanelConstraints.gridx = 6;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getHotKey(), mainPanelConstraints);
 
-                mainPanelConstraints.anchor = GridBagConstraints.WEST;
-                mainPanelConstraints.gridx = 6;
+                mainPanelConstraints.gridx = 7;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearHotKeyButton(), mainPanelConstraints);
 
-                mainPanelConstraints.anchor = GridBagConstraints.EAST;
+                mainPanelConstraints.gridx = 8;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getChangeHotKeyButton(),
                         mainPanelConstraints);
 
@@ -500,8 +518,12 @@ public class DhkView implements IView {
         buttons.add(minimizeToTrayButton);
         buttons.add(runOnStartupButton);
 
+        applyDisplayModeHeader = new JLabel("", SwingConstants.CENTER);
+        applyDisplayModeHeader.setPreferredSize(new Dimension(36, 28));
+        makeLabelBold(applyDisplayModeHeader);
+
         displayModeHeader = new JLabel("Display Mode", SwingConstants.CENTER);
-        displayModeHeader.setPreferredSize(new Dimension(256, 28));
+        displayModeHeader.setPreferredSize(new Dimension(220, 28));
         makeLabelBold(displayModeHeader);
 
         scalingModeHeader = new JLabel("Scaling Mode", SwingConstants.CENTER);
@@ -520,8 +542,12 @@ public class DhkView implements IView {
         hotKeyHeader.setPreferredSize(new Dimension(90, 28));
         makeLabelBold(hotKeyHeader);
 
+        clearHotKeyHeader = new JLabel("", SwingConstants.CENTER);
+        clearHotKeyHeader.setPreferredSize(new Dimension(32, 28));
+        makeLabelBold(clearHotKeyHeader);
+
         changeHotKeyHeader = new JLabel("", SwingConstants.CENTER);
-        changeHotKeyHeader.setPreferredSize(new Dimension(182, 28));
+        changeHotKeyHeader.setPreferredSize(new Dimension(150, 28));
         makeLabelBold(changeHotKeyHeader);
 
         initSlotComponents();
@@ -651,7 +677,7 @@ public class DhkView implements IView {
         menuPanel.add(runOnStartupButton, menuPanelConstraints);
 
         mainPanelConstraints.anchor = GridBagConstraints.WEST;
-        mainPanelConstraints.gridwidth = 8;
+        mainPanelConstraints.gridwidth = 9;
         mainPanelConstraints.gridx = 0;
         mainPanelConstraints.gridy = 0;
         mainPanel.add(displayPanel, mainPanelConstraints);
@@ -666,21 +692,27 @@ public class DhkView implements IView {
 
         mainPanelConstraints.gridwidth = 1;
         mainPanelConstraints.gridx = 1;
-        mainPanel.add(displayModeHeader, mainPanelConstraints);
+        mainPanel.add(applyDisplayModeHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 2;
-        mainPanel.add(scalingModeHeader, mainPanelConstraints);
+        mainPanel.add(displayModeHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 3;
-        mainPanel.add(dpiScaleHeader, mainPanelConstraints);
+        mainPanel.add(scalingModeHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 4;
-        mainPanel.add(orientationHeader, mainPanelConstraints);
+        mainPanel.add(dpiScaleHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 5;
-        mainPanel.add(hotKeyHeader, mainPanelConstraints);
+        mainPanel.add(orientationHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 6;
+        mainPanel.add(hotKeyHeader, mainPanelConstraints);
+
+        mainPanelConstraints.gridx = 7;
+        mainPanel.add(clearHotKeyHeader, mainPanelConstraints);
+
+        mainPanelConstraints.gridx = 8;
         mainPanel.add(changeHotKeyHeader, mainPanelConstraints);
     }
 

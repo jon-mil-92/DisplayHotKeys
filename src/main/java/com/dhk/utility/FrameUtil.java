@@ -23,10 +23,13 @@ import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.Toolkit;
 
 import javax.swing.JFrame;
+import javax.swing.JScrollPane;
 
 import com.dhk.model.FramePlacement;
 
@@ -62,14 +65,6 @@ public class FrameUtil {
 
         try {
             GraphicsConfiguration configuration = frame.getGraphicsConfiguration();
-
-            /*
-             * Use the frame's AWT bounds rather than getLocationOnScreen() so the frame position and the display bounds
-             * are read from the same coordinate space. getLocationOnScreen() is a native query that, during a DPI
-             * transition, can momentarily report a different scale than the cached GraphicsConfiguration; mixing the
-             * two corrupts the placement and makes the rebuilt frame jump. getBounds() and the GraphicsConfiguration
-             * bounds always move together, so the placement stays correct even mid-transition
-             */
             Rectangle frameBounds = frame.getBounds();
             double centerX = frameBounds.x + frameBounds.width / 2.0;
             double centerY = frameBounds.y + frameBounds.height / 2.0;
@@ -81,9 +76,7 @@ public class FrameUtil {
 
             /*
              * Anchor the top-left within the available space (display bounds minus the frame size) so edge and corner
-             * positioning is preserved when the bounds change size relative to the frame. Recording the center as a
-             * fraction of the bounds instead would lose the fixed half-frame edge gap when the bounds grow (as on a
-             * high-to-low DPI change), pulling an edge-anchored frame toward the center
+             * positioning is preserved when the bounds change size relative to the frame
              */
             Rectangle bounds = configuration.getBounds();
             int availableWidth = bounds.width - frameBounds.width;
@@ -116,6 +109,98 @@ public class FrameUtil {
         GraphicsConfiguration configuration = resolveConfiguration(placement);
 
         return locationForConfiguration(placement, configuration.getBounds(), frameSize);
+    }
+
+    /**
+     * Resolves the placement's target display and returns its working area size.
+     *
+     * @param placement
+     *            - The captured placement whose target display to measure (may be null to use the default screen)
+     * @return The working area size of the target display
+     */
+    public static Dimension workingAreaSize(FramePlacement placement) {
+        return workingAreaSize(resolveConfiguration(placement));
+    }
+
+    /**
+     * Returns the configuration's bounds minus the screen insets (task bar, menu bar) so a frame sized to it does not
+     * extend behind the task bar; queries the screen insets natively, so hot-path callers should cache the result and
+     * only recompute it when the configuration changes.
+     *
+     * @param configuration
+     *            - The configuration to measure (may be null)
+     * @return The working area size, or null if no configuration is available
+     */
+    public static Dimension workingAreaSize(GraphicsConfiguration configuration) {
+        if (configuration == null) {
+            return null;
+        }
+
+        Rectangle bounds = configuration.getBounds();
+        int maxWidth = bounds.width;
+        int maxHeight = bounds.height;
+
+        try {
+            Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(configuration);
+            maxWidth -= insets.left + insets.right;
+            maxHeight -= insets.top + insets.bottom;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return new Dimension(maxWidth, maxHeight);
+    }
+
+    /**
+     * Returns the preferred size clamped to the working area, reserving room for whichever scroll bars are needed:
+     * because a scroll bar on one axis consumes space on the perpendicular axis, when an axis overflows the
+     * perpendicular scroll bar's thickness is added to the other axis before clamping (so capping the width does not
+     * force an unnecessary vertical scroll bar, and vice versa); a size that already fits is returned unchanged.
+     *
+     * @param preferred
+     *            - The frame's preferred (packed) size
+     * @param scrollPane
+     *            - The scroll pane that is the frame's content (may be null to skip scroll-bar reservation)
+     * @param workingArea
+     *            - The display's working area size (may be null to return the preferred size unchanged)
+     * @return The size to give the frame
+     */
+    public static Dimension fitToWorkingArea(Dimension preferred, JScrollPane scrollPane, Dimension workingArea) {
+        if (workingArea == null) {
+            return preferred;
+        }
+
+        int maxWidth = workingArea.width;
+        int maxHeight = workingArea.height;
+        int desiredWidth = preferred.width;
+        int desiredHeight = preferred.height;
+
+        if (scrollPane != null) {
+            int verticalScrollBarWidth = scrollPane.getVerticalScrollBar().getPreferredSize().width;
+            int horizontalScrollBarHeight = scrollPane.getHorizontalScrollBar().getPreferredSize().height;
+
+            boolean needsHorizontal = desiredWidth > maxWidth;
+            boolean needsVertical = desiredHeight > maxHeight;
+
+            if (needsHorizontal) {
+                desiredHeight += horizontalScrollBarHeight;
+            }
+
+            if (needsVertical) {
+                desiredWidth += verticalScrollBarWidth;
+            }
+
+            // Reserving space for one scroll bar can push the perpendicular axis over, requiring the other as well
+            if (!needsVertical && desiredHeight > maxHeight) {
+                desiredWidth += verticalScrollBarWidth;
+            }
+
+            if (!needsHorizontal && desiredWidth > maxWidth) {
+                desiredHeight += horizontalScrollBarHeight;
+            }
+        }
+
+        return new Dimension(Math.min(desiredWidth, maxWidth), Math.min(desiredHeight, maxHeight));
     }
 
     /**

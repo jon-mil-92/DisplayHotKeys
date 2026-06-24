@@ -19,9 +19,16 @@
  */
 package com.dhk.view;
 
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.GraphicsConfiguration;
+
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
+
+import com.dhk.utility.FrameUtil;
 
 /**
  * Updates the view for Display Hot Keys. The frame components and UI are updated with this class.
@@ -32,6 +39,8 @@ public class FrameUpdater {
 
     private JFrame frame;
     private JPanel mainPanel;
+    private GraphicsConfiguration cachedConfiguration;
+    private Dimension cachedWorkingArea;
 
     /**
      * Constructor for the {@link FrameUpdater} class.
@@ -49,7 +58,8 @@ public class FrameUpdater {
      */
     public void update() {
         mainPanel.revalidate();
-        frame.pack();
+        resizeToFitScreen();
+        frame.validate();
         frame.repaint();
     }
 
@@ -59,6 +69,37 @@ public class FrameUpdater {
     public void updateUI() {
         SwingUtilities.updateComponentTreeUI(frame);
         update();
+    }
+
+    /**
+     * Sizes the frame to its preferred size capped to the cached working area, but only when that target differs from
+     * the current size.
+     */
+    private void resizeToFitScreen() {
+        GraphicsConfiguration configuration = frame.getGraphicsConfiguration();
+
+        if (configuration != null && configuration != cachedConfiguration) {
+            cachedConfiguration = configuration;
+            cachedWorkingArea = FrameUtil.workingAreaSize(configuration);
+        }
+
+        Dimension target = FrameUtil.fitToWorkingArea(frame.getPreferredSize(), contentScrollPane(), cachedWorkingArea);
+
+        if (!target.equals(frame.getSize())) {
+            frame.setSize(target);
+        }
+    }
+
+    /**
+     * Returns the frame's content pane as a scroll pane so the resize can reserve room for its scroll bars, or null if
+     * it is not a scroll pane.
+     *
+     * @return The content scroll pane, or null
+     */
+    private JScrollPane contentScrollPane() {
+        Component content = frame.getContentPane();
+
+        return (content instanceof JScrollPane) ? (JScrollPane) content : null;
     }
 
 }
