@@ -55,7 +55,7 @@ public class SelectedDisplayController implements IController {
 
     @Override
     public void initListeners() {
-        view.getDisplayIds().addActionListener(_ -> updateSlots());
+        view.getDisplayIds().addActionListener(e -> updateSlots());
     }
 
     @Override

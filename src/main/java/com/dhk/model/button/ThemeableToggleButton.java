@@ -97,7 +97,7 @@ public class ThemeableToggleButton extends ThemeableButton {
             super.removeChangeListener(changeListener);
         }
 
-        addChangeListener(_ -> super.iconChangeAction());
+        addChangeListener(e -> super.iconChangeAction());
     }
 
     /**

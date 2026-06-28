@@ -108,21 +108,21 @@ static chrono::steady_clock::time_point lastStateChangeTime;
 static chrono::steady_clock::time_point lastPollTime;
 
 /*
- * Last-known set of visible display IDs used to detect real changes in display configuration. These IDs are already
- * stable because DisplayConfig now returns stable IDs.
+ * Last-known set of visible display signatures (stable ID plus resolution, position, rotation, and DPI scale) used to
+ * detect real changes in display configuration, including resolution, DPI, and orientation changes.
  */
-static vector<string> lastVisibleDisplayIds;
+static vector<string> lastVisibleSignatures;
 
 /*
- * Cached normalized version of lastVisibleDisplayIds to avoid re-normalizing repeatedly.
+ * Cached normalized version of lastVisibleSignatures to avoid re-normalizing repeatedly.
  */
-static vector<string> lastNormalizedVisibleIds;
+static vector<string> lastNormalizedSignatures;
 
 /*
  * Last-known normalized set that was actually notified to Java. This prevents repeated notifications for the same
  * stable configuration across multiple polls.
  */
-static vector<string> lastNotifiedNormalizedIds;
+static vector<string> lastNotifiedNormalizedSignatures;
 
 /*
  * Device interface class GUID for monitor devices. Used with RegisterDeviceNotification to receive DBT_DEVICEARRIVAL
@@ -142,19 +142,19 @@ LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType,
 static void notifyJava();
 
 /**
- * Normalize display ID lists: trim whitespace from each ID and sort the resulting list so comparisons are
- * order-insensitive. IDs are already stable because DisplayConfig returns stable IDs.
+ * Normalize signature lists: trim whitespace from each entry and sort the resulting list so comparisons are
+ * order-insensitive.
  *
- * @param rawDisplayIds
- *        - The list of display ID strings to normalize (trim + sort)
+ * @param rawSignatures
+ *        - The list of signature strings to normalize (trim + sort)
  *
- * @return A new vector containing the trimmed, sorted display IDs
+ * @return A new vector containing the trimmed, sorted signatures
  */
-static vector<string> normalizeDisplayIds(const vector<string> &rawDisplayIds) {
+static vector<string> normalizeSignatures(const vector<string> &rawSignatures) {
     vector<string> normalizedIds;
-    normalizedIds.reserve(rawDisplayIds.size());
+    normalizedIds.reserve(rawSignatures.size());
 
-    for (const auto &id : rawDisplayIds) {
+    for (const auto &id : rawSignatures) {
         string trimmedId = id;
 
         while (!trimmedId.empty() && isspace((unsigned char) trimmedId.front())) {
@@ -177,7 +177,7 @@ static vector<string> normalizeDisplayIds(const vector<string> &rawDisplayIds) {
  * Perform the common stabilization, debounce, query and compare logic used by both event-driven notifications
  * (WM_DEVICECHANGE, WM_DISPLAYCHANGE) and periodic polling. This method:
  *
- * 1. Compares the current set of visible display IDs to the last-known set
+ * 1. Compares the current set of visible display signatures to the last-known set
  * 2. If the set changed, records the new state and timestamp but does not notify Java yet
  * 3. If the set is unchanged, checks whether it has remained stable for STABILIZATION_MS
  * 4. If stable and debounced, notifies Java exactly once per real configuration change
@@ -186,34 +186,34 @@ static vector<string> normalizeDisplayIds(const vector<string> &rawDisplayIds) {
  */
 static bool processPotentialDisplayChange() {
     auto now = chrono::steady_clock::now();
-    vector<string> currentVisibleIds;
+    vector<string> currentVisibleSignatures;
 
     try {
-        currentVisibleIds = getVisibleDisplayIds();
+        currentVisibleSignatures = getVisibleDisplaySignatures();
     } catch (...) {
-        currentVisibleIds.clear();
+        currentVisibleSignatures.clear();
     }
 
     // Normalize once and reuse
-    auto normalizedCurrent = normalizeDisplayIds(currentVisibleIds);
+    auto normalizedCurrent = normalizeSignatures(currentVisibleSignatures);
 
-    // If normalized differs from lastNormalizedVisibleIds, update state and reset stabilization timer
-    if (normalizedCurrent != lastNormalizedVisibleIds) {
-        lastVisibleDisplayIds = currentVisibleIds;
-        lastNormalizedVisibleIds = normalizedCurrent;
+    // If normalized differs from lastNormalizedSignatures, update state and reset stabilization timer
+    if (normalizedCurrent != lastNormalizedSignatures) {
+        lastVisibleSignatures = currentVisibleSignatures;
+        lastNormalizedSignatures = normalizedCurrent;
         lastStateChangeTime = now;
 
         return false;
     }
 
-    // At this point normalizedCurrent == lastNormalizedVisibleIds. Check stabilization
+    // At this point normalizedCurrent == lastNormalizedSignatures, so check stabilization
     auto elapsedSinceStateChange = chrono::duration_cast<chrono::milliseconds>(now - lastStateChangeTime).count();
 
     if (elapsedSinceStateChange < STABILIZATION_MS) {
         return false;
     }
 
-    // Debounce check: ensure we don't notify too frequently
+    // Debounce check to ensure we don't notify too frequently
     auto elapsedSinceLastNotify = chrono::duration_cast<chrono::milliseconds>(now - lastNotifyTime).count();
 
     if (elapsedSinceLastNotify < DEBOUNCE_MS) {
@@ -224,19 +224,19 @@ static bool processPotentialDisplayChange() {
      * Suppress notification if the normalized set equals the last-notified set. This prevents re-notifying the same
      * stable configuration repeatedly and matches the user's preference to only care about current state
      */
-    if (!lastNotifiedNormalizedIds.empty() && normalizedCurrent == lastNotifiedNormalizedIds) {
+    if (!lastNotifiedNormalizedSignatures.empty() && normalizedCurrent == lastNotifiedNormalizedSignatures) {
         return false;
     }
 
     /*
      * Update lastNotifyTime before calling notifyJava so elapsed calculations remain consistent even if notifyJava
-     * blocks briefly.
+     * blocks briefly
      */
     lastNotifyTime = now;
     notifyJava();
 
     // Record what we notified
-    lastNotifiedNormalizedIds = normalizedCurrent;
+    lastNotifiedNormalizedSignatures = normalizedCurrent;
 
     return true;
 }
@@ -288,7 +288,7 @@ static void notifyJava() {
 /**
  * Message loop runner executed on a dedicated thread. Creates a hidden top-level window to receive WM_DISPLAYCHANGE and
  * WM_DEVICECHANGE broadcasts, registers for monitor device interface notifications, and periodically polls the visible
- * display configuration using getVisibleDisplayIds().
+ * display configuration using getVisibleDisplaySignatures().
  */
 static void runMessageLoopThread() {
     WNDCLASSW windowClass = {};
@@ -326,14 +326,14 @@ static void runMessageLoopThread() {
     lastPollTime = chrono::steady_clock::now() - chrono::milliseconds(POLL_INTERVAL_MS);
 
     try {
-        lastVisibleDisplayIds = getVisibleDisplayIds();
+        lastVisibleSignatures = getVisibleDisplaySignatures();
     } catch (...) {
-        lastVisibleDisplayIds.clear();
+        lastVisibleSignatures.clear();
     }
 
     // Cache normalized initial state and avoid notifying on startup
-    lastNormalizedVisibleIds = normalizeDisplayIds(lastVisibleDisplayIds);
-    lastNotifiedNormalizedIds = lastNormalizedVisibleIds;
+    lastNormalizedSignatures = normalizeSignatures(lastVisibleSignatures);
+    lastNotifiedNormalizedSignatures = lastNormalizedSignatures;
 
     lastStateChangeTime = chrono::steady_clock::now();
 

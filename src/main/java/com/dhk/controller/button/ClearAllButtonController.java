@@ -79,7 +79,7 @@ public class ClearAllButtonController extends AbstractButtonController implement
 
     @Override
     public void initListeners() {
-        view.getClearAllButton().addActionListener(_ -> clearAllButtonAction());
+        view.getClearAllButton().addActionListener(e -> clearAllButtonAction());
 
         initStateChangeListeners(view.getClearAllButton(), view.getDefaultFocusComponent());
     }

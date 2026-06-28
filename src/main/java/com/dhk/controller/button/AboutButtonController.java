@@ -55,7 +55,7 @@ public class AboutButtonController extends AbstractButtonController implements I
 
     @Override
     public void initListeners() {
-        view.getAboutButton().addActionListener(_ -> aboutButtonAction());
+        view.getAboutButton().addActionListener(e -> aboutButtonAction());
 
         initStateChangeListeners(view.getAboutButton(), view.getDefaultFocusComponent());
     }

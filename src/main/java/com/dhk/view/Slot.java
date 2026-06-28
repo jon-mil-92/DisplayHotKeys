@@ -71,7 +71,7 @@ public class Slot {
         String slotID = Integer.toString(slotIndex + 1);
 
         slotIndicatorLabel = new JLabel("Slot " + slotID + " :", SwingConstants.CENTER);
-        slotIndicatorLabel.setPreferredSize(new Dimension(50, 28));
+        slotIndicatorLabel.setPreferredSize(new Dimension(52, 28));
 
         ButtonProperties applyDisplayModeButtonProps = new ButtonProperties("Apply Display Mode", new Dimension(20, 20),
                 0.80f, 0.68f);

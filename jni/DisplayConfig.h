@@ -101,6 +101,15 @@ vector<string> getQueryDisplayConfigDisplayIds();
 vector<string> getVisibleDisplayIds();
 
 /**
+ * Gets a per-display signature for each currently visible display. Each signature is the display's stable ID followed
+ * by its source resolution, desktop position, rotation, and relative DPI scale index, so that resolution, DPI, and
+ * orientation changes are detectable even when the set of visible displays is unchanged.
+ *
+ * @return A vector of signatures (stable ID plus geometry) for the currently visible displays
+ */
+vector<string> getVisibleDisplaySignatures();
+
+/**
  * Gets the index in the EnumDisplayDevices display ID vector for the given display ID.
  *
  * @param displayId

@@ -56,7 +56,40 @@ public abstract class AbstractButton extends JButton {
     private transient Timer tooltipDelayTimer;
     private volatile boolean tooltipCreating;
 
-    private static final int TOOLTIP_DELAY_MS = 300;
+    /**
+     * The delay before the tooltip appears after hovering over the button.
+     */
+    private static final int TOOLTIP_DELAY_MS = 600;
+
+    /**
+     * Pixels between the button's bottom edge and the tooltip when it is shown below the button.
+     */
+    private static final int TOOLTIP_GAP_BELOW_PX = 18;
+
+    /**
+     * Pixels between the button's top edge and the tooltip when there is no room below and it flips above.
+     */
+    private static final int TOOLTIP_GAP_ABOVE_PX = 8;
+
+    /**
+     * Minimum number of pixels kept between the tooltip and the edges of the layered pane.
+     */
+    private static final int TOOLTIP_EDGE_MARGIN_PX = 8;
+
+    /**
+     * Inner vertical padding (top and bottom) around the tooltip text.
+     */
+    private static final int TOOLTIP_PADDING_VERTICAL_PX = 6;
+
+    /**
+     * Inner horizontal padding (left and right) around the tooltip text.
+     */
+    private static final int TOOLTIP_PADDING_HORIZONTAL_PX = 6;
+
+    /**
+     * Fallback tooltip background used when the active look and feel does not define one.
+     */
+    private static final Color TOOLTIP_DEFAULT_BACKGROUND = new Color(255, 255, 210);
 
     /**
      * Default constructor for the {@link AbstractButton} class.
@@ -172,6 +205,25 @@ public abstract class AbstractButton extends JButton {
     }
 
     /**
+     * Remove listeners and hide any visible tooltip.
+     */
+    private void uninstallLightweightTooltip() {
+        cancelScheduledShow();
+
+        if (tooltipMouseAdapter != null) {
+            try {
+                removeMouseListener(tooltipMouseAdapter);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                tooltipMouseAdapter = null;
+            }
+        }
+
+        hideLightweightTooltip();
+    }
+
+    /**
      * Schedule showing the tooltip after a short delay
      *
      * @param mouseEvent
@@ -180,7 +232,7 @@ public abstract class AbstractButton extends JButton {
     private void scheduleShowTooltip(MouseEvent mouseEvent) {
         cancelScheduledShow();
 
-        tooltipDelayTimer = new Timer(TOOLTIP_DELAY_MS, _ -> showLightweightTooltip(mouseEvent));
+        tooltipDelayTimer = new Timer(TOOLTIP_DELAY_MS, e -> showLightweightTooltip(mouseEvent));
         tooltipDelayTimer.setRepeats(false);
         tooltipDelayTimer.start();
     }
@@ -201,25 +253,6 @@ public abstract class AbstractButton extends JButton {
     }
 
     /**
-     * Remove listeners and hide any visible tooltip.
-     */
-    private void uninstallLightweightTooltip() {
-        cancelScheduledShow();
-
-        if (tooltipMouseAdapter != null) {
-            try {
-                removeMouseListener(tooltipMouseAdapter);
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                tooltipMouseAdapter = null;
-            }
-        }
-
-        hideLightweightTooltip();
-    }
-
-    /**
      * Show a lightweight tooltip by adding a JLabel directly into the frame's layered pane. Measures after adding so
      * the full text is visible.
      *
@@ -235,105 +268,19 @@ public abstract class AbstractButton extends JButton {
         synchronized (this) {
             if (tooltipCreating) {
                 return;
-            } else {
-                tooltipCreating = true;
             }
+
+            tooltipCreating = true;
         }
 
         hideLightweightTooltip();
 
         try {
-            if (tooltipText == null || tooltipText.isEmpty()) {
-                tooltipCreating = false;
-                return;
-            }
-
-            Window window = SwingUtilities.getWindowAncestor(this);
-
-            if (!(window instanceof JFrame)) {
-                tooltipCreating = false;
-                return;
-            }
-
-            JFrame frame = (JFrame) window;
-            JLayeredPane layeredPane = frame.getLayeredPane();
-
-            if (!frame.isShowing() || !layeredPane.isShowing()) {
-                tooltipCreating = false;
-                return;
-            }
-
-            JLabel tooltipLabel = new JLabel(tooltipText);
-            tooltipLabel.setOpaque(true);
-
-            Color background = UIManager.getColor("ToolTip.background");
-
-            if (background == null) {
-                background = new Color(255, 255, 210);
-            }
-
-            tooltipLabel.setBackground(background);
-
-            Color foreground = UIManager.getColor("ToolTip.foreground");
-
-            if (foreground != null) {
-                tooltipLabel.setForeground(foreground);
-            }
-
-            tooltipLabel.setFont(UIManager.getFont("ToolTip.font"));
-
-            tooltipLabel.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.GRAY),
-                    BorderFactory.createEmptyBorder(4, 6, 4, 6)));
-
-            // Add with temporary bounds so UI is installed and preferred size is accurate immediately
-            tooltipLabel.setBounds(0, 0, 1, 1);
-            layeredPane.add(tooltipLabel, JLayeredPane.POPUP_LAYER);
-
-            // Force UI delegate to install and compute preferred size
-            layeredPane.revalidate();
-            tooltipLabel.invalidate();
-            tooltipLabel.validate();
-
-            Dimension pref = tooltipLabel.getPreferredSize();
-            int tooltipW = pref.width;
-            int tooltipH = pref.height;
-
-            Point compPoint = new Point(getWidth() / 2, getHeight() + 4);
-            Point layeredPoint = SwingUtilities.convertPoint(this, compPoint, layeredPane);
-            layeredPoint.x -= tooltipW / 2;
-
-            int margin = 4;
-            int maxX = Math.max(margin, layeredPane.getWidth() - tooltipW - margin);
-            int maxY = Math.max(margin, layeredPane.getHeight() - tooltipH - margin);
-
-            if (layeredPoint.x < margin) {
-                layeredPoint.x = margin;
-            }
-
-            if (layeredPoint.x > maxX) {
-                layeredPoint.x = maxX;
-            }
-
-            if (layeredPoint.y > maxY) {
-                Point compAbove = new Point(getWidth() / 2, -tooltipH - 4);
-                Point layeredAbove = SwingUtilities.convertPoint(this, compAbove, layeredPane);
-                int aboveY = Math.max(margin, Math.min(layeredAbove.y, maxY));
-                layeredPoint.y = aboveY;
-            } else {
-                if (layeredPoint.y < margin) {
-                    layeredPoint.y = margin;
-                }
-            }
-
-            tooltipLabel.setBounds(layeredPoint.x, layeredPoint.y, tooltipW, tooltipH);
-            layeredPane.revalidate();
-            layeredPane.repaint();
-
-            layeredTooltipLabel = tooltipLabel;
-            tooltipCreating = false;
+            layeredTooltipLabel = createAndPlaceTooltip();
         } catch (Throwable t) {
             t.printStackTrace();
             layeredTooltipLabel = null;
+        } finally {
             tooltipCreating = false;
         }
     }
@@ -362,6 +309,147 @@ public abstract class AbstractButton extends JButton {
                 layeredTooltipLabel = null;
             }
         }
+    }
+
+    /**
+     * Build the styled tooltip label, add it to the frame's layered pane, and position it relative to this button.
+     *
+     * @return The placed tooltip label, or {@code null} if there is no text to show or no suitable layered pane
+     */
+    private JLabel createAndPlaceTooltip() {
+        if (tooltipText == null || tooltipText.isEmpty()) {
+            return null;
+        }
+
+        JLayeredPane layeredPane = resolveTooltipLayeredPane();
+
+        if (layeredPane == null) {
+            return null;
+        }
+
+        JLabel tooltipLabel = createTooltipLabel(tooltipText);
+
+        // Add with temporary bounds so the UI delegate is installed and the preferred size is accurate immediately
+        tooltipLabel.setBounds(0, 0, 1, 1);
+        layeredPane.add(tooltipLabel, JLayeredPane.POPUP_LAYER);
+
+        // Force the UI delegate to install and compute the preferred size
+        layeredPane.revalidate();
+        tooltipLabel.invalidate();
+        tooltipLabel.validate();
+
+        Dimension pref = tooltipLabel.getPreferredSize();
+        Point location = computeTooltipLocation(pref.width, pref.height, layeredPane);
+
+        tooltipLabel.setBounds(location.x, location.y, pref.width, pref.height);
+        layeredPane.revalidate();
+        layeredPane.repaint();
+
+        return tooltipLabel;
+    }
+
+    /**
+     * Resolve the layered pane of the frame hosting this button, suitable for displaying the tooltip.
+     *
+     * @return The frame's layered pane, or {@code null} if this button is not hosted in a showing {@link JFrame}
+     */
+    private JLayeredPane resolveTooltipLayeredPane() {
+        Window window = SwingUtilities.getWindowAncestor(this);
+
+        if (!(window instanceof JFrame)) {
+            return null;
+        }
+
+        JFrame frame = (JFrame) window;
+        JLayeredPane layeredPane = frame.getLayeredPane();
+
+        if (!frame.isShowing() || !layeredPane.isShowing()) {
+            return null;
+        }
+
+        return layeredPane;
+    }
+
+    /**
+     * Create a tooltip label styled to match the active look and feel's tooltip colors, font, and border.
+     *
+     * @param text
+     *            - The text to display in the tooltip
+     *
+     * @return The styled tooltip label
+     */
+    private JLabel createTooltipLabel(String text) {
+        JLabel tooltipLabel = new JLabel(text);
+        tooltipLabel.setOpaque(true);
+
+        Color background = UIManager.getColor("ToolTip.background");
+        tooltipLabel.setBackground(background != null ? background : TOOLTIP_DEFAULT_BACKGROUND);
+
+        Color foreground = UIManager.getColor("ToolTip.foreground");
+
+        if (foreground != null) {
+            tooltipLabel.setForeground(foreground);
+        }
+
+        tooltipLabel.setFont(UIManager.getFont("ToolTip.font"));
+
+        tooltipLabel.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Color.GRAY),
+                BorderFactory.createEmptyBorder(TOOLTIP_PADDING_VERTICAL_PX, TOOLTIP_PADDING_HORIZONTAL_PX,
+                        TOOLTIP_PADDING_VERTICAL_PX, TOOLTIP_PADDING_HORIZONTAL_PX)));
+
+        return tooltipLabel;
+    }
+
+    /**
+     * Compute the tooltip's top-left location within the layered pane. The tooltip is centered below the button by
+     * default, kept within the pane edges, and flipped above the button when there is not enough room below.
+     *
+     * @param tooltipW
+     *            - The tooltip width in pixels
+     * @param tooltipH
+     *            - The tooltip height in pixels
+     * @param layeredPane
+     *            - The layered pane the tooltip is positioned within
+     *
+     * @return The top-left point for the tooltip, in layered-pane coordinates
+     */
+    private Point computeTooltipLocation(int tooltipW, int tooltipH, JLayeredPane layeredPane) {
+        // Start centered horizontally and offset below the button so the mouse pointer does not obstruct it
+        Point below = new Point(getWidth() / 2, getHeight() + TOOLTIP_GAP_BELOW_PX);
+        Point location = SwingUtilities.convertPoint(this, below, layeredPane);
+        location.x -= tooltipW / 2;
+
+        int maxX = Math.max(TOOLTIP_EDGE_MARGIN_PX, layeredPane.getWidth() - tooltipW - TOOLTIP_EDGE_MARGIN_PX);
+        int maxY = Math.max(TOOLTIP_EDGE_MARGIN_PX, layeredPane.getHeight() - tooltipH - TOOLTIP_EDGE_MARGIN_PX);
+
+        location.x = clamp(location.x, TOOLTIP_EDGE_MARGIN_PX, maxX);
+
+        if (location.y > maxY) {
+            // Not enough room below, flip the tooltip above the button
+            Point above = new Point(getWidth() / 2, -tooltipH - TOOLTIP_GAP_ABOVE_PX);
+            Point layeredAbove = SwingUtilities.convertPoint(this, above, layeredPane);
+            location.y = Math.max(TOOLTIP_EDGE_MARGIN_PX, Math.min(layeredAbove.y, maxY));
+        } else if (location.y < TOOLTIP_EDGE_MARGIN_PX) {
+            location.y = TOOLTIP_EDGE_MARGIN_PX;
+        }
+
+        return location;
+    }
+
+    /**
+     * Clamp a value to the inclusive range {@code [min, max]}.
+     *
+     * @param value
+     *            - The value to clamp
+     * @param min
+     *            - The lower bound
+     * @param max
+     *            - The upper bound
+     *
+     * @return The clamped value
+     */
+    private static int clamp(int value, int min, int max) {
+        return Math.min(Math.max(value, min), max);
     }
 
 }

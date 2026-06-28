@@ -174,6 +174,17 @@ public class DhkController implements IController {
                 displayNotifications = null;
             }
         }
+
+        // Stop any pending deferred re-initialization so the Timer cannot fire against a disposed view
+        if (displayConfigUpdater != null) {
+            try {
+                displayConfigUpdater.cleanUp();
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                displayConfigUpdater = null;
+            }
+        }
     }
 
     /**

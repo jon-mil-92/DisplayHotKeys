@@ -10,8 +10,8 @@ CompileFlags:
     - -DWIN32_LEAN_AND_MEAN
     - -D__MINGW64__
     - -D__x86_64__
-    - -IC:/jdk25/include
-    - -IC:/jdk25/include/win32
+    - -IC:/jdk21/include
+    - -IC:/jdk21/include/win32
     - -I${workspaceFolder}/jni
     - -isystem C:/msys64/mingw64/include
     - -isystem C:/msys64/mingw64/include/c++/16.1.0

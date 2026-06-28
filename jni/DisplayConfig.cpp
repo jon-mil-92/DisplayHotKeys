@@ -89,10 +89,13 @@ DisplayConfig getDisplayConfig() {
  *
  * @param flags
  *        - The QueryDisplayConfig flags (e.g., QDC_ONLY_ACTIVE_PATHS or QDC_DATABASE_CURRENT)
+ * @param includeGeometry
+ *        - When true, each entry is the stable ID plus its resolution, position, rotation, and DPI scale index; when
+ *          false, each entry is just the stable ID
  *
- * @return A vector of stable display IDs for the visible displays according to the given flags
+ * @return A vector of stable display IDs (optionally with geometry appended) for the visible displays
  */
-static vector<string> queryVisibleDisplayIdsWithFlags(UINT32 flags) {
+static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGeometry) {
     vector<string> visible;
 
     UINT32 numPath = 0;
@@ -160,9 +163,30 @@ static vector<string> queryVisibleDisplayIdsWithFlags(UINT32 flags) {
         target.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
         target.header.size = sizeof(target);
 
-        if (DisplayConfigGetDeviceInfo(&target.header) == ERROR_SUCCESS) {
-            visible.push_back(buildStableDisplayId(target.monitorDevicePath));
+        if (DisplayConfigGetDeviceInfo(&target.header) != ERROR_SUCCESS) {
+            continue;
         }
+
+        string entry = buildStableDisplayId(target.monitorDevicePath);
+
+        if (includeGeometry) {
+            // Resolution, desktop position, and rotation so a mode or orientation change is reflected in the signature
+            entry += "|" + to_string(src.width) + "x" + to_string(src.height) + "|" + to_string(src.position.x) + "," +
+                     to_string(src.position.y) + "|r" + to_string((int) path.targetInfo.rotation);
+
+            // Relative current DPI scale index so a DPI scale change is reflected in the signature
+            DISPLAYCONFIG_GET_DPI_SCALE_INDICES dpiIndices = {};
+            dpiIndices.header.type = (DISPLAYCONFIG_DEVICE_INFO_TYPE) DISPLAYCONFIG_DEVICE_INFO_HEADER_GET_DPI_TYPE;
+            dpiIndices.header.size = sizeof(dpiIndices);
+            dpiIndices.header.adapterId = path.sourceInfo.adapterId;
+            dpiIndices.header.id = path.sourceInfo.id;
+
+            if (DisplayConfigGetDeviceInfo(&dpiIndices.header) == ERROR_SUCCESS) {
+                entry += "|d" + to_string(dpiIndices.relativeCurrentDpiScaleIndex);
+            }
+        }
+
+        visible.push_back(entry);
     }
 
     delete[] pathArray;
@@ -180,13 +204,31 @@ static vector<string> queryVisibleDisplayIdsWithFlags(UINT32 flags) {
  * @return A vector of stable display IDs for the currently visible displays
  */
 vector<string> getVisibleDisplayIds() {
-    vector<string> displayIds = queryVisibleDisplayIdsWithFlags(QDC_ONLY_ACTIVE_PATHS);
+    vector<string> displayIds = queryVisibleDisplaysWithFlags(QDC_ONLY_ACTIVE_PATHS, false);
 
     if (!displayIds.empty()) {
         return displayIds;
     }
 
-    return queryVisibleDisplayIdsWithFlags(QDC_DATABASE_CURRENT);
+    return queryVisibleDisplaysWithFlags(QDC_DATABASE_CURRENT, false);
+}
+
+/**
+ * Gets a per-display signature for each currently visible display. Each signature is the display's stable ID plus its
+ * source resolution, desktop position, rotation, and relative DPI scale index, so resolution, DPI, and orientation
+ * changes are detectable even when the set of visible displays is unchanged. Falls back to QDC_DATABASE_CURRENT when
+ * QDC_ONLY_ACTIVE_PATHS yields nothing, matching getVisibleDisplayIds().
+ *
+ * @return A vector of signatures (stable ID plus geometry) for the currently visible displays
+ */
+vector<string> getVisibleDisplaySignatures() {
+    vector<string> signatures = queryVisibleDisplaysWithFlags(QDC_ONLY_ACTIVE_PATHS, true);
+
+    if (!signatures.empty()) {
+        return signatures;
+    }
+
+    return queryVisibleDisplaysWithFlags(QDC_DATABASE_CURRENT, true);
 }
 
 /**

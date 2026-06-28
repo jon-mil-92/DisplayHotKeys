@@ -25,23 +25,18 @@ import java.awt.event.WindowListener;
 import com.dhk.model.DhkModel;
 import com.dhk.view.DhkView;
 import com.dhk.view.MinimizeToTray;
-import com.dhk.view.ViewRefresher;
 
 /**
- * Controls the application's window. The window listener is initialized with this class. It defines how often the view
- * should be refreshed, and it initializes the object that allows the application to be minimized to the system tray and
- * restored from the system tray.
+ * Controls the application's window. The window listener is initialized with this class, and it initializes the object
+ * that allows the application to be minimized to the system tray and restored from the system tray.
  *
  * @author Jonathan R. Miller
  */
 public class WindowController implements IController, WindowListener {
 
-    private ViewRefresher viewRefresher;
     private MinimizeToTray minimizeToTray;
     private DhkModel model;
     private DhkView view;
-
-    private static final int REFRESH_INTERVAL = 250;
 
     /**
      * Constructor for the {@link WindowController} class.
@@ -58,9 +53,7 @@ public class WindowController implements IController, WindowListener {
 
     @Override
     public void initController() {
-        viewRefresher = new ViewRefresher(view, REFRESH_INTERVAL);
-        viewRefresher.start();
-        minimizeToTray = new MinimizeToTray(model, view, viewRefresher, "/tray_icon.png");
+        minimizeToTray = new MinimizeToTray(model, view, "/tray_icon.png");
     }
 
     @Override
@@ -71,7 +64,6 @@ public class WindowController implements IController, WindowListener {
     @Override
     public void cleanUp() {
         shutDownSystemTray();
-        viewRefresher.stop();
     }
 
     @Override
@@ -85,8 +77,6 @@ public class WindowController implements IController, WindowListener {
                 minimizeToTray.execute();
             }
         }
-
-        viewRefresher.suspend();
     }
 
     @Override
@@ -95,13 +85,11 @@ public class WindowController implements IController, WindowListener {
 
     @Override
     public void windowDeiconified(WindowEvent e) {
-        viewRefresher.resume();
     }
 
     @Override
     public void windowClosing(WindowEvent e) {
         shutDownSystemTray();
-        viewRefresher.stop();
         System.exit(0);
     }
 

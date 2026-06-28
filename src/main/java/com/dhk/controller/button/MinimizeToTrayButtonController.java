@@ -59,7 +59,7 @@ public class MinimizeToTrayButtonController extends AbstractButtonController imp
 
     @Override
     public void initListeners() {
-        view.getMinimizeToTrayButton().addActionListener(_ -> minimizeToTrayButtonAction());
+        view.getMinimizeToTrayButton().addActionListener(e -> minimizeToTrayButtonAction());
 
         initStateChangeListeners(view.getMinimizeToTrayButton(), view.getDefaultFocusComponent());
     }

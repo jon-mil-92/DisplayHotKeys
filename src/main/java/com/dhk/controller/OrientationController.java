@@ -82,7 +82,7 @@ public class OrientationController implements IController {
                 int slotIndex = j;
 
                 view.getSlot(displayIndex, slotIndex).getOrientationModes()
-                        .addActionListener(_ -> orientationModeAction(displayIndex, slotIndex));
+                        .addActionListener(e -> orientationModeAction(displayIndex, slotIndex));
             }
         }
     }

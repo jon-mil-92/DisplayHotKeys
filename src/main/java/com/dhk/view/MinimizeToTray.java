@@ -41,7 +41,6 @@ public class MinimizeToTray {
 
     private DhkView view;
     private JFrame frame;
-    private ViewRefresher viewRefresher;
     private SystemTray systemTray;
     private AboutDialog aboutDialog;
     private Image minimizedToTrayIcon;
@@ -53,14 +52,11 @@ public class MinimizeToTray {
      *            - The model for the application
      * @param view
      *            - The view for the application
-     * @param viewRefresher
-     *            - The refresher for the given view
      * @param iconResourcePath
      *            - The icon resource path for the tray icon
      */
-    public MinimizeToTray(DhkModel model, DhkView view, ViewRefresher viewRefresher, String iconResourcePath) {
+    public MinimizeToTray(DhkModel model, DhkView view, String iconResourcePath) {
         this.view = view;
-        this.viewRefresher = viewRefresher;
 
         frame = view.getFrame();
         aboutDialog = new AboutDialog(model, view);
@@ -149,7 +145,6 @@ public class MinimizeToTray {
         });
 
         hideSystemTray();
-        viewRefresher.resume();
     }
 
     /**
@@ -166,7 +161,6 @@ public class MinimizeToTray {
     private void exitAction() {
         hideSystemTray();
         systemTray.shutdown();
-        viewRefresher.stop();
         System.exit(0);
     }
 

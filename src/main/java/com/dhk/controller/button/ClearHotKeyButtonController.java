@@ -74,7 +74,7 @@ public class ClearHotKeyButtonController extends AbstractButtonController implem
                 int slotIndex = j;
 
                 view.getSlot(displayIndex, slotIndex).getClearHotKeyButton()
-                        .addActionListener(_ -> slotClearHotKeyEvent(displayIndex, slotIndex));
+                        .addActionListener(e -> slotClearHotKeyEvent(displayIndex, slotIndex));
 
                 initStateChangeListeners(view.getSlot(displayIndex, slotIndex).getClearHotKeyButton(),
                         view.getDefaultFocusComponent());

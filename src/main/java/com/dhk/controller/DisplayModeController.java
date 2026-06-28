@@ -67,7 +67,7 @@ public class DisplayModeController implements IController {
                 int slotIndex = j;
 
                 view.getSlot(displayIndex, slotIndex).getDisplayModes()
-                        .addActionListener(_ -> saveSlotDisplayMode(displayIndex, slotIndex));
+                        .addActionListener(e -> saveSlotDisplayMode(displayIndex, slotIndex));
             }
         }
     }
