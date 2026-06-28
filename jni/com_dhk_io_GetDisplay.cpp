@@ -239,7 +239,7 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_getSupportedDpiScalePerce
         int32_t effectiveLong = longEdge * 100 / percentage;
         int32_t effectiveShort = shortEdge * 100 / percentage;
 
-        // 100% is always supported and percentages ascend, so stop at the first one that does not fit
+        // Index 0 (100%) is always supported and percentages ascend, so stop at the first one that does not fit
         if (i == 0 || (effectiveLong >= MIN_EFFECTIVE_LONG_EDGE && effectiveShort >= MIN_EFFECTIVE_SHORT_EDGE)) {
             supported.push_back(percentage);
         } else {

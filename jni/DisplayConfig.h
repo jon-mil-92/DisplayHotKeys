@@ -35,11 +35,12 @@ static const int32_t DISPLAYCONFIG_DEVICE_INFO_HEADER_GET_DPI_TYPE = -3;
 static const int32_t DISPLAYCONFIG_DEVICE_INFO_HEADER_SET_DPI_TYPE = -4;
 
 /*
- * Minimum effective (logical) resolution Windows keeps usable when capping the maximum DPI scale. Windows only offers a
- * DPI scale percentage while the effective resolution it produces (raw resolution divided by the scale factor) stays at
- * or above this floor on both edges, so the supported set shrinks as the resolution drops and collapses to 100% only at
- * very low resolutions. The floor is compared against the long and short edges of the resolution so the supported set
- * is independent of orientation. Tune these two constants to widen or narrow the offered percentages.
+ * Minimum effective (logical) resolution Windows keeps usable when capping the maximum DPI scale. Windows only
+ * offers a DPI scale percentage while the effective resolution it produces (raw resolution divided by the scale
+ * factor) stays at or above this floor on both edges, so the supported set shrinks as the resolution drops and
+ * collapses to 100% only at very low resolutions. The floor is compared against the long and short edges of the
+ * resolution so the supported set is independent of orientation. Tune these two constants to widen or narrow the
+ * offered percentages.
  */
 static const int32_t MIN_EFFECTIVE_LONG_EDGE = 800;
 static const int32_t MIN_EFFECTIVE_SHORT_EDGE = 600;
