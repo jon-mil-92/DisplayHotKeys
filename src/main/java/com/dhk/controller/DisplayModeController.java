@@ -94,6 +94,9 @@ public class DisplayModeController implements IController {
         settingsMgr.saveIniSlotDisplayMode(displayId, slotId, selectedDisplayMode.getWidth(),
                 selectedDisplayMode.getHeight(), selectedDisplayMode.getBitDepth(),
                 selectedDisplayMode.getRefreshRate());
+
+        // Refresh the DPI Scale combo box for the new resolution, falling back to a supported percentage if needed
+        view.updateSlotDpiScalePercentages(displayIndex, slotIndex);
     }
 
 }

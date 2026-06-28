@@ -72,6 +72,18 @@ public class GetDisplay {
     private native String[] enumVisibleDisplayIds();
 
     /**
+     * Defines a JNI function to compute the supported DPI scale percentages for the given resolution.
+     *
+     * @param width
+     *            - The horizontal resolution to get the supported DPI scale percentages for
+     * @param height
+     *            - The vertical resolution to get the supported DPI scale percentages for
+     *
+     * @return The array of supported DPI scale percentages for the given resolution
+     */
+    private native int[] getSupportedDpiScalePercentages(int width, int height);
+
+    /**
      * Gets the current supported display modes for the given display.
      *
      * @param displayId
@@ -103,6 +115,28 @@ public class GetDisplay {
      */
     public String[] getVisibleDisplayIds() {
         return enumVisibleDisplayIds();
+    }
+
+    /**
+     * Gets the supported DPI scale percentages for the given resolution. The supported set matches the percentages
+     * Windows would offer for that resolution.
+     *
+     * @param width
+     *            - The horizontal resolution to get the supported DPI scale percentages for
+     * @param height
+     *            - The vertical resolution to get the supported DPI scale percentages for
+     *
+     * @return The array of supported DPI scale percentages for the given resolution
+     */
+    public Integer[] getDpiScalePercentages(int width, int height) {
+        int[] supportedDpiScalePercentages = getSupportedDpiScalePercentages(width, height);
+        Integer[] dpiScalePercentages = new Integer[supportedDpiScalePercentages.length];
+
+        for (int i = 0; i < supportedDpiScalePercentages.length; i++) {
+            dpiScalePercentages[i] = supportedDpiScalePercentages[i];
+        }
+
+        return dpiScalePercentages;
     }
 
 }

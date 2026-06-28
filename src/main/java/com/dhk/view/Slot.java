@@ -22,8 +22,10 @@ package com.dhk.view;
 import java.awt.Dimension;
 import java.awt.DisplayMode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -147,6 +149,26 @@ public class Slot {
      */
     public JComboBox<Integer> getDpiScalePercentages() {
         return slotDpiScalePercentages;
+    }
+
+    /**
+     * Replaces the items in the DPI scale percentages combo box with the given supported percentages. The previously
+     * selected percentage is preserved when it is still supported; otherwise the combo box falls back to the first
+     * (lowest) supported percentage. This is used to reflect the variable set of DPI scale percentages Windows supports
+     * for the slot's currently selected resolution.
+     *
+     * @param dpiScalePercentages
+     *            - The array of supported DPI scale percentages to populate the combo box with
+     */
+    public void setDpiScalePercentages(Integer[] dpiScalePercentages) {
+        Integer previouslySelected = (Integer) slotDpiScalePercentages.getSelectedItem();
+
+        // Replacing the model leaves the registered action listeners attached so model updates still fire
+        slotDpiScalePercentages.setModel(new DefaultComboBoxModel<Integer>(dpiScalePercentages));
+
+        if (previouslySelected != null && Arrays.asList(dpiScalePercentages).contains(previouslySelected)) {
+            slotDpiScalePercentages.setSelectedItem(previouslySelected);
+        }
     }
 
     /**

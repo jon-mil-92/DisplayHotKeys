@@ -155,4 +155,19 @@ public class DisplayConfig {
         return numOfConnectedDisplays;
     }
 
+    /**
+     * Gets the array of supported DPI scale percentages for the given resolution. The supported set for a slot reflects
+     * the DPI scale percentages Windows would offer for its selected resolution. The result is orientation-independent.
+     *
+     * @param width
+     *            - The horizontal resolution to get the supported DPI scale percentages for
+     * @param height
+     *            - The vertical resolution to get the supported DPI scale percentages for
+     *
+     * @return The array of supported DPI scale percentages for the given resolution
+     */
+    public Integer[] getSupportedDpiScalePercentages(int width, int height) {
+        return getDisplay.getDpiScalePercentages(width, height);
+    }
+
 }

@@ -102,7 +102,6 @@ public class DhkView implements IView {
     private static final int NUM_OF_SLOT_COMPONENTS = 9;
     private static final String[] ORIENTATION_MODES = {"Landscape", "Portrait", "iLandscape", "iPortrait"};
     private static final String[] SCALING_MODES = new String[]{"Preserved", "Stretched", "Centered"};
-    private static final Integer[] DPI_SCALE_PERCENTAGES = new Integer[]{100, 125, 150, 175, 200, 225, 250, 300, 350};
 
     /**
      * Constructor for the {@link DhkView} class.
@@ -624,7 +623,12 @@ public class DhkView implements IView {
                             ? displayConfig.getLandscapeDisplayModes(displayIds[displayIndex])
                             : displayConfig.getPortraitDisplayModes(displayIds[displayIndex]);
 
-                    slots.add(new Slot(slotIndex, displayIndex, displayModes, SCALING_MODES, DPI_SCALE_PERCENTAGES,
+                    // Offer only the DPI scale percentages Windows supports for the slot's stored resolution
+                    DisplayMode slotDisplayMode = model.getSlot(displayIndex, slotIndex).getDisplayMode();
+                    Integer[] dpiScalePercentages = displayConfig
+                            .getSupportedDpiScalePercentages(slotDisplayMode.getWidth(), slotDisplayMode.getHeight());
+
+                    slots.add(new Slot(slotIndex, displayIndex, displayModes, SCALING_MODES, dpiScalePercentages,
                             ORIENTATION_MODES));
 
                     slots.get(slotIndex).getDisplayModes()
@@ -726,6 +730,30 @@ public class DhkView implements IView {
 
         mainPanelConstraints.gridx = 8;
         mainPanel.add(changeHotKeyHeader, mainPanelConstraints);
+    }
+
+    /**
+     * Updates the DPI scale percentages combo box for the specified slot to reflect the percentages Windows supports
+     * for the slot's currently selected resolution. This is called when a new resolution is selected so the DPI Scale
+     * combo box always offers a valid set of percentages for that resolution.
+     *
+     * @param displayIndex
+     *            - The index of the display the slot resides in
+     * @param slotIndex
+     *            - The index of the slot to update the DPI scale percentages for
+     */
+    public void updateSlotDpiScalePercentages(int displayIndex, int slotIndex) {
+        DisplayMode selectedDisplayMode = (DisplayMode) getSlot(displayIndex, slotIndex).getDisplayModes()
+                .getSelectedItem();
+
+        if (selectedDisplayMode == null) {
+            return;
+        }
+
+        Integer[] dpiScalePercentages = model.getDisplayConfig()
+                .getSupportedDpiScalePercentages(selectedDisplayMode.getWidth(), selectedDisplayMode.getHeight());
+
+        getSlot(displayIndex, slotIndex).setDpiScalePercentages(dpiScalePercentages);
     }
 
     /**

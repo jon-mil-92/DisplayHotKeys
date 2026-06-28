@@ -51,8 +51,6 @@ public class SettingsValidator {
 
     private static final int UNSET_KEY_CODE = 0;
     private static final String[] VALID_SCALING_MODES = {"0", "1", "2"};
-    private static final String[] VALID_DPI_SCALE_PERCENTAGES = {"100", "125", "150", "175", "200", "225", "250", "300",
-            "350"};
     private static final DisplayMode DEFAULT_DISPLAY_MODE = new DisplayMode(0, 0, 0, 0);
 
     /**
@@ -320,8 +318,11 @@ public class SettingsValidator {
     }
 
     /**
-     * Validates the value for each dpiScalePercentage property from the settings file. If the value is not a valid
-     * value, then it writes the default value for the dpiScalePercentage property.
+     * Validates the value for each dpiScalePercentage property from the settings file. The set of valid DPI scale
+     * percentages depends on the slot's resolution, so each value is validated against the percentages Windows supports
+     * for that slot's stored resolution. If the value is not a supported value, then it writes the default value for
+     * the dpiScalePercentage property. This runs after the display modes are validated, so each slot's stored
+     * resolution is already a valid resolution for its display.
      */
     private void validateDpiScalePercentages() {
         for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
@@ -332,11 +333,37 @@ public class SettingsValidator {
                 String dpiScalePercentage = ini.get(iniSection, "dpiScalePercentage");
 
                 if (dpiScalePercentage == null || !isPositiveInt(dpiScalePercentage)
-                        || !Arrays.asList(VALID_DPI_SCALE_PERCENTAGES).contains(dpiScalePercentage)) {
+                        || !isSupportedDpiScalePercentage(iniSection, dpiScalePercentage)) {
                     settingsMgr.saveIniSlotDpiScalePercentage(displayId, slotId, 100);
                 }
             }
         }
+    }
+
+    /**
+     * Determines whether the given DPI scale percentage is supported for the resolution stored in the given slot
+     * section. The supported set depends on the slot's resolution, so the stored display mode width and height are used
+     * to look up the percentages Windows supports for that resolution.
+     *
+     * @param iniSection
+     *            - The slot section to read the stored resolution from
+     * @param dpiScalePercentage
+     *            - The string representation of the DPI scale percentage to check
+     *
+     * @return Whether or not the given DPI scale percentage is supported for the slot's stored resolution
+     */
+    private boolean isSupportedDpiScalePercentage(String iniSection, String dpiScalePercentage) {
+        String width = ini.get(iniSection, "displayModeWidth");
+        String height = ini.get(iniSection, "displayModeHeight");
+
+        if (width == null || !isPositiveInt(width) || height == null || !isPositiveInt(height)) {
+            return false;
+        }
+
+        Integer[] supportedDpiScalePercentages = settingsMgr.getDisplayConfig()
+                .getSupportedDpiScalePercentages(Integer.valueOf(width), Integer.valueOf(height));
+
+        return Arrays.asList(supportedDpiScalePercentages).contains(Integer.valueOf(dpiScalePercentage));
     }
 
     /**

@@ -206,6 +206,60 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumVisibleDisplayIds(
 }
 
 /**
+ * Computes the DPI scale percentages Windows supports for the given resolution. Windows caps the maximum DPI scale so
+ * the effective (logical) resolution stays usable, which is why fewer scales are offered as the resolution drops and
+ * only 100% remains at very low resolutions. The supported set always starts at 100% and includes each higher
+ * percentage while the effective resolution it produces stays at or above the usable floor on both edges. Because
+ * Windows reports the live range only for the currently applied resolution, this resolution-derived computation lets a
+ * not-yet-applied resolution (such as one selected in the UI) report its supported scales without changing the mode.
+ *
+ * @param env
+ *        - The JNI environment pointer
+ * @param obj
+ *        - The Java GetDisplay instance
+ * @param width
+ *        - The horizontal resolution to compute supported DPI scale percentages for
+ * @param height
+ *        - The vertical resolution to compute supported DPI scale percentages for
+ *
+ * @return An int[] of supported DPI scale percentages (always at least {100}), or null on native failure
+ */
+JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_getSupportedDpiScalePercentages(JNIEnv *env, jobject obj,
+                                                                                       jint width, jint height) {
+    (void) obj;
+
+    // Compare against the long and short edges so the supported set does not depend on orientation
+    int32_t longEdge = (width >= height) ? width : height;
+    int32_t shortEdge = (width >= height) ? height : width;
+
+    vector<int32_t> supported;
+
+    for (int32_t i = 0; i < NUM_OF_DPI_SCALE_PERCENTAGES; i++) {
+        int32_t percentage = DPI_SCALE_PERCENTAGES.at(i);
+        int32_t effectiveLong = longEdge * 100 / percentage;
+        int32_t effectiveShort = shortEdge * 100 / percentage;
+
+        // 100% is always supported and percentages ascend, so stop at the first one that does not fit
+        if (i == 0 || (effectiveLong >= MIN_EFFECTIVE_LONG_EDGE && effectiveShort >= MIN_EFFECTIVE_SHORT_EDGE)) {
+            supported.push_back(percentage);
+        } else {
+            break;
+        }
+    }
+
+    jsize count = static_cast<jsize>(supported.size());
+    jintArray supportedArray = env->NewIntArray(count);
+
+    if (supportedArray == nullptr) {
+        return nullptr;
+    }
+
+    env->SetIntArrayRegion(supportedArray, 0, count, reinterpret_cast<const jint *>(supported.data()));
+
+    return supportedArray;
+}
+
+/**
  * Gets the orientation for the given display.
  *
  * @param env
