@@ -69,7 +69,7 @@ public abstract class AbstractButton extends JButton {
     /**
      * Pixels between the button's top edge and the tooltip when there is no room below and it flips above.
      */
-    private static final int TOOLTIP_GAP_ABOVE_PX = 8;
+    private static final int TOOLTIP_GAP_ABOVE_PX = 18;
 
     /**
      * Minimum number of pixels kept between the tooltip and the edges of the layered pane.
