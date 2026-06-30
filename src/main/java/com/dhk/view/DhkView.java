@@ -170,6 +170,7 @@ public class DhkView implements IView {
         scrollPane.getHorizontalScrollBar().setUnitIncrement(16);
 
         newFrame.setContentPane(scrollPane);
+        frame = newFrame;
         newFrame.pack();
 
         /*
@@ -218,8 +219,6 @@ public class DhkView implements IView {
             previousFrame.setVisible(false);
             previousFrame.dispose();
         }
-
-        frame = newFrame;
 
         getDefaultFocusComponent().requestFocusInWindow();
     }
@@ -763,15 +762,6 @@ public class DhkView implements IView {
      */
     public JFrame getFrame() {
         return frame;
-    }
-
-    /**
-     * Gets the frame's main panel.
-     *
-     * @return The frame's main panel
-     */
-    public JPanel getMainPanel() {
-        return mainPanel;
     }
 
     /**

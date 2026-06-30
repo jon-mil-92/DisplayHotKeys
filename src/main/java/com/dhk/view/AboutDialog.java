@@ -50,6 +50,7 @@ import com.dhk.controller.button.PaypalDonateButtonController;
 import com.dhk.model.DhkModel;
 import com.dhk.model.button.ButtonProperties;
 import com.dhk.model.button.ThemeableButton;
+import com.dhk.utility.FrameUtil;
 import com.dhk.utility.VersionRetriever;
 
 import dorkbox.systemTray.SystemTray;
@@ -83,7 +84,6 @@ public class AboutDialog implements IView {
     private JFrame parentFrame;
     private Component originalGlassPane;
     private Component darkeningGlassPane;
-    private FrameUpdater frameUpdater;
 
     private static final String GITHUB_DOMAIN = "https://github.com";
     private static final String GITHUB_CONTENT_DOMAIN = "https://raw.githubusercontent.com";
@@ -108,7 +108,6 @@ public class AboutDialog implements IView {
 
         originalGlassPane = parentFrame.getGlassPane();
         darkeningGlassPane = createDarkeningGlassPane();
-        frameUpdater = new FrameUpdater(view);
     }
 
     /**
@@ -138,7 +137,7 @@ public class AboutDialog implements IView {
                 addAboutComponents(aboutDialog);
 
                 // Update UI and show darkening glass pane on parent
-                frameUpdater.updateUI();
+                FrameUtil.refreshFrame(parentFrame);
                 view.getDefaultFocusComponent().requestFocusInWindow();
                 parentFrame.setGlassPane(darkeningGlassPane);
                 darkeningGlassPane.setVisible(true);

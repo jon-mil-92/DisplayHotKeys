@@ -91,6 +91,7 @@ public class AppRefresher {
 
         int previousFrameState = view.getFrame().getExtendedState();
 
+        controller.cleanUp();
         settingsMgr.initSettingsManager();
         model.initModel(settingsMgr);
         view.reInitView(capturedPlacement);

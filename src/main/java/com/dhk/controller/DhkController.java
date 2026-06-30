@@ -91,6 +91,7 @@ public class DhkController implements IController {
         controllers.add(new ClearHotKeyButtonController(model, view, settingsMgr, hotKeysController));
         controllers.add(new DisplayModeController(model, view, settingsMgr));
         controllers.add(new DpiScaleController(model, view, settingsMgr));
+        controllers.add(new FrameDragController(view));
         controllers.add(hotKeysController);
         controllers.add(new MenuController(model, view, this, settingsMgr));
         controllers.add(new NumberOfSlotsController(model, view, settingsMgr));
@@ -197,7 +198,6 @@ public class DhkController implements IController {
         // Get the previous frame state so the frame remains in the same state upon re-initialization
         frameState = previousFrameState;
 
-        cleanUp();
         initController();
         initListeners();
     }

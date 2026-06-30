@@ -21,8 +21,8 @@ package com.dhk.controller;
 
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
+import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
-import com.dhk.view.FrameUpdater;
 
 /**
  * Controls the combo box for the number of active hot key slots. Listeners are added to the corresponding view
@@ -36,7 +36,6 @@ public class NumberOfSlotsController implements IController {
     private DhkView view;
     private DhkModel model;
     private SettingsManager settingsMgr;
-    private FrameUpdater frameUpdater;
 
     /**
      * Constructor for the {@link NumberOfSlotsController} class.
@@ -56,7 +55,6 @@ public class NumberOfSlotsController implements IController {
 
     @Override
     public void initController() {
-        frameUpdater = new FrameUpdater(view);
     }
 
     @Override
@@ -97,7 +95,7 @@ public class NumberOfSlotsController implements IController {
             view.pushSlots(displayIndex, oldNumOfSlots);
         }
 
-        frameUpdater.updateUI();
+        FrameUtil.refreshFrame(view.getFrame());
     }
 
 }

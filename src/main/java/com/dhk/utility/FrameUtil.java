@@ -19,6 +19,7 @@
  */
 package com.dhk.utility;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
@@ -29,23 +30,54 @@ import java.awt.Rectangle;
 import java.awt.Toolkit;
 
 import javax.swing.JFrame;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.SwingUtilities;
 
 import com.dhk.model.FramePlacement;
 
 /**
- * Provides placement utilities for frames across displays. This class preserves a previous frame's position when a new
- * frame is created, even when the display it was on has had its resolution, DPI scale, or virtual-desktop origin
+ * Provides frame placement and refresh utilities across displays. This class preserves a previous frame's position when
+ * a new frame is created, even when the display it was on has had its resolution, DPI scale, or virtual-desktop origin
  * changed (for example, immediately after applying a new display mode).
  *
  * @author Jonathan R. Miller
  */
 public class FrameUtil {
 
+    private static final String CACHED_DISPLAY_CONFIGURATION_PROPERTY = FrameUtil.class.getName()
+            + ".cachedDisplayConfiguration";
+    private static final String CACHED_WORKING_AREA_SIZE_PROPERTY = FrameUtil.class.getName()
+            + ".cachedWorkingAreaSize";
+
     /**
      * Default constructor for the {@link FrameUtil} class.
      */
     public FrameUtil() {
+    }
+
+    /**
+     * Refreshes a frame's UI, then re-fits it to the working area of the display it currently occupies.
+     *
+     * @param frame
+     *            - The frame to refresh
+     */
+    public static void refreshFrame(JFrame frame) {
+        if (frame == null || !frame.isDisplayable()) {
+            return;
+        }
+
+        JScrollPane scrollPane = frameScrollPane(frame);
+        JPanel mainPanel = scrollContentPanel(scrollPane);
+
+        updateCachedDisplayMetrics(frame);
+
+        SwingUtilities.updateComponentTreeUI(frame);
+        mainPanel.revalidate();
+        scrollPane.revalidate();
+        repackAndFitToScreen(frame, scrollPane);
+        frame.validate();
+        frame.repaint();
     }
 
     /**
@@ -74,10 +106,7 @@ public class FrameUtil {
                 return new FramePlacement(null, 0.5, 0.5, absoluteCenter);
             }
 
-            /*
-             * Anchor the top-left within the available space (display bounds minus the frame size) so edge and corner
-             * positioning is preserved when the bounds change size relative to the frame
-             */
+            // Anchor the top-left within the available space so edge and corner positioning stay preserved.
             Rectangle bounds = configuration.getBounds();
             int availableWidth = bounds.width - frameBounds.width;
             int availableHeight = bounds.height - frameBounds.height;
@@ -107,7 +136,6 @@ public class FrameUtil {
      */
     public static Point computeLocation(FramePlacement placement, Dimension frameSize) {
         GraphicsConfiguration configuration = resolveConfiguration(placement);
-
         return locationForConfiguration(placement, configuration.getBounds(), frameSize);
     }
 
@@ -136,19 +164,38 @@ public class FrameUtil {
             return null;
         }
 
-        Rectangle bounds = configuration.getBounds();
+        Rectangle bounds = workingAreaBounds(configuration);
         int maxWidth = bounds.width;
         int maxHeight = bounds.height;
 
+        return new Dimension(maxWidth, maxHeight);
+    }
+
+    /**
+     * Returns the usable working-area bounds for a graphics configuration (display bounds minus native screen insets).
+     *
+     * @param configuration
+     *            - The configuration to measure (may be null)
+     * @return The working-area bounds in screen coordinates, or null if no configuration is available
+     */
+    public static Rectangle workingAreaBounds(GraphicsConfiguration configuration) {
+        if (configuration == null) {
+            return null;
+        }
+
+        Rectangle bounds = new Rectangle(configuration.getBounds());
+
         try {
             Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(configuration);
-            maxWidth -= insets.left + insets.right;
-            maxHeight -= insets.top + insets.bottom;
+            bounds.x += insets.left;
+            bounds.y += insets.top;
+            bounds.width -= insets.left + insets.right;
+            bounds.height -= insets.top + insets.bottom;
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return new Dimension(maxWidth, maxHeight);
+        return bounds;
     }
 
     /**
@@ -219,12 +266,7 @@ public class FrameUtil {
                 return;
             }
 
-            /*
-             * Recompute against the frame's actual, current geometry now that it is showing. Reading the real size and
-             * the frame's own display bounds from a single settled snapshot keeps the placement and the on-screen clamp
-             * in the same coordinate space, even after a DPI change where the pre-show packed size differs from the
-             * final scaled size. Using the stale pre-show size here was letting the frame land out of bounds
-             */
+            // Use the live frame size and display bounds so placement stays in the correct coordinate space.
             GraphicsConfiguration configuration = frame.getGraphicsConfiguration();
             Dimension actualFrameSize = frame.getSize();
 
@@ -240,6 +282,112 @@ public class FrameUtil {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Clamps the preferred top-left location for a frame into the current working area of the provided graphics
+     * configuration.
+     *
+     * @param configuration
+     *            - The configuration whose working area should contain the frame
+     * @param frameSize
+     *            - The frame size to keep within the working area
+     * @param preferredLocation
+     *            - The desired top-left location before clamping
+     * @return The clamped top-left location, or the preferred location unchanged if no configuration is available
+     */
+    public static Point clampToWorkingArea(GraphicsConfiguration configuration, Dimension frameSize,
+            Point preferredLocation) {
+        if (configuration == null || frameSize == null || preferredLocation == null) {
+            return preferredLocation;
+        }
+
+        Rectangle workingArea = workingAreaBounds(configuration);
+
+        if (workingArea == null) {
+            return preferredLocation;
+        }
+
+        int maxLeft = workingArea.x + Math.max(0, workingArea.width - frameSize.width);
+        int maxTop = workingArea.y + Math.max(0, workingArea.height - frameSize.height);
+        int clampedLeft = Math.max(workingArea.x, Math.min(preferredLocation.x, maxLeft));
+        int clampedTop = Math.max(workingArea.y, Math.min(preferredLocation.y, maxTop));
+
+        return new Point(clampedLeft, clampedTop);
+    }
+
+    /**
+     * Refreshes the cached graphics configuration and working area when the frame moves to another display, or when
+     * those metrics have not been cached yet.
+     */
+    private static void updateCachedDisplayMetrics(JFrame frame) {
+        GraphicsConfiguration configuration = frame.getGraphicsConfiguration();
+        GraphicsConfiguration cachedConfiguration = cachedDisplayConfiguration(frame);
+        Dimension cachedWorkingArea = cachedWorkingAreaSize(frame);
+
+        if (configuration != cachedConfiguration || cachedWorkingArea == null) {
+            frame.getRootPane().putClientProperty(CACHED_DISPLAY_CONFIGURATION_PROPERTY, configuration);
+            frame.getRootPane().putClientProperty(CACHED_WORKING_AREA_SIZE_PROPERTY, workingAreaSize(configuration));
+        }
+    }
+
+    /**
+     * Re-packs the frame for the current display, then caps its size to the display's working area and keeps the title
+     * bar reachable.
+     */
+    private static void repackAndFitToScreen(JFrame frame, JScrollPane scrollPane) {
+        Point preferredLocation = frame.getLocation();
+
+        frame.pack();
+        resizeToFitScreen(frame, scrollPane);
+
+        Point clampedLocation = clampToWorkingArea(frame.getGraphicsConfiguration(), frame.getSize(),
+                preferredLocation);
+
+        if (clampedLocation != null && !clampedLocation.equals(frame.getLocation())) {
+            frame.setLocation(clampedLocation);
+        }
+    }
+
+    /**
+     * Sizes the frame to its preferred size capped to the cached working area when needed.
+     */
+    private static void resizeToFitScreen(JFrame frame, JScrollPane scrollPane) {
+        Dimension target = fitToWorkingArea(frame.getSize(), scrollPane, cachedWorkingAreaSize(frame));
+
+        if (!target.equals(frame.getSize())) {
+            frame.setSize(target);
+        }
+    }
+
+    /**
+     * Returns the frame's content pane as a scroll pane.
+     */
+    private static JScrollPane frameScrollPane(JFrame frame) {
+        return (JScrollPane) frame.getContentPane();
+    }
+
+    /**
+     * Returns the main panel shown in the frame's content scroll pane.
+     */
+    private static JPanel scrollContentPanel(JScrollPane scrollPane) {
+        Component content = scrollPane.getViewport().getView();
+
+        return (JPanel) content;
+    }
+
+    /**
+     * Returns the cached graphics configuration stored on the frame.
+     */
+    private static GraphicsConfiguration cachedDisplayConfiguration(JFrame frame) {
+        return (GraphicsConfiguration) frame.getRootPane().getClientProperty(CACHED_DISPLAY_CONFIGURATION_PROPERTY);
+    }
+
+    /**
+     * Returns the cached working-area size stored on the frame.
+     */
+    private static Dimension cachedWorkingAreaSize(JFrame frame) {
+        return (Dimension) frame.getRootPane().getClientProperty(CACHED_WORKING_AREA_SIZE_PROPERTY);
     }
 
     /**
@@ -338,10 +486,7 @@ public class FrameUtil {
         int top;
 
         if (placement != null && placement.getConfiguration() != null) {
-            /*
-             * Reproduce the top-left within the available space (bounds minus frame size) so edge and corner anchoring
-             * is preserved against the current frame size, even when the bounds changed size (as on a DPI change)
-             */
+            // Reproduce the top-left within the available space so edge and corner anchoring stays preserved.
             int availableWidth = bounds.width - frameSize.width;
             int availableHeight = bounds.height - frameSize.height;
             left = (int) Math.round(bounds.x + placement.getLeftFraction() * availableWidth);

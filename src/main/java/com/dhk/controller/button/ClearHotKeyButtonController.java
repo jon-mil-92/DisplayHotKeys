@@ -23,8 +23,8 @@ import com.dhk.controller.HotKeysController;
 import com.dhk.controller.IController;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
+import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
-import com.dhk.view.FrameUpdater;
 
 /**
  * Controls the Clear Hot Key buttons. Listeners are added to the corresponding view components so that when the Clear
@@ -37,7 +37,6 @@ public class ClearHotKeyButtonController extends AbstractButtonController implem
     private DhkModel model;
     private DhkView view;
     private SettingsManager settingsMgr;
-    private FrameUpdater frameUpdater;
     private HotKeysController hotKeysController;
 
     /**
@@ -62,7 +61,6 @@ public class ClearHotKeyButtonController extends AbstractButtonController implem
 
     @Override
     public void initController() {
-        frameUpdater = new FrameUpdater(view);
     }
 
     @Override
@@ -107,7 +105,7 @@ public class ClearHotKeyButtonController extends AbstractButtonController implem
         view.getSlot(displayIndex, slotIndex).getHotKey().setText("Not Set");
         view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().setEnabled(false);
         settingsMgr.saveIniSlotHotKey(displayId, slotId, model.getSlot(displayIndex, slotIndex).getHotKey());
-        frameUpdater.updateUI();
+        FrameUtil.refreshFrame(view.getFrame());
 
         if (hotKeysController != null) {
             hotKeysController.rebuildActiveKeyCodes();

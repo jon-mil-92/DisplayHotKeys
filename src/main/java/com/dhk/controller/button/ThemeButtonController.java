@@ -24,8 +24,8 @@ import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
 import com.dhk.theme.ButtonThemeUpdater;
 import com.dhk.theme.ThemeUpdater;
+import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
-import com.dhk.view.FrameUpdater;
 
 /**
  * Controls the Theme button. Listeners are added to the corresponding view component so that when the Theme button is
@@ -40,7 +40,6 @@ public class ThemeButtonController extends AbstractButtonController implements I
     private SettingsManager settingsMgr;
     private ThemeUpdater themeUpdater;
     private ButtonThemeUpdater buttonThemesUpdater;
-    private FrameUpdater frameUpdater;
 
     /**
      * Constructor for the {@link ThemeButtonController} class.
@@ -62,7 +61,6 @@ public class ThemeButtonController extends AbstractButtonController implements I
     public void initController() {
         themeUpdater = new ThemeUpdater();
         buttonThemesUpdater = new ButtonThemeUpdater(model, view);
-        frameUpdater = new FrameUpdater(view);
     }
 
     @Override
@@ -84,7 +82,7 @@ public class ThemeButtonController extends AbstractButtonController implements I
         themeUpdater.useDarkMode(model.isDarkMode());
         buttonThemesUpdater.updateButtonThemes();
         settingsMgr.saveIniDarkMode(model.isDarkMode());
-        frameUpdater.updateUI();
+        FrameUtil.refreshFrame(view.getFrame());
     }
 
 }

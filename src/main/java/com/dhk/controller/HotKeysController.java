@@ -45,7 +45,6 @@ import com.dhk.model.Key;
 import com.dhk.model.button.Button;
 import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
-import com.dhk.view.FrameUpdater;
 
 import lc.kra.system.keyboard.event.GlobalKeyEvent;
 import lc.kra.system.keyboard.event.GlobalKeyListener;
@@ -67,7 +66,6 @@ public class HotKeysController implements IController, GlobalKeyListener {
     private HotKey hotKeyBackup;
     private Timer idleTimer;
     private Timer releaseMessageTimer;
-    private FrameUpdater frameUpdater;
     private AppRefresher appRefresher;
     private int currentKeyCount;
     private int maxNumOfSlots;
@@ -109,7 +107,6 @@ public class HotKeysController implements IController, GlobalKeyListener {
     @Override
     public void initController() {
         currentKeyCount = 0;
-        frameUpdater = new FrameUpdater(view);
         maxNumOfSlots = settingsMgr.getMaxNumOfSlots();
         setDisplay = new SetDisplay();
         showReleaseMessage = false;
@@ -423,7 +420,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
                 view.getSlot(selectedDisplayIndex, slotIndex).getHotKey()
                         .setText(model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().getHotKeyString());
-                frameUpdater.updateUI();
+                FrameUtil.refreshFrame(view.getFrame());
 
                 // Update cached active key codes
                 if (activeKeyCodes == null) {
@@ -628,7 +625,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
                     .setText(model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().getHotKeyString());
             anyHotKeySubset = false;
 
-            frameUpdater.updateUI();
+            FrameUtil.refreshFrame(view.getFrame());
         } else {
             view.getSlot(selectedDisplayIndex, slotIndex).getChangeHotKeyButton().setText(HOT_KEY_SET_TEXT);
         }

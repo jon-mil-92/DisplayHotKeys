@@ -20,8 +20,8 @@
 package com.dhk.controller;
 
 import com.dhk.model.DhkModel;
+import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
-import com.dhk.view.FrameUpdater;
 
 /**
  * Controls the combo box for the selected display. Listeners are added to the corresponding view component so that when
@@ -33,7 +33,6 @@ public class SelectedDisplayController implements IController {
 
     private DhkView view;
     private DhkModel model;
-    private FrameUpdater frameUpdater;
 
     /**
      * Constructor for the {@link SelectedDisplayController} class.
@@ -50,7 +49,6 @@ public class SelectedDisplayController implements IController {
 
     @Override
     public void initController() {
-        frameUpdater = new FrameUpdater(view);
     }
 
     @Override
@@ -83,7 +81,7 @@ public class SelectedDisplayController implements IController {
             }
 
             view.setPreviouslySelectedDisplayIndex(view.getDisplayIds().getSelectedIndex());
-            frameUpdater.updateUI();
+            FrameUtil.refreshFrame(view.getFrame());
         }
     }
 
