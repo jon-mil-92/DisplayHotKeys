@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 
 import javax.swing.BorderFactory;
-import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -84,11 +83,11 @@ public class DhkView implements IView {
     private JLabel hotKeyHeader;
     private JLabel clearHotKeyHeader;
     private JLabel changeHotKeyHeader;
-    private JComboBox<Integer> displayIds;
+    private CenteredComboBox<Integer> displayIds;
     private Map<Integer, List<Slot>> displayMap;
-    private Map<Integer, JComboBox<Integer>> numberOfActiveSlotsMap;
-    private JComboBox<Integer> noDisplayIdsPlaceholder;
-    private JComboBox<Integer> noActiveSlotsPlaceholder;
+    private Map<Integer, CenteredComboBox<Integer>> numberOfActiveSlotsMap;
+    private CenteredComboBox<Integer> noDisplayIdsPlaceholder;
+    private CenteredComboBox<Integer> noActiveSlotsPlaceholder;
     private Button clearAllButton;
     private ThemeableButton refreshAppButton;
     private ThemeableButton aboutButton;
@@ -451,11 +450,11 @@ public class DhkView implements IView {
      * Initializes the components and the initial selection for each interactive component.
      */
     private void initComponents() {
-        noDisplayIdsPlaceholder = new JComboBox<Integer>(new Integer[]{-1});
+        noDisplayIdsPlaceholder = new CenteredComboBox<Integer>(new Integer[]{-1});
         noDisplayIdsPlaceholder.setPreferredSize(new Dimension(60, 28));
         noDisplayIdsPlaceholder.setEnabled(false);
 
-        noActiveSlotsPlaceholder = new JComboBox<Integer>(new Integer[]{0});
+        noActiveSlotsPlaceholder = new CenteredComboBox<Integer>(new Integer[]{0});
         noActiveSlotsPlaceholder.setPreferredSize(new Dimension(60, 28));
         noActiveSlotsPlaceholder.setEnabled(false);
 
@@ -463,7 +462,7 @@ public class DhkView implements IView {
         selectedDisplayLabel.setPreferredSize(new Dimension(112, 28));
 
         displayIds = model.getNumOfConnectedDisplays() > 0
-                ? new JComboBox<Integer>(generateDisplayIds())
+                ? new CenteredComboBox<Integer>(generateDisplayIds())
                 : noDisplayIdsPlaceholder;
         displayIds.setPreferredSize(new Dimension(60, 28));
 
@@ -477,7 +476,8 @@ public class DhkView implements IView {
 
         if (model.getNumOfConnectedDisplays() > 0) {
             for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
-                JComboBox<Integer> numberOfActiveSlots = new JComboBox<Integer>(generateNumOfSlotsValues());
+                CenteredComboBox<Integer> numberOfActiveSlots = new CenteredComboBox<Integer>(
+                        generateNumOfSlotsValues());
                 numberOfActiveSlots.setPreferredSize(new Dimension(60, 28));
                 numberOfActiveSlots.setSelectedItem(model.getNumOfSlotsForDisplay(displayIndex));
 
@@ -533,11 +533,11 @@ public class DhkView implements IView {
         makeLabelBold(applyDisplayModeHeader);
 
         displayModeHeader = new JLabel("Display Mode", SwingConstants.CENTER);
-        displayModeHeader.setPreferredSize(new Dimension(220, 28));
+        displayModeHeader.setPreferredSize(new Dimension(240, 28));
         makeLabelBold(displayModeHeader);
 
         scalingModeHeader = new JLabel("Scaling Mode", SwingConstants.CENTER);
-        scalingModeHeader.setPreferredSize(new Dimension(90, 28));
+        scalingModeHeader.setPreferredSize(new Dimension(110, 28));
         makeLabelBold(scalingModeHeader);
 
         dpiScaleHeader = new JLabel("DPI Scale", SwingConstants.CENTER);
@@ -545,7 +545,7 @@ public class DhkView implements IView {
         makeLabelBold(dpiScaleHeader);
 
         orientationHeader = new JLabel("Orientation", SwingConstants.CENTER);
-        orientationHeader.setPreferredSize(new Dimension(90, 28));
+        orientationHeader.setPreferredSize(new Dimension(118, 28));
         makeLabelBold(orientationHeader);
 
         hotKeyHeader = new JLabel("Hot Key", SwingConstants.CENTER);
@@ -769,7 +769,7 @@ public class DhkView implements IView {
      *
      * @return The combo box for the current display ID in the view
      */
-    public JComboBox<Integer> getDisplayIds() {
+    public CenteredComboBox<Integer> getDisplayIds() {
         return displayIds;
     }
 
@@ -800,7 +800,7 @@ public class DhkView implements IView {
      *
      * @return The number of active slots combo box for the given display index
      */
-    public JComboBox<Integer> getNumberOfActiveSlots(int displayIndex) {
+    public CenteredComboBox<Integer> getNumberOfActiveSlots(int displayIndex) {
         return numberOfActiveSlotsMap.get(displayIndex);
     }
 

@@ -27,7 +27,6 @@ import java.util.List;
 
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 
@@ -43,10 +42,10 @@ public class Slot {
 
     private JLabel slotIndicatorLabel;
     private Button applyDisplayModeButton;
-    private JComboBox<DisplayMode> slotDisplayModes;
-    private JComboBox<String> slotScalingModes;
-    private JComboBox<Integer> slotDpiScalePercentages;
-    private JComboBox<String> slotOrientationModes;
+    private CenteredComboBox<DisplayMode> slotDisplayModes;
+    private CenteredComboBox<String> slotScalingModes;
+    private CenteredComboBox<Integer> slotDpiScalePercentages;
+    private CenteredComboBox<String> slotOrientationModes;
     private JLabel slotHotKey;
     private Button slotClearHotKeyButton;
     private JButton slotChangeHotKeyButton;
@@ -79,17 +78,17 @@ public class Slot {
                 0.80f, 0.68f);
         applyDisplayModeButton = new Button("/apply_idle.svg", "/apply_hover.svg", applyDisplayModeButtonProps, true);
 
-        slotDisplayModes = new JComboBox<DisplayMode>(displayModes);
-        slotDisplayModes.setPreferredSize(new Dimension(220, 28));
+        slotDisplayModes = new CenteredComboBox<DisplayMode>(displayModes);
+        slotDisplayModes.setPreferredSize(new Dimension(240, 28));
 
-        slotScalingModes = new JComboBox<String>(scalingModes);
+        slotScalingModes = new CenteredComboBox<String>(scalingModes);
         slotScalingModes.setPreferredSize(new Dimension(110, 28));
 
-        slotDpiScalePercentages = new JComboBox<Integer>(dpiScalePercentages);
+        slotDpiScalePercentages = new CenteredComboBox<Integer>(dpiScalePercentages);
         slotDpiScalePercentages.setPreferredSize(new Dimension(70, 28));
 
-        slotOrientationModes = new JComboBox<String>(orientationModes);
-        slotOrientationModes.setPreferredSize(new Dimension(115, 28));
+        slotOrientationModes = new CenteredComboBox<String>(orientationModes);
+        slotOrientationModes.setPreferredSize(new Dimension(118, 28));
 
         slotHotKey = new JLabel("", SwingConstants.CENTER);
 
@@ -129,7 +128,7 @@ public class Slot {
      *
      * @return The display modes combo box of the slot
      */
-    public JComboBox<DisplayMode> getDisplayModes() {
+    public CenteredComboBox<DisplayMode> getDisplayModes() {
         return slotDisplayModes;
     }
 
@@ -138,7 +137,7 @@ public class Slot {
      *
      * @return The scaling modes combo box of the slot
      */
-    public JComboBox<String> getScalingModes() {
+    public CenteredComboBox<String> getScalingModes() {
         return slotScalingModes;
     }
 
@@ -147,7 +146,7 @@ public class Slot {
      *
      * @return The DPI scale percentages combo box of the slot
      */
-    public JComboBox<Integer> getDpiScalePercentages() {
+    public CenteredComboBox<Integer> getDpiScalePercentages() {
         return slotDpiScalePercentages;
     }
 
@@ -176,7 +175,7 @@ public class Slot {
      *
      * @return The orientation modes combo box of the slot
      */
-    public JComboBox<String> getOrientationModes() {
+    public CenteredComboBox<String> getOrientationModes() {
         return slotOrientationModes;
     }
 
