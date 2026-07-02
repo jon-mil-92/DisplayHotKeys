@@ -28,11 +28,10 @@
 using namespace std;
 
 /**
- * Queries the display configuration to initialize a structure that holds the persisted paths and modes as defined in
- * the Windows display persistence database. This uses QDC_DATABASE_CURRENT to retrieve the full configuration,
- * including displays that may not currently be active.
+ * Queries the full persisted display configuration (QDC_DATABASE_CURRENT), including inactive displays, into an owning
+ * DisplayConfig.
  *
- * @return A DisplayConfig structure containing the display paths and modes for the current configuration
+ * @return The display paths and modes for the current configuration, or an empty configuration on failure
  */
 DisplayConfig getDisplayConfig() {
     DisplayConfig displayConfig = {};
@@ -74,26 +73,17 @@ DisplayConfig getDisplayConfig() {
 }
 
 /**
- * Internal helper that queries display paths using the specified flags and applies visibility rules to determine which
- * displays are currently visible. Over-allocation is used to avoid ERROR_INVALID_PARAMETER caused by driver
- * under-reporting buffer sizes. Returned IDs are converted into stable IDs.
- *
- * Visibility rules:
- *  - A path must be active (DISPLAYCONFIG_PATH_ACTIVE)
- *  - The path's sourceInfo.modeInfoIdx must be valid and reference a DISPLAYCONFIG_MODE_INFO entry
- *  - The referenced DISPLAYCONFIG_MODE_INFO must be of type DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE
- *  - The source mode must have non-zero width and height (width != 0 && height != 0)
- *  - The source position must not be an extreme offscreen sentinel (we treat large negative positions as offscreen)
- *
- * If any of the above fail, the path is considered not visible for the purposes of getVisibleDisplayIds().
+ * Queries paths with the given flags and returns the stable ID of each visible display, where a display is visible when
+ * it has an active path, a valid source mode of type SOURCE, non-zero size, and an on-screen position (large negative
+ * positions are treated as offscreen). Buffers are over-allocated to avoid ERROR_INVALID_PARAMETER from drivers that
+ * under-report sizes.
  *
  * @param flags
- *        - The QueryDisplayConfig flags (e.g., QDC_ONLY_ACTIVE_PATHS or QDC_DATABASE_CURRENT)
+ *            - The QueryDisplayConfig flags selecting which paths to enumerate
  * @param includeGeometry
- *        - When true, each entry is the stable ID plus its resolution, position, rotation, and DPI scale index; when
- *          false, each entry is just the stable ID
+ *            - Whether each entry also carries resolution, position, rotation, and DPI scale index
  *
- * @return A vector of stable display IDs (optionally with geometry appended) for the visible displays
+ * @return The stable IDs of the visible displays, or their signatures when includeGeometry is set
  */
 static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGeometry) {
     vector<string> visible;
@@ -157,17 +147,11 @@ static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGe
             continue;
         }
 
-        DISPLAYCONFIG_TARGET_DEVICE_NAME target = {};
-        target.header.adapterId = path.targetInfo.adapterId;
-        target.header.id = path.targetInfo.id;
-        target.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
-        target.header.size = sizeof(target);
+        string entry = stableIdForTarget(path.targetInfo);
 
-        if (DisplayConfigGetDeviceInfo(&target.header) != ERROR_SUCCESS) {
+        if (entry.empty()) {
             continue;
         }
-
-        string entry = buildStableDisplayId(target.monitorDevicePath);
 
         if (includeGeometry) {
             // Resolution, desktop position, and rotation so a mode or orientation change is reflected in the signature
@@ -196,12 +180,9 @@ static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGe
 }
 
 /**
- * Gets a vector of display IDs for displays that are currently visible. A display is considered visible if it has an
- * active display path and its source mode reports a non-zero resolution and a valid desktop position. If
- * QDC_ONLY_ACTIVE_PATHS fails due to driver behavior, the function falls back to QDC_DATABASE_CURRENT while applying
- * the same visibility rules. Returned IDs are converted into stable IDs.
+ * Gets stable IDs for the currently visible displays via QDC_ONLY_ACTIVE_PATHS, falling back to QDC_DATABASE_CURRENT.
  *
- * @return A vector of stable display IDs for the currently visible displays
+ * @return Stable display IDs for the currently visible displays
  */
 vector<string> getVisibleDisplayIds() {
     vector<string> displayIds = queryVisibleDisplaysWithFlags(QDC_ONLY_ACTIVE_PATHS, false);
@@ -214,12 +195,10 @@ vector<string> getVisibleDisplayIds() {
 }
 
 /**
- * Gets a per-display signature for each currently visible display. Each signature is the display's stable ID plus its
- * source resolution, desktop position, rotation, and relative DPI scale index, so resolution, DPI, and orientation
- * changes are detectable even when the set of visible displays is unchanged. Falls back to QDC_DATABASE_CURRENT when
- * QDC_ONLY_ACTIVE_PATHS yields nothing, matching getVisibleDisplayIds().
+ * Gets per-display geometry signatures for the visible displays, using the same active-then-database fallback as
+ * getVisibleDisplayIds.
  *
- * @return A vector of signatures (stable ID plus geometry) for the currently visible displays
+ * @return Signatures for the currently visible displays
  */
 vector<string> getVisibleDisplaySignatures() {
     vector<string> signatures = queryVisibleDisplaysWithFlags(QDC_ONLY_ACTIVE_PATHS, true);
@@ -232,37 +211,31 @@ vector<string> getVisibleDisplaySignatures() {
 }
 
 /**
- * Gets a vector of display IDs by utilizing QueryDisplayConfig and DisplayConfigGetDeviceInfo. This reflects the
- * persisted display configuration in the Windows display database. The returned IDs are converted into stable IDs.
+ * Gets stable IDs for the persisted configuration, in QueryDisplayConfig path order.
  *
- * @return A vector of stable display IDs for the current persisted display configuration
+ * @return Stable display IDs for the current persisted display configuration
  */
 vector<string> getQueryDisplayConfigDisplayIds() {
     DisplayConfig config = getDisplayConfig();
     vector<string> displayIds;
 
     for (UINT32 i = 0; i < config.numPathInfoArrayElements; i++) {
-        DISPLAYCONFIG_TARGET_DEVICE_NAME target = {};
-        target.header.adapterId = config.pathInfoArray[i].targetInfo.adapterId;
-        target.header.id = config.pathInfoArray[i].targetInfo.id;
-        target.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
-        target.header.size = sizeof(target);
+        string displayId = stableIdForTarget(config.pathInfoArray[i].targetInfo);
 
-        if (DisplayConfigGetDeviceInfo(&target.header) != ERROR_SUCCESS) {
+        if (displayId.empty()) {
             continue;
         }
 
-        displayIds.push_back(buildStableDisplayId(target.monitorDevicePath));
+        displayIds.push_back(displayId);
     }
 
     return displayIds;
 }
 
 /**
- * Gets a vector of display IDs by utilizing the EnumDisplayDevices API. Only devices attached to the desktop are
- * included. The returned IDs are converted into stable IDs.
+ * Gets stable IDs for desktop-attached devices via EnumDisplayDevices.
  *
- * @return A vector of stable display IDs for devices attached to the desktop
+ * @return Stable display IDs for devices attached to the desktop
  */
 vector<string> getEnumDisplayDevicesDisplayIds() {
     DISPLAY_DEVICE displayDevice;
@@ -289,12 +262,12 @@ vector<string> getEnumDisplayDevicesDisplayIds() {
 }
 
 /**
- * Gets the index in the EnumDisplayDevices display ID vector for the given display ID.
+ * Gets the index of the given stable ID in the EnumDisplayDevices ID list.
  *
  * @param displayId
- *        - The stable ID of the display to get the index for
+ *            - The stable display ID to locate
  *
- * @return The index in the EnumDisplayDevices display ID vector for the given display ID, or 0 if not found
+ * @return The index, or 0 if not found
  */
 int getEnumDisplayDevicesDisplayIdIndex(string displayId) {
     vector<string> displayIds = getEnumDisplayDevicesDisplayIds();
@@ -309,12 +282,12 @@ int getEnumDisplayDevicesDisplayIdIndex(string displayId) {
 }
 
 /**
- * Gets the index in the QueryDisplayConfig display ID vector for the given display ID.
+ * Gets the index of the given stable ID in the QueryDisplayConfig ID list.
  *
  * @param displayId
- *        - The stable ID of the display to get the index for
+ *            - The stable display ID to locate
  *
- * @return The index in the QueryDisplayConfig display ID vector for the given display ID, or 0 if not found
+ * @return The index, or 0 if not found
  */
 int getQueryDisplayConfigDisplayIdIndex(string displayId) {
     vector<string> displayIds = getQueryDisplayConfigDisplayIds();
@@ -329,13 +302,13 @@ int getQueryDisplayConfigDisplayIdIndex(string displayId) {
 }
 
 /**
- * Builds a stable display ID from a monitor device path by removing the volatile UID segment and optional trailing
- * GUID. This produces a consistent identifier across device instance changes (e.g., virtual display re-creations).
+ * Builds a stable display ID from a monitor device path by stripping the volatile UID segment and trailing GUID, so it
+ * stays consistent across device instance changes (e.g. virtual display re-creations).
  *
  * @param monitorDevicePath
- *        - The raw monitor device path as returned by DisplayConfigGetDeviceInfo
+ *            - The raw monitor device path from DisplayConfigGetDeviceInfo
  *
- * @return A normalized, stable display ID string
+ * @return A normalized, stable display ID
  */
 string buildStableDisplayId(const wstring &monitorDevicePath) {
     string path = wStrToStr(monitorDevicePath);
@@ -380,12 +353,12 @@ string buildStableDisplayId(const wstring &monitorDevicePath) {
 }
 
 /**
- * Converts a wide string (UTF-16) to a UTF-8 encoded string.
+ * Converts a UTF-16 wide string to UTF-8.
  *
  * @param wideString
- *        - The wide string to convert
+ *            - The wide string to convert
  *
- * @return A UTF-8 encoded string, or an empty string if conversion fails
+ * @return The UTF-8 string, or empty on failure
  */
 string wStrToStr(const wstring &wideString) {
     if (wideString.empty()) {
@@ -402,4 +375,179 @@ string wStrToStr(const wstring &wideString) {
     WideCharToMultiByte(CP_UTF8, 0, wideString.c_str(), -1, &result[0], sizeNeeded, NULL, NULL);
 
     return result;
+}
+
+/**
+ * Resolves a path target's monitor device path to a stable display ID, centralizing the
+ * DisplayConfigGetDeviceInfo(GET_TARGET_NAME) then buildStableDisplayId sequence.
+ *
+ * @param targetInfo
+ *            - The path target to resolve
+ *
+ * @return The stable display ID, or empty if it could not be resolved
+ */
+string stableIdForTarget(const DISPLAYCONFIG_PATH_TARGET_INFO &targetInfo) {
+    DISPLAYCONFIG_TARGET_DEVICE_NAME target = {};
+    target.header.adapterId = targetInfo.adapterId;
+    target.header.id = targetInfo.id;
+    target.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
+    target.header.size = sizeof(target);
+
+    if (DisplayConfigGetDeviceInfo(&target.header) != ERROR_SUCCESS) {
+        return string();
+    }
+
+    return buildStableDisplayId(target.monitorDevicePath);
+}
+
+/**
+ * Resolves a path source to its GDI device name (e.g. \\.\DISPLAY1) for the legacy EnumDisplaySettings/
+ * ChangeDisplaySettings APIs, centralizing the DisplayConfigGetDeviceInfo(GET_SOURCE_NAME) sequence.
+ *
+ * @param sourceInfo
+ *            - The path source to resolve
+ *
+ * @return The GDI device name, or empty if it could not be resolved
+ */
+wstring sourceGdiDeviceName(const DISPLAYCONFIG_PATH_SOURCE_INFO &sourceInfo) {
+    DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName = {};
+    sourceName.header.adapterId = sourceInfo.adapterId;
+    sourceName.header.id = sourceInfo.id;
+    sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+    sourceName.header.size = sizeof(sourceName);
+
+    if (DisplayConfigGetDeviceInfo(&sourceName.header) != ERROR_SUCCESS) {
+        return wstring();
+    }
+
+    return wstring(sourceName.viewGdiDeviceName);
+}
+
+/**
+ * Queries the active display configuration (QDC_ONLY_ACTIVE_PATHS) into the given vectors.
+ *
+ * @param paths
+ *            - Receives the active path array
+ * @param modes
+ *            - Receives the active mode array
+ *
+ * @return Whether the query succeeded
+ */
+bool queryActiveCcdConfig(vector<DISPLAYCONFIG_PATH_INFO> &paths, vector<DISPLAYCONFIG_MODE_INFO> &modes) {
+    UINT32 numPath = 0;
+    UINT32 numMode = 0;
+
+    if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &numPath, &numMode) != ERROR_SUCCESS) {
+        return false;
+    }
+
+    paths.assign(numPath, DISPLAYCONFIG_PATH_INFO{});
+    modes.assign(numMode, DISPLAYCONFIG_MODE_INFO{});
+
+    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &numPath, paths.data(), &numMode, modes.data(), nullptr) !=
+        ERROR_SUCCESS) {
+        return false;
+    }
+
+    paths.resize(numPath);
+    modes.resize(numMode);
+
+    return true;
+}
+
+/**
+ * Finds the active path index that drives the display with the given stable ID.
+ *
+ * @param paths
+ *            - The active path array to search
+ * @param stableId
+ *            - The stable display ID to match
+ *
+ * @return The matching path index, or -1 if not found
+ */
+int findActivePathForDisplay(const vector<DISPLAYCONFIG_PATH_INFO> &paths, const string &stableId) {
+    for (size_t i = 0; i < paths.size(); i++) {
+        const DISPLAYCONFIG_PATH_INFO &path = paths[i];
+
+        if ((path.flags & DISPLAYCONFIG_PATH_ACTIVE) == 0) {
+            continue;
+        }
+
+        if (stableIdForTarget(path.targetInfo) == stableId) {
+            return (int) i;
+        }
+    }
+
+    return -1;
+}
+
+/**
+ * Maps a truncated integer refresh rate to the rational encodings the CCD API may expect. The exact integer form
+ * (rate / 1) is tried first, then the two forms of a fractional NTSC rate ((rate + 1) * 1000 / 1001 and its rounded
+ * decimal). Derived from the value itself with no per-rate table, and the caller uses whichever encoding validates.
+ *
+ * @param rate
+ *            - The integer refresh rate to map
+ *
+ * @return The ordered candidate rationals to try
+ */
+vector<DISPLAYCONFIG_RATIONAL> toRefreshRationalCandidates(int rate) {
+    auto rational = [](UINT32 numerator, UINT32 denominator) {
+        DISPLAYCONFIG_RATIONAL value = {};
+        value.Numerator = numerator;
+        value.Denominator = denominator;
+        return value;
+    };
+
+    /*
+     * Offer the exact integer form (60, 120, 144, ...) first, then the two rational encodings drivers use for a
+     * fractional NTSC rate (n000/1001 and its rounded decimal, where n is rate + 1). Deriving both from the rate itself
+     * covers every fractional rate without a per-rate table, and the caller uses whichever one validates
+     */
+    UINT32 nominal = (UINT32) rate + 1;
+
+    return {rational((UINT32) rate, 1), rational(nominal * 1000, 1001), rational((nominal * 100000 + 500) / 1001, 100)};
+}
+
+/**
+ * Sets the source resolution and refresh rate on the chosen path of copies of the base arrays, then submits them to
+ * SetDisplayConfig with the given flags. Taking the arrays by value keeps the caller's base config reusable.
+ *
+ * @param paths
+ *            - A copy of the active path array (modified locally)
+ * @param modes
+ *            - A copy of the active mode array (modified locally)
+ * @param pathIndex
+ *            - Index of the path to reconfigure
+ * @param width
+ *            - Source resolution width to set
+ * @param height
+ *            - Source resolution height to set
+ * @param refreshRate
+ *            - Target refresh rate (rational) to set
+ * @param flags
+ *            - SetDisplayConfig flags (e.g. SDC_VALIDATE or SDC_APPLY variants)
+ *
+ * @return The SetDisplayConfig result code
+ */
+LONG submitCcdSourceMode(vector<DISPLAYCONFIG_PATH_INFO> paths, vector<DISPLAYCONFIG_MODE_INFO> modes, int pathIndex,
+                         UINT32 width, UINT32 height, DISPLAYCONFIG_RATIONAL refreshRate, UINT32 flags) {
+    DISPLAYCONFIG_PATH_INFO &path = paths[pathIndex];
+    UINT32 sourceModeIdx = path.sourceInfo.modeInfoIdx;
+
+    if (sourceModeIdx == DISPLAYCONFIG_PATH_MODE_IDX_INVALID || sourceModeIdx >= modes.size() ||
+        modes[sourceModeIdx].infoType != DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE) {
+        return ERROR_INVALID_PARAMETER;
+    }
+
+    // Set the desktop (source) resolution
+    modes[sourceModeIdx].sourceMode.width = width;
+    modes[sourceModeIdx].sourceMode.height = height;
+
+    // Request the refresh rate and clear the target mode index so Windows recomputes the target timing
+    path.targetInfo.refreshRate = refreshRate;
+    path.targetInfo.scanLineOrdering = DISPLAYCONFIG_SCANLINE_ORDERING_PROGRESSIVE;
+    path.targetInfo.modeInfoIdx = DISPLAYCONFIG_PATH_MODE_IDX_INVALID;
+
+    return SetDisplayConfig((UINT32) paths.size(), paths.data(), (UINT32) modes.size(), modes.data(), flags);
 }

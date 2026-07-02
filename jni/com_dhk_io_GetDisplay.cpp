@@ -21,35 +21,172 @@
 #include "DisplayConfig.h"
 
 #include <jni.h>
+#include <map>
+#include <set>
+#include <utility>
+#include <vector>
 #include <windows.h>
 
 using namespace std;
 
 /**
- * Enumerates supported display modes for the given display. DisplayConfigGetDeviceInfo is used to obtain the GDI device
- * name, and modes are enumerated with EnumDisplaySettingsW. If that fails, fall back to an EnumDisplayDevices index and
- * enumerate modes with EnumDisplaySettingsW. Wide-character Windows APIs (Unicode) are used throughout to avoid
- * ANSI/Unicode mismatches.
+ * A single supported display mode collected during enumeration.
+ */
+struct ModeInfo {
+    /**
+     * Horizontal resolution in pixels.
+     */
+    int width;
+
+    /**
+     * Vertical resolution in pixels.
+     */
+    int height;
+
+    /**
+     * Color depth in bits per pixel.
+     */
+    int bitsPerPel;
+
+    /**
+     * Refresh rate in hertz.
+     */
+    int frequency;
+};
+
+/**
+ * Adds the refresh rates a GPU-scaled custom resolution supports but the legacy mode table omits, identifying such a
+ * resolution by its small distinct-rate count. To keep the expensive SDC_VALIDATE probes to a minimum it finds each
+ * resolution's drivable ceiling by validating only the panel rates above its existing maximum, highest first, stopping
+ * at the first that validates; every panel rate at or below that ceiling is then added without a probe, since a fixed
+ * resolution's bandwidth scales with refresh rate. The active config is queried once and reused, the validating
+ * rational form is cached, and ordinary multi-rate resolutions are skipped.
+ *
+ * @param displayId
+ *            - The stable display ID being enumerated
+ * @param modes
+ *            - The mode list to augment in place
+ */
+static void addCustomResolutionRefreshRates(const string &displayId, vector<ModeInfo> &modes) {
+    const size_t MAX_RATES_FOR_CUSTOM_RESOLUTION = 2;
+
+    // Query the active CCD configuration once and locate the display's path once; every probe below reuses them
+    vector<DISPLAYCONFIG_PATH_INFO> paths;
+    vector<DISPLAYCONFIG_MODE_INFO> ccdModes;
+
+    if (!queryActiveCcdConfig(paths, ccdModes)) {
+        return;
+    }
+
+    int pathIndex = findActivePathForDisplay(paths, displayId);
+
+    if (pathIndex < 0) {
+        return;
+    }
+
+    // Distinct rates per resolution, since the driver lists each mode many times across bit depths and flags
+    set<int> panelRates;
+    map<pair<int, int>, set<int>> ratesByResolution;
+
+    for (const ModeInfo &mode : modes) {
+        panelRates.insert(mode.frequency);
+        ratesByResolution[make_pair(mode.width, mode.height)].insert(mode.frequency);
+    }
+
+    vector<int> candidateRates(panelRates.begin(), panelRates.end());
+
+    // The rational form (integer or NTSC fractional) that first validated for a rate, reused as the first try elsewhere
+    map<int, DISPLAYCONFIG_RATIONAL> workingRational;
+
+    /*
+     * Validates a single rate at a resolution by trying the form that already worked for this rate first and then the
+     * remaining candidate forms. SDC_VALIDATE does not change the display, and the rate is drivable if any form works
+     */
+    auto validatesRate = [&](int width, int height, int rate) {
+        vector<DISPLAYCONFIG_RATIONAL> forms;
+        map<int, DISPLAYCONFIG_RATIONAL>::iterator cached = workingRational.find(rate);
+
+        if (cached != workingRational.end()) {
+            forms.push_back(cached->second);
+        }
+
+        for (const DISPLAYCONFIG_RATIONAL &rational : toRefreshRationalCandidates(rate)) {
+            bool alreadyQueued = cached != workingRational.end() && rational.Numerator == cached->second.Numerator &&
+                                 rational.Denominator == cached->second.Denominator;
+
+            if (!alreadyQueued) {
+                forms.push_back(rational);
+            }
+        }
+
+        for (const DISPLAYCONFIG_RATIONAL &rational : forms) {
+            if (submitCcdSourceMode(paths, ccdModes, pathIndex, (UINT32) width, (UINT32) height, rational,
+                                    SDC_VALIDATE | SDC_USE_SUPPLIED_DISPLAY_CONFIG) == ERROR_SUCCESS) {
+                workingRational[rate] = rational;
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    for (const pair<const pair<int, int>, set<int>> &entry : ratesByResolution) {
+        if (entry.second.size() > MAX_RATES_FOR_CUSTOM_RESOLUTION) {
+            continue;
+        }
+
+        int width = entry.first.first;
+        int height = entry.first.second;
+        const set<int> &existingRates = entry.second;
+        int maxExistingRate = *existingRates.rbegin();
+
+        /*
+         * Raise the drivable ceiling by validating panel rates above the existing max, highest first, stopping at the
+         * first that validates. The existing max is already drivable, so it stays the ceiling if nothing higher works
+         */
+        int ceilingRate = maxExistingRate;
+
+        for (vector<int>::const_reverse_iterator it = candidateRates.rbegin(); it != candidateRates.rend(); ++it) {
+            if (*it <= maxExistingRate) {
+                break;
+            }
+
+            if (validatesRate(width, height, *it)) {
+                ceilingRate = *it;
+                break;
+            }
+        }
+
+        /*
+         * Every panel rate at or below the ceiling is drivable (lower rate = lower pixel clock), so add the ones the
+         * legacy table omitted without probing; CCD desktop modes are 32 bpp and Java de-duplicates the combined set
+         */
+        for (int rate : candidateRates) {
+            if (rate <= ceilingRate && existingRates.find(rate) == existingRates.end()) {
+                modes.push_back({width, height, 32, rate});
+            }
+        }
+    }
+}
+
+/**
+ * Enumerates the supported display modes for the given display. Modes are read with EnumDisplaySettingsExW via the GDI
+ * device name from QueryDisplayConfig, falling back to an EnumDisplayDevices index. Default (EDID-pruned) enumeration
+ * mirrors Windows Advanced Display Settings; interlaced and zero-size modes are skipped. GPU-scaled custom resolutions
+ * are then expanded with their other supported refresh rates via the CCD API. Wide-character (Unicode) APIs are used
+ * throughout to avoid ANSI/Unicode mismatches.
  *
  * @param env
- *        - The JNI environment pointer
+ *            - The JNI environment pointer
  * @param obj
- *        - The Java GetDisplay instance
+ *            - The Java GetDisplay instance
  * @param displayId
- *        - The stable display ID to enumerate modes for
+ *            - The stable display ID to enumerate modes for
  *
- * @return A DisplayMode[] containing the supported display modes, an empty array if
- *         no modes are reported, or null on unrecoverable native failure
+ * @return A DisplayMode[] of supported modes, an empty array if none, or null on unrecoverable native failure
  */
 JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEnv *env, jobject obj,
                                                                            jstring displayId) {
-    struct ModeInfo {
-        int width;
-        int height;
-        int bitsPerPel;
-        int frequency;
-    };
-
     if (displayId == nullptr) {
         return nullptr;
     }
@@ -65,40 +202,50 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
     string stableDisplayId = displayIdChars;
 
     vector<ModeInfo> modeList;
-    UINT32 modeEnumIndex = 0;
-    bool enumeratedFromQueryConfig = false;
 
-    // Primary path: QueryDisplayConfig -> DisplayConfigGetDeviceInfo -> EnumDisplaySettingsW
+    // Skip zero-size and interlaced modes so the reported set mirrors Advanced Display Settings (progressive only)
+    auto collectMode = [&modeList](const DEVMODEW &devModeW) {
+        if (devModeW.dmPelsWidth == 0 || devModeW.dmPelsHeight == 0) {
+            return;
+        }
+
+        if ((devModeW.dmFields & DM_DISPLAYFLAGS) && (devModeW.dmDisplayFlags & DM_INTERLACED)) {
+            return;
+        }
+
+        modeList.push_back({static_cast<int>(devModeW.dmPelsWidth), static_cast<int>(devModeW.dmPelsHeight),
+                            static_cast<int>(devModeW.dmBitsPerPel), static_cast<int>(devModeW.dmDisplayFrequency)});
+    };
+
+    // Default (EDID-pruned) enumeration so the reported set matches Advanced Display Settings
+    auto enumerateModes = [&collectMode](LPCWSTR gdiDeviceName) {
+        DEVMODEW devModeW;
+        SecureZeroMemory(&devModeW, sizeof(DEVMODEW));
+        devModeW.dmSize = sizeof(devModeW);
+
+        for (UINT32 i = 0; EnumDisplaySettingsExW(gdiDeviceName, i, &devModeW, 0); i++) {
+            collectMode(devModeW);
+        }
+    };
+
+    /*
+     * Match the display's active path in the current configuration and enumerate its modes by its GDI device name,
+     * matching here rather than via getQueryDisplayConfigDisplayIdIndex to avoid a second full QueryDisplayConfig
+     */
     DisplayConfig displayConfig = getDisplayConfig();
-    int queryConfigIndex = getQueryDisplayConfigDisplayIdIndex(stableDisplayId);
+    wstring gdiDeviceName;
 
-    if (queryConfigIndex >= 0 && (UINT32) queryConfigIndex < displayConfig.numPathInfoArrayElements) {
-        DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName = {};
-        sourceName.header.adapterId = displayConfig.pathInfoArray[queryConfigIndex].sourceInfo.adapterId;
-        sourceName.header.id = displayConfig.pathInfoArray[queryConfigIndex].sourceInfo.id;
-        sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
-        sourceName.header.size = sizeof(sourceName);
-
-        if (DisplayConfigGetDeviceInfo(&sourceName.header) == ERROR_SUCCESS) {
-            DEVMODEW devModeW;
-            SecureZeroMemory(&devModeW, sizeof(DEVMODEW));
-            devModeW.dmSize = sizeof(devModeW);
-
-            modeEnumIndex = 0;
-
-            while (EnumDisplaySettingsW(sourceName.viewGdiDeviceName, modeEnumIndex, &devModeW)) {
-                modeList.push_back({static_cast<int>(devModeW.dmPelsWidth), static_cast<int>(devModeW.dmPelsHeight),
-                                    static_cast<int>(devModeW.dmBitsPerPel),
-                                    static_cast<int>(devModeW.dmDisplayFrequency)});
-                modeEnumIndex++;
-            }
-
-            enumeratedFromQueryConfig = true;
+    for (UINT32 i = 0; i < displayConfig.numPathInfoArrayElements; i++) {
+        if (stableIdForTarget(displayConfig.pathInfoArray[i].targetInfo) == stableDisplayId) {
+            gdiDeviceName = sourceGdiDeviceName(displayConfig.pathInfoArray[i].sourceInfo);
+            break;
         }
     }
 
-    // Fallback path: EnumDisplayDevicesW -> EnumDisplaySettingsW
-    if (!enumeratedFromQueryConfig) {
+    if (!gdiDeviceName.empty()) {
+        enumerateModes(gdiDeviceName.c_str());
+    } else {
+        // Otherwise locate the display by its EnumDisplayDevices index and enumerate by its device name
         DISPLAY_DEVICEW displayDeviceW;
         SecureZeroMemory(&displayDeviceW, sizeof(DISPLAY_DEVICEW));
         displayDeviceW.cb = sizeof(displayDeviceW);
@@ -107,18 +254,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
 
         if (EnumDisplayDevicesW(NULL, enumDisplayIndex, &displayDeviceW, 0)) {
             if (displayDeviceW.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
-                DEVMODEW devModeW;
-                SecureZeroMemory(&devModeW, sizeof(DEVMODEW));
-                devModeW.dmSize = sizeof(devModeW);
-
-                modeEnumIndex = 0;
-
-                while (EnumDisplaySettingsW(displayDeviceW.DeviceName, modeEnumIndex, &devModeW)) {
-                    modeList.push_back({static_cast<int>(devModeW.dmPelsWidth), static_cast<int>(devModeW.dmPelsHeight),
-                                        static_cast<int>(devModeW.dmBitsPerPel),
-                                        static_cast<int>(devModeW.dmDisplayFrequency)});
-                    modeEnumIndex++;
-                }
+                enumerateModes(displayDeviceW.DeviceName);
             }
         } else {
             // Fallback enumeration failed; release and return null
@@ -128,6 +264,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
     }
 
     env->ReleaseStringUTFChars(displayId, displayIdChars);
+
+    // Expand GPU-scaled custom resolutions with the extra refresh rates the legacy mode table omits
+    addCustomResolutionRefreshRates(stableDisplayId, modeList);
 
     // Prepare Java DisplayMode class and constructor
     jclass displayModeClass = env->FindClass("java/awt/DisplayMode");
@@ -184,11 +323,11 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
  * Gets the stabilized IDs for visible displays.
  *
  * @param env
- *        - The JNI environment pointer
+ *            - The JNI environment pointer
  * @param obj
- *        - The Java GetDisplay instance
+ *            - The Java GetDisplay instance
  *
- * @return A Java String[] containing stable display IDs for visible displays
+ * @return A Java String[] of stable display IDs for visible displays
  */
 JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumVisibleDisplayIds(JNIEnv *env, jobject obj) {
     (void) obj;
@@ -206,21 +345,20 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumVisibleDisplayIds(
 }
 
 /**
- * Computes the DPI scale percentages Windows supports for the given resolution. Windows caps the maximum DPI scale so
- * the effective (logical) resolution stays usable, which is why fewer scales are offered as the resolution drops and
- * only 100% remains at very low resolutions. The supported set always starts at 100% and includes each higher
- * percentage while the effective resolution it produces stays at or above the usable floor on both edges. Because
- * Windows reports the live range only for the currently applied resolution, this resolution-derived computation lets a
- * not-yet-applied resolution (such as one selected in the UI) report its supported scales without changing the mode.
+ * Computes the DPI scale percentages Windows supports for the given resolution. Windows caps the maximum scale so the
+ * effective (logical) resolution stays usable, so fewer scales are offered as resolution drops and only 100% remains at
+ * very low resolutions. The set always starts at 100% and includes each higher percentage while its effective
+ * resolution stays at or above the usable floor on both edges. Since Windows reports the live range only for the
+ * applied resolution, this computation lets a not-yet-applied resolution report its scales without a mode change.
  *
  * @param env
- *        - The JNI environment pointer
+ *            - The JNI environment pointer
  * @param obj
- *        - The Java GetDisplay instance
+ *            - The Java GetDisplay instance
  * @param width
- *        - The horizontal resolution to compute supported DPI scale percentages for
+ *            - The horizontal resolution to compute supported DPI scale percentages for
  * @param height
- *        - The vertical resolution to compute supported DPI scale percentages for
+ *            - The vertical resolution to compute supported DPI scale percentages for
  *
  * @return An int[] of supported DPI scale percentages (always at least {100}), or null on native failure
  */
@@ -263,11 +401,11 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_getSupportedDpiScalePerce
  * Gets the orientation for the given display.
  *
  * @param env
- *        - The JNI environment pointer
+ *            - The JNI environment pointer
  * @param obj
- *        - The Java GetDisplay instance
+ *            - The Java GetDisplay instance
  * @param index
- *        - The index of the display to query
+ *            - The index of the display to query
  *
  * @return The orientation value (1 = Landscape, 2 = Portrait, etc.)
  */

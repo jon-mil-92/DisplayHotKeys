@@ -26,50 +26,100 @@
 
 using namespace std;
 
-/*
- * Supported DPI scale percentages and related constants.
+/**
+ * Supported DPI scale percentages, in ascending order, that Windows can apply.
  */
 static const vector<int32_t> DPI_SCALE_PERCENTAGES = {100, 125, 150, 175, 200, 225, 250, 300, 350};
+
+/**
+ * Number of entries in DPI_SCALE_PERCENTAGES.
+ */
 static const int32_t NUM_OF_DPI_SCALE_PERCENTAGES = 9;
+
+/**
+ * DisplayConfigGetDeviceInfo type value for reading the relative DPI scale indices (undocumented).
+ */
 static const int32_t DISPLAYCONFIG_DEVICE_INFO_HEADER_GET_DPI_TYPE = -3;
+
+/**
+ * DisplayConfigSetDeviceInfo type value for setting the relative DPI scale index (undocumented).
+ */
 static const int32_t DISPLAYCONFIG_DEVICE_INFO_HEADER_SET_DPI_TYPE = -4;
 
-/*
- * Minimum effective (logical) resolution Windows keeps usable when capping the maximum DPI scale. Windows only
- * offers a DPI scale percentage while the effective resolution it produces (raw resolution divided by the scale
- * factor) stays at or above this floor on both edges, so the supported set shrinks as the resolution drops and
- * collapses to 100% only at very low resolutions. The floor is compared against the long and short edges of the
- * resolution so the supported set is independent of orientation. Tune these two constants to widen or narrow the
- * offered percentages.
+/**
+ * Minimum effective (logical) long-edge resolution kept usable when capping the max DPI scale, so a higher scale is
+ * offered only while the raw long edge divided by that scale stays at or above this floor.
  */
 static const int32_t MIN_EFFECTIVE_LONG_EDGE = 800;
+
+/**
+ * Minimum effective (logical) short-edge resolution kept usable when capping the max DPI scale, applied together with
+ * MIN_EFFECTIVE_LONG_EDGE so the offered scale set is orientation-independent.
+ */
 static const int32_t MIN_EFFECTIVE_SHORT_EDGE = 600;
 
-/*
- * Holds the relative DPI scale percentage indices from the recommended DPI scale percentage.
+/**
+ * Relative DPI scale indices (minimum, current, maximum) from the recommended scale.
  */
 struct DISPLAYCONFIG_GET_DPI_SCALE_INDICES {
+    /**
+     * Standard device-info header identifying the source adapter and ID.
+     */
     DISPLAYCONFIG_DEVICE_INFO_HEADER header;
+
+    /**
+     * Minimum DPI scale index relative to the recommended scale.
+     */
     int32_t relativeMinimumDpiScaleIndex;
+
+    /**
+     * Current DPI scale index relative to the recommended scale.
+     */
     int32_t relativeCurrentDpiScaleIndex;
+
+    /**
+     * Maximum DPI scale index relative to the recommended scale.
+     */
     int32_t relativeMaximumDpiScaleIndex;
 };
 
-/*
- * Holds the relative index for the DPI scale percentage to set.
+/**
+ * Relative index of the DPI scale percentage to set.
  */
 struct DISPLAYCONFIG_SET_DPI_SCALE_INDEX {
+    /**
+     * Standard device-info header identifying the source adapter and ID.
+     */
     DISPLAYCONFIG_DEVICE_INFO_HEADER header;
+
+    /**
+     * DPI scale index to apply, relative to the recommended scale.
+     */
     int32_t relativeDpiScaleIndex;
 };
 
-/*
- * Holds the display configuration information for the connected displays as returned by QueryDisplayConfig.
+/**
+ * Owns the path/mode arrays returned by QueryDisplayConfig and frees them on destruction.
  */
 struct DisplayConfig {
+    /**
+     * Number of elements in pathInfoArray.
+     */
     UINT32 numPathInfoArrayElements;
+
+    /**
+     * Number of elements in modeInfoArray.
+     */
     UINT32 numModeInfoArrayElements;
+
+    /**
+     * Owned array of display paths from QueryDisplayConfig.
+     */
     DISPLAYCONFIG_PATH_INFO *pathInfoArray;
+
+    /**
+     * Owned array of display modes from QueryDisplayConfig.
+     */
     DISPLAYCONFIG_MODE_INFO *modeInfoArray;
 
     ~DisplayConfig() {
@@ -79,84 +129,166 @@ struct DisplayConfig {
 };
 
 /**
- * Queries the display configuration to initialize a structure that holds the persisted paths and modes as defined in
- * the Windows display persistence database.
+ * Queries the full persisted display configuration (QDC_DATABASE_CURRENT), including inactive displays.
  *
- * @return A DisplayConfig structure containing the display paths and modes for the current configuration
+ * @return The display paths and modes for the current configuration
  */
 DisplayConfig getDisplayConfig();
 
 /**
- * Gets a vector of display IDs by utilizing the EnumDisplayDevices API. Only devices attached to the desktop are
- * included. The returned IDs are converted into stable IDs.
+ * Gets stable display IDs for all desktop-attached devices via EnumDisplayDevices.
  *
- * @return A vector of stable display IDs for devices attached to the desktop
+ * @return Stable display IDs for devices attached to the desktop
  */
 vector<string> getEnumDisplayDevicesDisplayIds();
 
 /**
- * Gets a vector of display IDs by utilizing QueryDisplayConfig and DisplayConfigGetDeviceInfo. This reflects the
- * persisted display configuration in the Windows display database. The returned IDs are converted into stable IDs.
+ * Gets stable display IDs for the persisted configuration via QueryDisplayConfig.
  *
- * @return A vector of stable display IDs for the current persisted display configuration
+ * @return Stable display IDs for the current persisted display configuration
  */
 vector<string> getQueryDisplayConfigDisplayIds();
 
 /**
- * Gets a vector of display IDs for displays that are currently visible. A display is considered visible if it has an
- * active display path and its source mode reports a non-zero resolution and a valid desktop position. Returned IDs are
- * converted into stable IDs.
+ * Gets stable IDs for currently visible displays (active path, non-zero source resolution, on-screen position).
  *
- * @return A vector of stable display IDs for the currently visible displays
+ * @return Stable display IDs for the currently visible displays
  */
 vector<string> getVisibleDisplayIds();
 
 /**
- * Gets a per-display signature for each currently visible display. Each signature is the display's stable ID followed
- * by its source resolution, desktop position, rotation, and relative DPI scale index, so that resolution, DPI, and
- * orientation changes are detectable even when the set of visible displays is unchanged.
+ * Gets a per-display signature (stable ID plus source resolution, position, rotation, and DPI scale index) for each
+ * visible display, so resolution/DPI/orientation changes are detectable even when the visible set is unchanged.
  *
- * @return A vector of signatures (stable ID plus geometry) for the currently visible displays
+ * @return Signatures for the currently visible displays
  */
 vector<string> getVisibleDisplaySignatures();
 
 /**
- * Gets the index in the EnumDisplayDevices display ID vector for the given display ID.
+ * Gets the index of the given stable ID in the EnumDisplayDevices ID list.
  *
  * @param displayId
- *        - The stable ID of the display to get the index for
+ *            - The stable display ID to locate
  *
- * @return The index in the EnumDisplayDevices display ID vector for the given display ID, or 0 if not found
+ * @return The index, or 0 if not found
  */
 int getEnumDisplayDevicesDisplayIdIndex(string displayId);
 
 /**
- * Gets the index in the QueryDisplayConfig display ID vector for the given display ID.
+ * Gets the index of the given stable ID in the QueryDisplayConfig ID list.
  *
  * @param displayId
- *        - The stable ID of the display to get the index for
+ *            - The stable display ID to locate
  *
- * @return The index in the QueryDisplayConfig display ID vector for the given display ID, or 0 if not found
+ * @return The index, or 0 if not found
  */
 int getQueryDisplayConfigDisplayIdIndex(string displayId);
 
 /**
- * Builds a stable display ID from a monitor device path by removing the volatile UID segment and optional trailing
- * GUID. This produces a consistent identifier across device instance changes (e.g., virtual display re-creations).
+ * Builds a stable display ID from a monitor device path by stripping the volatile UID segment and trailing GUID, so it
+ * stays consistent across device instance changes (e.g. virtual display re-creations).
  *
  * @param monitorDevicePath
- *        - The raw monitor device path as returned by DisplayConfigGetDeviceInfo
+ *            - The raw monitor device path from DisplayConfigGetDeviceInfo
  *
- * @return A normalized, stable display ID string
+ * @return A normalized, stable display ID
  */
 string buildStableDisplayId(const wstring &monitorDevicePath);
 
 /**
- * Converts a wide string (UTF-16) to a UTF-8 encoded string.
+ * Converts a UTF-16 wide string to UTF-8.
  *
  * @param wideString
- *        - The wide string to convert
+ *            - The wide string to convert
  *
- * @return A UTF-8 encoded string, or an empty string if conversion fails
+ * @return The UTF-8 string, or empty on failure
  */
 string wStrToStr(const wstring &wideString);
+
+/**
+ * Resolves a path target's monitor device path to a stable display ID, centralizing the
+ * DisplayConfigGetDeviceInfo(GET_TARGET_NAME) then buildStableDisplayId sequence.
+ *
+ * @param targetInfo
+ *            - The path target to resolve
+ *
+ * @return The stable display ID, or empty if it could not be resolved
+ */
+string stableIdForTarget(const DISPLAYCONFIG_PATH_TARGET_INFO &targetInfo);
+
+/**
+ * Resolves a path source to its GDI device name (e.g. \\.\DISPLAY1) for the legacy EnumDisplaySettings/
+ * ChangeDisplaySettings APIs, centralizing the DisplayConfigGetDeviceInfo(GET_SOURCE_NAME) sequence.
+ *
+ * @param sourceInfo
+ *            - The path source to resolve
+ *
+ * @return The GDI device name, or empty if it could not be resolved
+ */
+wstring sourceGdiDeviceName(const DISPLAYCONFIG_PATH_SOURCE_INFO &sourceInfo);
+
+/**
+ * Shared CCD (Connecting and Configuring Displays) helpers that query the active configuration and submit a supplied
+ * source-mode config to SetDisplayConfig, decoupling desktop resolution from refresh rate via GPU scaling the way
+ * Windows Advanced Display Settings does. GetDisplay uses them to validate modes and SetDisplay to apply them.
+ */
+
+/**
+ * Queries the active display configuration (QDC_ONLY_ACTIVE_PATHS) into the given vectors.
+ *
+ * @param paths
+ *            - Receives the active path array
+ * @param modes
+ *            - Receives the active mode array
+ *
+ * @return Whether the query succeeded
+ */
+bool queryActiveCcdConfig(vector<DISPLAYCONFIG_PATH_INFO> &paths, vector<DISPLAYCONFIG_MODE_INFO> &modes);
+
+/**
+ * Finds the active path index that drives the display with the given stable ID.
+ *
+ * @param paths
+ *            - The active path array to search
+ * @param stableId
+ *            - The stable display ID to match
+ *
+ * @return The matching path index, or -1 if not found
+ */
+int findActivePathForDisplay(const vector<DISPLAYCONFIG_PATH_INFO> &paths, const string &stableId);
+
+/**
+ * Maps a truncated integer refresh rate to the rational encodings the CCD API may expect. The exact integer form
+ * (rate / 1) is tried first, then the two forms of a fractional NTSC rate ((rate + 1) * 1000 / 1001 and its rounded
+ * decimal). Derived from the value itself with no per-rate table, and the caller uses whichever encoding validates.
+ *
+ * @param rate
+ *            - The integer refresh rate to map
+ *
+ * @return The ordered candidate rationals to try
+ */
+vector<DISPLAYCONFIG_RATIONAL> toRefreshRationalCandidates(int rate);
+
+/**
+ * Sets the source resolution and target refresh rate on the chosen path of copies of the base arrays, then submits them
+ * to SetDisplayConfig with the given flags. Taking the arrays by value keeps the caller's base config reusable.
+ *
+ * @param paths
+ *            - A copy of the active path array (modified locally)
+ * @param modes
+ *            - A copy of the active mode array (modified locally)
+ * @param pathIndex
+ *            - Index of the path to reconfigure
+ * @param width
+ *            - Source resolution width to set
+ * @param height
+ *            - Source resolution height to set
+ * @param refreshRate
+ *            - Target refresh rate (rational) to set
+ * @param flags
+ *            - SetDisplayConfig flags (e.g. SDC_VALIDATE or SDC_APPLY variants)
+ *
+ * @return The SetDisplayConfig result code
+ */
+LONG submitCcdSourceMode(vector<DISPLAYCONFIG_PATH_INFO> paths, vector<DISPLAYCONFIG_MODE_INFO> modes, int pathIndex,
+                         UINT32 width, UINT32 height, DISPLAYCONFIG_RATIONAL refreshRate, UINT32 flags);

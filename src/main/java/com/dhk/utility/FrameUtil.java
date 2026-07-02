@@ -45,8 +45,15 @@ import com.dhk.model.FramePlacement;
  */
 public class FrameUtil {
 
+    /**
+     * Client-property key under which a frame's most recently cached graphics configuration is stored.
+     */
     private static final String CACHED_DISPLAY_CONFIGURATION_PROPERTY = FrameUtil.class.getName()
             + ".cachedDisplayConfiguration";
+
+    /**
+     * Client-property key under which a frame's most recently cached working-area size is stored.
+     */
     private static final String CACHED_WORKING_AREA_SIZE_PROPERTY = FrameUtil.class.getName()
             + ".cachedWorkingAreaSize";
 
@@ -88,6 +95,7 @@ public class FrameUtil {
      *
      * @param frame
      *            - The frame to capture the placement of (may be null)
+     *
      * @return The captured placement, or null if the frame is null or not displayable
      */
     public static FramePlacement capturePlacement(JFrame frame) {
@@ -132,6 +140,7 @@ public class FrameUtil {
      *            - The captured placement to reproduce (may be null to center on the default screen)
      * @param frameSize
      *            - The size of the frame to place
+     *
      * @return The top-left Point for the new frame in screen coordinates
      */
     public static Point computeLocation(FramePlacement placement, Dimension frameSize) {
@@ -144,6 +153,7 @@ public class FrameUtil {
      *
      * @param placement
      *            - The captured placement whose target display to measure (may be null to use the default screen)
+     *
      * @return The working area size of the target display
      */
     public static Dimension workingAreaSize(FramePlacement placement) {
@@ -157,6 +167,7 @@ public class FrameUtil {
      *
      * @param configuration
      *            - The configuration to measure (may be null)
+     *
      * @return The working area size, or null if no configuration is available
      */
     public static Dimension workingAreaSize(GraphicsConfiguration configuration) {
@@ -176,6 +187,7 @@ public class FrameUtil {
      *
      * @param configuration
      *            - The configuration to measure (may be null)
+     *
      * @return The working-area bounds in screen coordinates, or null if no configuration is available
      */
     public static Rectangle workingAreaBounds(GraphicsConfiguration configuration) {
@@ -210,6 +222,7 @@ public class FrameUtil {
      *            - The scroll pane that is the frame's content (may be null to skip scroll-bar reservation)
      * @param workingArea
      *            - The display's working area size (may be null to return the preferred size unchanged)
+     *
      * @return The size to give the frame
      */
     public static Dimension fitToWorkingArea(Dimension preferred, JScrollPane scrollPane, Dimension workingArea) {
@@ -294,6 +307,7 @@ public class FrameUtil {
      *            - The frame size to keep within the working area
      * @param preferredLocation
      *            - The desired top-left location before clamping
+     *
      * @return The clamped top-left location, or the preferred location unchanged if no configuration is available
      */
     public static Point clampToWorkingArea(GraphicsConfiguration configuration, Dimension frameSize,
@@ -319,6 +333,9 @@ public class FrameUtil {
     /**
      * Refreshes the cached graphics configuration and working area when the frame moves to another display, or when
      * those metrics have not been cached yet.
+     *
+     * @param frame
+     *            - The frame whose cached display metrics to refresh
      */
     private static void updateCachedDisplayMetrics(JFrame frame) {
         GraphicsConfiguration configuration = frame.getGraphicsConfiguration();
@@ -334,6 +351,11 @@ public class FrameUtil {
     /**
      * Re-packs the frame for the current display, then caps its size to the display's working area and keeps the title
      * bar reachable.
+     *
+     * @param frame
+     *            - The frame to re-pack and fit to the current display
+     * @param scrollPane
+     *            - The scroll pane used to reserve room for scroll bars when fitting
      */
     private static void repackAndFitToScreen(JFrame frame, JScrollPane scrollPane) {
         Point preferredLocation = frame.getLocation();
@@ -351,6 +373,11 @@ public class FrameUtil {
 
     /**
      * Sizes the frame to its preferred size capped to the cached working area when needed.
+     *
+     * @param frame
+     *            - The frame to resize
+     * @param scrollPane
+     *            - The scroll pane used to reserve room for scroll bars when fitting
      */
     private static void resizeToFitScreen(JFrame frame, JScrollPane scrollPane) {
         Dimension target = fitToWorkingArea(frame.getSize(), scrollPane, cachedWorkingAreaSize(frame));
@@ -362,6 +389,11 @@ public class FrameUtil {
 
     /**
      * Returns the frame's content pane as a scroll pane.
+     *
+     * @param frame
+     *            - The frame whose content pane to return
+     *
+     * @return The frame's content pane cast to a scroll pane
      */
     private static JScrollPane frameScrollPane(JFrame frame) {
         return (JScrollPane) frame.getContentPane();
@@ -369,6 +401,11 @@ public class FrameUtil {
 
     /**
      * Returns the main panel shown in the frame's content scroll pane.
+     *
+     * @param scrollPane
+     *            - The scroll pane whose viewport view to return
+     *
+     * @return The main panel shown in the scroll pane's viewport
      */
     private static JPanel scrollContentPanel(JScrollPane scrollPane) {
         Component content = scrollPane.getViewport().getView();
@@ -378,6 +415,11 @@ public class FrameUtil {
 
     /**
      * Returns the cached graphics configuration stored on the frame.
+     *
+     * @param frame
+     *            - The frame whose cached graphics configuration to return
+     *
+     * @return The cached graphics configuration, or null if none has been cached
      */
     private static GraphicsConfiguration cachedDisplayConfiguration(JFrame frame) {
         return (GraphicsConfiguration) frame.getRootPane().getClientProperty(CACHED_DISPLAY_CONFIGURATION_PROPERTY);
@@ -385,6 +427,11 @@ public class FrameUtil {
 
     /**
      * Returns the cached working-area size stored on the frame.
+     *
+     * @param frame
+     *            - The frame whose cached working-area size to return
+     *
+     * @return The cached working-area size, or null if none has been cached
      */
     private static Dimension cachedWorkingAreaSize(JFrame frame) {
         return (Dimension) frame.getRootPane().getClientProperty(CACHED_WORKING_AREA_SIZE_PROPERTY);
@@ -396,6 +443,7 @@ public class FrameUtil {
      *
      * @param placement
      *            - The captured placement to resolve a configuration for (may be null)
+     *
      * @return The graphics configuration for the target display
      */
     private static GraphicsConfiguration resolveConfiguration(FramePlacement placement) {
@@ -422,6 +470,7 @@ public class FrameUtil {
      *
      * @param captured
      *            - The configuration captured before the display was reconfigured
+     *
      * @return The live configuration for the captured device, or null if the device can no longer be found
      */
     private static GraphicsConfiguration liveConfigurationFor(GraphicsConfiguration captured) {
@@ -448,6 +497,7 @@ public class FrameUtil {
      *
      * @param frameLocation
      *            - Location used to select the graphics configuration
+     *
      * @return The graphics configuration for the device containing the location, or the default configuration
      */
     private static GraphicsConfiguration getTargetGraphicsConfiguration(Point frameLocation) {
@@ -479,6 +529,7 @@ public class FrameUtil {
      *            - The current bounds of the target display
      * @param frameSize
      *            - The size of the frame to place
+     *
      * @return The clamped top-left Point in screen coordinates
      */
     private static Point locationForConfiguration(FramePlacement placement, Rectangle bounds, Dimension frameSize) {
