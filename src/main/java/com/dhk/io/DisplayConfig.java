@@ -40,6 +40,7 @@ public class DisplayConfig {
     private GetDisplay getDisplay;
     private Map<String, DisplayMode[]> landscapeDisplayModesMap;
     private Map<String, DisplayMode[]> portraitDisplayModesMap;
+    private Map<Long, Integer[]> supportedDpiScalePercentages;
     private int numOfConnectedDisplays;
 
     /**
@@ -49,6 +50,7 @@ public class DisplayConfig {
         getDisplay = new GetDisplay();
         landscapeDisplayModesMap = new HashMap<String, DisplayMode[]>();
         portraitDisplayModesMap = new HashMap<String, DisplayMode[]>();
+        supportedDpiScalePercentages = new HashMap<Long, Integer[]>();
     }
 
     /**
@@ -91,10 +93,11 @@ public class DisplayConfig {
     private void updateDisplayModes() {
         landscapeDisplayModesMap = new HashMap<String, DisplayMode[]>(numOfConnectedDisplays);
         portraitDisplayModesMap = new HashMap<String, DisplayMode[]>(numOfConnectedDisplays);
+        int[] orientations = getDisplay.getDisplayOrientations();
 
         for (int displayIndex = 0; displayIndex < numOfConnectedDisplays; displayIndex++) {
             String displayId = displayIds[displayIndex];
-            int orientation = getDisplay.getDisplayOrientation(displayIndex);
+            int orientation = orientations[displayIndex];
             boolean landscapeOrientation = (orientation == 1 || orientation == 3);
 
             DisplayMode[] displayModes = getDisplay.getDisplayModes(displayId);
@@ -167,7 +170,18 @@ public class DisplayConfig {
      * @return The array of supported DPI scale percentages for the given resolution
      */
     public Integer[] getSupportedDpiScalePercentages(int width, int height) {
-        return getDisplay.getDpiScalePercentages(width, height);
+        // The supported set is a pure function of the resolution, so cache it to avoid repeated native queries
+        long cacheKey = ((long) width << 32) | (height & 0xffffffffL);
+        Integer[] cachedPercentages = supportedDpiScalePercentages.get(cacheKey);
+
+        if (cachedPercentages != null) {
+            return cachedPercentages.clone();
+        }
+
+        Integer[] supportedPercentages = getDisplay.getDpiScalePercentages(width, height);
+        supportedDpiScalePercentages.put(cacheKey, supportedPercentages);
+
+        return supportedPercentages.clone();
     }
 
 }

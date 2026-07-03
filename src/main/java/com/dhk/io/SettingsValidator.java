@@ -42,6 +42,7 @@ import lc.kra.system.keyboard.event.GlobalKeyEvent;
 public class SettingsValidator {
 
     private SettingsManager settingsMgr;
+    private DisplayConfig displayConfig;
     private Wini ini;
     private String[] displayIds;
     private Map<String, DisplayMode[]> landscapeDisplayModesMap;
@@ -61,6 +62,7 @@ public class SettingsValidator {
      */
     public SettingsValidator(SettingsManager settingsMgr) {
         this.settingsMgr = settingsMgr;
+        displayConfig = settingsMgr.getDisplayConfig();
         ini = settingsMgr.getIni();
         displayIds = settingsMgr.getDisplayIds();
         landscapeDisplayModesMap = settingsMgr.getLandscapeDisplayModesMap();
@@ -360,8 +362,8 @@ public class SettingsValidator {
             return false;
         }
 
-        Integer[] supportedDpiScalePercentages = settingsMgr.getDisplayConfig()
-                .getSupportedDpiScalePercentages(Integer.valueOf(width), Integer.valueOf(height));
+        Integer[] supportedDpiScalePercentages = displayConfig.getSupportedDpiScalePercentages(Integer.valueOf(width),
+                Integer.valueOf(height));
 
         return Arrays.asList(supportedDpiScalePercentages).contains(Integer.valueOf(dpiScalePercentage));
     }

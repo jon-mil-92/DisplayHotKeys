@@ -73,7 +73,7 @@ public class ClearAllButtonController extends AbstractButtonController implement
 
     @Override
     public void initController() {
-        displayConfig = model.getDisplayConfig();
+        displayConfig = settingsMgr.getDisplayConfig();
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
 

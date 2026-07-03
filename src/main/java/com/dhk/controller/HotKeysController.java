@@ -62,6 +62,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
     private DhkModel model;
     private DhkController controller;
     private SettingsManager settingsMgr;
+    private DisplayConfig displayConfig;
     private SetDisplay setDisplay;
     private HotKey hotKeyBackup;
     private Timer idleTimer;
@@ -114,6 +115,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
         anyHotKeyChanging = false;
         activeKeyCodes = new HashSet<>();
         rebuildActiveKeyCodes();
+        displayConfig = settingsMgr.getDisplayConfig();
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
 
@@ -558,7 +560,6 @@ public class HotKeysController implements IController, GlobalKeyListener {
      * @return Whether the display settings were applied (the display is still connected and unchanged)
      */
     private boolean setDisplaySettings(int displayIndex, int slotIndex) {
-        DisplayConfig displayConfig = new DisplayConfig();
         displayConfig.updateConnectedDisplays();
 
         String displayId = model.getDisplayIds()[displayIndex];

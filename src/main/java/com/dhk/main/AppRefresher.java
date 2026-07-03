@@ -60,7 +60,7 @@ public class AppRefresher {
         this.controller = controller;
         this.settingsMgr = settingsMgr;
 
-        displayConfig = new DisplayConfig();
+        displayConfig = settingsMgr.getDisplayConfig();
     }
 
     /**
@@ -104,9 +104,6 @@ public class AppRefresher {
         }
 
         FlatLaf.updateUI();
-
-        // Clean up memory after re-initializing the app
-        System.gc();
     }
 
 }

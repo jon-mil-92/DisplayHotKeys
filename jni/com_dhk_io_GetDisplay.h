@@ -17,11 +17,11 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes
 
 /*
  * Class:     com_dhk_io_GetDisplay
- * Method:    queryDisplayOrientation
- * Signature: (I)I
+ * Method:    queryDisplayOrientations
+ * Signature: ()[I
  */
-JNIEXPORT jint JNICALL Java_com_dhk_io_GetDisplay_queryDisplayOrientation
-  (JNIEnv *, jobject, jint);
+JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_queryDisplayOrientations
+  (JNIEnv *, jobject);
 
 /*
  * Class:     com_dhk_io_GetDisplay

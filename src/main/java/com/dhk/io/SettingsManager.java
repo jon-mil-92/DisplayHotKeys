@@ -55,13 +55,14 @@ public class SettingsManager {
     private static final int MAX_NUM_OF_SLOTS = 12;
 
     /**
-     * Default constructor for the {@link SettingsManager} class.
+     * Constructor for the {@link SettingsManager} class.
      */
     public SettingsManager() {
+        displayConfig = new DisplayConfig();
     }
 
     /**
-     * Initializes the display modes map and settings file for the settings manager.
+     * Initializes the displays and settings file for the settings manager.
      */
     public void initSettingsManager() {
         initDisplays();
@@ -420,10 +421,10 @@ public class SettingsManager {
     }
 
     /**
-     * Initializes the display modes map.
+     * Refreshes the connected displays and their supported display modes on the shared display configuration, then
+     * caches the landscape and portrait display modes for each connected display by its ID.
      */
     private void initDisplays() {
-        displayConfig = new DisplayConfig();
         displayConfig.updateDisplayConfig();
         numOfConnectedDisplays = displayConfig.getNumOfConnectedDisplays();
         displayIds = displayConfig.getDisplayIds();

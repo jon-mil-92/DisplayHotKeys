@@ -46,6 +46,7 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
     private DhkModel model;
     private DhkController controller;
     private SettingsManager settingsMgr;
+    private DisplayConfig displayConfig;
     private SetDisplay setDisplay;
     private AppRefresher appRefresher;
 
@@ -74,6 +75,7 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
     @Override
     public void initController() {
         setDisplay = new SetDisplay();
+        displayConfig = settingsMgr.getDisplayConfig();
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
 
@@ -107,7 +109,6 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
      *            - The index of the slot to set the display settings for
      */
     private void applyDisplayModeButtonAction(int displayIndex, int slotIndex) {
-        DisplayConfig displayConfig = new DisplayConfig();
         displayConfig.updateConnectedDisplays();
 
         String displayId = model.getDisplayIds()[displayIndex];

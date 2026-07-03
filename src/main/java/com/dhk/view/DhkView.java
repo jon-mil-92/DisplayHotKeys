@@ -63,6 +63,7 @@ import com.formdev.flatlaf.ui.FlatUIUtils;
 public class DhkView implements IView {
 
     private DhkModel model;
+    private DisplayConfig displayConfig;
     private JFrame frame;
     private JPanel mainPanel;
     private JPanel displayPanel;
@@ -146,6 +147,7 @@ public class DhkView implements IView {
                 : 0;
 
         // Reset view state used by component initialization
+        displayConfig = model.getDisplayConfig();
         displayMap = new HashMap<>();
         numberOfActiveSlotsMap = new HashMap<>();
         previouslySelectedDisplayIndex = desiredDisplayIndex;
@@ -612,7 +614,6 @@ public class DhkView implements IView {
      */
     private void initSlotComponents() {
         if (model.getNumOfConnectedDisplays() > 0) {
-            DisplayConfig displayConfig = model.getDisplayConfig();
             String[] displayIds = model.getDisplayIds();
 
             for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
@@ -752,8 +753,8 @@ public class DhkView implements IView {
             return;
         }
 
-        Integer[] dpiScalePercentages = model.getDisplayConfig()
-                .getSupportedDpiScalePercentages(selectedDisplayMode.getWidth(), selectedDisplayMode.getHeight());
+        Integer[] dpiScalePercentages = displayConfig.getSupportedDpiScalePercentages(selectedDisplayMode.getWidth(),
+                selectedDisplayMode.getHeight());
 
         getSlot(displayIndex, slotIndex).setDpiScalePercentages(dpiScalePercentages);
     }
