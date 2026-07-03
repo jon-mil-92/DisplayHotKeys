@@ -15,10 +15,10 @@ BEGIN
         BEGIN
             VALUE "FileDescription", "Apply settings for displays"
             VALUE "FileVersion", "1.0.0.0"
-            VALUE "ProductName", "GetDisplay"
+            VALUE "ProductName", "SetDisplay"
             VALUE "ProductVersion", "2.0.0.0"
             VALUE "LegalCopyright", "Copyright © 2026 Jonathan R. Miller"
-            VALUE "OriginalFilename", "GetDisplay"
+            VALUE "OriginalFilename", "SetDisplay"
         END
     END
     BLOCK "VarFileInfo"
