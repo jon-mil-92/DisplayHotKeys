@@ -283,7 +283,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
         }
     }
 
-    modeList = move(uniqueModes);
+    modeList = std::move(uniqueModes);
 
     // Prepare Java DisplayMode class and constructor
     jclass displayModeClass = env->FindClass("java/awt/DisplayMode");
