@@ -20,10 +20,11 @@
 #include "com_dhk_io_GetDisplay.h"
 #include "DisplayConfig.h"
 
+#include <cstdint>
 #include <jni.h>
 #include <map>
 #include <set>
-#include <tuple>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include <windows.h>
@@ -270,15 +271,20 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
     // Expand GPU-scaled custom resolutions with the extra refresh rates the legacy mode table omits
     addCustomResolutionRefreshRates(stableDisplayId, modeList);
 
-    /*
-     * De-duplicate in place, preserving first-seen order, since EnumDisplaySettingsExW repeats each mode across bit
-     * depths and flags and the custom-resolution expansion may re-add a rate; the caller then needs no distinct pass
-     */
-    set<tuple<int, int, int, int>> seenModes;
+    // De-duplicate in first-seen order, since EnumDisplaySettingsExW repeats modes and the expansion may re-add a rate
+    unordered_set<uint64_t> seenModes;
+    seenModes.reserve(modeList.size());
     vector<ModeInfo> uniqueModes;
+    uniqueModes.reserve(modeList.size());
 
     for (const ModeInfo &mode : modeList) {
-        if (seenModes.insert(make_tuple(mode.width, mode.height, mode.bitsPerPel, mode.frequency)).second) {
+        // Pack the four fields into one 64-bit key for hashed O(1) membership
+        uint64_t modeKey = (static_cast<uint64_t>(static_cast<uint32_t>(mode.width)) << 40) |
+                           (static_cast<uint64_t>(static_cast<uint32_t>(mode.height)) << 24) |
+                           (static_cast<uint64_t>(static_cast<uint32_t>(mode.bitsPerPel)) << 16) |
+                           static_cast<uint64_t>(static_cast<uint32_t>(mode.frequency));
+
+        if (seenModes.insert(modeKey).second) {
             uniqueModes.push_back(mode);
         }
     }
