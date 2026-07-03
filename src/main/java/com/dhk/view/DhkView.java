@@ -176,8 +176,8 @@ public class DhkView implements IView {
          * Cap the packed size to the display's working area (reserving room for any needed scroll bars) before
          * computing the location, so the frame fits on screen immediately and the location uses the final size
          */
-        Dimension fittedFrameSize = FrameUtil.fitToWorkingArea(newFrame.getSize(), scrollPane,
-                FrameUtil.workingAreaSize(previousPlacement));
+        final Dimension workingAreaSize = FrameUtil.workingAreaSize(previousPlacement);
+        Dimension fittedFrameSize = FrameUtil.fitToWorkingArea(newFrame.getSize(), scrollPane, workingAreaSize);
 
         if (!fittedFrameSize.equals(newFrame.getSize())) {
             newFrame.setSize(fittedFrameSize);
@@ -209,6 +209,9 @@ public class DhkView implements IView {
          * cause transient artifacts (ghost copies) during repaint
          */
         newFrame.setVisible(true);
+
+        // Grow the frame to absorb any pack shortfall so scroll bars do not appear when the content fits on screen
+        SwingUtilities.invokeLater(() -> FrameUtil.settleScrollBars(newFrame, scrollPane, workingAreaSize));
 
         // Re-assert the placement after the frame is shown, in case the OS positioned it elsewhere
         SwingUtilities.invokeLater(() -> FrameUtil.correctLocation(newFrame, previousPlacement));

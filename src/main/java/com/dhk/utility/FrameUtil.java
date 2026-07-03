@@ -64,6 +64,54 @@ public class FrameUtil {
     }
 
     /**
+     * Grows the frame by any pixels its client area falls short of the content, so the as-needed scroll bars do not
+     * appear when the content actually fits on screen.
+     *
+     * @param frame
+     *            - The frame to correct (may be null)
+     * @param scrollPane
+     *            - The frame's content scroll pane whose content to fit (may be null)
+     * @param workingArea
+     *            - The display's working area size, reused from the fit so no second native insets query is made on the
+     *            re-init path (may be null to skip the cap)
+     */
+    public static void settleScrollBars(JFrame frame, JScrollPane scrollPane, Dimension workingArea) {
+        if (frame == null || scrollPane == null || !frame.isDisplayable()) {
+            return;
+        }
+
+        Component view = scrollPane.getViewport().getView();
+
+        if (view == null) {
+            return;
+        }
+
+        // The scroll pane is the content pane, so its gap below the content's preferred size is the client shortfall
+        Dimension viewPreferred = view.getPreferredSize();
+        Dimension paneSize = scrollPane.getSize();
+        int shortfallWidth = Math.max(0, viewPreferred.width - paneSize.width);
+        int shortfallHeight = Math.max(0, viewPreferred.height - paneSize.height);
+
+        if (shortfallWidth == 0 && shortfallHeight == 0) {
+            return;
+        }
+
+        // Cap growth to the working area so a small display keeps its scroll bars instead of growing off screen
+        int newWidth = frame.getWidth() + shortfallWidth;
+        int newHeight = frame.getHeight() + shortfallHeight;
+
+        if (workingArea != null) {
+            newWidth = Math.min(newWidth, workingArea.width);
+            newHeight = Math.min(newHeight, workingArea.height);
+        }
+
+        if (newWidth != frame.getWidth() || newHeight != frame.getHeight()) {
+            frame.setSize(newWidth, newHeight);
+            frame.validate();
+        }
+    }
+
+    /**
      * Refreshes a frame's UI, then re-fits it to the working area of the display it currently occupies.
      *
      * @param frame
