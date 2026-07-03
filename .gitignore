@@ -6,6 +6,9 @@ tmp/
 target/
 
 # JNI DLLs
-GetDisplay.dll
-SetDisplay.dll
-DisplayEventNotifier.dll
+/GetDisplay.dll
+/SetDisplay.dll
+/DisplayEventNotifier.dll
+/DisplayEventNotifier.res.o
+/GetDisplay.res.o
+/SetDisplay.res.o
