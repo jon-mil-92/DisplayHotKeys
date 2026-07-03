@@ -5,10 +5,14 @@ tmp/
 ### Maven ###
 target/
 
+### Launch4j ###
+launch4j/JDK
+launch4j/DisplayHotKeys.exe
+
 # JNI DLLs
-/GetDisplay.dll
-/SetDisplay.dll
-/DisplayEventNotifier.dll
-/DisplayEventNotifier.res.o
-/GetDisplay.res.o
-/SetDisplay.res.o
+GetDisplay.dll
+SetDisplay.dll
+DisplayEventNotifier.dll
+DisplayEventNotifier.res.o
+GetDisplay.res.o
+SetDisplay.res.o
