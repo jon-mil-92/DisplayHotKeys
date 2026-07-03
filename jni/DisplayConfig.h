@@ -37,12 +37,14 @@ static const vector<int32_t> DPI_SCALE_PERCENTAGES = {100, 125, 150, 175, 200, 2
 static const int32_t NUM_OF_DPI_SCALE_PERCENTAGES = 9;
 
 /**
- * DisplayConfigGetDeviceInfo type value for reading the relative DPI scale indices (undocumented).
+ * DisplayConfigGetDeviceInfo type value for reading the relative DPI scale indices. Undocumented but identical and
+ * stable on Windows 10 and 11; callers must check ERROR_SUCCESS and degrade gracefully.
  */
 static const int32_t DISPLAYCONFIG_DEVICE_INFO_HEADER_GET_DPI_TYPE = -3;
 
 /**
- * DisplayConfigSetDeviceInfo type value for setting the relative DPI scale index (undocumented).
+ * DisplayConfigSetDeviceInfo type value for setting the relative DPI scale index. Undocumented but identical and
+ * stable on Windows 10 and 11; callers must check the result and degrade gracefully.
  */
 static const int32_t DISPLAYCONFIG_DEVICE_INFO_HEADER_SET_DPI_TYPE = -4;
 
@@ -185,15 +187,18 @@ int getEnumDisplayDevicesDisplayIdIndex(string displayId);
 int getQueryDisplayConfigDisplayIdIndex(string displayId);
 
 /**
- * Builds a stable display ID from a monitor device path by stripping the volatile UID segment and trailing GUID, so it
- * stays consistent across device instance changes (e.g. virtual display re-creations).
+ * Builds a compact, stable display ID from a monitor device path and its friendly name. Strips the constant
+ * device-interface boilerplate, the volatile connection UID, and the trailing GUID so the ID survives instance
+ * changes, then appends the sanitized friendly name so displays sharing a device-path prefix stay distinct.
  *
  * @param monitorDevicePath
  *            - The raw monitor device path from DisplayConfigGetDeviceInfo
+ * @param friendlyName
+ *            - The monitor/client name from DISPLAYCONFIG_TARGET_DEVICE_NAME, or empty when unavailable
  *
  * @return A normalized, stable display ID
  */
-string buildStableDisplayId(const wstring &monitorDevicePath);
+string buildStableDisplayId(const wstring &monitorDevicePath, const wstring &friendlyName = L"");
 
 /**
  * Converts a UTF-16 wide string to UTF-8.

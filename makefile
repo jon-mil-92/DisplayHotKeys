@@ -1,7 +1,7 @@
 CXX ?= g++
 CXXSTD ?= --std=c++20
 TOOLCHAIN_FLAGS ?=
-COMMON_DEFS = -DUNICODE -D_UNICODE -D_WIN32 -D_WINDOWS -DWIN32_LEAN_AND_MEAN
+COMMON_DEFS = -DUNICODE -D_UNICODE -D_WIN32 -D_WINDOWS -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0A00 -DWINVER=0x0A00
 INCLUDES = -I"C:\jdk21\include" -I"C:\jdk21\include\win32" -I"C:\msys64\mingw64\include" -I"C:\msys64\mingw64\include\c++\16.1.0" -I"C:\msys64\mingw64\lib\gcc\x86_64-w64-mingw32\16.1.0\include" -I"C:\msys64\mingw64\lib\gcc\x86_64-w64-mingw32\16.1.0\include-fixed"
 LDFLAGS = -shared -static
 

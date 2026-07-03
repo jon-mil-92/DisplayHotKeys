@@ -273,7 +273,10 @@ int getEnumDisplayDevicesDisplayIdIndex(string displayId) {
     vector<string> displayIds = getEnumDisplayDevicesDisplayIds();
 
     for (int i = 0; i < (int) displayIds.size(); i++) {
-        if (displayIds[i] == displayId) {
+        const string &coreId = displayIds[i];
+
+        // EnumDisplayDevices IDs carry no friendly-name suffix, so match the core that precedes it
+        if (displayId.rfind(coreId, 0) == 0 && (displayId.size() == coreId.size() || displayId[coreId.size()] == '#')) {
             return i;
         }
     }
@@ -302,16 +305,28 @@ int getQueryDisplayConfigDisplayIdIndex(string displayId) {
 }
 
 /**
- * Builds a stable display ID from a monitor device path by stripping the volatile UID segment and trailing GUID, so it
- * stays consistent across device instance changes (e.g. virtual display re-creations).
+ * Builds a compact, stable display ID from a monitor device path and its friendly name. Strips the constant
+ * device-interface boilerplate, the volatile connection UID, and the trailing GUID so the ID survives instance
+ * changes, then appends the sanitized friendly name so displays sharing a device-path prefix stay distinct.
  *
  * @param monitorDevicePath
  *            - The raw monitor device path from DisplayConfigGetDeviceInfo
+ * @param friendlyName
+ *            - The monitor/client name from DISPLAYCONFIG_TARGET_DEVICE_NAME, or empty when unavailable
  *
  * @return A normalized, stable display ID
  */
-string buildStableDisplayId(const wstring &monitorDevicePath) {
+string buildStableDisplayId(const wstring &monitorDevicePath, const wstring &friendlyName) {
     string path = wStrToStr(monitorDevicePath);
+
+    // Drop the constant \\?\DISPLAY# boilerplate so the ID keeps only distinguishing parts and stays readable
+    if (path.rfind("\\\\?\\", 0) == 0) {
+        size_t branchEnd = path.find('#');
+
+        if (branchEnd != string::npos) {
+            path.erase(0, branchEnd + 1);
+        }
+    }
 
     // Strip trailing GUID (#{...})
     size_t guidPos = path.find("#{");
@@ -320,7 +335,7 @@ string buildStableDisplayId(const wstring &monitorDevicePath) {
         path.erase(guidPos);
     }
 
-    // Remove &UID#### segment
+    // Remove the volatile &UID#### segment so a display re-created with a new connection UID keeps the same ID
     size_t uidPos = path.find("&UID");
 
     if (uidPos != string::npos) {
@@ -348,6 +363,19 @@ string buildStableDisplayId(const wstring &monitorDevicePath) {
 
     // Normalize case
     transform(path.begin(), path.end(), path.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+
+    // Append the sanitized friendly name ([a-z0-9]) so clients sharing one device-path prefix stay distinct
+    string nameToken;
+
+    for (wchar_t wc : friendlyName) {
+        if (wc < 128 && isalnum((unsigned char) wc)) {
+            nameToken.push_back((char) tolower((unsigned char) wc));
+        }
+    }
+
+    if (!nameToken.empty()) {
+        path += "#" + nameToken;
+    }
 
     return path;
 }
@@ -397,7 +425,7 @@ string stableIdForTarget(const DISPLAYCONFIG_PATH_TARGET_INFO &targetInfo) {
         return string();
     }
 
-    return buildStableDisplayId(target.monitorDevicePath);
+    return buildStableDisplayId(target.monitorDevicePath, target.monitorFriendlyDeviceName);
 }
 
 /**

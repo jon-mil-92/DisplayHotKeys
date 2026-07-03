@@ -125,8 +125,9 @@ static vector<string> lastNormalizedSignatures;
 static vector<string> lastNotifiedNormalizedSignatures;
 
 /**
- * Device interface class GUID for monitor devices; used with RegisterDeviceNotification to receive DBT_DEVICEARRIVAL
- * and DBT_DEVICEREMOVECOMPLETE notifications for monitors.
+ * Windows-universal monitor device interface class GUID (GUID_DEVINTERFACE_MONITOR), identical on every machine and
+ * OS version. Used only as the RegisterDeviceNotification class filter for monitor DBT_DEVICEARRIVAL /
+ * DBT_DEVICEREMOVECOMPLETE events. Kept as a literal because MinGW-w64 headers do not define the named constant.
  */
 static constexpr GUID MONITOR_DEVICE_INTERFACE_GUID = {
     0xe6f07b5f, 0xee97, 0x4a90, {0xb0, 0x76, 0x33, 0xf5, 0x7b, 0xf4, 0xea, 0xa7}};
