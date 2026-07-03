@@ -23,6 +23,7 @@
 #include <jni.h>
 #include <map>
 #include <set>
+#include <tuple>
 #include <utility>
 #include <vector>
 #include <windows.h>
@@ -159,7 +160,7 @@ static void addCustomResolutionRefreshRates(const string &displayId, vector<Mode
 
         /*
          * Every panel rate at or below the ceiling is drivable (lower rate = lower pixel clock), so add the ones the
-         * legacy table omitted without probing; CCD desktop modes are 32 bpp and Java de-duplicates the combined set
+         * legacy table omitted without probing
          */
         for (int rate : candidateRates) {
             if (rate <= ceilingRate && existingRates.find(rate) == existingRates.end()) {
@@ -173,8 +174,9 @@ static void addCustomResolutionRefreshRates(const string &displayId, vector<Mode
  * Enumerates the supported display modes for the given display. Modes are read with EnumDisplaySettingsExW via the GDI
  * device name from QueryDisplayConfig, falling back to an EnumDisplayDevices index. Default (EDID-pruned) enumeration
  * mirrors Windows Advanced Display Settings; interlaced and zero-size modes are skipped. GPU-scaled custom resolutions
- * are then expanded with their other supported refresh rates via the CCD API. Wide-character (Unicode) APIs are used
- * throughout to avoid ANSI/Unicode mismatches.
+ * are then expanded with their other supported refresh rates via the CCD API. The returned set is de-duplicated in
+ * first-seen order so the caller needs no distinct pass. Wide-character (Unicode) APIs are used throughout to avoid
+ * ANSI/Unicode mismatches.
  *
  * @param env
  *            - The JNI environment pointer
@@ -267,6 +269,21 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
 
     // Expand GPU-scaled custom resolutions with the extra refresh rates the legacy mode table omits
     addCustomResolutionRefreshRates(stableDisplayId, modeList);
+
+    /*
+     * De-duplicate in place, preserving first-seen order, since EnumDisplaySettingsExW repeats each mode across bit
+     * depths and flags and the custom-resolution expansion may re-add a rate; the caller then needs no distinct pass
+     */
+    set<tuple<int, int, int, int>> seenModes;
+    vector<ModeInfo> uniqueModes;
+
+    for (const ModeInfo &mode : modeList) {
+        if (seenModes.insert(make_tuple(mode.width, mode.height, mode.bitsPerPel, mode.frequency)).second) {
+            uniqueModes.push_back(mode);
+        }
+    }
+
+    modeList = move(uniqueModes);
 
     // Prepare Java DisplayMode class and constructor
     jclass displayModeClass = env->FindClass("java/awt/DisplayMode");

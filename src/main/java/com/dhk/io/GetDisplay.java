@@ -20,7 +20,6 @@
 package com.dhk.io;
 
 import java.awt.DisplayMode;
-import java.util.Arrays;
 
 /**
  * Utilizes the GetDisplay JNI library to retrieve current display settings, including supported display modes,
@@ -92,8 +91,7 @@ public class GetDisplay {
      * @return The current array of supported display modes for the given display
      */
     public DisplayMode[] getDisplayModes(String displayId) {
-        // Only return unique supported display modes, as the EnumDisplaySettings function from Windows.h may not
-        return Arrays.stream(enumDisplayModes(displayId)).distinct().toArray(DisplayMode[]::new);
+        return enumDisplayModes(displayId);
     }
 
     /**
