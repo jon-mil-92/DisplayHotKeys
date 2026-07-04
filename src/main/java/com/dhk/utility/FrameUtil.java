@@ -58,6 +58,12 @@ public class FrameUtil {
             + ".cachedWorkingAreaSize";
 
     /**
+     * Refresh interval, in milliseconds, before refreshing the view so AWT finishes refreshing its own desktop metrics
+     * first so the refresh does not run against the transient working area.
+     */
+    public static final int REFRESH_DELAY_MS = 400;
+
+    /**
      * Default constructor for the {@link FrameUtil} class.
      */
     public FrameUtil() {

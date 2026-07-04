@@ -42,12 +42,6 @@ public class ShellRestartHandler implements ShellRestartListener {
     private final Timer refitTimer;
 
     /**
-     * Debounce interval (ms) before re-fitting, coalescing duplicate broadcasts and letting AWT finish refreshing its
-     * own desktop metrics first so the re-fit does not run against the transient working area.
-     */
-    private static final int REFIT_DELAY_MS = 400;
-
-    /**
      * Constructor for the {@link ShellRestartHandler} class.
      *
      * @param view
@@ -55,7 +49,7 @@ public class ShellRestartHandler implements ShellRestartListener {
      */
     public ShellRestartHandler(DhkView view) {
         this.view = view;
-        refitTimer = new Timer(REFIT_DELAY_MS, e -> refitAllWindows());
+        refitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> refitAllWindows());
         refitTimer.setRepeats(false);
     }
 

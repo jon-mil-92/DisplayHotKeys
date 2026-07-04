@@ -84,7 +84,6 @@ public class HotKeysController implements IController, GlobalKeyListener {
     private static final int IDLE_INPUT_TIMEOUT = 2500;
     private static final int RELEASE_MESSAGE_TIMEOUT = 1500;
     private static final int MAX_KEY_COUNT = 3;
-    private static final int REINIT_DELAY_MS = 400;
 
     /**
      * Constructor for the {@link HotKeysController} class.
@@ -592,7 +591,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
      *            re-initialization because the OS will have moved the existing frame during the reconfiguration
      */
     private void scheduleReInit(FramePlacement placement) {
-        Timer reInitTimer = new Timer(REINIT_DELAY_MS, e -> appRefresher.reInitApp(placement));
+        Timer reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp(placement));
         reInitTimer.setRepeats(false);
         reInitTimer.start();
     }

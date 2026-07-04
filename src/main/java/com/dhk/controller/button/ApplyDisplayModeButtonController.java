@@ -50,8 +50,6 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
     private SetDisplay setDisplay;
     private AppRefresher appRefresher;
 
-    private static final int REINIT_DELAY_MS = 400;
-
     /**
      * Constructor for the {@link ApplyDisplayModeButtonController} class.
      *
@@ -133,7 +131,7 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
              * left. The Timer fires once on the EDT. The placement captured above is reproduced, since the OS will have
              * moved the existing frame
              */
-            Timer reInitTimer = new Timer(REINIT_DELAY_MS, e -> appRefresher.reInitApp(placement));
+            Timer reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp(placement));
             reInitTimer.setRepeats(false);
             reInitTimer.start();
         }

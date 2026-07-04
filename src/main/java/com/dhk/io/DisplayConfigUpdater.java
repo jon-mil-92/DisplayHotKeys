@@ -24,6 +24,7 @@ import javax.swing.Timer;
 import com.dhk.controller.DhkController;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
+import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
 
 /**
@@ -36,8 +37,6 @@ public class DisplayConfigUpdater implements DisplayChangeListener {
 
     private final AppRefresher appRefresher;
     private final Timer reInitTimer;
-
-    private static final int REINIT_DELAY_MS = 400;
 
     /**
      * Constructor for the {@link DisplayConfigUpdater} class.
@@ -53,7 +52,7 @@ public class DisplayConfigUpdater implements DisplayChangeListener {
      */
     public DisplayConfigUpdater(DhkModel model, DhkView view, DhkController controller, SettingsManager settingsMgr) {
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
-        reInitTimer = new Timer(REINIT_DELAY_MS, e -> appRefresher.reInitApp());
+        reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp());
         reInitTimer.setRepeats(false);
     }
 
