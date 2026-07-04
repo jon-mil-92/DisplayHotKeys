@@ -34,6 +34,8 @@
 
 This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, bit depth, refresh rate, scaling mode, DPI scale percentage, and orientation can be changed for each connected display with user-defined hot keys.
 
+<img src="src/main/resources/images/product_screenshot.png" alt="Display Hot Keys" width="800"></p>
+
 ### Common Use Cases
 
 * Switch refresh rates to quickly enable the Black Frame Insertion or Backlight Strobing capabilities of the display.
@@ -190,20 +192,6 @@ Opens a web page in the default browser to display the releases for Display Hot 
 
 <p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
-### Screenshots
-
-#### Light Mode
-
-<img src="src/main/resources/images/product_screenshot_light_main.png" alt="Light Main" width="800"></p>
-<img src="src/main/resources/images/product_screenshot_light_about.png" alt="Light About" width="800">
-
-#### Dark Mode
-
-<img src="src/main/resources/images/product_screenshot_dark_main.png" alt="Dark Main" width="800"></p>
-<img src="src/main/resources/images/product_screenshot_dark_about.png" alt="Dark About" width="800">
-
-<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
-
 ## Roadmap
 
 - [x] &thinsp; Release the initial build.
@@ -216,6 +204,8 @@ Opens a web page in the default browser to display the releases for Display Hot 
 - [x] &thinsp; Add an "About" view to display current app information.
 - [x] &thinsp; Add support for virtual displays and display duplication.
 - [x] &thinsp; Add event-driven display configuration detection.
+- [ ] &thinsp; Add event-driven new display mode detection.
+- [ ] &thinsp; Add clearing of individual slots.
 
 See [open issues] for a full list of proposed features (and known issues).
 
