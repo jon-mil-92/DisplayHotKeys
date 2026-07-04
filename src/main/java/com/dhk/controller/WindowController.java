@@ -22,7 +22,10 @@ package com.dhk.controller;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 
+import javax.swing.SwingUtilities;
+
 import com.dhk.model.DhkModel;
+import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
 import com.dhk.view.MinimizeToTray;
 
@@ -85,6 +88,8 @@ public class WindowController implements IController, WindowListener {
 
     @Override
     public void windowDeiconified(WindowEvent e) {
+        // Re-fit after the frame is shown so staleness accrued while iconified does not surface as scroll bars
+        SwingUtilities.invokeLater(() -> FrameUtil.refreshFrame(view.getFrame()));
     }
 
     @Override

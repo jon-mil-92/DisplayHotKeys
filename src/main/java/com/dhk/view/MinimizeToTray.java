@@ -28,6 +28,7 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 import com.dhk.model.DhkModel;
+import com.dhk.utility.FrameUtil;
 
 import dorkbox.systemTray.MenuItem;
 import dorkbox.systemTray.SystemTray;
@@ -141,6 +142,14 @@ public class MinimizeToTray {
                 frame.setExtendedState(JFrame.NORMAL);
                 frame.setVisible(true);
                 view.getDefaultFocusComponent().requestFocusInWindow();
+            }
+        });
+
+        // Re-fit after the frame is shown so layout staleness accrued while hidden does not surface as scroll bars
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                FrameUtil.refreshFrame(frame);
             }
         });
 

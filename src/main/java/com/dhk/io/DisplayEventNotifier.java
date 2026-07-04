@@ -28,6 +28,7 @@ import javax.swing.SwingUtilities;
 public class DisplayEventNotifier {
 
     private DisplayChangeListener displayChangeListener;
+    private ShellRestartListener shellRestartListener;
 
     /**
      * Default constructor for the {@link DisplayEventNotifier} class.
@@ -49,8 +50,18 @@ public class DisplayEventNotifier {
      * @param listener
      *            - the listener to notify
      */
-    public void registerListener(DisplayChangeListener listener) {
+    public void registerDisplayChangeListener(DisplayChangeListener listener) {
         this.displayChangeListener = listener;
+    }
+
+    /**
+     * Register a listener that will be notified when the native layer detects a Windows shell restart.
+     *
+     * @param listener
+     *            - the listener to notify
+     */
+    public void registerShellRestartListener(ShellRestartListener listener) {
+        this.shellRestartListener = listener;
     }
 
     /**
@@ -76,6 +87,7 @@ public class DisplayEventNotifier {
     public void stop() {
         nativeStop();
         this.displayChangeListener = null;
+        this.shellRestartListener = null;
     }
 
     /**
@@ -87,6 +99,18 @@ public class DisplayEventNotifier {
         if (listener != null) {
             // Forward to the EDT to run UI/model updates safely
             SwingUtilities.invokeLater(() -> listener.displayConfigurationChanged());
+        }
+    }
+
+    /**
+     * Called from native code when a Windows shell restart is detected.
+     */
+    private void onShellRestart() {
+        final ShellRestartListener listener = this.shellRestartListener;
+
+        if (listener != null) {
+            // Forward to the EDT to run UI updates safely
+            SwingUtilities.invokeLater(() -> listener.shellRestarted());
         }
     }
 

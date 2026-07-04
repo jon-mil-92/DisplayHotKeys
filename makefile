@@ -25,8 +25,9 @@ header:
 	javac -h jni src/main/java/com/dhk/io/SetDisplay.java
 	rm -f src/main/java/com/dhk/io/SetDisplay.class
 
-	javac -h jni src/main/java/com/dhk/io/DisplayChangeListener.java src/main/java/com/dhk/io/DisplayEventNotifier.java
+	javac -h jni src/main/java/com/dhk/io/DisplayChangeListener.java src/main/java/com/dhk/io/ShellRestartListener.java src/main/java/com/dhk/io/DisplayEventNotifier.java
 	rm -f src/main/java/com/dhk/io/DisplayChangeListener.class
+	rm -f src/main/java/com/dhk/io/ShellRestartListener.class
 	rm -f src/main/java/com/dhk/io/DisplayEventNotifier.class
 
 dll:

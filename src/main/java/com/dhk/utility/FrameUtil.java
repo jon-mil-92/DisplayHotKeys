@@ -112,7 +112,8 @@ public class FrameUtil {
     }
 
     /**
-     * Refreshes a frame's UI, then re-fits it to the working area of the display it currently occupies.
+     * Refreshes a frame's UI, then re-fits it to the working area of the display it currently occupies. Absorbs any
+     * pack shortfall afterward so every refresh path settles the as-needed scroll bars, not only the initial build.
      *
      * @param frame
      *            - The frame to refresh
@@ -132,6 +133,10 @@ public class FrameUtil {
         scrollPane.revalidate();
         repackAndFitToScreen(frame, scrollPane);
         frame.validate();
+
+        // The frame is already realized here, so its client area is laid out and the shortfall can settle in place
+        settleScrollBars(frame, scrollPane, cachedWorkingAreaSize(frame));
+
         frame.repaint();
     }
 

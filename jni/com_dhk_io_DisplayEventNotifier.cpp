@@ -49,6 +49,11 @@ static jobject displayEventNotifierGlobalRef = nullptr;
 static jmethodID onNativeNotifyMethodId = nullptr;
 
 /**
+ * Cached method ID for the Java callback DisplayEventNotifier.onShellRestart(); null when the method is unavailable.
+ */
+static jmethodID onShellRestartMethodId = nullptr;
+
+/**
  * Thread that runs the Windows message loop and polling logic.
  */
 static thread messageLoopThread;
@@ -77,6 +82,11 @@ static const wchar_t CLASS_NAME[] = L"DHK_DisplayEventNotifier_MessageWindow";
  * Whether the window class was registered, so it can be unregistered at shutdown.
  */
 static atomic_bool classRegistered(false);
+
+/**
+ * Registered id of the "TaskbarCreated" broadcast the shell sends.
+ */
+static UINT taskbarCreatedMessage = 0;
 
 /**
  * Debounce interval (ms) limiting how often Java can be notified, even after stabilization.
@@ -138,9 +148,9 @@ static constexpr GUID MONITOR_DEVICE_INTERFACE_GUID = {
 LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData);
 
 /**
- * Forward declaration of the helper that notifies Java of a display configuration change.
+ * Forward declaration of the helper that invokes a cached Java callback method on the notifier instance.
  */
-static void notifyJava();
+static void invokeJavaCallback(jmethodID methodId);
 
 /**
  * Normalizes a signature list by trimming whitespace from each entry and sorting the result so comparisons are
@@ -227,11 +237,11 @@ static bool processPotentialDisplayChange() {
     }
 
     /*
-     * Update lastNotifyTime before calling notifyJava so elapsed calculations remain consistent even if notifyJava
-     * blocks briefly
+     * Update lastNotifyTime before invoking the callback so elapsed calculations remain consistent even if the
+     * callback blocks briefly
      */
     lastNotifyTime = now;
-    notifyJava();
+    invokeJavaCallback(onNativeNotifyMethodId);
 
     // Record what we notified
     lastNotifiedNormalizedSignatures = normalizedCurrent;
@@ -240,11 +250,14 @@ static bool processPotentialDisplayChange() {
 }
 
 /**
- * Notifies Java by calling the cached onNativeNotify method on the stored DisplayEventNotifier instance, attaching the
- * current thread to the JVM if necessary and detaching it when done.
+ * Invokes a cached no-argument Java callback on the stored DisplayEventNotifier instance, attaching the current thread
+ * to the JVM if necessary and detaching it when done. A null method id is ignored so an unavailable callback is safe.
+ *
+ * @param methodId
+ *            - The cached method id to invoke, or null to do nothing
  */
-static void notifyJava() {
-    if (!jvm || !displayEventNotifierGlobalRef || !onNativeNotifyMethodId) {
+static void invokeJavaCallback(jmethodID methodId) {
+    if (!jvm || !displayEventNotifierGlobalRef || !methodId) {
         return;
     }
 
@@ -271,7 +284,7 @@ static void notifyJava() {
         return;
     }
 
-    env->CallVoidMethod(displayEventNotifierGlobalRef, onNativeNotifyMethodId);
+    env->CallVoidMethod(displayEventNotifierGlobalRef, methodId);
 
     if (env->ExceptionCheck()) {
         env->ExceptionDescribe();
@@ -284,9 +297,9 @@ static void notifyJava() {
 }
 
 /**
- * Message loop runner executed on a dedicated thread. Creates a hidden top-level window to receive WM_DISPLAYCHANGE and
- * WM_DEVICECHANGE broadcasts, registers for monitor device interface notifications, and periodically polls the visible
- * display configuration via getVisibleDisplaySignatures().
+ * Message loop runner executed on a dedicated thread. Creates a hidden top-level window to receive WM_DISPLAYCHANGE,
+ * WM_DEVICECHANGE, and the shell's TaskbarCreated broadcasts, registers for monitor device interface notifications, and
+ * periodically polls the visible display configuration via getVisibleDisplaySignatures().
  */
 static void runMessageLoopThread() {
     WNDCLASSW windowClass = {};
@@ -318,6 +331,17 @@ static void runMessageLoopThread() {
 
     deviceNotificationHandle =
         RegisterDeviceNotificationW(messageWindow, &notificationFilter, DEVICE_NOTIFY_WINDOW_HANDLE);
+
+    // The shell broadcasts this registered message to top-level windows when it is recreated (explorer.exe restart)
+    taskbarCreatedMessage = RegisterWindowMessageW(L"TaskbarCreated");
+
+    /*
+     * The app runs elevated, so UIPI would drop this broadcast from the lower-integrity shell by default. Allow the
+     * specific message through the per-window filter so the restart is still delivered
+     */
+    if (taskbarCreatedMessage != 0) {
+        ChangeWindowMessageFilterEx(messageWindow, taskbarCreatedMessage, MSGFLT_ALLOW, NULL);
+    }
 
     // Initialize timers so first notify is not blocked by debounce or poll
     lastNotifyTime = chrono::steady_clock::now() - chrono::milliseconds(DEBOUNCE_MS);
@@ -381,7 +405,8 @@ static void runMessageLoopThread() {
 
 /**
  * Window procedure for the hidden message window. Handles monitor arrival/removal and display change broadcasts,
- * forwarding meaningful changes to Java via the common display-change processing logic.
+ * forwarding meaningful changes to Java via the common display-change processing logic, and forwards the shell's
+ * TaskbarCreated broadcast as a separate shell-restart callback.
  *
  * @param windowHandle
  *            - The handle to the hidden message window
@@ -395,6 +420,13 @@ static void runMessageLoopThread() {
  * @return The result of message processing
  */
 LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData) {
+    // The registered TaskbarCreated id is resolved at runtime, so it cannot be a switch case
+    if (taskbarCreatedMessage != 0 && message == taskbarCreatedMessage) {
+        invokeJavaCallback(onShellRestartMethodId);
+
+        return 0;
+    }
+
     switch (message) {
     case WM_DEVICECHANGE: {
         if (eventType == DBT_DEVICEARRIVAL || eventType == DBT_DEVICEREMOVECOMPLETE) {
@@ -440,8 +472,8 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 
 /**
  * Starts native display event notifications. Stores a global reference to the Java DisplayEventNotifier instance,
- * resolves the onNativeNotify callback, and launches the message loop thread. Performs basic JNI error checks and does
- * not start the thread if setup fails.
+ * resolves the onNativeNotify callback and the optional onShellRestart callback, and launches the message loop thread.
+ * Performs basic JNI error checks and does not start the thread if setup fails.
  *
  * @param env
  *            - The JNI environment pointer
@@ -467,16 +499,24 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeSta
         return;
     }
 
-    jmethodID methodId = env->GetMethodID(notifierClass, "onNativeNotify", "()V");
+    jmethodID nativeNotifyMethodId = env->GetMethodID(notifierClass, "onNativeNotify", "()V");
 
-    if (!methodId) {
+    if (!nativeNotifyMethodId) {
         env->DeleteGlobalRef(globalRef);
         return;
     }
 
+    // The shell-restart callback is optional; a null id simply skips it while the display-change callback still fires
+    jmethodID shellRestartMethodId = env->GetMethodID(notifierClass, "onShellRestart", "()V");
+
+    if (!shellRestartMethodId) {
+        env->ExceptionClear();
+    }
+
     // All JNI setup succeeded; commit to globals and start thread
     displayEventNotifierGlobalRef = globalRef;
-    onNativeNotifyMethodId = methodId;
+    onNativeNotifyMethodId = nativeNotifyMethodId;
+    onShellRestartMethodId = shellRestartMethodId;
 
     isRunning.store(true);
     messageLoopThread = thread(runMessageLoopThread);
@@ -513,6 +553,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeSto
     }
 
     onNativeNotifyMethodId = nullptr;
+    onShellRestartMethodId = nullptr;
 }
 
 /**
@@ -545,5 +586,6 @@ extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
     }
 
     onNativeNotifyMethodId = nullptr;
+    onShellRestartMethodId = nullptr;
     jvm = nullptr;
 }

@@ -23,7 +23,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -207,9 +206,7 @@ public class AboutDialog implements IView {
     private void initAboutComponents(JDialog aboutDialog, SystemTray systemTray) {
         headerLabel = new JLabel("About Display Hot Keys");
         headerLabel.setHorizontalAlignment(SwingConstants.CENTER);
-
-        Font headerFont = headerLabel.getFont();
-        headerLabel.setFont(headerFont.deriveFont(Font.BOLD, headerFont.getSize2D() * HEADER_FONT_SCALE));
+        headerLabel.putClientProperty("FlatLaf.style", "font: bold " + Math.round(HEADER_FONT_SCALE * 100) + "%");
 
         versionLabel = new JLabel("Version: " + VersionRetriever.getVersion());
         versionLabel.setHorizontalAlignment(SwingConstants.CENTER);

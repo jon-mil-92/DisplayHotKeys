@@ -31,6 +31,7 @@ import com.dhk.controller.button.ClearHotKeyButtonController;
 import com.dhk.io.DisplayConfigUpdater;
 import com.dhk.io.DisplayEventNotifier;
 import com.dhk.io.SettingsManager;
+import com.dhk.io.ShellRestartHandler;
 import com.dhk.model.DhkModel;
 import com.dhk.view.DhkView;
 
@@ -52,6 +53,7 @@ public class DhkController implements IController {
     private int frameState;
     private DisplayConfigUpdater displayConfigUpdater;
     private DisplayEventNotifier displayNotifications;
+    private ShellRestartHandler shellRestartHandler;
 
     /**
      * Constructor for the {@link DhkController} class.
@@ -107,8 +109,10 @@ public class DhkController implements IController {
 
         // Start event-driven display notifications
         displayConfigUpdater = new DisplayConfigUpdater(model, view, this, settingsMgr);
+        shellRestartHandler = new ShellRestartHandler(view);
         displayNotifications = new DisplayEventNotifier();
-        displayNotifications.registerListener(displayConfigUpdater);
+        displayNotifications.registerDisplayChangeListener(displayConfigUpdater);
+        displayNotifications.registerShellRestartListener(shellRestartHandler);
         displayNotifications.start();
 
         // Ensure keyboard hook exists (may have been shutdown during previous cleanup)
@@ -184,6 +188,17 @@ public class DhkController implements IController {
                 e.printStackTrace();
             } finally {
                 displayConfigUpdater = null;
+            }
+        }
+
+        // Stop any pending deferred re-fit so the Timer cannot fire against a disposed view
+        if (shellRestartHandler != null) {
+            try {
+                shellRestartHandler.cleanUp();
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                shellRestartHandler = null;
             }
         }
     }
