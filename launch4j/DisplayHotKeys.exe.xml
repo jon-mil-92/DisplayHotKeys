@@ -29,6 +29,20 @@
     <minVersion>21</minVersion>
     <maxVersion></maxVersion>
     <opt>--enable-native-access=ALL-UNNAMED</opt>
+    <opt>-Xms150m</opt>
+    <opt>-Xmx150m</opt>
+    <opt>-XX:+UseZGC</opt>
+    <opt>-XX:+AlwaysPreTouch</opt>
+    <opt>-XX:+UnlockExperimentalVMOptions</opt>
+    <opt>-XX:SoftMaxHeapSize=140m</opt>
+    <opt>-XX:ZUncommitDelay=100</opt>
+    <opt>-XX:+ZGenerational</opt>
+    <opt>-XX:MaxHeapFreeRatio=10</opt>
+    <opt>-XX:MinHeapFreeRatio=5</opt>
+    <opt>-XX:MaxMetaspaceSize=32m</opt>
+    <opt>-XX:CompressedClassSpaceSize=16m</opt>
+    <opt>-XX:ReservedCodeCacheSize=16m</opt>
+    <opt>-XX:ThreadStackSize=256</opt>
   </jre>
   <versionInfo>
     <fileVersion>1.0.0.0</fileVersion>
