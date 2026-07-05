@@ -37,7 +37,7 @@ dll:
 	$(WINDRES) $(RCFLAGS) jni/GetDisplay.rc GetDisplay.res.o
 	$(CXX) $(CXXSTD) $(OPT) jni/com_dhk_io_GetDisplay.cpp jni/DisplayConfig.cpp GetDisplay.res.o $(COMMON_DEFS) $(INCLUDES) $(TOOLCHAIN_FLAGS) $(LDFLAGS) -o GetDisplay.dll
 	$(WINDRES) $(RCFLAGS) jni/SetDisplay.rc SetDisplay.res.o
-	$(CXX) $(CXXSTD) $(OPT) jni/com_dhk_io_SetDisplay.cpp jni/DisplayConfig.cpp SetDisplay.res.o $(COMMON_DEFS) $(INCLUDES) $(TOOLCHAIN_FLAGS) $(LDFLAGS) -o SetDisplay.dll
+	$(CXX) $(CXXSTD) $(OPT) jni/com_dhk_io_SetDisplay.cpp jni/DisplayConfig.cpp jni/ArrangeDisplay.cpp SetDisplay.res.o $(COMMON_DEFS) $(INCLUDES) $(TOOLCHAIN_FLAGS) $(LDFLAGS) -o SetDisplay.dll
 	$(WINDRES) $(RCFLAGS) jni/DisplayEventNotifier.rc DisplayEventNotifier.res.o
 	$(CXX) $(CXXSTD) $(OPT) jni/com_dhk_io_DisplayEventNotifier.cpp jni/DisplayConfig.cpp DisplayEventNotifier.res.o $(COMMON_DEFS) $(INCLUDES) $(TOOLCHAIN_FLAGS) $(LDFLAGS) -o DisplayEventNotifier.dll
 
