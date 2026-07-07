@@ -56,120 +56,7 @@ struct ModeInfo {
     int frequency;
 };
 
-/**
- * Adds the refresh rates a GPU-scaled custom resolution supports but the legacy mode table omits, identifying such a
- * resolution by its small distinct-rate count. To keep the expensive SDC_VALIDATE probes to a minimum it finds each
- * resolution's drivable ceiling by validating only the panel rates above its existing maximum, highest first, stopping
- * at the first that validates; every panel rate at or below that ceiling is then added without a probe, since a fixed
- * resolution's bandwidth scales with refresh rate. The active config is queried once and reused, the validating
- * rational form is cached, and ordinary multi-rate resolutions are skipped.
- *
- * @param displayId
- *            - The stable display ID being enumerated
- * @param modes
- *            - The mode list to augment in place
- */
-static void addCustomResolutionRefreshRates(const string &displayId, vector<ModeInfo> &modes) {
-    const size_t MAX_RATES_FOR_CUSTOM_RESOLUTION = 2;
-
-    // Query the active CCD configuration once and locate the display's path once; every probe below reuses them
-    vector<DISPLAYCONFIG_PATH_INFO> paths;
-    vector<DISPLAYCONFIG_MODE_INFO> ccdModes;
-
-    if (!queryActiveCcdConfig(paths, ccdModes)) {
-        return;
-    }
-
-    int pathIndex = findActivePathForDisplay(paths, displayId);
-
-    if (pathIndex < 0) {
-        return;
-    }
-
-    // Distinct rates per resolution, since the driver lists each mode many times across bit depths and flags
-    set<int> panelRates;
-    map<pair<int, int>, set<int>> ratesByResolution;
-
-    for (const ModeInfo &mode : modes) {
-        panelRates.insert(mode.frequency);
-        ratesByResolution[make_pair(mode.width, mode.height)].insert(mode.frequency);
-    }
-
-    vector<int> candidateRates(panelRates.begin(), panelRates.end());
-
-    // The rational form (integer or NTSC fractional) that first validated for a rate, reused as the first try elsewhere
-    map<int, DISPLAYCONFIG_RATIONAL> workingRational;
-
-    /*
-     * Validates a single rate at a resolution by trying the form that already worked for this rate first and then the
-     * remaining candidate forms. SDC_VALIDATE does not change the display, and the rate is drivable if any form works
-     */
-    auto validatesRate = [&](int width, int height, int rate) {
-        vector<DISPLAYCONFIG_RATIONAL> forms;
-        map<int, DISPLAYCONFIG_RATIONAL>::iterator cached = workingRational.find(rate);
-
-        if (cached != workingRational.end()) {
-            forms.push_back(cached->second);
-        }
-
-        for (const DISPLAYCONFIG_RATIONAL &rational : toRefreshRationalCandidates(rate)) {
-            bool alreadyQueued = cached != workingRational.end() && rational.Numerator == cached->second.Numerator &&
-                                 rational.Denominator == cached->second.Denominator;
-
-            if (!alreadyQueued) {
-                forms.push_back(rational);
-            }
-        }
-
-        for (const DISPLAYCONFIG_RATIONAL &rational : forms) {
-            if (submitCcdSourceMode(paths, ccdModes, pathIndex, (UINT32) width, (UINT32) height, rational,
-                                    SDC_VALIDATE | SDC_USE_SUPPLIED_DISPLAY_CONFIG) == ERROR_SUCCESS) {
-                workingRational[rate] = rational;
-                return true;
-            }
-        }
-
-        return false;
-    };
-
-    for (const pair<const pair<int, int>, set<int>> &entry : ratesByResolution) {
-        if (entry.second.size() > MAX_RATES_FOR_CUSTOM_RESOLUTION) {
-            continue;
-        }
-
-        int width = entry.first.first;
-        int height = entry.first.second;
-        const set<int> &existingRates = entry.second;
-        int maxExistingRate = *existingRates.rbegin();
-
-        /*
-         * Raise the drivable ceiling by validating panel rates above the existing max, highest first, stopping at the
-         * first that validates. The existing max is already drivable, so it stays the ceiling if nothing higher works
-         */
-        int ceilingRate = maxExistingRate;
-
-        for (vector<int>::const_reverse_iterator it = candidateRates.rbegin(); it != candidateRates.rend(); ++it) {
-            if (*it <= maxExistingRate) {
-                break;
-            }
-
-            if (validatesRate(width, height, *it)) {
-                ceilingRate = *it;
-                break;
-            }
-        }
-
-        /*
-         * Every panel rate at or below the ceiling is drivable (lower rate = lower pixel clock), so add the ones the
-         * legacy table omitted without probing
-         */
-        for (int rate : candidateRates) {
-            if (rate <= ceilingRate && existingRates.find(rate) == existingRates.end()) {
-                modes.push_back({width, height, 32, rate});
-            }
-        }
-    }
-}
+static void addCustomResolutionRefreshRates(const string &displayId, vector<ModeInfo> &modes);
 
 /**
  * Enumerates the supported display modes for the given display. Modes are read with EnumDisplaySettingsExW via the GDI
@@ -446,4 +333,119 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_queryVisibleDisplayOrient
     }
 
     return orientations;
+}
+
+/**
+ * Adds the refresh rates a GPU-scaled custom resolution supports but the legacy mode table omits, identifying such a
+ * resolution by its small distinct-rate count. To keep the expensive SDC_VALIDATE probes to a minimum it finds each
+ * resolution's drivable ceiling by validating only the panel rates above its existing maximum, highest first, stopping
+ * at the first that validates; every panel rate at or below that ceiling is then added without a probe, since a fixed
+ * resolution's bandwidth scales with refresh rate. The active config is queried once and reused, the validating
+ * rational form is cached, and ordinary multi-rate resolutions are skipped.
+ *
+ * @param displayId
+ *            - The stable display ID being enumerated
+ * @param modes
+ *            - The mode list to augment in place
+ */
+static void addCustomResolutionRefreshRates(const string &displayId, vector<ModeInfo> &modes) {
+    const size_t MAX_RATES_FOR_CUSTOM_RESOLUTION = 2;
+
+    // Query the active CCD configuration once and locate the display's path once; every probe below reuses them
+    vector<DISPLAYCONFIG_PATH_INFO> paths;
+    vector<DISPLAYCONFIG_MODE_INFO> ccdModes;
+
+    if (!queryActiveCcdConfig(paths, ccdModes)) {
+        return;
+    }
+
+    int pathIndex = findActivePathForDisplay(paths, displayId);
+
+    if (pathIndex < 0) {
+        return;
+    }
+
+    // Distinct rates per resolution, since the driver lists each mode many times across bit depths and flags
+    set<int> panelRates;
+    map<pair<int, int>, set<int>> ratesByResolution;
+
+    for (const ModeInfo &mode : modes) {
+        panelRates.insert(mode.frequency);
+        ratesByResolution[make_pair(mode.width, mode.height)].insert(mode.frequency);
+    }
+
+    vector<int> candidateRates(panelRates.begin(), panelRates.end());
+
+    // The rational form (integer or NTSC fractional) that first validated for a rate, reused as the first try elsewhere
+    map<int, DISPLAYCONFIG_RATIONAL> workingRational;
+
+    /*
+     * Validates a single rate at a resolution by trying the form that already worked for this rate first and then the
+     * remaining candidate forms. SDC_VALIDATE does not change the display, and the rate is drivable if any form works
+     */
+    auto validatesRate = [&](int width, int height, int rate) {
+        vector<DISPLAYCONFIG_RATIONAL> forms;
+        map<int, DISPLAYCONFIG_RATIONAL>::iterator cached = workingRational.find(rate);
+
+        if (cached != workingRational.end()) {
+            forms.push_back(cached->second);
+        }
+
+        for (const DISPLAYCONFIG_RATIONAL &rational : toRefreshRationalCandidates(rate)) {
+            bool alreadyQueued = cached != workingRational.end() && rational.Numerator == cached->second.Numerator &&
+                                 rational.Denominator == cached->second.Denominator;
+
+            if (!alreadyQueued) {
+                forms.push_back(rational);
+            }
+        }
+
+        for (const DISPLAYCONFIG_RATIONAL &rational : forms) {
+            if (submitCcdSourceMode(paths, ccdModes, pathIndex, (UINT32) width, (UINT32) height, rational,
+                                    SDC_VALIDATE | SDC_USE_SUPPLIED_DISPLAY_CONFIG) == ERROR_SUCCESS) {
+                workingRational[rate] = rational;
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    for (const pair<const pair<int, int>, set<int>> &entry : ratesByResolution) {
+        if (entry.second.size() > MAX_RATES_FOR_CUSTOM_RESOLUTION) {
+            continue;
+        }
+
+        int width = entry.first.first;
+        int height = entry.first.second;
+        const set<int> &existingRates = entry.second;
+        int maxExistingRate = *existingRates.rbegin();
+
+        /*
+         * Raise the drivable ceiling by validating panel rates above the existing max, highest first, stopping at the
+         * first that validates. The existing max is already drivable, so it stays the ceiling if nothing higher works
+         */
+        int ceilingRate = maxExistingRate;
+
+        for (vector<int>::const_reverse_iterator it = candidateRates.rbegin(); it != candidateRates.rend(); ++it) {
+            if (*it <= maxExistingRate) {
+                break;
+            }
+
+            if (validatesRate(width, height, *it)) {
+                ceilingRate = *it;
+                break;
+            }
+        }
+
+        /*
+         * Every panel rate at or below the ceiling is drivable (lower rate = lower pixel clock), so add the ones the
+         * legacy table omitted without probing
+         */
+        for (int rate : candidateRates) {
+            if (rate <= ceilingRate && existingRates.find(rate) == existingRates.end()) {
+                modes.push_back({width, height, 32, rate});
+            }
+        }
+    }
 }

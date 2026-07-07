@@ -33,6 +33,12 @@
 
 using namespace std;
 
+static void runMessageLoopThread();
+LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData);
+static bool processPotentialDisplayChange();
+static vector<string> normalizeSignatures(const vector<string> &rawSignatures);
+static void invokeJavaCallback(jmethodID methodId);
+
 /**
  * Global Java VM pointer used to attach native threads when invoking Java callbacks.
  */
@@ -143,157 +149,140 @@ static constexpr GUID MONITOR_DEVICE_INTERFACE_GUID = {
     0xe6f07b5f, 0xee97, 0x4a90, {0xb0, 0x76, 0x33, 0xf5, 0x7b, 0xf4, 0xea, 0xa7}};
 
 /**
- * Forward declaration of the window procedure used by the hidden message window.
- */
-LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData);
-
-/**
- * Forward declaration of the helper that invokes a cached Java callback method on the notifier instance.
- */
-static void invokeJavaCallback(jmethodID methodId);
-
-/**
- * Normalizes a signature list by trimming whitespace from each entry and sorting the result so comparisons are
- * order-insensitive.
+ * Called when the native library is loaded. Caches the JavaVM pointer for attaching native threads to invoke callbacks.
  *
- * @param rawSignatures
- *            - The signature strings to normalize (trim + sort)
+ * @param vm
+ *            - The JavaVM pointer
+ * @param reserved
+ *            - Reserved for future use
  *
- * @return A new vector of the trimmed, sorted signatures
+ * @return The JNI version supported by this library
  */
-static vector<string> normalizeSignatures(const vector<string> &rawSignatures) {
-    vector<string> normalizedIds;
-    normalizedIds.reserve(rawSignatures.size());
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    (void) reserved;
+    jvm = vm;
 
-    for (const auto &id : rawSignatures) {
-        string trimmedId = id;
-
-        while (!trimmedId.empty() && isspace((unsigned char) trimmedId.front())) {
-            trimmedId.erase(trimmedId.begin());
-        }
-
-        while (!trimmedId.empty() && isspace((unsigned char) trimmedId.back())) {
-            trimmedId.pop_back();
-        }
-
-        normalizedIds.push_back(std::move(trimmedId));
-    }
-
-    sort(normalizedIds.begin(), normalizedIds.end());
-
-    return normalizedIds;
+    return JNI_VERSION_1_6;
 }
 
 /**
- * Runs the common stabilization, debounce, query, and compare logic shared by event-driven notifications
- * (WM_DEVICECHANGE, WM_DISPLAYCHANGE) and periodic polling. It compares the current visible display signatures to the
- * last-known set, records the new state and timestamp without notifying when they differ, checks that an unchanged set
- * has stayed stable for STABILIZATION_MS, and notifies Java exactly once per real change when stable and debounced.
+ * Starts native display event notifications. Stores a global reference to the Java DisplayEventNotifier instance,
+ * resolves the onNativeNotify callback and the optional onShellRestart callback, and launches the message loop thread.
+ * Performs basic JNI error checks and does not start the thread if setup fails.
  *
- * @return Whether a real display configuration change was detected and Java was notified
+ * @param env
+ *            - The JNI environment pointer
+ * @param obj
+ *            - The Java DisplayEventNotifier instance
  */
-static bool processPotentialDisplayChange() {
-    auto now = chrono::steady_clock::now();
-    vector<string> currentVisibleSignatures;
-
-    try {
-        currentVisibleSignatures = getVisibleDisplaySignatures();
-    } catch (...) {
-        currentVisibleSignatures.clear();
-    }
-
-    // Normalize once and reuse
-    auto normalizedCurrent = normalizeSignatures(currentVisibleSignatures);
-
-    // If normalized differs from lastNormalizedSignatures, update state and reset stabilization timer
-    if (normalizedCurrent != lastNormalizedSignatures) {
-        lastVisibleSignatures = currentVisibleSignatures;
-        lastNormalizedSignatures = normalizedCurrent;
-        lastStateChangeTime = now;
-
-        return false;
-    }
-
-    // At this point normalizedCurrent == lastNormalizedSignatures, so check stabilization
-    auto elapsedSinceStateChange = chrono::duration_cast<chrono::milliseconds>(now - lastStateChangeTime).count();
-
-    if (elapsedSinceStateChange < STABILIZATION_MS) {
-        return false;
-    }
-
-    // Debounce check to ensure we don't notify too frequently
-    auto elapsedSinceLastNotify = chrono::duration_cast<chrono::milliseconds>(now - lastNotifyTime).count();
-
-    if (elapsedSinceLastNotify < DEBOUNCE_MS) {
-        return false;
-    }
-
-    /*
-     * Suppress notification if the normalized set equals the last-notified set. This prevents re-notifying the same
-     * stable configuration repeatedly and matches the user's preference to only care about current state
-     */
-    if (!lastNotifiedNormalizedSignatures.empty() && normalizedCurrent == lastNotifiedNormalizedSignatures) {
-        return false;
-    }
-
-    /*
-     * Update lastNotifyTime before invoking the callback so elapsed calculations remain consistent even if the
-     * callback blocks briefly
-     */
-    lastNotifyTime = now;
-    invokeJavaCallback(onNativeNotifyMethodId);
-
-    // Record what we notified
-    lastNotifiedNormalizedSignatures = normalizedCurrent;
-
-    return true;
-}
-
-/**
- * Invokes a cached no-argument Java callback on the stored DisplayEventNotifier instance, attaching the current thread
- * to the JVM if necessary and detaching it when done. A null method id is ignored so an unavailable callback is safe.
- *
- * @param methodId
- *            - The cached method id to invoke, or null to do nothing
- */
-static void invokeJavaCallback(jmethodID methodId) {
-    if (!jvm || !displayEventNotifierGlobalRef || !methodId) {
+extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeStart(JNIEnv *env, jobject obj) {
+    if (isRunning.load()) {
         return;
     }
 
-    JNIEnv *env = nullptr;
-    bool attachedToJvm = false;
-    jint getEnvResult = jvm->GetEnv((void **) &env, JNI_VERSION_1_6);
+    // Create a global ref and validate it
+    jobject globalRef = env->NewGlobalRef(obj);
 
-    if (getEnvResult == JNI_EDETACHED) {
-        if (jvm->AttachCurrentThread((void **) &env, nullptr) != 0) {
-            return;
-        }
-
-        attachedToJvm = true;
-    } else if (getEnvResult != JNI_OK) {
+    if (!globalRef) {
         return;
     }
 
-    // Re-check the global ref after attaching
-    if (!displayEventNotifierGlobalRef) {
-        if (attachedToJvm) {
-            jvm->DetachCurrentThread();
-        }
+    jclass notifierClass = env->GetObjectClass(obj);
 
+    if (!notifierClass) {
+        env->DeleteGlobalRef(globalRef);
         return;
     }
 
-    env->CallVoidMethod(displayEventNotifierGlobalRef, methodId);
+    jmethodID nativeNotifyMethodId = env->GetMethodID(notifierClass, "onNativeNotify", "()V");
 
-    if (env->ExceptionCheck()) {
-        env->ExceptionDescribe();
+    if (!nativeNotifyMethodId) {
+        env->DeleteGlobalRef(globalRef);
+        return;
+    }
+
+    // The shell-restart callback is optional; a null id simply skips it while the display-change callback still fires
+    jmethodID shellRestartMethodId = env->GetMethodID(notifierClass, "onShellRestart", "()V");
+
+    if (!shellRestartMethodId) {
         env->ExceptionClear();
     }
 
-    if (attachedToJvm) {
-        jvm->DetachCurrentThread();
+    // All JNI setup succeeded; commit to globals and start thread
+    displayEventNotifierGlobalRef = globalRef;
+    onNativeNotifyMethodId = nativeNotifyMethodId;
+    onShellRestartMethodId = shellRestartMethodId;
+
+    isRunning.store(true);
+    messageLoopThread = thread(runMessageLoopThread);
+}
+
+/**
+ * Stops native display event notifications, shuts down the message loop thread, and releases the global Java reference.
+ *
+ * @param env
+ *            - The JNI environment pointer
+ * @param obj
+ *            - The Java DisplayEventNotifier instance
+ */
+extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeStop(JNIEnv *env, jobject obj) {
+    (void) obj;
+
+    if (!isRunning.load()) {
+        return;
     }
+
+    isRunning.store(false);
+
+    if (messageWindow) {
+        PostMessage(messageWindow, WM_QUIT, 0, 0);
+    }
+
+    if (messageLoopThread.joinable()) {
+        messageLoopThread.join();
+    }
+
+    if (displayEventNotifierGlobalRef) {
+        env->DeleteGlobalRef(displayEventNotifierGlobalRef);
+        displayEventNotifierGlobalRef = NULL;
+    }
+
+    onNativeNotifyMethodId = nullptr;
+    onShellRestartMethodId = nullptr;
+}
+
+/**
+ * Called when the native library is unloaded. Releases global references and clears the JVM pointer to avoid leaks.
+ */
+extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
+    (void) vm;
+    (void) reserved;
+
+    // Ensure the notifier is stopped and resources are released
+    isRunning.store(false);
+
+    if (messageWindow) {
+        PostMessage(messageWindow, WM_QUIT, 0, 0);
+    }
+
+    if (messageLoopThread.joinable()) {
+        messageLoopThread.join();
+    }
+
+    // Delete global ref if present
+    if (displayEventNotifierGlobalRef && jvm) {
+        JNIEnv *env = nullptr;
+
+        if (jvm->GetEnv((void **) &env, JNI_VERSION_1_6) == JNI_OK && env) {
+            env->DeleteGlobalRef(displayEventNotifierGlobalRef);
+        }
+
+        displayEventNotifierGlobalRef = NULL;
+    }
+
+    onNativeNotifyMethodId = nullptr;
+    onShellRestartMethodId = nullptr;
+    jvm = nullptr;
 }
 
 /**
@@ -454,138 +443,145 @@ LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType,
 }
 
 /**
- * Called when the native library is loaded. Caches the JavaVM pointer for attaching native threads to invoke callbacks.
+ * Runs the common stabilization, debounce, query, and compare logic shared by event-driven notifications
+ * (WM_DEVICECHANGE, WM_DISPLAYCHANGE) and periodic polling. It compares the current visible display signatures to the
+ * last-known set, records the new state and timestamp without notifying when they differ, checks that an unchanged set
+ * has stayed stable for STABILIZATION_MS, and notifies Java exactly once per real change when stable and debounced.
  *
- * @param vm
- *            - The JavaVM pointer
- * @param reserved
- *            - Reserved for future use
- *
- * @return The JNI version supported by this library
+ * @return Whether a real display configuration change was detected and Java was notified
  */
-extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
-    (void) reserved;
-    jvm = vm;
+static bool processPotentialDisplayChange() {
+    auto now = chrono::steady_clock::now();
+    vector<string> currentVisibleSignatures;
 
-    return JNI_VERSION_1_6;
+    try {
+        currentVisibleSignatures = getVisibleDisplaySignatures();
+    } catch (...) {
+        currentVisibleSignatures.clear();
+    }
+
+    // Normalize once and reuse
+    auto normalizedCurrent = normalizeSignatures(currentVisibleSignatures);
+
+    // If normalized differs from lastNormalizedSignatures, update state and reset stabilization timer
+    if (normalizedCurrent != lastNormalizedSignatures) {
+        lastVisibleSignatures = currentVisibleSignatures;
+        lastNormalizedSignatures = normalizedCurrent;
+        lastStateChangeTime = now;
+
+        return false;
+    }
+
+    // At this point normalizedCurrent == lastNormalizedSignatures, so check stabilization
+    auto elapsedSinceStateChange = chrono::duration_cast<chrono::milliseconds>(now - lastStateChangeTime).count();
+
+    if (elapsedSinceStateChange < STABILIZATION_MS) {
+        return false;
+    }
+
+    // Debounce check to ensure we don't notify too frequently
+    auto elapsedSinceLastNotify = chrono::duration_cast<chrono::milliseconds>(now - lastNotifyTime).count();
+
+    if (elapsedSinceLastNotify < DEBOUNCE_MS) {
+        return false;
+    }
+
+    /*
+     * Suppress notification if the normalized set equals the last-notified set. This prevents re-notifying the same
+     * stable configuration repeatedly and matches the user's preference to only care about current state
+     */
+    if (!lastNotifiedNormalizedSignatures.empty() && normalizedCurrent == lastNotifiedNormalizedSignatures) {
+        return false;
+    }
+
+    /*
+     * Update lastNotifyTime before invoking the callback so elapsed calculations remain consistent even if the
+     * callback blocks briefly
+     */
+    lastNotifyTime = now;
+    invokeJavaCallback(onNativeNotifyMethodId);
+
+    // Record what we notified
+    lastNotifiedNormalizedSignatures = normalizedCurrent;
+
+    return true;
 }
 
 /**
- * Starts native display event notifications. Stores a global reference to the Java DisplayEventNotifier instance,
- * resolves the onNativeNotify callback and the optional onShellRestart callback, and launches the message loop thread.
- * Performs basic JNI error checks and does not start the thread if setup fails.
+ * Normalizes a signature list by trimming whitespace from each entry and sorting the result so comparisons are
+ * order-insensitive.
  *
- * @param env
- *            - The JNI environment pointer
- * @param obj
- *            - The Java DisplayEventNotifier instance
+ * @param rawSignatures
+ *            - The signature strings to normalize (trim + sort)
+ *
+ * @return A new vector of the trimmed, sorted signatures
  */
-extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeStart(JNIEnv *env, jobject obj) {
-    if (isRunning.load()) {
+static vector<string> normalizeSignatures(const vector<string> &rawSignatures) {
+    vector<string> normalizedIds;
+    normalizedIds.reserve(rawSignatures.size());
+
+    for (const auto &id : rawSignatures) {
+        string trimmedId = id;
+
+        while (!trimmedId.empty() && isspace((unsigned char) trimmedId.front())) {
+            trimmedId.erase(trimmedId.begin());
+        }
+
+        while (!trimmedId.empty() && isspace((unsigned char) trimmedId.back())) {
+            trimmedId.pop_back();
+        }
+
+        normalizedIds.push_back(std::move(trimmedId));
+    }
+
+    sort(normalizedIds.begin(), normalizedIds.end());
+
+    return normalizedIds;
+}
+
+/**
+ * Invokes a cached no-argument Java callback on the stored DisplayEventNotifier instance, attaching the current thread
+ * to the JVM if necessary and detaching it when done. A null method id is ignored so an unavailable callback is safe.
+ *
+ * @param methodId
+ *            - The cached method id to invoke, or null to do nothing
+ */
+static void invokeJavaCallback(jmethodID methodId) {
+    if (!jvm || !displayEventNotifierGlobalRef || !methodId) {
         return;
     }
 
-    // Create a global ref and validate it
-    jobject globalRef = env->NewGlobalRef(obj);
+    JNIEnv *env = nullptr;
+    bool attachedToJvm = false;
+    jint getEnvResult = jvm->GetEnv((void **) &env, JNI_VERSION_1_6);
 
-    if (!globalRef) {
+    if (getEnvResult == JNI_EDETACHED) {
+        if (jvm->AttachCurrentThread((void **) &env, nullptr) != 0) {
+            return;
+        }
+
+        attachedToJvm = true;
+    } else if (getEnvResult != JNI_OK) {
         return;
     }
 
-    jclass notifierClass = env->GetObjectClass(obj);
+    // Re-check the global ref after attaching
+    if (!displayEventNotifierGlobalRef) {
+        if (attachedToJvm) {
+            jvm->DetachCurrentThread();
+        }
 
-    if (!notifierClass) {
-        env->DeleteGlobalRef(globalRef);
         return;
     }
 
-    jmethodID nativeNotifyMethodId = env->GetMethodID(notifierClass, "onNativeNotify", "()V");
+    env->CallVoidMethod(displayEventNotifierGlobalRef, methodId);
 
-    if (!nativeNotifyMethodId) {
-        env->DeleteGlobalRef(globalRef);
-        return;
-    }
-
-    // The shell-restart callback is optional; a null id simply skips it while the display-change callback still fires
-    jmethodID shellRestartMethodId = env->GetMethodID(notifierClass, "onShellRestart", "()V");
-
-    if (!shellRestartMethodId) {
+    if (env->ExceptionCheck()) {
+        env->ExceptionDescribe();
         env->ExceptionClear();
     }
 
-    // All JNI setup succeeded; commit to globals and start thread
-    displayEventNotifierGlobalRef = globalRef;
-    onNativeNotifyMethodId = nativeNotifyMethodId;
-    onShellRestartMethodId = shellRestartMethodId;
-
-    isRunning.store(true);
-    messageLoopThread = thread(runMessageLoopThread);
-}
-
-/**
- * Stops native display event notifications, shuts down the message loop thread, and releases the global Java reference.
- *
- * @param env
- *            - The JNI environment pointer
- * @param obj
- *            - The Java DisplayEventNotifier instance
- */
-extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeStop(JNIEnv *env, jobject obj) {
-    (void) obj;
-
-    if (!isRunning.load()) {
-        return;
+    if (attachedToJvm) {
+        jvm->DetachCurrentThread();
     }
-
-    isRunning.store(false);
-
-    if (messageWindow) {
-        PostMessage(messageWindow, WM_QUIT, 0, 0);
-    }
-
-    if (messageLoopThread.joinable()) {
-        messageLoopThread.join();
-    }
-
-    if (displayEventNotifierGlobalRef) {
-        env->DeleteGlobalRef(displayEventNotifierGlobalRef);
-        displayEventNotifierGlobalRef = NULL;
-    }
-
-    onNativeNotifyMethodId = nullptr;
-    onShellRestartMethodId = nullptr;
-}
-
-/**
- * Called when the native library is unloaded. Releases global references and clears the JVM pointer to avoid leaks.
- */
-extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
-    (void) vm;
-    (void) reserved;
-
-    // Ensure the notifier is stopped and resources are released
-    isRunning.store(false);
-
-    if (messageWindow) {
-        PostMessage(messageWindow, WM_QUIT, 0, 0);
-    }
-
-    if (messageLoopThread.joinable()) {
-        messageLoopThread.join();
-    }
-
-    // Delete global ref if present
-    if (displayEventNotifierGlobalRef && jvm) {
-        JNIEnv *env = nullptr;
-
-        if (jvm->GetEnv((void **) &env, JNI_VERSION_1_6) == JNI_OK && env) {
-            env->DeleteGlobalRef(displayEventNotifierGlobalRef);
-        }
-
-        displayEventNotifierGlobalRef = NULL;
-    }
-
-    onNativeNotifyMethodId = nullptr;
-    onShellRestartMethodId = nullptr;
-    jvm = nullptr;
 }

@@ -73,6 +73,57 @@ DisplayConfig getDisplayConfig() {
 }
 
 /**
+ * Gets stable IDs for desktop-attached devices via EnumDisplayDevices.
+ *
+ * @return Stable display IDs for devices attached to the desktop
+ */
+vector<string> getEnumDisplayDevicesDisplayIds() {
+    DISPLAY_DEVICE displayDevice;
+    SecureZeroMemory(&displayDevice, sizeof(DISPLAY_DEVICE));
+    displayDevice.cb = sizeof(displayDevice);
+
+    vector<string> displayIds;
+    UINT32 index = 0;
+
+    while (EnumDisplayDevices(NULL, index, &displayDevice, 0)) {
+        if (displayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
+            WCHAR nameBuf[32];
+            lstrcpyW(nameBuf, displayDevice.DeviceName);
+
+            EnumDisplayDevices(nameBuf, 0, &displayDevice, EDD_GET_DEVICE_INTERFACE_NAME);
+
+            displayIds.push_back(buildStableDisplayId(displayDevice.DeviceID));
+        }
+
+        index++;
+    }
+
+    return displayIds;
+}
+
+/**
+ * Gets stable IDs for the persisted configuration, in QueryDisplayConfig path order.
+ *
+ * @return Stable display IDs for the current persisted display configuration
+ */
+vector<string> getQueryDisplayConfigDisplayIds() {
+    DisplayConfig config = getDisplayConfig();
+    vector<string> displayIds;
+
+    for (UINT32 i = 0; i < config.numPathInfoArrayElements; i++) {
+        string displayId = stableIdForTarget(config.pathInfoArray[i].targetInfo);
+
+        if (displayId.empty()) {
+            continue;
+        }
+
+        displayIds.push_back(displayId);
+    }
+
+    return displayIds;
+}
+
+/**
  * Queries paths with the given flags and returns the stable ID of each visible display, where a display is visible when
  * it has an active path, a valid source mode of type SOURCE, non-zero size, and an on-screen position (large negative
  * positions are treated as offscreen). Buffers are over-allocated to avoid ERROR_INVALID_PARAMETER from drivers that
@@ -236,57 +287,6 @@ vector<string> getVisibleDisplaySignatures() {
     }
 
     return queryVisibleDisplaysWithFlags(QDC_DATABASE_CURRENT, true);
-}
-
-/**
- * Gets stable IDs for the persisted configuration, in QueryDisplayConfig path order.
- *
- * @return Stable display IDs for the current persisted display configuration
- */
-vector<string> getQueryDisplayConfigDisplayIds() {
-    DisplayConfig config = getDisplayConfig();
-    vector<string> displayIds;
-
-    for (UINT32 i = 0; i < config.numPathInfoArrayElements; i++) {
-        string displayId = stableIdForTarget(config.pathInfoArray[i].targetInfo);
-
-        if (displayId.empty()) {
-            continue;
-        }
-
-        displayIds.push_back(displayId);
-    }
-
-    return displayIds;
-}
-
-/**
- * Gets stable IDs for desktop-attached devices via EnumDisplayDevices.
- *
- * @return Stable display IDs for devices attached to the desktop
- */
-vector<string> getEnumDisplayDevicesDisplayIds() {
-    DISPLAY_DEVICE displayDevice;
-    SecureZeroMemory(&displayDevice, sizeof(DISPLAY_DEVICE));
-    displayDevice.cb = sizeof(displayDevice);
-
-    vector<string> displayIds;
-    UINT32 index = 0;
-
-    while (EnumDisplayDevices(NULL, index, &displayDevice, 0)) {
-        if (displayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
-            WCHAR nameBuf[32];
-            lstrcpyW(nameBuf, displayDevice.DeviceName);
-
-            EnumDisplayDevices(nameBuf, 0, &displayDevice, EDD_GET_DEVICE_INTERFACE_NAME);
-
-            displayIds.push_back(buildStableDisplayId(displayDevice.DeviceID));
-        }
-
-        index++;
-    }
-
-    return displayIds;
 }
 
 /**
