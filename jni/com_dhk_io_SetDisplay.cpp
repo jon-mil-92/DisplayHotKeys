@@ -18,7 +18,6 @@
  * IN THE SOFTWARE.
  */
 #include "com_dhk_io_SetDisplay.h"
-#include "ArrangeDisplay.h"
 #include "DisplayConfig.h"
 #include <jni.h>
 
@@ -117,9 +116,6 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv *env, jobjec
         return;
     }
 
-    // Snapshot the arrangement first so a resolution change cannot leave displays re-packed from their configured spots
-    vector<DisplayRect> savedRects = captureDisplayRects();
-
     // Apply the resolution, then settle so the scaling re-apply does not revert it with a stale source mode
     if (setDisplayMode(stableId, displayIndex, resWidth, resHeight, bitDepth, refreshRate)) {
         waitForCcdSourceModeResolution(displayIndex, resWidth, resHeight);
@@ -127,9 +123,6 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv *env, jobjec
 
     setDisplayScalingMode(displayIndex, scalingMode);
     setDpiScalePercentage(displayIndex, dpiScalePercentage);
-
-    // Reflow last so every display keeps its relative arrangement regardless of how the resize re-packed the layout
-    preserveArrangement(stableId, savedRects);
 
     env->ReleaseStringUTFChars(displayId, displayIdChars);
 }
@@ -161,13 +154,7 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setOrientation(JNIEnv *env, jo
         return;
     }
 
-    // Snapshot the arrangement first so the rotation's size swap cannot leave displays re-packed from their spots
-    vector<DisplayRect> savedRects = captureDisplayRects();
-
     setDisplayOrientation(displayIndex, orientation);
-
-    // Reflow so every display keeps its relative arrangement and alignment after the rotation resizes this display
-    preserveArrangement(stableId, savedRects);
 
     env->ReleaseStringUTFChars(displayId, displayIdChars);
 }
