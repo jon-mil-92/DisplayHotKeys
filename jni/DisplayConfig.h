@@ -159,6 +159,14 @@ vector<string> getQueryDisplayConfigDisplayIds();
 vector<string> getVisibleDisplayIds();
 
 /**
+ * Gets each visible display's orientation, aligned index-for-index with getVisibleDisplayIds so callers can map a
+ * visible display to its rotation without an index-space mismatch.
+ *
+ * @return The rotation of each visible display, in getVisibleDisplayIds order
+ */
+vector<int> getVisibleDisplayOrientations();
+
+/**
  * Gets a per-display signature (stable ID plus source resolution, position, rotation, and DPI scale index) for each
  * visible display, so resolution/DPI/orientation changes are detectable even when the visible set is unchanged.
  *

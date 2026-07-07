@@ -256,19 +256,16 @@ public class SettingsValidator {
                     DisplayMode displayMode = new DisplayMode(Integer.valueOf(width), Integer.valueOf(height),
                             Integer.valueOf(bitDepth), Integer.valueOf(refreshRate));
 
-                    if (landscapeOrientation
-                            && !Arrays.asList(landscapeDisplayModesMap.get(displayId)).contains(displayMode)) {
-                        writeDefaultDisplayMode(false, displayId, slotId);
-                    } else if (!landscapeOrientation
-                            && !Arrays.asList(portraitDisplayModesMap.get(displayId)).contains(displayMode)) {
-                        writeDefaultDisplayMode(true, displayId, slotId);
+                    boolean validForOrientation = landscapeOrientation
+                            ? Arrays.asList(landscapeDisplayModesMap.get(displayId)).contains(displayMode)
+                            : Arrays.asList(portraitDisplayModesMap.get(displayId)).contains(displayMode);
+
+                    // Repair with a default matching the slot's own orientation
+                    if (!validForOrientation) {
+                        writeDefaultDisplayMode(landscapeOrientation, displayId, slotId);
                     }
                 } else {
-                    if (landscapeOrientation) {
-                        writeDefaultDisplayMode(false, displayId, slotId);
-                    } else {
-                        writeDefaultDisplayMode(true, displayId, slotId);
-                    }
+                    writeDefaultDisplayMode(landscapeOrientation, displayId, slotId);
                 }
             }
         }

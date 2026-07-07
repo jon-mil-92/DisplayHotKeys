@@ -97,7 +97,9 @@ public class DisplayConfig {
 
         for (int displayIndex = 0; displayIndex < numOfConnectedDisplays; displayIndex++) {
             String displayId = displayIds[displayIndex];
-            int orientation = orientations[displayIndex];
+
+            // The orientation array is aligned with the visible display IDs; default to landscape if it is ever shorter
+            int orientation = displayIndex < orientations.length ? orientations[displayIndex] : 1;
             boolean landscapeOrientation = (orientation == 1 || orientation == 3);
 
             DisplayMode[] displayModes = getDisplay.getDisplayModes(displayId);

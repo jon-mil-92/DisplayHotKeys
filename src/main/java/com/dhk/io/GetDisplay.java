@@ -54,11 +54,12 @@ public class GetDisplay {
     private native DisplayMode[] enumDisplayModes(String displayId);
 
     /**
-     * Defines a JNI function to get the current orientation of every display in QueryDisplayConfig path order.
+     * Defines a JNI function to get the current orientation of each visible display, aligned index-for-index with
+     * getVisibleDisplayIds.
      *
-     * @return The current orientation of every display in QueryDisplayConfig path order
+     * @return The current orientation of each visible display, in getVisibleDisplayIds order
      */
-    private native int[] queryDisplayOrientations();
+    private native int[] queryVisibleDisplayOrientations();
 
     /**
      * Defines a JNI function to enumerate the display IDs for the displays that are currently visible.
@@ -92,12 +93,12 @@ public class GetDisplay {
     }
 
     /**
-     * Gets the current orientation of every display in QueryDisplayConfig path order.
+     * Gets the current orientation of each visible display, aligned index-for-index with getVisibleDisplayIds.
      *
-     * @return The current orientation of every display in QueryDisplayConfig path order
+     * @return The current orientation of each visible display, in getVisibleDisplayIds order
      */
     public int[] getDisplayOrientations() {
-        return queryDisplayOrientations();
+        return queryVisibleDisplayOrientations();
     }
 
     /**

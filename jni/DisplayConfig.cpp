@@ -82,10 +82,13 @@ DisplayConfig getDisplayConfig() {
  *            - The QueryDisplayConfig flags selecting which paths to enumerate
  * @param includeGeometry
  *            - Whether each entry also carries resolution, position, rotation, and DPI scale index
+ * @param rotationsOut
+ *            - When non-null, receives each visible display's rotation in lockstep with the returned IDs
  *
  * @return The stable IDs of the visible displays, or their signatures when includeGeometry is set
  */
-static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGeometry) {
+static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGeometry,
+                                                    vector<int> *rotationsOut = nullptr) {
     vector<string> visible;
 
     UINT32 numPath = 0;
@@ -171,6 +174,11 @@ static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGe
         }
 
         visible.push_back(entry);
+
+        // Emit the rotation in lockstep so callers can align orientation to the visible ID at the same index
+        if (rotationsOut != nullptr) {
+            rotationsOut->push_back((int) path.targetInfo.rotation);
+        }
     }
 
     delete[] pathArray;
@@ -192,6 +200,26 @@ vector<string> getVisibleDisplayIds() {
     }
 
     return queryVisibleDisplaysWithFlags(QDC_DATABASE_CURRENT, false);
+}
+
+/**
+ * Gets each visible display's orientation, in the same order and with the same visibility filtering as
+ * getVisibleDisplayIds, so the returned rotation at a given index belongs to that same visible display.
+ *
+ * @return The rotation of each visible display, aligned index-for-index with getVisibleDisplayIds
+ */
+vector<int> getVisibleDisplayOrientations() {
+    vector<int> rotations;
+    queryVisibleDisplaysWithFlags(QDC_ONLY_ACTIVE_PATHS, false, &rotations);
+
+    if (!rotations.empty()) {
+        return rotations;
+    }
+
+    rotations.clear();
+    queryVisibleDisplaysWithFlags(QDC_DATABASE_CURRENT, false, &rotations);
+
+    return rotations;
 }
 
 /**

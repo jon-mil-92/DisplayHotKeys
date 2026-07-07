@@ -421,34 +421,28 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_getSupportedDpiScalePerce
 }
 
 /**
- * Gets the orientation of every display in the persisted configuration, in QueryDisplayConfig path order.
+ * Gets the orientation of each visible display, aligned index-for-index with getVisibleDisplayIds so a display's
+ * rotation matches its ID at the same index.
  *
  * @param env
  *            - The JNI environment pointer
  * @param obj
  *            - The Java GetDisplay instance
  *
- * @return An int[] of orientation values (1 = Landscape, 2 = Portrait, etc.), indexed by path order
+ * @return An int[] of orientation values (1 = Landscape, 2 = Portrait, etc.), in getVisibleDisplayIds order
  */
-JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_queryDisplayOrientations(JNIEnv *env, jobject obj) {
+JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_queryVisibleDisplayOrientations(JNIEnv *env, jobject obj) {
     (void) obj;
-    DisplayConfig config = getDisplayConfig();
-    jsize pathCount = (jsize) config.numPathInfoArrayElements;
-    jintArray orientations = env->NewIntArray(pathCount);
+    vector<int> rotations = getVisibleDisplayOrientations();
+    jsize count = (jsize) rotations.size();
+    jintArray orientations = env->NewIntArray(count);
 
     if (orientations == nullptr) {
         return nullptr;
     }
 
-    // Copy each path's rotation into a contiguous buffer so the array is filled with a single region write
-    vector<jint> rotations(pathCount);
-
-    for (jsize i = 0; i < pathCount; i++) {
-        rotations[i] = (jint) config.pathInfoArray[i].targetInfo.rotation;
-    }
-
-    if (pathCount > 0) {
-        env->SetIntArrayRegion(orientations, 0, pathCount, rotations.data());
+    if (count > 0) {
+        env->SetIntArrayRegion(orientations, 0, count, reinterpret_cast<const jint *>(rotations.data()));
     }
 
     return orientations;
