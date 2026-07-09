@@ -164,7 +164,13 @@ static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGe
     UINT32 queryPath = allocPath;
     UINT32 queryMode = allocMode;
 
-    LONG queryResult = QueryDisplayConfig(flags, &queryPath, pathArray, &queryMode, modeArray, &topology);
+    /*
+     * QueryDisplayConfig requires a null topology pointer unless QDC_DATABASE_CURRENT is requested; passing a non-null
+     * pointer with QDC_ONLY_ACTIVE_PATHS fails with ERROR_INVALID_PARAMETER
+     */
+    DISPLAYCONFIG_TOPOLOGY_ID *topologyOut = (flags == QDC_DATABASE_CURRENT) ? &topology : nullptr;
+
+    LONG queryResult = QueryDisplayConfig(flags, &queryPath, pathArray, &queryMode, modeArray, topologyOut);
 
     if (queryResult != ERROR_SUCCESS) {
         delete[] pathArray;
