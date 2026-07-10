@@ -355,11 +355,19 @@ static void addCustomResolutionRefreshRates(const string &displayId, vector<Mode
     vector<DISPLAYCONFIG_PATH_INFO> paths;
     vector<DISPLAYCONFIG_MODE_INFO> ccdModes;
 
-    if (!queryActiveCcdConfig(paths, ccdModes)) {
-        return;
+    int pathIndex = -1;
+
+    if (queryActiveCcdConfig(paths, ccdModes)) {
+        pathIndex = findActivePathForDisplay(paths, displayId);
     }
 
-    int pathIndex = findActivePathForDisplay(paths, displayId);
+    // Fall back to the persisted DB config so a display not yet on an active path still gets its rates
+    if (pathIndex < 0) {
+        DisplayConfig dbConfig = getDisplayConfig();
+        paths.assign(dbConfig.pathInfoArray, dbConfig.pathInfoArray + dbConfig.numPathInfoArrayElements);
+        ccdModes.assign(dbConfig.modeInfoArray, dbConfig.modeInfoArray + dbConfig.numModeInfoArrayElements);
+        pathIndex = findActivePathForDisplay(paths, displayId);
+    }
 
     if (pathIndex < 0) {
         return;
