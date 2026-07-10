@@ -29,12 +29,12 @@ using namespace std;
 /**
  * Supported DPI scale percentages, in ascending order, that Windows can apply.
  */
-static const vector<int32_t> DPI_SCALE_PERCENTAGES = {100, 125, 150, 175, 200, 225, 250, 300, 350};
+static const vector<int32_t> DPI_SCALE_PERCENTAGES = {100, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500};
 
 /**
  * Number of entries in DPI_SCALE_PERCENTAGES.
  */
-static const int32_t NUM_OF_DPI_SCALE_PERCENTAGES = 9;
+static const int32_t NUM_OF_DPI_SCALE_PERCENTAGES = 12;
 
 /**
  * DisplayConfigGetDeviceInfo type value for reading the relative DPI scale indices. Undocumented but identical and

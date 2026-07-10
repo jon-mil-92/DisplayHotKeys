@@ -59,12 +59,9 @@ struct ModeInfo {
 static void addCustomResolutionRefreshRates(const string &displayId, vector<ModeInfo> &modes);
 
 /**
- * Enumerates the supported display modes for the given display. Modes are read with EnumDisplaySettingsExW via the GDI
- * device name from QueryDisplayConfig, falling back to an EnumDisplayDevices index. Default (EDID-pruned) enumeration
- * mirrors Windows Advanced Display Settings; interlaced and zero-size modes are skipped. GPU-scaled custom resolutions
- * are then expanded with their other supported refresh rates via the CCD API. The returned set is de-duplicated in
- * first-seen order so the caller needs no distinct pass. Wide-character (Unicode) APIs are used throughout to avoid
- * ANSI/Unicode mismatches.
+ * Enumerates the supported display modes for the given display, mirroring Windows Advanced Display Settings by
+ * skipping interlaced and zero-size modes, then augmenting GPU-scaled custom resolutions with the refresh rates the
+ * legacy mode table omits. The returned modes are de-duplicated in first-seen order.
  *
  * @param env
  *            - The JNI environment pointer
@@ -135,7 +132,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
     if (!gdiDeviceName.empty()) {
         enumerateModes(gdiDeviceName.c_str());
     } else {
-        // Otherwise locate the display by its EnumDisplayDevices index and enumerate by its device name
+        // Otherwise, locate the display by its EnumDisplayDevices index and enumerate by its device name
         DISPLAY_DEVICEW displayDeviceW;
         SecureZeroMemory(&displayDeviceW, sizeof(DISPLAY_DEVICEW));
         displayDeviceW.cb = sizeof(displayDeviceW);
@@ -147,7 +144,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
                 enumerateModes(displayDeviceW.DeviceName);
             }
         } else {
-            // Fallback enumeration failed; release and return null
+            // Fallback enumeration failed, so release and return null
             env->ReleaseStringUTFChars(displayId, displayIdChars);
             return nullptr;
         }
@@ -255,11 +252,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumVisibleDisplayIds(
 }
 
 /**
- * Computes the DPI scale percentages Windows supports for the given resolution. Windows caps the maximum scale so the
- * effective (logical) resolution stays usable, so fewer scales are offered as resolution drops and only 100% remains at
- * very low resolutions. The set always starts at 100% and includes each higher percentage while its effective
- * resolution stays at or above the usable floor on both edges. Since Windows reports the live range only for the
- * applied resolution, this computation lets a not-yet-applied resolution report its scales without a mode change.
+ * Computes the DPI scale percentages Windows supports for the given resolution, capping the maximum so the effective
+ * resolution stays usable. Derives the set directly so a not-yet-applied resolution can report its scales without a
+ * mode change, since Windows reports the live range only for the applied resolution.
  *
  * @param env
  *            - The JNI environment pointer
@@ -337,11 +332,8 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_queryVisibleDisplayOrient
 
 /**
  * Adds the refresh rates a GPU-scaled custom resolution supports but the legacy mode table omits, identifying such a
- * resolution by its small distinct-rate count. To keep the expensive SDC_VALIDATE probes to a minimum it finds each
- * resolution's drivable ceiling by validating only the panel rates above its existing maximum, highest first, stopping
- * at the first that validates; every panel rate at or below that ceiling is then added without a probe, since a fixed
- * resolution's bandwidth scales with refresh rate. The active config is queried once and reused, the validating
- * rational form is cached, and ordinary multi-rate resolutions are skipped.
+ * resolution by its small distinct-rate count. Each resolution's drivable ceiling is found with as few SDC_VALIDATE
+ * probes as possible, and every panel rate at or below it is then added.
  *
  * @param displayId
  *            - The stable display ID being enumerated
