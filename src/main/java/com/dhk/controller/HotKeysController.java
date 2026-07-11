@@ -74,6 +74,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
     private boolean anyHotKeySubset;
     private volatile boolean anyHotKeyChanging;
     private Set<Integer> activeKeyCodes;
+    private HeldKeyTracker heldKeyTracker;
 
     private static final String CHANGE_HOT_KEY_TEXT = "Change Hot Key";
     private static final String PRESS_HOT_KEY_TEXT = "Press Hot Key";
@@ -96,12 +97,16 @@ public class HotKeysController implements IController, GlobalKeyListener {
      *            - The controller for the application
      * @param settingsMgr
      *            - The settings manager for the application
+     * @param heldKeyTracker
+     *            - The tracker of physically held keys, shared across re-initializations so held keys are not lost
      */
-    public HotKeysController(DhkModel model, DhkView view, DhkController controller, SettingsManager settingsMgr) {
+    public HotKeysController(DhkModel model, DhkView view, DhkController controller, SettingsManager settingsMgr,
+            HeldKeyTracker heldKeyTracker) {
         this.model = model;
         this.view = view;
         this.controller = controller;
         this.settingsMgr = settingsMgr;
+        this.heldKeyTracker = heldKeyTracker;
     }
 
     @Override
@@ -114,6 +119,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
         anyHotKeyChanging = false;
         activeKeyCodes = new HashSet<>();
         rebuildActiveKeyCodes();
+        seedHeldKeyStates();
         displayConfig = settingsMgr.getDisplayConfig();
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
@@ -301,6 +307,29 @@ public class HotKeysController implements IController, GlobalKeyListener {
                 for (int k = 0; k < keys.size(); k++) {
                     activeKeyCodes.add(keys.get(k).getKey());
                 }
+            }
+        }
+    }
+
+    /**
+     * Restores the physically held key states onto the freshly rebuilt model so a hot key can match again without
+     * releasing every key. A fully held combo is marked held down so re-seeding never re-applies it on the next event.
+     */
+    private void seedHeldKeyStates() {
+        for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
+            for (int slotIndex = 0; slotIndex < maxNumOfSlots; slotIndex++) {
+                HotKey hotKey = model.getSlot(displayIndex, slotIndex).getHotKey();
+                List<Key> keys = hotKey.getKeys();
+                boolean allKeysPressed = keys.size() > 0;
+
+                for (int keyIndex = 0; keyIndex < keys.size(); keyIndex++) {
+                    boolean keyHeld = heldKeyTracker.isKeyHeld(keys.get(keyIndex).getKey());
+                    keys.get(keyIndex).setKeyPressed(keyHeld);
+                    allKeysPressed &= keyHeld;
+                }
+
+                hotKey.setHotKeyPressed(allKeysPressed);
+                hotKey.setHotKeyHeldDown(allKeysPressed);
             }
         }
     }

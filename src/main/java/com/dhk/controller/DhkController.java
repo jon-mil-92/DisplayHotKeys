@@ -48,6 +48,7 @@ public class DhkController implements IController {
     private DhkView view;
     private SettingsManager settingsMgr;
     private GlobalKeyboardHook keyboardHook;
+    private HeldKeyTracker heldKeyTracker;
     private HotKeysController hotKeysController;
     private List<IController> controllers;
     private int frameState;
@@ -78,7 +79,10 @@ public class DhkController implements IController {
             frameState = JFrame.NORMAL;
         }
 
+        // Create the keyboard hook and its permanent held-key tracker once; both live for the whole app lifetime
         keyboardHook = new GlobalKeyboardHook(true);
+        heldKeyTracker = new HeldKeyTracker();
+        keyboardHook.addKeyListener(heldKeyTracker);
     }
 
     @Override
@@ -86,7 +90,7 @@ public class DhkController implements IController {
         controllers = new ArrayList<IController>();
 
         // Create the hot keys controller early so other controllers can notify it
-        hotKeysController = new HotKeysController(model, view, this, settingsMgr);
+        hotKeysController = new HotKeysController(model, view, this, settingsMgr, heldKeyTracker);
 
         controllers.add(new ClearAllButtonController(model, view, this, settingsMgr));
         controllers.add(new ApplyDisplayModeButtonController(model, view, this, settingsMgr));
@@ -115,11 +119,13 @@ public class DhkController implements IController {
         displayNotifications.registerShellRestartListener(shellRestartHandler);
         displayNotifications.start();
 
-        // Ensure keyboard hook exists (may have been shutdown during previous cleanup)
+        // Recreate the hook only if it never existed; normally it stays alive across re-inits with the tracker attached
         if (keyboardHook == null) {
             keyboardHook = new GlobalKeyboardHook(true);
+            keyboardHook.addKeyListener(heldKeyTracker);
         }
 
+        // Attach the new dispatch listener; the persistent held-key tracker remains attached across re-inits
         keyboardHook.addKeyListener(hotKeysController);
         view.getFrame().setExtendedState(frameState);
     }
@@ -133,15 +139,16 @@ public class DhkController implements IController {
 
     @Override
     public void cleanUp() {
-        // Attempt to shutdown the native keyboard hook to free native resources and stop incoming events
+        /*
+         * Detach only the current dispatch listener so the old hot keys controller can be garbage collected. The hook
+         * and its held-key tracker stay alive so keys held across app refreshes are never missed, and the process exit
+         * reclaims the native hook
+         */
         if (keyboardHook != null) {
             try {
                 keyboardHook.removeKeyListener(hotKeysController);
-                keyboardHook.shutdownHook();
             } catch (Exception e) {
                 e.printStackTrace();
-            } finally {
-                keyboardHook = null;
             }
         }
 
