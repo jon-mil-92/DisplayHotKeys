@@ -482,9 +482,19 @@ static void waitForCcdSourceModeResolution(UINT32 displayIndex, UINT32 width, UI
             if (modeIdx != DISPLAYCONFIG_PATH_MODE_IDX_INVALID && modeIdx < config.numModeInfoArrayElements) {
                 const DISPLAYCONFIG_MODE_INFO &mode = config.modeInfoArray[modeIdx];
 
-                // The legacy mode change has propagated once the CCD source mode reports the requested resolution
-                matched = mode.infoType == DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE && mode.sourceMode.width == width &&
-                          mode.sourceMode.height == height;
+                /*
+                 * The source mode is always the unrotated native size, so swap it by the target rotation before
+                 * comparing; otherwise a rotated display never matches
+                 */
+                DISPLAYCONFIG_ROTATION rotation = config.pathInfoArray[displayIndex].targetInfo.rotation;
+                bool rotated =
+                    rotation == DISPLAYCONFIG_ROTATION_ROTATE90 || rotation == DISPLAYCONFIG_ROTATION_ROTATE270;
+                UINT32 footprintWidth = rotated ? mode.sourceMode.height : mode.sourceMode.width;
+                UINT32 footprintHeight = rotated ? mode.sourceMode.width : mode.sourceMode.height;
+
+                // The legacy mode change has propagated once the source-mode footprint reports the requested resolution
+                matched = mode.infoType == DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE && footprintWidth == width &&
+                          footprintHeight == height;
             }
         }
 

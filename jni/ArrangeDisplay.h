@@ -41,12 +41,12 @@ struct DisplayRect {
     POINTL position;
 
     /**
-     * The source-mode width (desktop pixels) of the display.
+     * The on-desktop footprint width of the display (its source-mode width, swapped for a 90°/270° rotation).
      */
     UINT32 width;
 
     /**
-     * The source-mode height (desktop pixels) of the display.
+     * The on-desktop footprint height of the display (its source-mode height, swapped for a 90°/270° rotation).
      */
     UINT32 height;
 };
@@ -72,12 +72,12 @@ struct ReflowRect {
     LONG oldTop;
 
     /**
-     * The captured source width before the change.
+     * The captured on-desktop footprint width before the change.
      */
     LONG oldWidth;
 
     /**
-     * The captured source height before the change.
+     * The captured on-desktop footprint height before the change.
      */
     LONG oldHeight;
 
@@ -92,12 +92,12 @@ struct ReflowRect {
     LONG newTop;
 
     /**
-     * The new source width (differs from the old width only for a changed display).
+     * The new on-desktop footprint width (differs from the old width only for a changed display).
      */
     LONG newWidth;
 
     /**
-     * The new source height (differs from the old height only for a changed display).
+     * The new on-desktop footprint height (differs from the old height only for a changed display).
      */
     LONG newHeight;
 

@@ -30,6 +30,7 @@ using namespace std;
 
 static vector<DisplayRect> captureDisplayRects();
 static void preserveArrangement(const vector<DisplayRect> &savedRects);
+static void effectiveFootprint(UINT32 rotation, LONG &width, LONG &height);
 static bool placeNeighbor(ReflowRect &neighbor, const ReflowRect &anchor, bool allowCorner);
 static LONG alignPerpendicular(bool anchorChanged, bool neighborChanged, LONG anchorOldStart, LONG anchorOldSize,
                                LONG anchorNewStart, LONG anchorNewSize, LONG neighborOldStart, LONG neighborOldSize,
@@ -182,7 +183,12 @@ static vector<DisplayRect> captureDisplayRects() {
 
         const DISPLAYCONFIG_SOURCE_MODE &source = modes[sourceModeIdx].sourceMode;
 
-        rects.push_back({stableId, source.position, source.width, source.height});
+        // The source mode is always the unrotated native size, so swap by rotation to get the on-desktop footprint
+        LONG width = (LONG) source.width;
+        LONG height = (LONG) source.height;
+        effectiveFootprint(path.targetInfo.rotation, width, height);
+
+        rects.push_back({stableId, source.position, (UINT32) width, (UINT32) height});
     }
 
     return rects;
@@ -245,13 +251,18 @@ static void preserveArrangement(const vector<DisplayRect> &savedRects) {
         string stableId = stableIdForTarget(path.targetInfo);
         const DISPLAYCONFIG_SOURCE_MODE &source = modes[sourceModeIdx].sourceMode;
 
+        // Compare footprints, not raw source sizes, so an orientation flip (which does not resize the source) registers
+        LONG newWidth = (LONG) source.width;
+        LONG newHeight = (LONG) source.height;
+        effectiveFootprint(path.targetInfo.rotation, newWidth, newHeight);
+
         for (ReflowRect &rect : layout) {
             if (rect.stableId != stableId) {
                 continue;
             }
 
-            rect.newWidth = (LONG) source.width;
-            rect.newHeight = (LONG) source.height;
+            rect.newWidth = newWidth;
+            rect.newHeight = newHeight;
             rect.changed = (rect.newWidth != rect.oldWidth || rect.newHeight != rect.oldHeight);
             rect.liveModeIdx = (int) sourceModeIdx;
             break;
@@ -360,6 +371,28 @@ static void preserveArrangement(const vector<DisplayRect> &savedRects) {
     }
 
     SetDisplayConfig(pathCount, paths.data(), modeCount, modes.data(), SDC_SUPPLIED_APPLY_FLAGS | SDC_ALLOW_CHANGES);
+}
+
+/**
+ * Converts a display's unrotated source-mode size to its on-desktop footprint. The CCD source mode always reports the
+ * native (unrotated) size while rotation lives on the target, so a 90°/270° rotation swaps width and height to give the
+ * footprint the desktop layout actually occupies.
+ *
+ * @param rotation
+ *            - The target rotation (a DISPLAYCONFIG_ROTATION value) applied to the display
+ * @param width
+ *            - The source-mode width, swapped with height in place for a 90°/270° rotation
+ * @param height
+ *            - The source-mode height, swapped with width in place for a 90°/270° rotation
+ */
+static void effectiveFootprint(UINT32 rotation, LONG &width, LONG &height) {
+    if (rotation != DISPLAYCONFIG_ROTATION_ROTATE90 && rotation != DISPLAYCONFIG_ROTATION_ROTATE270) {
+        return;
+    }
+
+    LONG swap = width;
+    width = height;
+    height = swap;
 }
 
 /**
