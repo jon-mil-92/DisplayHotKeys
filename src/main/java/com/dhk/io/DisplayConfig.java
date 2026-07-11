@@ -186,4 +186,14 @@ public class DisplayConfig {
         return supportedPercentages.clone();
     }
 
+    /**
+     * Captures the current multi-monitor arrangement so a following batch of applied display settings can be reflowed
+     * against it. The result is opaque and is passed back to SetDisplay to preserve the arrangement.
+     *
+     * @return The captured arrangement, one encoded rectangle per active display
+     */
+    public String[] captureArrangement() {
+        return getDisplay.captureArrangement();
+    }
+
 }

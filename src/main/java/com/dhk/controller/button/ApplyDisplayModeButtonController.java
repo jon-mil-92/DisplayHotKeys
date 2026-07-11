@@ -116,6 +116,7 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
             // Capture the frame placement before the display reconfiguration relocates the window
             FramePlacement placement = FrameUtil.capturePlacement(view.getFrame());
 
+            String[] arrangementSnapshot = displayConfig.captureArrangement();
             setDisplay.applyDisplayOrientation(displayId, model.getSlot(displayIndex, slotIndex).getOrientationMode());
             setDisplay.applyDisplaySettings(displayId,
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getWidth(),
@@ -124,6 +125,7 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshRate(),
                     model.getSlot(displayIndex, slotIndex).getScalingMode(),
                     model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
+            setDisplay.preserveArrangement(arrangementSnapshot);
 
             /*
              * Re-initialize the app to prevent window corruption, but defer briefly so the display reconfiguration

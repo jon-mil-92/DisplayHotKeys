@@ -124,10 +124,9 @@ vector<string> getQueryDisplayConfigDisplayIds() {
 }
 
 /**
- * Queries paths with the given flags and returns the stable ID of each visible display, where a display is visible when
- * it has an active path, a valid source mode of type SOURCE, non-zero size, and an on-screen position (large negative
- * positions are treated as offscreen). Buffers are over-allocated to avoid ERROR_INVALID_PARAMETER from drivers that
- * under-report sizes.
+ * Queries paths with the given flags and returns the stable ID of each visible display, ordered by adapter (in
+ * first-seen order) then by target id within each adapter, which is how Windows Display Settings numbers displays, so
+ * DHK's display indices match Windows even after a disconnect/reconnect reassigns target ids.
  *
  * @param flags
  *            - The QueryDisplayConfig flags selecting which paths to enumerate
@@ -141,6 +140,7 @@ vector<string> getQueryDisplayConfigDisplayIds() {
 static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGeometry,
                                                     vector<int> *rotationsOut = nullptr) {
     vector<string> visible;
+    vector<VisibleDisplay> entries;
 
     UINT32 numPath = 0;
     UINT32 numMode = 0;
@@ -152,6 +152,7 @@ static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGe
         return visible;
     }
 
+    // Over-allocate to avoid ERROR_INVALID_PARAMETER from drivers that under-report the required sizes
     UINT32 allocPath = numPath + 4;
     UINT32 allocMode = numMode + 8;
 
@@ -230,22 +231,52 @@ static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGe
             }
         }
 
-        visible.push_back(entry);
-
-        // Emit the rotation in lockstep so callers can align orientation to the visible ID at the same index
-        if (rotationsOut != nullptr) {
-            rotationsOut->push_back((int) path.targetInfo.rotation);
-        }
+        entries.push_back({path.targetInfo.adapterId.HighPart, path.targetInfo.adapterId.LowPart, path.targetInfo.id, 0,
+                           entry, (int) path.targetInfo.rotation});
     }
 
     delete[] pathArray;
     delete[] modeArray;
+
+    /*
+     * Rank each display's adapter by first appearance (entries are still in path order here), so adapters group the
+     * way Windows lists them; entries sharing an adapter take that adapter's first-seen rank
+     */
+    for (size_t i = 0; i < entries.size(); i++) {
+        entries[i].adapterRank = (int) i;
+
+        for (size_t j = 0; j < i; j++) {
+            if (entries[j].adapterHigh == entries[i].adapterHigh && entries[j].adapterLow == entries[i].adapterLow) {
+                entries[i].adapterRank = entries[j].adapterRank;
+                break;
+            }
+        }
+    }
+
+    // Order by adapter rank, then by target id within the adapter, to match Windows Display Settings numbering
+    stable_sort(entries.begin(), entries.end(), [](const VisibleDisplay &a, const VisibleDisplay &b) {
+        if (a.adapterRank != b.adapterRank) {
+            return a.adapterRank < b.adapterRank;
+        }
+
+        return a.targetId < b.targetId;
+    });
+
+    for (const VisibleDisplay &display : entries) {
+        visible.push_back(display.descriptor);
+
+        // Emit the rotation in lockstep so callers can align orientation to the visible ID at the same index
+        if (rotationsOut != nullptr) {
+            rotationsOut->push_back(display.rotation);
+        }
+    }
 
     return visible;
 }
 
 /**
  * Gets stable IDs for the currently visible displays via QDC_ONLY_ACTIVE_PATHS, falling back to QDC_DATABASE_CURRENT.
+ * Displays are ordered by adapter (first-seen) then target id, matching Windows Display Settings numbering.
  *
  * @return Stable display IDs for the currently visible displays
  */

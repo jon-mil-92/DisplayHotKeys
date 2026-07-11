@@ -18,6 +18,7 @@
  * IN THE SOFTWARE.
  */
 #include "com_dhk_io_SetDisplay.h"
+#include "ArrangeDisplay.h"
 #include "DisplayConfig.h"
 #include <jni.h>
 
@@ -122,6 +123,23 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setOrientation(JNIEnv *env, jo
     setDisplayOrientation(displayIndex, orientation);
 
     env->ReleaseStringUTFChars(displayId, displayIdChars);
+}
+
+/**
+ * Reflows the multi-monitor arrangement against the snapshot from GetDisplay's captureDisplayArrangement, forwarding to
+ * ArrangeDisplay so every display keeps its relative position and alignment after a batch of display changes.
+ *
+ * @param env
+ *            - The JNI environment pointer
+ * @param obj
+ *            - The Java SetDisplay instance
+ * @param snapshot
+ *            - The arrangement snapshot as "id|x|y|width|height" strings, one per display
+ */
+JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_preserveDisplayArrangement(JNIEnv *env, jobject obj,
+                                                                             jobjectArray snapshot) {
+    (void) obj;
+    preserveDisplayArrangement(env, snapshot);
 }
 
 /**

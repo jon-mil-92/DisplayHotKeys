@@ -209,11 +209,20 @@ public class HotKeysController implements IController, GlobalKeyListener {
                         ? null
                         : FrameUtil.capturePlacement(view.getFrame());
 
-                // Apply settings for all collected slots
+                // Apply settings for all collected slots, capturing the arrangement first so it is reflowed once after
                 boolean displaySettingsApplied = false;
 
-                for (Entry<Integer, Integer> displayToSlot : displayToSlotMap.entrySet()) {
-                    displaySettingsApplied |= setDisplaySettings(displayToSlot.getKey(), displayToSlot.getValue());
+                if (!displayToSlotMap.isEmpty()) {
+                    String[] arrangementSnapshot = displayConfig.captureArrangement();
+
+                    for (Entry<Integer, Integer> displayToSlot : displayToSlotMap.entrySet()) {
+                        displaySettingsApplied |= setDisplaySettings(displayToSlot.getKey(), displayToSlot.getValue());
+                    }
+
+                    // Reflow once, after every targeted display has been resized, so their arrangement is preserved
+                    if (displaySettingsApplied) {
+                        setDisplay.preserveArrangement(arrangementSnapshot);
+                    }
                 }
 
                 // Re-initialize the app once, after every targeted display has been updated

@@ -81,6 +81,13 @@ public class GetDisplay {
     private native int[] getSupportedDpiScalePercentages(int width, int height);
 
     /**
+     * Defines a JNI function to capture the current multi-monitor arrangement as encoded strings.
+     *
+     * @return The captured arrangement, one encoded rectangle per active display
+     */
+    private native String[] captureDisplayArrangement();
+
+    /**
      * Gets the current supported display modes for the given display.
      *
      * @param displayId
@@ -130,6 +137,16 @@ public class GetDisplay {
         }
 
         return dpiScalePercentages;
+    }
+
+    /**
+     * Captures the current multi-monitor arrangement so a following batch of applied display settings can be reflowed
+     * against it. The result is opaque and is passed back to SetDisplay to preserve the arrangement.
+     *
+     * @return The captured arrangement, one encoded rectangle per active display
+     */
+    public String[] captureArrangement() {
+        return captureDisplayArrangement();
     }
 
 }

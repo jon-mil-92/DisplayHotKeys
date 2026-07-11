@@ -131,6 +131,68 @@ struct DisplayConfig {
 };
 
 /**
+ * A single visible display collected during enumeration, carrying the source adapter LUID and the target id so the
+ * list can be ordered to match how Windows Display Settings numbers displays before the descriptor is emitted.
+ */
+struct VisibleDisplay {
+    /**
+     * High part of the display's adapter LUID, paired with the low part to identify (and group by) the adapter.
+     */
+    LONG adapterHigh;
+
+    /**
+     * Low part of the display's adapter LUID, paired with the high part to identify (and group by) the adapter.
+     */
+    ULONG adapterLow;
+
+    /**
+     * The CCD target id. Within an adapter, Windows Display Settings numbers monitors by target id, and it tracks the
+     * target id across reconnects (a reconnect reassigns target ids and Settings renumbers to follow them).
+     */
+    UINT32 targetId;
+
+    /**
+     * Rank of this display's adapter in first-seen order, so adapters group the way Windows lists them.
+     */
+    int adapterRank;
+
+    /**
+     * The stable display ID, or the geometry signature when geometry is included.
+     */
+    string descriptor;
+
+    /**
+     * The display's rotation, emitted in lockstep with the descriptor when the caller requests rotations.
+     */
+    int rotation;
+};
+
+/**
+ * A single supported display mode collected during enumeration.
+ */
+struct ModeInfo {
+    /**
+     * Horizontal resolution in pixels.
+     */
+    int width;
+
+    /**
+     * Vertical resolution in pixels.
+     */
+    int height;
+
+    /**
+     * Color depth in bits per pixel.
+     */
+    int bitsPerPel;
+
+    /**
+     * Refresh rate in hertz.
+     */
+    int frequency;
+};
+
+/**
  * Queries the full persisted display configuration (QDC_DATABASE_CURRENT), including inactive displays.
  *
  * @return The display paths and modes for the current configuration
@@ -152,7 +214,8 @@ vector<string> getEnumDisplayDevicesDisplayIds();
 vector<string> getQueryDisplayConfigDisplayIds();
 
 /**
- * Gets stable IDs for currently visible displays (active path, non-zero source resolution, on-screen position).
+ * Gets stable IDs for currently visible displays (active path, non-zero source resolution, on-screen position),
+ * ordered by adapter then target id, matching the order Windows Display Settings numbers displays in.
  *
  * @return Stable display IDs for the currently visible displays
  */

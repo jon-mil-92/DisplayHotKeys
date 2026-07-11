@@ -18,6 +18,7 @@
  * IN THE SOFTWARE.
  */
 #include "com_dhk_io_GetDisplay.h"
+#include "ArrangeDisplay.h"
 #include "DisplayConfig.h"
 
 #include <cstdint>
@@ -31,32 +32,9 @@
 
 using namespace std;
 
-/**
- * A single supported display mode collected during enumeration.
- */
-struct ModeInfo {
-    /**
-     * Horizontal resolution in pixels.
-     */
-    int width;
-
-    /**
-     * Vertical resolution in pixels.
-     */
-    int height;
-
-    /**
-     * Color depth in bits per pixel.
-     */
-    int bitsPerPel;
-
-    /**
-     * Refresh rate in hertz.
-     */
-    int frequency;
-};
-
-static void addCustomResolutionRefreshRates(const string &displayId, vector<ModeInfo> &modes);
+static void addCustomResolutionRefreshRates(const string &displayId, vector<ModeInfo> &modes,
+                                            vector<DISPLAYCONFIG_PATH_INFO> paths,
+                                            vector<DISPLAYCONFIG_MODE_INFO> ccdModes, int pathIndex);
 
 /**
  * Enumerates the supported display modes for the given display, mirroring Windows Advanced Display Settings by
@@ -116,16 +94,31 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
     };
 
     /*
-     * Match the display's active path in the current configuration and enumerate its modes by its GDI device name,
-     * matching here rather than via getQueryDisplayConfigDisplayIdIndex to avoid a second full QueryDisplayConfig
+     * Resolve the display's GDI device name from the active CCD config and remember its active-path index, so the
+     * custom-resolution expansion below reuses this one snapshot instead of querying the config a second time. Fall
+     * back to the persisted DB config so a display not on an active path is still found (matching the prior lookup)
      */
-    DisplayConfig displayConfig = getDisplayConfig();
+    vector<DISPLAYCONFIG_PATH_INFO> paths;
+    vector<DISPLAYCONFIG_MODE_INFO> ccdModes;
+    int activePathIndex = -1;
     wstring gdiDeviceName;
 
-    for (UINT32 i = 0; i < displayConfig.numPathInfoArrayElements; i++) {
-        if (stableIdForTarget(displayConfig.pathInfoArray[i].targetInfo) == stableDisplayId) {
-            gdiDeviceName = sourceGdiDeviceName(displayConfig.pathInfoArray[i].sourceInfo);
-            break;
+    if (queryActiveCcdConfig(paths, ccdModes)) {
+        activePathIndex = findActivePathForDisplay(paths, stableDisplayId);
+
+        if (activePathIndex >= 0) {
+            gdiDeviceName = sourceGdiDeviceName(paths[activePathIndex].sourceInfo);
+        }
+    }
+
+    if (gdiDeviceName.empty()) {
+        DisplayConfig displayConfig = getDisplayConfig();
+
+        for (UINT32 i = 0; i < displayConfig.numPathInfoArrayElements; i++) {
+            if (stableIdForTarget(displayConfig.pathInfoArray[i].targetInfo) == stableDisplayId) {
+                gdiDeviceName = sourceGdiDeviceName(displayConfig.pathInfoArray[i].sourceInfo);
+                break;
+            }
         }
     }
 
@@ -152,8 +145,11 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
 
     env->ReleaseStringUTFChars(displayId, displayIdChars);
 
-    // Expand GPU-scaled custom resolutions with the extra refresh rates the legacy mode table omits
-    addCustomResolutionRefreshRates(stableDisplayId, modeList);
+    /*
+     * Expand GPU-scaled custom resolutions with the extra refresh rates the legacy mode table omits, reusing the
+     * active config and path index already resolved above so no second QueryDisplayConfig is issued
+     */
+    addCustomResolutionRefreshRates(stableDisplayId, modeList, paths, ccdModes, activePathIndex);
 
     // De-duplicate in first-seen order, since EnumDisplaySettingsExW repeats modes and the expansion may re-add a rate
     unordered_set<uint64_t> seenModes;
@@ -331,6 +327,22 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_queryVisibleDisplayOrient
 }
 
 /**
+ * Captures the current multi-monitor arrangement, forwarding to ArrangeDisplay so the caller can hand it back to
+ * SetDisplay's preserveDisplayArrangement after a batch of display changes.
+ *
+ * @param env
+ *            - The JNI environment pointer
+ * @param obj
+ *            - The Java GetDisplay instance
+ *
+ * @return A String[] with one encoded rectangle per active display
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_captureDisplayArrangement(JNIEnv *env, jobject obj) {
+    (void) obj;
+    return captureDisplayArrangement(env);
+}
+
+/**
  * Adds the refresh rates a GPU-scaled custom resolution supports but the legacy mode table omits, identifying such a
  * resolution by its small distinct-rate count. Each resolution's drivable ceiling is found with as few SDC_VALIDATE
  * probes as possible, and every panel rate at or below it is then added.
@@ -340,20 +352,16 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_queryVisibleDisplayOrient
  * @param modes
  *            - The mode list to augment in place
  */
-static void addCustomResolutionRefreshRates(const string &displayId, vector<ModeInfo> &modes) {
+static void addCustomResolutionRefreshRates(const string &displayId, vector<ModeInfo> &modes,
+                                            vector<DISPLAYCONFIG_PATH_INFO> paths,
+                                            vector<DISPLAYCONFIG_MODE_INFO> ccdModes, int pathIndex) {
     const size_t MAX_RATES_FOR_CUSTOM_RESOLUTION = 2;
 
-    // Query the active CCD configuration once and locate the display's path once; every probe below reuses them
-    vector<DISPLAYCONFIG_PATH_INFO> paths;
-    vector<DISPLAYCONFIG_MODE_INFO> ccdModes;
-
-    int pathIndex = -1;
-
-    if (queryActiveCcdConfig(paths, ccdModes)) {
-        pathIndex = findActivePathForDisplay(paths, displayId);
-    }
-
-    // Fall back to the persisted DB config so a display not yet on an active path still gets its rates
+    /*
+     * The caller resolved the display against the active CCD config and passed that snapshot plus its path index in,
+     * so every probe below reuses them with no second query. Fall back to the persisted DB config only when the
+     * caller could not locate the path, so a display not yet on an active path still gets its rates
+     */
     if (pathIndex < 0) {
         DisplayConfig dbConfig = getDisplayConfig();
         paths.assign(dbConfig.pathInfoArray, dbConfig.pathInfoArray + dbConfig.numPathInfoArrayElements);
