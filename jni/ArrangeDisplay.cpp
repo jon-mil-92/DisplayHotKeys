@@ -493,11 +493,11 @@ static LONG alignPerpendicular(bool useAlignment, LONG anchorOldStart, LONG anch
             // Centered on the anchor (doubled tolerance matches the doubled centers): keep it centered in the new span
             result = anchorNewStart + (anchorNewSize - neighborNewSize) / 2;
         } else if (neighborOldCenter < anchorOldCenter) {
-            // Offset toward the leading edge, so pin the trailing edge and let a resize grow outward off the overlap
-            result = (anchorNewStart + anchorNewSize) - neighborNewSize + (neighborOldEnd - anchorOldEnd);
-        } else {
-            // Offset toward the trailing edge, so pin the leading edge and let a resize grow outward off the overlap
+            // Not aligned but biased toward the anchor's low edge: preserve the distance from that edge
             result = anchorNewStart + (neighborOldStart - anchorOldStart);
+        } else {
+            // Not aligned but biased toward the anchor's high edge: preserve the distance from that edge
+            result = (anchorNewStart + anchorNewSize) - neighborNewSize + (neighborOldEnd - anchorOldEnd);
         }
     }
 
