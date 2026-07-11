@@ -512,7 +512,14 @@ void setDisplayScalingMode(UINT32 displayIndex, UINT32 scalingMode) {
         return;
     }
 
-    displayConfig.pathInfoArray[displayIndex].targetInfo.scaling = toScalingValue(scalingMode);
+    DISPLAYCONFIG_SCALING scaling = toScalingValue(scalingMode);
+
+    // Skip the reconfiguration when the display already uses the requested scaling mode
+    if (displayConfig.pathInfoArray[displayIndex].targetInfo.scaling == scaling) {
+        return;
+    }
+
+    displayConfig.pathInfoArray[displayIndex].targetInfo.scaling = scaling;
 
     applyDisplayConfig(displayConfig);
 }
@@ -724,6 +731,11 @@ void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation) {
     DisplayConfig displayConfig = getDisplayConfig();
 
     if (displayIndex >= displayConfig.numPathInfoArrayElements) {
+        return;
+    }
+
+    // Skip the reconfiguration when the display is already in the requested orientation
+    if (displayConfig.pathInfoArray[displayIndex].targetInfo.rotation == rotation) {
         return;
     }
 
