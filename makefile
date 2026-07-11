@@ -14,7 +14,7 @@ clean:
 	rm -f jni/com_dhk_io_DisplayEventNotifier.h
 	rm -f *.res.o
 	rm -f *.dll
-	rm -f launch4j/GetDisplay.dll launch4j/SetDisplay.dll launch4j/DisplayEventNotifier.dll
+	rm -f distribution/GetDisplay.dll distribution/SetDisplay.dll distribution/DisplayEventNotifier.dll
 
 header:
 	mkdir -p jni
@@ -41,8 +41,8 @@ dll:
 	$(WINDRES) $(RCFLAGS) jni/DisplayEventNotifier.rc DisplayEventNotifier.res.o
 	$(CXX) $(CXXSTD) $(OPT) jni/com_dhk_io_DisplayEventNotifier.cpp jni/DisplayConfig.cpp DisplayEventNotifier.res.o $(COMMON_DEFS) $(INCLUDES) $(TOOLCHAIN_FLAGS) $(LDFLAGS) -o DisplayEventNotifier.dll
 
-	mkdir -p launch4j
-	cp -f GetDisplay.dll SetDisplay.dll DisplayEventNotifier.dll launch4j/
+	mkdir -p distribution
+	cp -f GetDisplay.dll SetDisplay.dll DisplayEventNotifier.dll distribution/
 
 
 all: clean header dll

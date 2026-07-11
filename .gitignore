@@ -6,8 +6,8 @@ tmp/
 target/
 
 ### Launch4j ###
-launch4j/JDK
-launch4j/DisplayHotKeys.exe
+distribution/JDK
+distribution/DisplayHotKeys.exe
 
 # JNI DLLs
 GetDisplay.dll

@@ -3,7 +3,7 @@
   <dontWrapJar>false</dontWrapJar>
   <headerType>gui</headerType>
   <jar>C:\Users\jonRock\git\DisplayHotKeys\target\DisplayHotKeys-3.0.0.jar</jar>
-  <outfile>C:\Users\jonRock\git\DisplayHotKeys\launch4j\DisplayHotKeys.exe</outfile>
+  <outfile>C:\Users\jonRock\git\DisplayHotKeys\distribution\DisplayHotKeys.exe</outfile>
   <errTitle></errTitle>
   <cmdLine></cmdLine>
   <chdir>.</chdir>
@@ -12,8 +12,8 @@
   <supportUrl></supportUrl>
   <stayAlive>false</stayAlive>
   <restartOnCrash>false</restartOnCrash>
-  <manifest>C:\Users\jonRock\git\DisplayHotKeys\launch4j\DisplayHotKeys.exe.manifest</manifest>
-  <icon>C:\Users\jonRock\git\DisplayHotKeys\launch4j\dhk.ico</icon>
+  <manifest>C:\Users\jonRock\git\DisplayHotKeys\distribution\DisplayHotKeys.exe.manifest</manifest>
+  <icon>C:\Users\jonRock\git\DisplayHotKeys\distribution\dhk.ico</icon>
   <singleInstance>
     <mutexName>DisplayHotKeys.exe</mutexName>
     <windowTitle>DisplayHotKeys.exe</windowTitle>
