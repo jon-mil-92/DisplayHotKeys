@@ -28,6 +28,16 @@
 
 using namespace std;
 
+static vector<DisplayRect> captureDisplayRects();
+static void preserveArrangement(const vector<DisplayRect> &savedRects);
+static bool placeNeighbor(ReflowRect &neighbor, const ReflowRect &anchor, bool allowCorner);
+static LONG alignPerpendicular(bool anchorChanged, bool neighborChanged, LONG anchorOldStart, LONG anchorOldSize,
+                               LONG anchorNewStart, LONG anchorNewSize, LONG neighborOldStart, LONG neighborOldSize,
+                               LONG neighborNewSize, bool preferTrailingWhenFlush);
+static bool nearlyEqual(LONG first, LONG second, LONG tolerance);
+static void pinResizedToStackPartners(vector<ReflowRect> &layout);
+static void compactStackedGroups(vector<ReflowRect> &layout);
+
 /**
  * Flags for applying a supplied CCD configuration and persisting it to the Windows display database.
  */
@@ -44,15 +54,6 @@ static const LONG ALIGNMENT_TOLERANCE_PX = 80;
  * flush while a genuinely intended gap is left as a separation.
  */
 static const LONG GAP_TOLERANCE_PX = 20;
-
-static vector<DisplayRect> captureDisplayRects();
-static void preserveArrangement(const vector<DisplayRect> &savedRects);
-static bool placeNeighbor(ReflowRect &neighbor, const ReflowRect &anchor, bool allowCorner);
-static LONG alignPerpendicular(bool useAlignment, LONG anchorOldStart, LONG anchorOldSize, LONG anchorNewStart,
-                               LONG anchorNewSize, LONG neighborOldStart, LONG neighborOldSize, LONG neighborNewSize,
-                               bool preferTrailingWhenFlush);
-static bool nearlyEqual(LONG first, LONG second, LONG tolerance);
-static void compactStackedGroups(vector<ReflowRect> &layout);
 
 /**
  * Captures the current multi-monitor arrangement as an encoded String[] (one rectangle per active display) for the
@@ -188,10 +189,9 @@ static vector<DisplayRect> captureDisplayRects() {
 }
 
 /**
- * Preserves the multi-monitor arrangement after a resolution or orientation change resized one or more displays. Every
- * display's applied size and live source-mode index are read from the live config in a single pass, the primary is held
- * at the desktop origin, and the rest of the layout is rebuilt from the captured rectangles so each display keeps its
- * relative position and alignment.
+ * Preserves the multi-monitor arrangement after a resolution or orientation change resized one or more displays. It
+ * anchors the primary at the desktop origin and rebuilds the rest so every display keeps its relative position and
+ * alignment.
  *
  * @param savedRects
  *            - The desktop rectangle captured for each display before the change
@@ -311,6 +311,9 @@ static void preserveArrangement(const vector<DisplayRect> &savedRects) {
         }
     }
 
+    // Push a resized display flush off any unchanged partner it was stacked with so it grows outward, not over it
+    pinResizedToStackPartners(layout);
+
     // Re-flush displays stacked on the same side of a grown display so no gap opens between them
     compactStackedGroups(layout);
 
@@ -379,15 +382,12 @@ static bool placeNeighbor(ReflowRect &neighbor, const ReflowRect &anchor, bool a
     bool horizontalOverlap =
         neighbor.oldLeft < anchor.oldLeft + anchor.oldWidth && anchor.oldLeft < neighbor.oldLeft + neighbor.oldWidth;
 
-    // Reproduce the alignment when either display resized; otherwise keep the exact offset
-    bool useAlignment = anchor.changed || neighbor.changed;
-
     if (verticalOverlap && neighbor.oldLeft == anchor.oldLeft + anchor.oldWidth) {
         // Neighbor sits to the right; keep it flush and preserve its vertical alignment
         neighbor.newLeft = anchor.newLeft + anchor.newWidth;
         neighbor.newTop =
-            alignPerpendicular(useAlignment, anchor.oldTop, anchor.oldHeight, anchor.newTop, anchor.newHeight,
-                               neighbor.oldTop, neighbor.oldHeight, neighbor.newHeight, true);
+            alignPerpendicular(anchor.changed, neighbor.changed, anchor.oldTop, anchor.oldHeight, anchor.newTop,
+                               anchor.newHeight, neighbor.oldTop, neighbor.oldHeight, neighbor.newHeight, true);
         return true;
     }
 
@@ -395,8 +395,8 @@ static bool placeNeighbor(ReflowRect &neighbor, const ReflowRect &anchor, bool a
         // Neighbor sits to the left
         neighbor.newLeft = anchor.newLeft - neighbor.newWidth;
         neighbor.newTop =
-            alignPerpendicular(useAlignment, anchor.oldTop, anchor.oldHeight, anchor.newTop, anchor.newHeight,
-                               neighbor.oldTop, neighbor.oldHeight, neighbor.newHeight, true);
+            alignPerpendicular(anchor.changed, neighbor.changed, anchor.oldTop, anchor.oldHeight, anchor.newTop,
+                               anchor.newHeight, neighbor.oldTop, neighbor.oldHeight, neighbor.newHeight, true);
         return true;
     }
 
@@ -404,8 +404,8 @@ static bool placeNeighbor(ReflowRect &neighbor, const ReflowRect &anchor, bool a
         // Neighbor sits below; keep it flush and preserve its horizontal alignment
         neighbor.newTop = anchor.newTop + anchor.newHeight;
         neighbor.newLeft =
-            alignPerpendicular(useAlignment, anchor.oldLeft, anchor.oldWidth, anchor.newLeft, anchor.newWidth,
-                               neighbor.oldLeft, neighbor.oldWidth, neighbor.newWidth, false);
+            alignPerpendicular(anchor.changed, neighbor.changed, anchor.oldLeft, anchor.oldWidth, anchor.newLeft,
+                               anchor.newWidth, neighbor.oldLeft, neighbor.oldWidth, neighbor.newWidth, false);
         return true;
     }
 
@@ -413,8 +413,8 @@ static bool placeNeighbor(ReflowRect &neighbor, const ReflowRect &anchor, bool a
         // Neighbor sits above
         neighbor.newTop = anchor.newTop - neighbor.newHeight;
         neighbor.newLeft =
-            alignPerpendicular(useAlignment, anchor.oldLeft, anchor.oldWidth, anchor.newLeft, anchor.newWidth,
-                               neighbor.oldLeft, neighbor.oldWidth, neighbor.newWidth, false);
+            alignPerpendicular(anchor.changed, neighbor.changed, anchor.oldLeft, anchor.oldWidth, anchor.newLeft,
+                               anchor.newWidth, neighbor.oldLeft, neighbor.oldWidth, neighbor.newWidth, false);
         return true;
     }
 
@@ -441,8 +441,10 @@ static bool placeNeighbor(ReflowRect &neighbor, const ReflowRect &anchor, bool a
  * Computes a neighbor's aligned coordinate on the axis perpendicular to a shared edge, preserving the alignment it
  * had with the anchor through the resize and clamping it to keep at least a one-pixel shared edge.
  *
- * @param useAlignment
- *            - Whether either display resized, so the original alignment is reproduced rather than the exact offset
+ * @param anchorChanged
+ *            - Whether the anchor resized, so alignment is reproduced rather than the exact offset preserved
+ * @param neighborChanged
+ *            - Whether the neighbor resized, so it grows outward off the overlap instead of following the anchor
  * @param anchorOldStart
  *            - The anchor's old start coordinate on this axis (old top or left)
  * @param anchorOldSize
@@ -462,10 +464,13 @@ static bool placeNeighbor(ReflowRect &neighbor, const ReflowRect &anchor, bool a
  *
  * @return The neighbor's new start coordinate on this axis
  */
-static LONG alignPerpendicular(bool useAlignment, LONG anchorOldStart, LONG anchorOldSize, LONG anchorNewStart,
-                               LONG anchorNewSize, LONG neighborOldStart, LONG neighborOldSize, LONG neighborNewSize,
-                               bool preferTrailingWhenFlush) {
+static LONG alignPerpendicular(bool anchorChanged, bool neighborChanged, LONG anchorOldStart, LONG anchorOldSize,
+                               LONG anchorNewStart, LONG anchorNewSize, LONG neighborOldStart, LONG neighborOldSize,
+                               LONG neighborNewSize, bool preferTrailingWhenFlush) {
     LONG result;
+
+    // Reproduce the alignment when either display resized; otherwise keep the exact offset
+    bool useAlignment = anchorChanged || neighborChanged;
 
     if (!useAlignment) {
         // Neither display resized, so the neighbor keeps its exact offset
@@ -493,11 +498,21 @@ static LONG alignPerpendicular(bool useAlignment, LONG anchorOldStart, LONG anch
             // Centered on the anchor (doubled tolerance matches the doubled centers): keep it centered in the new span
             result = anchorNewStart + (anchorNewSize - neighborNewSize) / 2;
         } else if (neighborOldCenter < anchorOldCenter) {
-            // Not aligned but biased toward the anchor's low edge: preserve the distance from that edge
-            result = anchorNewStart + (neighborOldStart - anchorOldStart);
+            if (neighborChanged) {
+                // Neighbor grew, offset toward the leading edge, so pin its trailing edge and grow outward
+                result = (anchorNewStart + anchorNewSize) - neighborNewSize + (neighborOldEnd - anchorOldEnd);
+            } else {
+                // Only the anchor grew, so keep the neighbor's distance from the anchor's leading edge (its bias)
+                result = anchorNewStart + (neighborOldStart - anchorOldStart);
+            }
         } else {
-            // Not aligned but biased toward the anchor's high edge: preserve the distance from that edge
-            result = (anchorNewStart + anchorNewSize) - neighborNewSize + (neighborOldEnd - anchorOldEnd);
+            if (neighborChanged) {
+                // Neighbor grew, offset toward the trailing edge, so pin its leading edge and grow outward
+                result = anchorNewStart + (neighborOldStart - anchorOldStart);
+            } else {
+                // Only the anchor grew, so keep the neighbor's distance from the anchor's trailing edge (its bias)
+                result = (anchorNewStart + anchorNewSize) - neighborNewSize + (neighborOldEnd - anchorOldEnd);
+            }
         }
     }
 
@@ -531,11 +546,64 @@ static bool nearlyEqual(LONG first, LONG second, LONG tolerance) {
 }
 
 /**
- * Re-flushes displays stacked on the same side of a resized display and keeps the stack's alignment with that display.
- * The per-member reflow aligns each side-neighbor to the resized display independently, which both splits an originally
- * flush stack and loses the group's overall alignment (e.g. a centered stack drifts) when the display resizes. This
- * pass makes each such stack rigid again, then repositions it as one unit so a centered/leading/trailing/near-diagonal
- * stack keeps that relationship. Pure integer work over the reflow set.
+ * Re-flushes a resized display against an unchanged neighbor it was stacked flush with, so it grows outward instead of
+ * riding over that neighbor when the per-member reflow aligns it to a perpendicular side-anchor whose edge coincided
+ * with its own. Pure integer work.
+ *
+ * @param layout
+ *            - The reflow working set, updated in place for any resized display that rode into an unchanged partner
+ */
+static void pinResizedToStackPartners(vector<ReflowRect> &layout) {
+    size_t count = layout.size();
+
+    for (size_t b = 0; b < count; b++) {
+        ReflowRect &member = layout[b];
+
+        // Only a resized, non-anchor display can ride into a partner; the origin anchor stays fixed
+        if (!member.changed || (member.oldLeft == 0 && member.oldTop == 0)) {
+            continue;
+        }
+
+        for (size_t a = 0; a < count; a++) {
+            if (a == b || layout[a].changed) {
+                continue;
+            }
+
+            const ReflowRect &partner = layout[a];
+
+            bool horizontalOverlap = partner.oldLeft < member.oldLeft + member.oldWidth &&
+                                     member.oldLeft < partner.oldLeft + partner.oldWidth;
+            bool verticalOverlap =
+                partner.oldTop < member.oldTop + member.oldHeight && member.oldTop < partner.oldTop + partner.oldHeight;
+
+            if (horizontalOverlap && nearlyEqual(partner.oldTop + partner.oldHeight, member.oldTop, GAP_TOLERANCE_PX) &&
+                member.newTop < partner.newTop + partner.newHeight) {
+                // Partner sits directly above and the member rode up into it, so flush the member below the partner
+                member.newTop = partner.newTop + partner.newHeight;
+            } else if (horizontalOverlap &&
+                       nearlyEqual(member.oldTop + member.oldHeight, partner.oldTop, GAP_TOLERANCE_PX) &&
+                       member.newTop + member.newHeight > partner.newTop) {
+                // Partner sits directly below and the member grew down into it, so flush the member above the partner
+                member.newTop = partner.newTop - member.newHeight;
+            } else if (verticalOverlap &&
+                       nearlyEqual(partner.oldLeft + partner.oldWidth, member.oldLeft, GAP_TOLERANCE_PX) &&
+                       member.newLeft < partner.newLeft + partner.newWidth) {
+                // Partner sits directly left and the member rode into it, so flush the member to the partner's right
+                member.newLeft = partner.newLeft + partner.newWidth;
+            } else if (verticalOverlap &&
+                       nearlyEqual(member.oldLeft + member.oldWidth, partner.oldLeft, GAP_TOLERANCE_PX) &&
+                       member.newLeft + member.newWidth > partner.newLeft) {
+                // Partner sits directly right and the member grew into it, so flush the member to the partner's left
+                member.newLeft = partner.newLeft - member.newWidth;
+            }
+        }
+    }
+}
+
+/**
+ * Keeps a resized display's same-side flush stack intact instead of letting the per-member reflow split or drift it.
+ * Re-flushes the stack and repositions it as one unit so its centered/leading/trailing alignment survives. Pure
+ * integer work over the reflow set.
  *
  * @param layout
  *            - The reflow working set, updated in place for any stacked side-neighbors that need re-flushing
@@ -552,7 +620,7 @@ static void compactStackedGroups(vector<ReflowRect> &layout) {
             continue;
         }
 
-        // Sides 0 = right of anchor, 1 = left, 2 = below, 3 = above; sides 0/1 stack along Y, sides 2/3 along X
+        // Sides 0/1 = right/left of anchor (stack along Y); 2/3 = below/above (stack along X)
         for (int side = 0; side < 4; side++) {
             bool vertical = (side <= 1);
             group.clear();
@@ -588,18 +656,18 @@ static void compactStackedGroups(vector<ReflowRect> &layout) {
                     flushToNewEdge = member.newTop + member.newHeight == anchor.newTop;
                 }
 
-                // Same side of the SAME anchor and flush to its new edge is what marks a genuine stacked group
+                // A genuine stack member sits on the same anchor side and is flush to its new edge
                 if (adjacent && flushToNewEdge) {
                     group.push_back((int) m);
                 }
             }
 
-            // A lone side-neighbor (single-row, single-column, or grid) has nothing to stay flush with
+            // A lone side-neighbor has no stack-mate to stay flush with
             if (group.size() < 2) {
                 continue;
             }
 
-            // Insertion-sort the small group into geometric order along the stacking axis
+            // Order the small group along the stacking axis
             for (size_t i = 1; i < group.size(); i++) {
                 int key = group[i];
                 LONG keyStart = vertical ? layout[key].oldTop : layout[key].oldLeft;
@@ -613,7 +681,7 @@ static void compactStackedGroups(vector<ReflowRect> &layout) {
                 group[j] = key;
             }
 
-            // Lay each near-flush successor rigidly against its predecessor so the stack stays gap-free
+            // Lay each near-flush member against its predecessor so no gap opens
             bool singleFlushRun = true;
 
             for (size_t i = 1; i < group.size(); i++) {
@@ -662,11 +730,12 @@ static void compactStackedGroups(vector<ReflowRect> &layout) {
             LONG anchorNewStart = vertical ? anchor.newTop : anchor.newLeft;
             LONG anchorNewSize = vertical ? anchor.newHeight : anchor.newWidth;
 
-            // Right/left stacks prefer trailing edges when both are flush; above/below do not (as in placeNeighbor)
+            // Right/left stacks prefer trailing edges when flush; above/below do not (as in placeNeighbor)
             bool preferTrailingWhenFlush = vertical;
 
-            LONG groupNewStart = alignPerpendicular(true, anchorOldStart, anchorOldSize, anchorNewStart, anchorNewSize,
-                                                    groupOldStart, groupOldSize, groupNewSize, preferTrailingWhenFlush);
+            LONG groupNewStart =
+                alignPerpendicular(true, false, anchorOldStart, anchorOldSize, anchorNewStart, anchorNewSize,
+                                   groupOldStart, groupOldSize, groupNewSize, preferTrailingWhenFlush);
 
             LONG shift = groupNewStart - (vertical ? first.newTop : first.newLeft);
 
