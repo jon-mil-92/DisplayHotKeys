@@ -45,7 +45,6 @@ import lc.kra.system.mouse.event.GlobalMouseEvent;
  */
 public class FrameDragController implements IController {
 
-    private static final Object MOUSE_HOOK_LIFECYCLE_LOCK = new Object();
     private static final int DISPLAY_SYNC_POST_RELEASE_DELAY_MS = 25;
 
     private DhkView view;
@@ -59,17 +58,18 @@ public class FrameDragController implements IController {
     private WindowAdapter frameCloseListener;
     private boolean displayTransitionPending;
     private boolean leftMouseButtonDown;
-    private boolean mouseHookInstallStarted;
-    private boolean mouseHookDisposed;
 
     /**
      * Constructor for the {@link FrameDragController} class.
      *
      * @param view
      *            - The view for the application
+     * @param globalMouseHook
+     *            - The shared global mouse hook, owned by {@link DhkController} and kept alive across app refreshes
      */
-    public FrameDragController(DhkView view) {
+    public FrameDragController(DhkView view, GlobalMouseHook globalMouseHook) {
         this.view = view;
+        this.globalMouseHook = globalMouseHook;
     }
 
     @Override
@@ -78,8 +78,6 @@ public class FrameDragController implements IController {
         cachedConfiguration = null;
         displayTransitionPending = false;
         leftMouseButtonDown = false;
-        mouseHookInstallStarted = false;
-        mouseHookDisposed = false;
         displaySyncTimer = createDisplaySyncTimer();
     }
 
@@ -95,9 +93,8 @@ public class FrameDragController implements IController {
         cachedConfiguration = frame.getGraphicsConfiguration();
         displayTransitionPending = false;
         leftMouseButtonDown = false;
-        mouseHookDisposed = false;
 
-        installGlobalMouseHook();
+        installGlobalMouseListener();
         installFrameListeners(frame);
     }
 
@@ -108,20 +105,8 @@ public class FrameDragController implements IController {
         stopTimer(displaySyncTimer);
         displayTransitionPending = false;
 
-        GlobalMouseHook mouseHookToShutdown;
-        GlobalMouseAdapter mouseListenerToRemove;
-
-        synchronized (this) {
-            mouseHookDisposed = true;
-            mouseHookToShutdown = globalMouseHook;
-            mouseListenerToRemove = globalMouseListener;
-            globalMouseHook = null;
-            globalMouseListener = null;
-        }
-
-        if (mouseHookToShutdown != null) {
-            shutdownMouseHook(mouseHookToShutdown, mouseListenerToRemove);
-        }
+        // Detach only this controller's listener; the shared hook persists across app refreshes
+        removeGlobalMouseListener();
 
         leftMouseButtonDown = false;
         observedFrame = null;
@@ -225,51 +210,23 @@ public class FrameDragController implements IController {
         }
 
         displayTransitionPending = false;
-        FrameUtil.refreshFrame(frame);
+
+        // Cache the destination config before refreshing so the refresh's own moves are not read as a new transition
         cachedConfiguration = frame.getGraphicsConfiguration();
+        FrameUtil.refreshFrame(frame);
     }
 
     /**
-     * Installs a default-mode global mouse hook on a background thread so native title-bar drags report the real
-     * left-button press/release without blocking the EDT.
+     * Attaches this controller's listener to the shared mouse hook so native title-bar drags report the real
+     * left-button press/release. Adding to the hook is cheap, so no background thread is needed.
      */
-    private void installGlobalMouseHook() {
-        synchronized (this) {
-            if (mouseHookInstallStarted || mouseHookDisposed) {
-                return;
-            }
-
-            mouseHookInstallStarted = true;
+    private void installGlobalMouseListener() {
+        if (globalMouseHook == null || globalMouseListener != null) {
+            return;
         }
 
-        Thread hookInstallThread = new Thread(() -> {
-            GlobalMouseHook mouseHook = null;
-            GlobalMouseAdapter hookListener = null;
-
-            try {
-                synchronized (MOUSE_HOOK_LIFECYCLE_LOCK) {
-                    mouseHook = new GlobalMouseHook();
-                    hookListener = createGlobalMouseListener();
-                    mouseHook.addMouseListener(hookListener);
-
-                    synchronized (FrameDragController.this) {
-                        if (mouseHookDisposed) {
-                            shutdownMouseHook(mouseHook, hookListener);
-                            return;
-                        }
-
-                        globalMouseHook = mouseHook;
-                        globalMouseListener = hookListener;
-                    }
-                }
-            } catch (UnsatisfiedLinkError | RuntimeException e) {
-                shutdownMouseHook(mouseHook, hookListener);
-                e.printStackTrace();
-            }
-        }, "DisplayHotKeys-MouseHook");
-
-        hookInstallThread.setDaemon(true);
-        hookInstallThread.start();
+        globalMouseListener = createGlobalMouseListener();
+        globalMouseHook.addMouseListener(globalMouseListener);
     }
 
     /**
@@ -305,28 +262,20 @@ public class FrameDragController implements IController {
     }
 
     /**
-     * Removes the listener from a mouse hook and shuts the hook down. Safe for partially initialized hook instances.
+     * Detaches this controller's listener from the shared mouse hook, leaving the hook alive for later refreshes.
      */
-    private void shutdownMouseHook(GlobalMouseHook mouseHook, GlobalMouseAdapter mouseListener) {
-        if (mouseHook == null) {
+    private void removeGlobalMouseListener() {
+        if (globalMouseHook == null || globalMouseListener == null) {
             return;
         }
 
-        synchronized (MOUSE_HOOK_LIFECYCLE_LOCK) {
-            if (mouseListener != null) {
-                try {
-                    mouseHook.removeMouseListener(mouseListener);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-
-            try {
-                mouseHook.shutdownHook();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        try {
+            globalMouseHook.removeMouseListener(globalMouseListener);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+
+        globalMouseListener = null;
     }
 
     /**

@@ -28,8 +28,8 @@ import lc.kra.system.keyboard.event.GlobalKeyListener;
 
 /**
  * Tracks which virtual key codes are currently held down on the global keyboard hook. This listener stays attached
- * across app re-initializations and holds no model, view, or controller references, so held keys survive the rebuild
- * that follows applying a hot key and it can never leak the old object graph.
+ * across app refreshes and holds no model, view, or controller references, so held keys survive an app refresh that
+ * follows applying a hot key and it can never leak the old object graph.
  *
  * @author Jonathan R. Miller
  */

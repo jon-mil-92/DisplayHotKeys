@@ -28,7 +28,7 @@ import com.dhk.view.DhkView;
 
 /**
  * Controls the Refresh App button. Listeners are added to the corresponding view component so that when the Refresh App
- * button is pressed, the application is re-initialized.
+ * button is pressed, components of the application are re-initialized.
  *
  * @author Jonathan R. Miller
  */

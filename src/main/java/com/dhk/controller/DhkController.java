@@ -36,6 +36,7 @@ import com.dhk.model.DhkModel;
 import com.dhk.view.DhkView;
 
 import lc.kra.system.keyboard.GlobalKeyboardHook;
+import lc.kra.system.mouse.GlobalMouseHook;
 
 /**
  * The main controller for Display Hot Keys. Creates all of the controllers for the application.
@@ -48,6 +49,7 @@ public class DhkController implements IController {
     private DhkView view;
     private SettingsManager settingsMgr;
     private GlobalKeyboardHook keyboardHook;
+    private GlobalMouseHook mouseHook;
     private HeldKeyTracker heldKeyTracker;
     private HotKeysController hotKeysController;
     private List<IController> controllers;
@@ -83,22 +85,30 @@ public class DhkController implements IController {
         keyboardHook = new GlobalKeyboardHook(true);
         heldKeyTracker = new HeldKeyTracker();
         keyboardHook.addKeyListener(heldKeyTracker);
+
+        // Create the global mouse hook once so app refreshes reuse it instead of re-installing it every time
+        mouseHook = createGlobalMouseHook();
     }
 
     @Override
     public void initController() {
         controllers = new ArrayList<IController>();
 
+        // Recreate the mouse hook only if it never existed; normally it stays alive across re-inits
+        if (mouseHook == null) {
+            mouseHook = createGlobalMouseHook();
+        }
+
         // Create the hot keys controller early so other controllers can notify it
         hotKeysController = new HotKeysController(model, view, this, settingsMgr, heldKeyTracker);
+        controllers.add(hotKeysController);
 
-        controllers.add(new ClearAllButtonController(model, view, this, settingsMgr));
         controllers.add(new ApplyDisplayModeButtonController(model, view, this, settingsMgr));
+        controllers.add(new ClearAllButtonController(model, view, this, settingsMgr));
         controllers.add(new ClearHotKeyButtonController(model, view, settingsMgr, hotKeysController));
         controllers.add(new DisplayModeController(model, view, settingsMgr));
         controllers.add(new DpiScaleController(model, view, settingsMgr));
-        controllers.add(new FrameDragController(view));
-        controllers.add(hotKeysController);
+        controllers.add(new FrameDragController(view, mouseHook));
         controllers.add(new MenuController(model, view, this, settingsMgr));
         controllers.add(new NumberOfSlotsController(model, view, settingsMgr));
         controllers.add(new OrientationController(model, view, this, settingsMgr));
@@ -222,6 +232,22 @@ public class DhkController implements IController {
 
         initController();
         initListeners();
+    }
+
+    /**
+     * Creates the global mouse hook shared by the frame drag controller, returning null if the native hook cannot be
+     * established so a failure never prevents the rest of the application from starting.
+     *
+     * @return The global mouse hook, or null if it could not be created
+     */
+    private GlobalMouseHook createGlobalMouseHook() {
+        try {
+            return new GlobalMouseHook();
+        } catch (UnsatisfiedLinkError | RuntimeException e) {
+            e.printStackTrace();
+
+            return null;
+        }
     }
 
 }

@@ -587,8 +587,8 @@ public class HotKeysController implements IController, GlobalKeyListener {
     }
 
     /**
-     * Sets the display settings if the display is connected. Does not re-initialize the app; the caller is responsible
-     * for triggering a single rebuild after all targeted displays have been updated.
+     * Sets the display settings if the display is connected. Does not refresh the app; the caller is responsible for
+     * triggering a single app refresh after all targeted displays have been updated.
      *
      * @param displayIndex
      *            - The index of the display to set the display settings for
@@ -620,9 +620,9 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     /**
      * Schedules a single, deferred re-initialization of the app to prevent window corruption after a display mode is
-     * applied. Applying a display mode reconfigures the display asynchronously, so the rebuild is delayed briefly to
-     * let the new geometry settle; otherwise the rebuilt frame is placed against stale display bounds and jumps up and
-     * to the left. The Timer fires once on the EDT.
+     * applied. Applying a display mode reconfigures the display asynchronously, so the app refresh is delayed briefly
+     * to let the new geometry settle; otherwise the rebuilt frame is placed against stale display bounds and jumps up
+     * and to the left. The Timer fires once on the EDT.
      *
      * @param placement
      *            - The frame placement captured before applying the display settings, reproduced after

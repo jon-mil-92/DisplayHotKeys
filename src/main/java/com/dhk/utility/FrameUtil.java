@@ -64,6 +64,11 @@ public class FrameUtil {
     public static final int REFRESH_DELAY_MS = 400;
 
     /**
+     * Guards against stacking native-surface reclaim collections when in-place refreshes arrive back to back.
+     */
+    private static volatile boolean nativeReclaimInProgress;
+
+    /**
      * Default constructor for the {@link FrameUtil} class.
      */
     public FrameUtil() {
@@ -144,6 +149,31 @@ public class FrameUtil {
         settleScrollBars(frame, scrollPane, cachedWorkingAreaSize(frame));
 
         frame.repaint();
+        scheduleNativeSurfaceReclaim();
+    }
+
+    /**
+     * Schedules a background collection after an in-place refresh to reclaim the native back-buffer surfaces AWT
+     * orphans while re-rendering across per-monitor-DPI displays.
+     */
+    private static void scheduleNativeSurfaceReclaim() {
+        if (nativeReclaimInProgress) {
+            return;
+        }
+
+        nativeReclaimInProgress = true;
+
+        // Collect off the EDT so a refresh never stalls on the GC
+        Thread reclaimThread = new Thread(() -> {
+            try {
+                System.gc();
+            } finally {
+                nativeReclaimInProgress = false;
+            }
+        }, "DisplayHotKeys-NativeSurfaceReclaim");
+
+        reclaimThread.setDaemon(true);
+        reclaimThread.start();
     }
 
     /**
