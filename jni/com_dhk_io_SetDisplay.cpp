@@ -1,246 +1,755 @@
 /*
- * Immediately applies display settings for a given display.
+ * The MIT License (MIT)
  *
- * Author: Jonathan Miller
- * License: The MIT License - https://mit-license.org/
+ * Copyright © 2026 Jonathan R. Miller
  *
- * Copyright © 2025 Jonathan Miller
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
  */
-
-#include <jni.h>
-#include "DisplayConfig.h"
 #include "com_dhk_io_SetDisplay.h"
+#include "ArrangeDisplay.h"
+#include "DisplayConfig.h"
+#include <jni.h>
 
 using namespace std;
 
-void setDisplayMode(UINT32 displayIndex, UINT32 width, UINT32 height, UINT32 bitDepth, UINT32 refreshRate);
+static int resolveDisplayIndex(const string &stableId);
+bool setDisplayMode(const string &stableId, UINT32 displayIndex, UINT32 width, UINT32 height, UINT32 bitDepth,
+                    UINT32 refreshRate);
+static bool tryApplyModeExact(const WCHAR *gdiDeviceName, UINT32 width, UINT32 height, UINT32 bitDepth,
+                              UINT32 refreshRate);
+static bool tryApplyMode(const WCHAR *gdiDeviceName, UINT32 width, UINT32 height, UINT32 bitDepth, UINT32 refreshRate);
+static bool applyLargestSelectableMode(const WCHAR *gdiDeviceName, UINT32 excludeWidth, UINT32 excludeHeight);
+static bool ccdApplySourceMode(const string &stableId, UINT32 width, UINT32 height, UINT32 refreshRate);
+static void waitForCcdSourceModeResolution(UINT32 displayIndex, UINT32 width, UINT32 height);
 void setDisplayScalingMode(UINT32 displayIndex, UINT32 scalingMode);
+static DISPLAYCONFIG_SCALING toScalingValue(UINT32 scalingMode);
+static LONG applyDisplayConfig(const DisplayConfig &config);
 void setDpiScalePercentage(UINT32 displayIndex, int32_t dpiScalePercentage);
 void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation);
 
-/*
- * Updates the display mode, scaling mode, and DPI scale percentage for the given
- * display.
+/**
+ * Flags for applying a supplied CCD configuration and persisting it to the Windows display database.
+ */
+static const UINT32 SDC_SUPPLIED_APPLY_FLAGS = SDC_APPLY | SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE;
+
+/**
+ * Applies display settings (resolution, bit depth, refresh rate, scaling mode, and DPI scale percentage) to a display.
  *
  * @param env
- *            - The structure containing methods to use to to access Java elements
+ *            - The JNI environment pointer
  * @param obj
- *            - The reference to the Java native object instance
+ *            - The Java SetDisplay instance
  * @param displayId
- *            - The ID of the display to apply the display settings for
+ *            - The stable display ID of the display to modify
  * @param resWidth
- *            - The new horizontal resolution for the given display
+ *            - The horizontal resolution to apply
  * @param resHeight
- *            - The new vertical resolution for the given display
+ *            - The vertical resolution to apply
  * @param bitDepth
- *            - The new bit depth for the given display
+ *            - The bit depth to apply
  * @param refreshRate
- *            - The new refresh rate for the given display
+ *            - The refresh rate to apply
  * @param scalingMode
- *            - The new scaling mode for the given display
+ *            - The scaling mode to apply (0 = aspect ratio, 1 = stretched, 2 = centered)
  * @param dpiScalePercentage
- *            - The new DPI scale percentage for the given display
+ *            - The DPI scale percentage to apply (e.g. 100, 125, 150)
  */
 JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv *env, jobject obj, jstring displayId, jint resWidth,
-        jint resHeight, jint bitDepth, jint refreshRate, jint scalingMode, jint dpiScalePercentage) {
+                                                             jint resHeight, jint bitDepth, jint refreshRate,
+                                                             jint scalingMode, jint dpiScalePercentage) {
     jboolean isCopy;
-    const char *displayIdChars = (env)->GetStringUTFChars(displayId, &isCopy);
-    string displayIdString = displayIdChars;
-    int enumDisplayDevicesDisplayIdIndex = getEnumDisplayDevicesDisplayIdIndex(displayIdString);
-    int queryDisplayConfigDisplayIdIndex = getQueryDisplayConfigDisplayIdIndex(displayIdString);
+    const char *displayIdChars = env->GetStringUTFChars(displayId, &isCopy);
+    string stableId = displayIdChars;
 
-    setDisplayMode(enumDisplayDevicesDisplayIdIndex, resWidth, resHeight, bitDepth, refreshRate);
-    setDisplayScalingMode(queryDisplayConfigDisplayIdIndex, scalingMode);
-    setDpiScalePercentage(queryDisplayConfigDisplayIdIndex, dpiScalePercentage);
+    int displayIndex = resolveDisplayIndex(stableId);
+
+    if (displayIndex < 0) {
+        env->ReleaseStringUTFChars(displayId, displayIdChars);
+
+        // The display disappeared or is invalid
+        return;
+    }
+
+    // Apply the resolution, then settle so the scaling re-apply does not revert it with a stale source mode
+    if (setDisplayMode(stableId, displayIndex, resWidth, resHeight, bitDepth, refreshRate)) {
+        waitForCcdSourceModeResolution(displayIndex, resWidth, resHeight);
+    }
+
+    setDisplayScalingMode(displayIndex, scalingMode);
+    setDpiScalePercentage(displayIndex, dpiScalePercentage);
+
+    env->ReleaseStringUTFChars(displayId, displayIdChars);
 }
 
-/*
- * Updates the orientation for the given display.
+/**
+ * Applies a new orientation to the given display.
  *
  * @param env
- *            - The structure containing methods to use to to access Java elements
+ *            - The JNI environment pointer
  * @param obj
- *            - The reference to the Java native object instance
+ *            - The Java SetDisplay instance
  * @param displayId
- *            - The ID of the display to apply the display settings for
+ *            - The stable display ID of the display to modify
  * @param orientation
- *            - The new orientation for the given display
+ *            - The orientation (0 = landscape, 1 = portrait, 2 = inverted landscape, 3 = inverted portrait)
  */
 JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setOrientation(JNIEnv *env, jobject obj, jstring displayId,
-        jint orientation) {
+                                                                 jint orientation) {
     jboolean isCopy;
-    const char *displayIdChars = (env)->GetStringUTFChars(displayId, &isCopy);
-    string displayIdString = displayIdChars;
-    int enumDisplayDevicesDisplayIdIndex = getEnumDisplayDevicesDisplayIdIndex(displayIdString);
-    int queryDisplayConfigDisplayIdIndex = getQueryDisplayConfigDisplayIdIndex(displayIdString);
+    const char *displayIdChars = env->GetStringUTFChars(displayId, &isCopy);
+    string stableId = displayIdChars;
 
-    setDisplayOrientation(queryDisplayConfigDisplayIdIndex, orientation);
+    int displayIndex = resolveDisplayIndex(stableId);
+
+    if (displayIndex < 0) {
+        env->ReleaseStringUTFChars(displayId, displayIdChars);
+
+        // The display disappeared or is invalid
+        return;
+    }
+
+    setDisplayOrientation(displayIndex, orientation);
+
+    env->ReleaseStringUTFChars(displayId, displayIdChars);
 }
 
-/*
- * Sets the display mode for the given display.
+/**
+ * Reflows the multi-monitor arrangement against the snapshot from GetDisplay's captureDisplayArrangement, forwarding to
+ * ArrangeDisplay so every display keeps its relative position and alignment after a batch of display changes.
  *
+ * @param env
+ *            - The JNI environment pointer
+ * @param obj
+ *            - The Java SetDisplay instance
+ * @param snapshot
+ *            - The arrangement snapshot as "id|x|y|width|height" strings, one per display
+ */
+JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_preserveDisplayArrangement(JNIEnv *env, jobject obj,
+                                                                             jobjectArray snapshot) {
+    (void) obj;
+    preserveDisplayArrangement(env, snapshot);
+}
+
+/**
+ * Resolves a stable display ID to a valid QueryDisplayConfig index.
+ *
+ * @param stableId
+ *            - The stable display ID to resolve
+ *
+ * @return A valid display index, or -1 if the display is not present or the index is invalid
+ */
+static int resolveDisplayIndex(const string &stableId) {
+    int index = getQueryDisplayConfigDisplayIdIndex(stableId);
+
+    if (index < 0) {
+        return -1;
+    }
+
+    DisplayConfig config = getDisplayConfig();
+
+    if ((UINT32) index >= config.numPathInfoArrayElements) {
+        return -1;
+    }
+
+    return index;
+}
+
+/**
+ * Sets the display mode (resolution, bit depth, refresh rate) for the given display. An exact ChangeDisplaySettingsExW
+ * attempt is tried first so the refresh rate is never silently dropped. If it fails (e.g. a GPU-scaled custom
+ * resolution at a rate the legacy API rejects with DISP_CHANGE_BADMODE), the CCD API applies it the way Advanced
+ * Display Settings does. Otherwise it steps through the largest selectable mode (letting driver-virtualized DSR/VSR
+ * resolutions be selected from a small current mode, e.g. 5760x3240 from 800x600) then retries both paths. A lenient
+ * ChangeDisplaySettingsExW fallback (dropping the refresh rate, then the bit depth) is the last resort.
+ *
+ * @param stableId
+ *            - The stable display ID of the display to modify (used for the CCD path)
  * @param displayIndex
- *            - The index of the display to set the display mode for
+ *            - The QueryDisplayConfig index of the display to modify
  * @param resWidth
- *            - The new horizontal resolution to apply for the given display
+ *            - The horizontal resolution to apply
  * @param resHeight
- *            - The new vertical resolution to apply for the given display
+ *            - The vertical resolution to apply
  * @param bitDepth
- *            - The new bit depth to apply for the given display
+ *            - The bit depth to apply
  * @param refreshRate
- *            - The new refresh rate to apply for the given display
- */
-void setDisplayMode(UINT32 displayIndex, UINT32 resWidth, UINT32 resHeight, UINT32 bitDepth, UINT32 refreshRate) {
-    DEVMODE devMode;
-
-    SecureZeroMemory(&devMode, sizeof(DEVMODE));
-    devMode.dmSize = sizeof(devMode);
-
-    DISPLAY_DEVICE displayDevice;
-
-    SecureZeroMemory(&displayDevice, sizeof(DISPLAY_DEVICE));
-    displayDevice.cb = sizeof(displayDevice);
-
-    devMode.dmPelsWidth = resWidth;
-    devMode.dmPelsHeight = resHeight;
-    devMode.dmBitsPerPel = bitDepth;
-    devMode.dmDisplayFrequency = refreshRate;
-    devMode.dmDriverExtra = 0;
-    devMode.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
-
-    EnumDisplayDevices(NULL, displayIndex, &displayDevice, 0);
-
-    LONG changeDisplaySettingsResult = ChangeDisplaySettingsEx(displayDevice.DeviceName, &devMode, NULL,
-    CDS_UPDATEREGISTRY, NULL);
-
-    if (changeDisplaySettingsResult != DISP_CHANGE_SUCCESSFUL) {
-        cerr << "Failed to set the display mode! Error Code: " << changeDisplaySettingsResult << endl;
-    }
-}
-
-/*
- * Sets the scaling mode for the given display.
+ *            - The refresh rate to apply
  *
- * @param displayIndex
- *            - The index of the display to set the scaling mode for
- * @param scalingMode
- *            - The new scaling mode to apply for the given display
+ * @return Whether the resolution was applied
  */
-void setDisplayScalingMode(UINT32 displayIndex, UINT32 scalingMode) {
-    DISPLAYCONFIG_SCALING displayConfigScalingMode;
+bool setDisplayMode(const string &stableId, UINT32 displayIndex, UINT32 resWidth, UINT32 resHeight, UINT32 bitDepth,
+                    UINT32 refreshRate) {
+    DisplayConfig displayConfig = getDisplayConfig();
 
-    switch (scalingMode) {
-    case 0:
-        displayConfigScalingMode = DISPLAYCONFIG_SCALING_ASPECTRATIOCENTEREDMAX; // Preserve aspect ratio.
-        break;
-    case 1:
-        displayConfigScalingMode = DISPLAYCONFIG_SCALING_STRETCHED; // Stretch to fill panel.
-        break;
-    case 2:
-        displayConfigScalingMode = DISPLAYCONFIG_SCALING_CENTERED; // Centered in panel.
-        break;
-    default:
-        displayConfigScalingMode = DISPLAYCONFIG_SCALING_ASPECTRATIOCENTEREDMAX; // Preserve aspect ratio by default.
-        break;
+    if (displayIndex >= displayConfig.numPathInfoArrayElements) {
+        return false;
     }
 
-    DisplayConfig displayConfig = getDisplayConfig();
-    displayConfig.pathInfoArray[displayIndex].targetInfo.scaling = displayConfigScalingMode;
+    wstring gdiDeviceName = sourceGdiDeviceName(displayConfig.pathInfoArray[displayIndex].sourceInfo);
 
-    LONG setDisplayConfigResult = SetDisplayConfig(displayConfig.numPathInfoArrayElements, displayConfig.pathInfoArray,
-            displayConfig.numModeInfoArrayElements, displayConfig.modeInfoArray,
-            SDC_APPLY |
-            SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE);
-
-    if (setDisplayConfigResult != ERROR_SUCCESS) {
-        cerr << "Failed to set the scaling mode! Error Code: " << setDisplayConfigResult << endl;
+    if (gdiDeviceName.empty()) {
+        return false;
     }
-}
 
-/*
- * Sets the DPI scale percentage for the given display.
- *
- * @param displayIndex
- *            - The index of the display to set the DPI scale percentage for
- * @param dpiScalePercentage
- *            - The new DPI scale percentage to apply for the given display
- */
-void setDpiScalePercentage(UINT32 displayIndex, int32_t dpiScalePercentage) {
-    DisplayConfig displayConfig = getDisplayConfig();
-    DISPLAYCONFIG_GET_DPI_SCALE_INDICES getDpiScaleIndices = { };
+    const WCHAR *gdi = gdiDeviceName.c_str();
 
-    getDpiScaleIndices.header.type = (DISPLAYCONFIG_DEVICE_INFO_TYPE) DISPLAYCONFIG_DEVICE_INFO_HEADER_GET_DPI_TYPE;
-    getDpiScaleIndices.header.size = sizeof(getDpiScaleIndices);
-    getDpiScaleIndices.header.adapterId = displayConfig.pathInfoArray[displayIndex].sourceInfo.adapterId;
-    getDpiScaleIndices.header.id = displayConfig.pathInfoArray[displayIndex].sourceInfo.id;
+    // Strict exact attempt first so the requested refresh rate is never silently dropped
+    if (tryApplyModeExact(gdi, resWidth, resHeight, bitDepth, refreshRate)) {
+        return true;
+    }
 
-    DisplayConfigGetDeviceInfo(&getDpiScaleIndices.header);
+    /*
+     * Applies resolution/refresh-rate combinations the legacy API rejects (e.g., a scaled custom resolution at an
+     * alternate rate), matching what Windows Advanced Display Settings can do
+     */
+    if (!stableId.empty() && ccdApplySourceMode(stableId, resWidth, resHeight, refreshRate)) {
+        return true;
+    }
 
-    int32_t defaultDpiScaleIndex = abs(getDpiScaleIndices.relativeMinimumDpiScaleIndex);
-    int32_t dpiScaleIndex = 0;
+    // Capture the current (still original) mode before stepping so it can be restored if the retries also fail
+    DEVMODEW originalMode = {};
+    originalMode.dmSize = sizeof(originalMode);
+    bool haveOriginal = EnumDisplaySettingsW(gdi, ENUM_CURRENT_SETTINGS, &originalMode);
 
-    for (int32_t i = 0; i < NUM_OF_DPI_SCALE_PERCENTAGES; i++) {
-        if (dpiScalePercentage == DPI_SCALE_PERCENTAGES.at(i)) {
-            dpiScaleIndex = i;
+    // A driver-virtualized (DSR/VSR) target is only offered from a larger current mode, so step up first then retry
+    if (applyLargestSelectableMode(gdi, resWidth, resHeight)) {
+        // Let the driver re-enumerate the resolutions available from the intermediate mode before retrying
+        Sleep(100);
+
+        if (tryApplyModeExact(gdi, resWidth, resHeight, bitDepth, refreshRate)) {
+            return true;
+        }
+
+        if (!stableId.empty() && ccdApplySourceMode(stableId, resWidth, resHeight, refreshRate)) {
+            return true;
+        }
+
+        // The target still would not apply, so restore the original mode rather than leaving the intermediate one
+        if (haveOriginal) {
+            originalMode.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
+            ChangeDisplaySettingsExW(gdi, &originalMode, NULL, CDS_UPDATEREGISTRY, NULL);
         }
     }
 
-    int32_t relativeDpiScaleIndex = 0;
-    relativeDpiScaleIndex = dpiScaleIndex - defaultDpiScaleIndex;
-    DISPLAYCONFIG_SET_DPI_SCALE_INDEX setDpiScaleIndex = { };
+    // As a last resort, apply the resolution even if the exact refresh rate or bit depth is unavailable
+    return tryApplyMode(gdi, resWidth, resHeight, bitDepth, refreshRate);
+}
 
-    setDpiScaleIndex.header.type = (DISPLAYCONFIG_DEVICE_INFO_TYPE) DISPLAYCONFIG_DEVICE_INFO_HEADER_SET_DPI_TYPE;
-    setDpiScaleIndex.header.size = sizeof(setDpiScaleIndex);
-    setDpiScaleIndex.header.adapterId = displayConfig.pathInfoArray[displayIndex].sourceInfo.adapterId;
-    setDpiScaleIndex.header.id = displayConfig.pathInfoArray[displayIndex].sourceInfo.id;
-    setDpiScaleIndex.relativeDpiScaleIndex = relativeDpiScaleIndex;
+/**
+ * Applies exactly the given resolution, bit depth, and refresh rate through ChangeDisplaySettingsExW with no fallback,
+ * so the requested refresh rate is never silently dropped. Used as the first, strict attempt before the CCD and lenient
+ * paths.
+ *
+ * @param gdiDeviceName
+ *            - The GDI device name of the display to modify
+ * @param width
+ *            - The horizontal resolution to apply
+ * @param height
+ *            - The vertical resolution to apply
+ * @param bitDepth
+ *            - The bit depth to apply
+ * @param refreshRate
+ *            - The refresh rate to apply
+ *
+ * @return Whether the exact mode was applied
+ */
+static bool tryApplyModeExact(const WCHAR *gdiDeviceName, UINT32 width, UINT32 height, UINT32 bitDepth,
+                              UINT32 refreshRate) {
+    DEVMODEW devModeW;
+    SecureZeroMemory(&devModeW, sizeof(DEVMODEW));
+    devModeW.dmSize = sizeof(devModeW);
+    devModeW.dmPelsWidth = width;
+    devModeW.dmPelsHeight = height;
+    devModeW.dmBitsPerPel = bitDepth;
+    devModeW.dmDisplayFrequency = refreshRate;
+    devModeW.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
 
-    bool setDpiScaleResult = DisplayConfigSetDeviceInfo(&setDpiScaleIndex.header);
+    if (ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_TEST, NULL) == DISP_CHANGE_SUCCESSFUL) {
+        ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_UPDATEREGISTRY, NULL);
+        return true;
+    }
 
-    if (setDpiScaleResult != ERROR_SUCCESS) {
-        cerr << "Failed to set the DPI scale percentage! Error Code : " << setDpiScaleResult << endl;
+    return false;
+}
+
+/**
+ * Applies the given resolution, bit depth, and refresh rate through ChangeDisplaySettingsExW, retrying without the
+ * refresh rate and then without the bit depth so a mode is still applied when an exact match is unavailable.
+ *
+ * @param gdiDeviceName
+ *            - The GDI device name of the display to modify
+ * @param width
+ *            - The horizontal resolution to apply
+ * @param height
+ *            - The vertical resolution to apply
+ * @param bitDepth
+ *            - The bit depth to apply
+ * @param refreshRate
+ *            - The refresh rate to apply
+ *
+ * @return Whether the mode was applied
+ */
+static bool tryApplyMode(const WCHAR *gdiDeviceName, UINT32 width, UINT32 height, UINT32 bitDepth, UINT32 refreshRate) {
+    DEVMODEW devModeW;
+    SecureZeroMemory(&devModeW, sizeof(DEVMODEW));
+    devModeW.dmSize = sizeof(devModeW);
+    devModeW.dmPelsWidth = width;
+    devModeW.dmPelsHeight = height;
+    devModeW.dmBitsPerPel = bitDepth;
+    devModeW.dmDisplayFrequency = refreshRate;
+    devModeW.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
+
+    if (ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_TEST, NULL) == DISP_CHANGE_SUCCESSFUL) {
+        ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_UPDATEREGISTRY, NULL);
+        return true;
+    }
+
+    // Retry without refresh rate
+    devModeW.dmFields &= ~DM_DISPLAYFREQUENCY;
+    devModeW.dmDisplayFrequency = 0;
+
+    if (ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_TEST, NULL) == DISP_CHANGE_SUCCESSFUL) {
+        ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_UPDATEREGISTRY, NULL);
+        return true;
+    }
+
+    // Retry without bit depth
+    devModeW.dmFields &= ~DM_BITSPERPEL;
+    devModeW.dmBitsPerPel = 0;
+
+    if (ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_TEST, NULL) == DISP_CHANGE_SUCCESSFUL) {
+        ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_UPDATEREGISTRY, NULL);
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Applies the largest currently selectable display mode, excluding the given resolution. Driver-virtualized (DSR/VSR)
+ * resolutions are only offered when the current mode is large enough, so stepping through the largest real mode makes a
+ * high virtualized resolution selectable from a small current mode.
+ *
+ * @param gdiDeviceName
+ *            - The GDI device name of the display to modify
+ * @param excludeWidth
+ *            - A horizontal resolution to skip (the eventual target)
+ * @param excludeHeight
+ *            - A vertical resolution to skip (the eventual target)
+ *
+ * @return Whether an intermediate mode was applied
+ */
+static bool applyLargestSelectableMode(const WCHAR *gdiDeviceName, UINT32 excludeWidth, UINT32 excludeHeight) {
+    DWORD bestWidth = 0;
+    DWORD bestHeight = 0;
+    DWORD bestPixels = 0;
+
+    for (DWORD i = 0;; i++) {
+        DEVMODEW mode = {};
+        mode.dmSize = sizeof(mode);
+
+        if (!EnumDisplaySettingsW(gdiDeviceName, i, &mode)) {
+            break;
+        }
+
+        if (mode.dmPelsWidth == excludeWidth && mode.dmPelsHeight == excludeHeight) {
+            continue;
+        }
+
+        DWORD pixels = (DWORD) mode.dmPelsWidth * (DWORD) mode.dmPelsHeight;
+
+        if (pixels <= bestPixels) {
+            continue;
+        }
+
+        DEVMODEW candidate = {};
+        candidate.dmSize = sizeof(candidate);
+        candidate.dmPelsWidth = mode.dmPelsWidth;
+        candidate.dmPelsHeight = mode.dmPelsHeight;
+        candidate.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT;
+
+        // Keep the largest mode that the display will actually accept right now as the stepping stone
+        if (ChangeDisplaySettingsExW(gdiDeviceName, &candidate, NULL, CDS_TEST, NULL) == DISP_CHANGE_SUCCESSFUL) {
+            bestWidth = mode.dmPelsWidth;
+            bestHeight = mode.dmPelsHeight;
+            bestPixels = pixels;
+        }
+    }
+
+    if (bestPixels == 0) {
+        return false;
+    }
+
+    DEVMODEW best = {};
+    best.dmSize = sizeof(best);
+    best.dmPelsWidth = bestWidth;
+    best.dmPelsHeight = bestHeight;
+    best.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT;
+
+    return ChangeDisplaySettingsExW(gdiDeviceName, &best, NULL, CDS_UPDATEREGISTRY, NULL) == DISP_CHANGE_SUCCESSFUL;
+}
+
+/**
+ * Applies the given desktop (source) resolution and target refresh rate through the CCD API (SetDisplayConfig), the way
+ * Windows Advanced Display Settings does. This can apply resolution/refresh-rate combinations that the legacy API
+ * rejects with DISP_CHANGE_BADMODE (e.g. a GPU-scaled custom resolution at an alternate rate). The active config is
+ * queried once, then each rational form of the rate is tried with a strict apply and finally with SDC_ALLOW_CHANGES so
+ * Windows may adjust the rest of the configuration around the requested mode.
+ *
+ * @param stableId
+ *            - The stable display ID of the display to modify
+ * @param width
+ *            - The horizontal (source) resolution to apply
+ * @param height
+ *            - The vertical (source) resolution to apply
+ * @param refreshRate
+ *            - The refresh rate (Hz) to apply
+ *
+ * @return Whether the mode was applied
+ */
+static bool ccdApplySourceMode(const string &stableId, UINT32 width, UINT32 height, UINT32 refreshRate) {
+    vector<DISPLAYCONFIG_PATH_INFO> paths;
+    vector<DISPLAYCONFIG_MODE_INFO> modes;
+
+    if (!queryActiveCcdConfig(paths, modes)) {
+        return false;
+    }
+
+    int pathIndex = findActivePathForDisplay(paths, stableId);
+
+    if (pathIndex < 0) {
+        return false;
+    }
+
+    vector<DISPLAYCONFIG_RATIONAL> candidates = toRefreshRationalCandidates((int) refreshRate);
+
+    // First try each rational representation with a strict apply
+    for (const DISPLAYCONFIG_RATIONAL &rational : candidates) {
+        if (submitCcdSourceMode(paths, modes, pathIndex, width, height, rational,
+                                SDC_APPLY | SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE) == ERROR_SUCCESS) {
+            return true;
+        }
+    }
+
+    // Then retry each letting Windows adjust the remainder of the configuration around the requested mode
+    for (const DISPLAYCONFIG_RATIONAL &rational : candidates) {
+        if (submitCcdSourceMode(paths, modes, pathIndex, width, height, rational,
+                                SDC_APPLY | SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE |
+                                    SDC_ALLOW_CHANGES) == ERROR_SUCCESS) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Waits until the CCD database reports the given source-mode resolution for the display. setDisplayMode applies the
+ * resolution via ChangeDisplaySettingsExW, but the full-path SetDisplayConfig re-apply in setDisplayScalingMode reads
+ * the CCD database, which can lag behind a large change; re-applying a stale config would revert the resolution, so
+ * this lets the database catch up first, giving up after a bounded wait.
+ *
+ * @param displayIndex
+ *            - The QueryDisplayConfig index of the display to check
+ * @param width
+ *            - The horizontal source-mode resolution to wait for
+ * @param height
+ *            - The vertical source-mode resolution to wait for
+ */
+static void waitForCcdSourceModeResolution(UINT32 displayIndex, UINT32 width, UINT32 height) {
+    const int MAX_ATTEMPTS = 20;
+    const DWORD RETRY_DELAY_MS = 50;
+
+    for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        DisplayConfig config = getDisplayConfig();
+        bool matched = false;
+
+        if (displayIndex < config.numPathInfoArrayElements) {
+            UINT32 modeIdx = config.pathInfoArray[displayIndex].sourceInfo.modeInfoIdx;
+
+            if (modeIdx != DISPLAYCONFIG_PATH_MODE_IDX_INVALID && modeIdx < config.numModeInfoArrayElements) {
+                const DISPLAYCONFIG_MODE_INFO &mode = config.modeInfoArray[modeIdx];
+
+                /*
+                 * The source mode is always the unrotated native size, so swap it by the target rotation before
+                 * comparing; otherwise a rotated display never matches
+                 */
+                DISPLAYCONFIG_ROTATION rotation = config.pathInfoArray[displayIndex].targetInfo.rotation;
+                bool rotated =
+                    rotation == DISPLAYCONFIG_ROTATION_ROTATE90 || rotation == DISPLAYCONFIG_ROTATION_ROTATE270;
+                UINT32 footprintWidth = rotated ? mode.sourceMode.height : mode.sourceMode.width;
+                UINT32 footprintHeight = rotated ? mode.sourceMode.width : mode.sourceMode.height;
+
+                // The legacy mode change has propagated once the source-mode footprint reports the requested resolution
+                matched = mode.infoType == DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE && footprintWidth == width &&
+                          footprintHeight == height;
+            }
+        }
+
+        // The DisplayConfig destructor frees the queried arrays when the local leaves scope each iteration
+        if (matched) {
+            return;
+        }
+
+        Sleep(RETRY_DELAY_MS);
     }
 }
 
-/*
+/**
+ * Sets the scaling mode for the given display.
+ *
+ * @param displayIndex
+ *            - The QueryDisplayConfig index of the display to modify
+ * @param scalingMode
+ *            - The scaling mode to apply (0 = aspect ratio, 1 = stretched, 2 = centered)
+ */
+void setDisplayScalingMode(UINT32 displayIndex, UINT32 scalingMode) {
+    DisplayConfig displayConfig = getDisplayConfig();
+
+    if (displayIndex >= displayConfig.numPathInfoArrayElements) {
+        return;
+    }
+
+    DISPLAYCONFIG_SCALING scaling = toScalingValue(scalingMode);
+
+    // Skip the reconfiguration when the display already uses the requested scaling mode
+    if (displayConfig.pathInfoArray[displayIndex].targetInfo.scaling == scaling) {
+        return;
+    }
+
+    displayConfig.pathInfoArray[displayIndex].targetInfo.scaling = scaling;
+
+    applyDisplayConfig(displayConfig);
+}
+
+/**
+ * Maps an app scaling mode to its DISPLAYCONFIG_SCALING value.
+ *
+ * @param scalingMode
+ *            - The scaling mode to map (0 = aspect ratio, 1 = stretched, 2 = centered)
+ *
+ * @return The DISPLAYCONFIG_SCALING value, defaulting to aspect ratio for unknown modes
+ */
+static DISPLAYCONFIG_SCALING toScalingValue(UINT32 scalingMode) {
+    switch (scalingMode) {
+    case 1:
+        // Stretch to fill panel
+        return DISPLAYCONFIG_SCALING_STRETCHED;
+    case 2:
+        // Centered in panel
+        return DISPLAYCONFIG_SCALING_CENTERED;
+    default:
+        // Preserve aspect ratio
+        return DISPLAYCONFIG_SCALING_ASPECTRATIOCENTEREDMAX;
+    }
+}
+
+/**
+ * Applies a supplied display configuration through SetDisplayConfig using the standard apply-and-persist flags.
+ *
+ * @param config
+ *            - The display configuration to apply
+ *
+ * @return The SetDisplayConfig result code
+ */
+static LONG applyDisplayConfig(const DisplayConfig &config) {
+    return SetDisplayConfig(config.numPathInfoArrayElements, config.pathInfoArray, config.numModeInfoArrayElements,
+                            config.modeInfoArray, SDC_SUPPLIED_APPLY_FLAGS);
+}
+
+/**
+ * Sets the DPI scale percentage for the given display.
+ *
+ * @param displayIndex
+ *            - The QueryDisplayConfig index of the display to modify
+ * @param dpiScalePercentage
+ *            - The DPI scale percentage to apply (e.g. 100, 125, 150)
+ */
+void setDpiScalePercentage(UINT32 displayIndex, int32_t dpiScalePercentage) {
+    // Map the requested percentage to its absolute index in the supported list
+    int32_t targetAbsoluteIndex = -1;
+
+    for (int32_t i = 0; i < NUM_OF_DPI_SCALE_PERCENTAGES; i++) {
+        if (dpiScalePercentage == DPI_SCALE_PERCENTAGES.at(i)) {
+            targetAbsoluteIndex = i;
+            break;
+        }
+    }
+
+    // Ignore unsupported percentages rather than applying a wrong value
+    if (targetAbsoluteIndex < 0) {
+        return;
+    }
+
+    /*
+     * Applying a DPI scale right after a resolution change is racy, since Windows may still be recomputing the
+     * resolution-dependent baseline and can transiently report a low maximum or fail the query/set. Each attempt
+     * therefore re-queries the baseline from a fresh configuration and verifies the applied scale, retrying briefly
+     */
+    const int MAX_ATTEMPTS = 8;
+    const DWORD RETRY_DELAY_MS = 40;
+    bool primed = false;
+
+    for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        DisplayConfig displayConfig = getDisplayConfig();
+
+        if (displayIndex >= displayConfig.numPathInfoArrayElements) {
+            return;
+        }
+
+        LUID adapterId = displayConfig.pathInfoArray[displayIndex].sourceInfo.adapterId;
+        UINT32 sourceId = displayConfig.pathInfoArray[displayIndex].sourceInfo.id;
+
+        DISPLAYCONFIG_GET_DPI_SCALE_INDICES getIndices = {};
+        getIndices.header.type = (DISPLAYCONFIG_DEVICE_INFO_TYPE) DISPLAYCONFIG_DEVICE_INFO_HEADER_GET_DPI_TYPE;
+        getIndices.header.size = sizeof(getIndices);
+        getIndices.header.adapterId = adapterId;
+        getIndices.header.id = sourceId;
+
+        // Acting on a zeroed baseline would apply a wrong value, so wait briefly and retry on failure
+        if (DisplayConfigGetDeviceInfo(&getIndices.header) != ERROR_SUCCESS) {
+            Sleep(RETRY_DELAY_MS);
+            continue;
+        }
+
+        /*
+         * DPI indices are relative to the display's recommended scale, whose absolute index is the magnitude of the
+         * relative minimum (absolute index 0 is the global minimum). Work in absolute indices so the math does not
+         * depend on which scale is currently recommended
+         */
+        int32_t recommendedAbsoluteIndex = abs(getIndices.relativeMinimumDpiScaleIndex);
+        int32_t maxAbsoluteIndex = recommendedAbsoluteIndex + getIndices.relativeMaximumDpiScaleIndex;
+        int32_t currentAbsoluteIndex = recommendedAbsoluteIndex + getIndices.relativeCurrentDpiScaleIndex;
+
+        /*
+         * On the first apply of a new resolution the reported maximum can be too low to include the target, so commit a
+         * valid in-range scale once to make Windows finalize the baseline, then re-query on the next attempt. On the
+         * final attempt fall through and apply the best available scale rather than nothing
+         */
+        if (targetAbsoluteIndex > maxAbsoluteIndex && attempt < MAX_ATTEMPTS - 1) {
+            if (!primed) {
+                int32_t primeAbsoluteIndex = (currentAbsoluteIndex == maxAbsoluteIndex) ? 0 : maxAbsoluteIndex;
+
+                DISPLAYCONFIG_SET_DPI_SCALE_INDEX primeIndex = {};
+                primeIndex.header.type = (DISPLAYCONFIG_DEVICE_INFO_TYPE) DISPLAYCONFIG_DEVICE_INFO_HEADER_SET_DPI_TYPE;
+                primeIndex.header.size = sizeof(primeIndex);
+                primeIndex.header.adapterId = adapterId;
+                primeIndex.header.id = sourceId;
+                primeIndex.relativeDpiScaleIndex = primeAbsoluteIndex - recommendedAbsoluteIndex;
+
+                DisplayConfigSetDeviceInfo(&primeIndex.header);
+                primed = true;
+            }
+
+            Sleep(RETRY_DELAY_MS);
+            continue;
+        }
+
+        // Clamp to the range this display actually supports, otherwise the set is silently rejected
+        int32_t desiredAbsoluteIndex =
+            (targetAbsoluteIndex > maxAbsoluteIndex) ? maxAbsoluteIndex : targetAbsoluteIndex;
+
+        // Already at the desired scale; nothing to do
+        if (currentAbsoluteIndex == desiredAbsoluteIndex) {
+            return;
+        }
+
+        DISPLAYCONFIG_SET_DPI_SCALE_INDEX setIndex = {};
+        setIndex.header.type = (DISPLAYCONFIG_DEVICE_INFO_TYPE) DISPLAYCONFIG_DEVICE_INFO_HEADER_SET_DPI_TYPE;
+        setIndex.header.size = sizeof(setIndex);
+        setIndex.header.adapterId = adapterId;
+        setIndex.header.id = sourceId;
+        setIndex.relativeDpiScaleIndex = desiredAbsoluteIndex - recommendedAbsoluteIndex;
+
+        // On failure, wait briefly and retry against a freshly queried configuration
+        if (DisplayConfigSetDeviceInfo(&setIndex.header) != ERROR_SUCCESS) {
+            Sleep(RETRY_DELAY_MS);
+            continue;
+        }
+
+        /*
+         * Verify against the absolute scale actually in effect. If the baseline was still stale when this attempt
+         * computed the relative index, the applied absolute scale will not match, so re-query (which also lets the
+         * reconfiguration settle) and try again
+         */
+        DISPLAYCONFIG_GET_DPI_SCALE_INDICES verifyIndices = {};
+        verifyIndices.header.type = (DISPLAYCONFIG_DEVICE_INFO_TYPE) DISPLAYCONFIG_DEVICE_INFO_HEADER_GET_DPI_TYPE;
+        verifyIndices.header.size = sizeof(verifyIndices);
+        verifyIndices.header.adapterId = adapterId;
+        verifyIndices.header.id = sourceId;
+
+        if (DisplayConfigGetDeviceInfo(&verifyIndices.header) == ERROR_SUCCESS) {
+            int32_t verifyRecommended = abs(verifyIndices.relativeMinimumDpiScaleIndex);
+            int32_t verifyCurrentAbsolute = verifyRecommended + verifyIndices.relativeCurrentDpiScaleIndex;
+
+            if (verifyCurrentAbsolute == desiredAbsoluteIndex) {
+                return;
+            }
+        }
+
+        // Not yet applied; let the reconfiguration settle and try again
+        Sleep(RETRY_DELAY_MS);
+    }
+}
+
+/**
  * Sets the orientation for the given display.
  *
  * @param displayIndex
- *            - The index of the display to set the scaling mode for
+ *            - The QueryDisplayConfig index of the display to modify
  * @param orientation
- *            - The new orientation to apply for the given display
+ *            - The orientation (0 = landscape, 1 = portrait, 2 = inverted landscape, 3 = inverted portrait)
  */
 void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation) {
-    DISPLAYCONFIG_ROTATION displayConfigRotation;
+    DISPLAYCONFIG_ROTATION rotation;
 
     switch (orientation) {
     case 0:
-        displayConfigRotation = DISPLAYCONFIG_ROTATION_IDENTITY; // Landscape mode.
+        // Landscape mode
+        rotation = DISPLAYCONFIG_ROTATION_IDENTITY;
         break;
     case 1:
-        displayConfigRotation = DISPLAYCONFIG_ROTATION_ROTATE90; // Portrait mode.
+        // Portrait mode
+        rotation = DISPLAYCONFIG_ROTATION_ROTATE90;
         break;
     case 2:
-        displayConfigRotation = DISPLAYCONFIG_ROTATION_ROTATE180; // Inverted landscape mode.
+        // Inverted landscape mode
+        rotation = DISPLAYCONFIG_ROTATION_ROTATE180;
         break;
     case 3:
-        displayConfigRotation = DISPLAYCONFIG_ROTATION_ROTATE270; // Inverted portrait mode.
+        // Inverted portrait mode
+        rotation = DISPLAYCONFIG_ROTATION_ROTATE270;
         break;
     default:
-        displayConfigRotation = DISPLAYCONFIG_ROTATION_IDENTITY; // Landscape mode.
+        // Landscape mode
+        rotation = DISPLAYCONFIG_ROTATION_IDENTITY;
         break;
     }
 
     DisplayConfig displayConfig = getDisplayConfig();
-    displayConfig.pathInfoArray[displayIndex].targetInfo.rotation = displayConfigRotation;
 
-    LONG setDisplayConfigResult = SetDisplayConfig(displayConfig.numPathInfoArrayElements, displayConfig.pathInfoArray,
-            displayConfig.numModeInfoArrayElements, displayConfig.modeInfoArray,
-            SDC_APPLY |
-            SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE);
-
-    if (setDisplayConfigResult != ERROR_SUCCESS) {
-        cerr << "Failed to set the display orientation! Error Code: " << setDisplayConfigResult << endl;
+    if (displayIndex >= displayConfig.numPathInfoArrayElements) {
+        return;
     }
+
+    // Skip the reconfiguration when the display is already in the requested orientation
+    if (displayConfig.pathInfoArray[displayIndex].targetInfo.rotation == rotation) {
+        return;
+    }
+
+    displayConfig.pathInfoArray[displayIndex].targetInfo.rotation = rotation;
+
+    applyDisplayConfig(displayConfig);
 }

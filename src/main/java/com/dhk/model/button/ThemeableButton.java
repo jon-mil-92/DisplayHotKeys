@@ -1,15 +1,31 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.model.button;
 
-import java.awt.Dimension;
 import javax.swing.Icon;
 import javax.swing.event.ChangeListener;
 
 /**
  * Defines a themeable button with a light and dark idle, hover, and held icon.
- * 
- * @author Jonathan Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ *
+ * @author Jonathan R. Miller
  */
 public class ThemeableButton extends Button {
 
@@ -21,8 +37,8 @@ public class ThemeableButton extends Button {
     private boolean darkMode;
 
     /**
-     * Constructor for the ThemeableButton class.
-     * 
+     * Constructor for the {@link ThemeableButton} class.
+     *
      * @param idleIconPath
      *            - The resource path for the idle icon
      * @param hoverIconPath
@@ -31,26 +47,21 @@ public class ThemeableButton extends Button {
      *            - The resource path for the dark mode idle icon
      * @param darkHoverIconPath
      *            - The resource path for the dark mode hover icon
-     * @param tooltip
-     *            - The text for the button tooltip
-     * @param size
-     *            - The size of the button
-     * @param idleScale
-     *            - The image scale percentage when the button is idle
-     * @param heldScale
-     *            - The image scale percentage when the button is held down
+     * @param properties
+     *            - The properties of the button
      * @param enabled
      *            - The initial enabled state of the button
      * @param darkMode
      *            - The initial dark mode state of the button
      */
     public ThemeableButton(String idleIconPath, String hoverIconPath, String darkIdleIconPath, String darkHoverIconPath,
-            String tooltip, Dimension size, float idleScale, float heldScale, boolean enabled, boolean darkMode) {
-        super(idleIconPath, hoverIconPath, tooltip, size, idleScale, heldScale, enabled);
+            ButtonProperties properties, boolean enabled, boolean darkMode) {
+        super(idleIconPath, hoverIconPath, properties, enabled);
+        setButtonProperties(properties);
 
-        this.darkIdleIcon = getSvgIcon(darkIdleIconPath, idleScale);
-        this.darkHoverIcon = getSvgIcon(darkHoverIconPath, idleScale);
-        this.darkHeldIcon = getSvgIcon(darkHoverIconPath, heldScale);
+        this.darkIdleIcon = getSvgIcon(darkIdleIconPath, properties.getIdleScale());
+        this.darkHoverIcon = getSvgIcon(darkHoverIconPath, properties.getIdleScale());
+        this.darkHeldIcon = getSvgIcon(darkHoverIconPath, properties.getHeldScale());
         this.darkMode = darkMode;
 
         updateIdleIcon();
@@ -65,7 +76,7 @@ public class ThemeableButton extends Button {
 
     /**
      * Sets the dark mode icon when the button is idle.
-     * 
+     *
      * @param darkIdleIcon
      *            - The dark mode idle icon
      */
@@ -75,7 +86,7 @@ public class ThemeableButton extends Button {
 
     /**
      * Sets the dark mode icon when the cursor is hovering over the button.
-     * 
+     *
      * @param darkHoverIcon
      *            - The dark mode hover icon
      */
@@ -85,7 +96,7 @@ public class ThemeableButton extends Button {
 
     /**
      * Sets the dark mode icon when the button is held down.
-     * 
+     *
      * @param darkHeldIcon
      *            - The dark mode held down icon
      */
@@ -95,7 +106,7 @@ public class ThemeableButton extends Button {
 
     /**
      * Sets the dark mode state of the button.
-     * 
+     *
      * @param darkMode
      *            - The dark mode state of the button
      */

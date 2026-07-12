@@ -1,7 +1,29 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.controller.button;
 
 import java.awt.DisplayMode;
+
+import javax.swing.JDialog;
 import javax.swing.JOptionPane;
+
 import com.dhk.controller.DhkController;
 import com.dhk.controller.IController;
 import com.dhk.io.DisplayConfig;
@@ -14,10 +36,8 @@ import com.dhk.view.DhkView;
  * Controls the Clear All button. Listeners are added to the corresponding view component so that when the Clear All
  * button is pressed, the display mode, scaling mode, DPI scale percentage, and hot key for each slot for the selected
  * display is set to default.
- * 
- * @author Jonathan Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ *
+ * @author Jonathan R. Miller
  */
 public class ClearAllButtonController extends AbstractButtonController implements IController {
 
@@ -28,12 +48,12 @@ public class ClearAllButtonController extends AbstractButtonController implement
     private DisplayConfig displayConfig;
     private AppRefresher appRefresher;
 
-    private final String CONFIRMATION_MESSAGE = "Are you sure you want to clear all slots for the selected display?";
-    private final String TITLE_BAR_MESSAGE = "Confirm Clear All Slots";
+    private static final String CONFIRMATION_MESSAGE = "Are you sure you want to clear all slots for the selected display?";
+    private static final String TITLE_BAR_MESSAGE = "Confirm Clear All Slots";
 
     /**
-     * Constructor for the ClearAllButtonController class.
-     * 
+     * Constructor for the {@link ClearAllButtonController} class.
+     *
      * @param model
      *            - The model for the application
      * @param view
@@ -51,23 +71,17 @@ public class ClearAllButtonController extends AbstractButtonController implement
         this.settingsMgr = settingsMgr;
     }
 
-    /**
-     * Creates a new frame updater.
-     */
     @Override
     public void initController() {
-        displayConfig = model.getDisplayConfig();
+        displayConfig = settingsMgr.getDisplayConfig();
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
     }
 
-    /**
-     * Initializes the listeners for the clear all button.
-     */
     @Override
     public void initListeners() {
         view.getClearAllButton().addActionListener(e -> clearAllButtonAction());
 
-        initStateChangeListeners(view.getClearAllButton(), view.getSelectedDisplayLabel());
+        initStateChangeListeners(view.getClearAllButton(), view.getDefaultFocusComponent());
     }
 
     @Override
@@ -78,8 +92,7 @@ public class ClearAllButtonController extends AbstractButtonController implement
      * Clears all slots for the selected display and then update the UI.
      */
     private void clearAllButtonAction() {
-        // Focus on the selected display label so the clear all slots button does not flash red after confirmation
-        view.getSelectedDisplayLabel().requestFocusInWindow();
+        view.getDefaultFocusComponent().requestFocusInWindow();
 
         if (getUserConfirmation() == JOptionPane.YES_OPTION) {
             clearAllOrientationModes();
@@ -94,12 +107,28 @@ public class ClearAllButtonController extends AbstractButtonController implement
 
     /**
      * Shows a confirmation window that asks if the user wants to clear all slots.
-     * 
+     *
      * @return The return value from the option pane
      */
     private int getUserConfirmation() {
-        return JOptionPane.showConfirmDialog(view.getFrame(), CONFIRMATION_MESSAGE, TITLE_BAR_MESSAGE,
-                JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE);
+        // Create the JOptionPane with the confirmation message
+        final JOptionPane optionPane = new JOptionPane(CONFIRMATION_MESSAGE, JOptionPane.PLAIN_MESSAGE,
+                JOptionPane.YES_NO_OPTION);
+
+        // Create a dialog for the option pane using the application's frame as parent
+        final JDialog dialog = optionPane.createDialog(view.getFrame(), TITLE_BAR_MESSAGE);
+        dialog.setModal(true);
+        dialog.setResizable(false);
+        dialog.setVisible(true);
+
+        // Retrieve the user's choice from the option pane
+        Object selectedValue = optionPane.getValue();
+
+        if (selectedValue instanceof Integer) {
+            return (Integer) selectedValue;
+        } else {
+            return JOptionPane.CLOSED_OPTION;
+        }
     }
 
     /**

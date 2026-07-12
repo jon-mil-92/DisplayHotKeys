@@ -23,6 +23,14 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay
 JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setOrientation
   (JNIEnv *, jobject, jstring, jint);
 
+/*
+ * Class:     com_dhk_io_SetDisplay
+ * Method:    preserveDisplayArrangement
+ * Signature: ([Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_preserveDisplayArrangement
+  (JNIEnv *, jobject, jobjectArray);
+
 #ifdef __cplusplus
 }
 #endif

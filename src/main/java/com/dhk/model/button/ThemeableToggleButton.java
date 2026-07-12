@@ -1,15 +1,31 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.model.button;
 
-import java.awt.Dimension;
 import javax.swing.Icon;
 import javax.swing.event.ChangeListener;
 
 /**
  * Defines a themeable toggle button with a light and dark hover and held icon.
- * 
- * @author Jonathan Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ *
+ * @author Jonathan R. Miller
  */
 public class ThemeableToggleButton extends ThemeableButton {
 
@@ -28,8 +44,8 @@ public class ThemeableToggleButton extends ThemeableButton {
     private boolean on;
 
     /**
-     * Constructor for the ThemeableToggle button class.
-     * 
+     * Constructor for the {@link ThemeableToggleButton} button class.
+     *
      * @param onIdleIconPath
      *            - The resource path for the idle icon in the on state
      * @param offIdleIconPath
@@ -42,14 +58,8 @@ public class ThemeableToggleButton extends ThemeableButton {
      *            - The resource path for the dark mode hover icon in the on state
      * @param offDarkHoverIconPath
      *            - The resource path for the dark mode hover icon in the off state
-     * @param tooltip
-     *            - The text for the button tooltip
-     * @param size
-     *            - The size of the button
-     * @param idleScale
-     *            - The image scale percentage when the button is idle
-     * @param heldScale
-     *            - The image scale percentage when the button is held down
+     * @param properties
+     *            - The properties of the button
      * @param enabled
      *            - The initial enabled state of the button
      * @param darkMode
@@ -58,25 +68,25 @@ public class ThemeableToggleButton extends ThemeableButton {
      *            - The initial on state of the button
      */
     public ThemeableToggleButton(String onIdleIconPath, String offIdleIconPath, String onHoverIconPath,
-            String offHoverIconPath, String onDarkHoverIconPath, String offDarkHoverIconPath, String tooltip,
-            Dimension size, float idleScale, float heldScale, boolean enabled, boolean darkMode, boolean on) {
-        super(onIdleIconPath, onHoverIconPath, onIdleIconPath, onDarkHoverIconPath, tooltip, size, idleScale, heldScale,
-                enabled, darkMode);
+            String offHoverIconPath, String onDarkHoverIconPath, String offDarkHoverIconPath,
+            ButtonProperties properties, boolean enabled, boolean darkMode, boolean on) {
+        super(onIdleIconPath, onHoverIconPath, onIdleIconPath, onDarkHoverIconPath, properties, enabled, darkMode);
+        setButtonProperties(properties);
 
-        this.onIdleIcon = getSvgIcon(onIdleIconPath, idleScale);
-        this.offIdleIcon = getSvgIcon(offIdleIconPath, idleScale);
+        this.onIdleIcon = getSvgIcon(onIdleIconPath, properties.getIdleScale());
+        this.offIdleIcon = getSvgIcon(offIdleIconPath, properties.getIdleScale());
 
-        this.onHoverIcon = getSvgIcon(onHoverIconPath, idleScale);
-        this.offHoverIcon = getSvgIcon(offHoverIconPath, idleScale);
+        this.onHoverIcon = getSvgIcon(onHoverIconPath, properties.getIdleScale());
+        this.offHoverIcon = getSvgIcon(offHoverIconPath, properties.getIdleScale());
 
-        this.onHeldIcon = getSvgIcon(onHoverIconPath, heldScale);
-        this.offHeldIcon = getSvgIcon(offHoverIconPath, heldScale);
+        this.onHeldIcon = getSvgIcon(onHoverIconPath, properties.getHeldScale());
+        this.offHeldIcon = getSvgIcon(offHoverIconPath, properties.getHeldScale());
 
-        this.onDarkHoverIcon = getSvgIcon(onDarkHoverIconPath, idleScale);
-        this.offDarkHoverIcon = getSvgIcon(offDarkHoverIconPath, idleScale);
+        this.onDarkHoverIcon = getSvgIcon(onDarkHoverIconPath, properties.getIdleScale());
+        this.offDarkHoverIcon = getSvgIcon(offDarkHoverIconPath, properties.getIdleScale());
 
-        this.onDarkHeldIcon = getSvgIcon(onDarkHoverIconPath, heldScale);
-        this.offDarkHeldIcon = getSvgIcon(offDarkHoverIconPath, heldScale);
+        this.onDarkHeldIcon = getSvgIcon(onDarkHoverIconPath, properties.getHeldScale());
+        this.offDarkHeldIcon = getSvgIcon(offDarkHoverIconPath, properties.getHeldScale());
 
         this.on = on;
 
@@ -92,7 +102,7 @@ public class ThemeableToggleButton extends ThemeableButton {
 
     /**
      * Sets the on state of the button.
-     * 
+     *
      * @param on
      *            - The on state of the button.
      */

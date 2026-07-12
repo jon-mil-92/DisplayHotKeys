@@ -17,27 +17,35 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes
 
 /*
  * Class:     com_dhk_io_GetDisplay
- * Method:    queryNumOfConnectedDisplays
- * Signature: ()I
+ * Method:    queryVisibleDisplayOrientations
+ * Signature: ()[I
  */
-JNIEXPORT jint JNICALL Java_com_dhk_io_GetDisplay_queryNumOfConnectedDisplays
+JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_queryVisibleDisplayOrientations
   (JNIEnv *, jobject);
 
 /*
  * Class:     com_dhk_io_GetDisplay
- * Method:    enumDisplayIds
+ * Method:    enumVisibleDisplayIds
  * Signature: ()[Ljava/lang/String;
  */
-JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayIds
+JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumVisibleDisplayIds
   (JNIEnv *, jobject);
 
 /*
  * Class:     com_dhk_io_GetDisplay
- * Method:    queryDisplayOrientation
- * Signature: (I)I
+ * Method:    getSupportedDpiScalePercentages
+ * Signature: (II)[I
  */
-JNIEXPORT jint JNICALL Java_com_dhk_io_GetDisplay_queryDisplayOrientation
-  (JNIEnv *, jobject, jint);
+JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_getSupportedDpiScalePercentages
+  (JNIEnv *, jobject, jint, jint);
+
+/*
+ * Class:     com_dhk_io_GetDisplay
+ * Method:    captureDisplayArrangement
+ * Signature: ()[Ljava/lang/String;
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_captureDisplayArrangement
+  (JNIEnv *, jobject);
 
 #ifdef __cplusplus
 }

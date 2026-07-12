@@ -1,3 +1,22 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.controller.button;
 
 import com.dhk.controller.IController;
@@ -5,16 +24,14 @@ import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
 import com.dhk.theme.ButtonThemeUpdater;
 import com.dhk.theme.ThemeUpdater;
+import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
-import com.dhk.window.FrameUpdater;
 
 /**
  * Controls the Theme button. Listeners are added to the corresponding view component so that when the Theme button is
  * pressed, the application's theme will be toggled between "Light" and "Dark."
- * 
- * @author Jonathan Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ *
+ * @author Jonathan R. Miller
  */
 public class ThemeButtonController extends AbstractButtonController implements IController {
 
@@ -23,10 +40,9 @@ public class ThemeButtonController extends AbstractButtonController implements I
     private SettingsManager settingsMgr;
     private ThemeUpdater themeUpdater;
     private ButtonThemeUpdater buttonThemesUpdater;
-    private FrameUpdater frameUpdater;
 
     /**
-     * Constructor for the ThemeButtonController class.
+     * Constructor for the {@link ThemeButtonController} class.
      *
      * @param model
      *            - The model for the application
@@ -41,24 +57,17 @@ public class ThemeButtonController extends AbstractButtonController implements I
         this.settingsMgr = settingsMgr;
     }
 
-    /**
-     * Creates a new theme chooser, button themes updater, and frame updater.
-     */
     @Override
     public void initController() {
         themeUpdater = new ThemeUpdater();
         buttonThemesUpdater = new ButtonThemeUpdater(model, view);
-        frameUpdater = new FrameUpdater(view);
     }
 
-    /**
-     * Initializes the listeners for the theme button.
-     */
     @Override
     public void initListeners() {
         view.getThemeButton().addActionListener(e -> themeButtonAction());
 
-        initStateChangeListeners(view.getThemeButton(), view.getSelectedDisplayLabel());
+        initStateChangeListeners(view.getThemeButton(), view.getDefaultFocusComponent());
     }
 
     @Override
@@ -73,7 +82,7 @@ public class ThemeButtonController extends AbstractButtonController implements I
         themeUpdater.useDarkMode(model.isDarkMode());
         buttonThemesUpdater.updateButtonThemes();
         settingsMgr.saveIniDarkMode(model.isDarkMode());
-        frameUpdater.updateUI();
+        FrameUtil.refreshFrame(view.getFrame());
     }
 
 }

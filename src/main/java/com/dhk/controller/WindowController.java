@@ -1,32 +1,48 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.controller;
 
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+
+import javax.swing.SwingUtilities;
+
 import com.dhk.model.DhkModel;
+import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
-import com.dhk.window.MinimizeToTray;
-import com.dhk.window.ViewRefresher;
+import com.dhk.view.MinimizeToTray;
 
 /**
- * Controls the application's window. The window listener is initialized with this class. It defines how often the view
- * should be refreshed, and it initializes the object that allows the application to be minimized to the system tray and
- * restored from the system tray.
- * 
- * @author Jonathan Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ * Controls the application's window. The window listener is initialized with this class, and it initializes the object
+ * that allows the application to be minimized to the system tray and restored from the system tray.
+ *
+ * @author Jonathan R. Miller
  */
 public class WindowController implements IController, WindowListener {
 
-    private ViewRefresher viewRefresher;
     private MinimizeToTray minimizeToTray;
     private DhkModel model;
     private DhkView view;
 
-    private final int REFRESH_INTERVAL = 250;
-
     /**
-     * Constructor for the WindowController class.
+     * Constructor for the {@link WindowController} class.
      *
      * @param model
      *            - The model for the application
@@ -38,89 +54,70 @@ public class WindowController implements IController, WindowListener {
         this.view = view;
     }
 
-    /**
-     * Creates and starts a new view refresher along with a new minimize-to-tray object.
-     */
     @Override
     public void initController() {
-        viewRefresher = new ViewRefresher(view, REFRESH_INTERVAL);
-        viewRefresher.start();
-        minimizeToTray = new MinimizeToTray(view, viewRefresher, "/tray_icon.png");
+        minimizeToTray = new MinimizeToTray(model, view, "/tray_icon.png");
     }
 
-    /**
-     * Initializes the listener for the view's frame.
-     */
     @Override
     public void initListeners() {
         view.getFrame().addWindowListener(this);
     }
 
-    /**
-     * Stops refreshing the view and remove the app from the system tray if it is minimized to the system tray.
-     */
     @Override
     public void cleanUp() {
-        viewRefresher.stop();
-
-        if (minimizeToTray.getSystemTray() != null) {
-            minimizeToTray.getSystemTray().shutdown();
-        }
+        shutDownSystemTray();
     }
 
-    /**
-     * Defines what occurs when the window is minimized to an icon.
-     */
     @Override
     public void windowIconified(WindowEvent e) {
         if (model.isMinimizeToTray()) {
-            minimizeToTray.execute();
+            if (minimizeToTray.getSystemTray() != null) {
+                // Hide the taskbar icon
+                view.getFrame().setVisible(false);
+                minimizeToTray.getSystemTray().setEnabled(true);
+            } else {
+                minimizeToTray.execute();
+            }
         }
-
-        viewRefresher.suspend();
     }
 
-    /**
-     * Defines what occurs when the window is closed.
-     */
     @Override
     public void windowClosed(WindowEvent e) {
     }
 
-    /**
-     * Defines what occurs when the window is restored from an icon.
-     */
     @Override
     public void windowDeiconified(WindowEvent e) {
-        viewRefresher.resume();
+        // Re-fit after the frame is shown so staleness accrued while iconified does not surface as scroll bars
+        SwingUtilities.invokeLater(() -> FrameUtil.refreshFrame(view.getFrame()));
     }
 
-    /**
-     * Defines what occurs right before the application closes.
-     */
     @Override
     public void windowClosing(WindowEvent e) {
+        shutDownSystemTray();
+        System.exit(0);
     }
 
-    /**
-     * Defines what occurs when the window is opened.
-     */
     @Override
     public void windowOpened(WindowEvent e) {
     }
 
-    /**
-     * Defines what occurs when the window is activated.
-     */
     @Override
     public void windowActivated(WindowEvent e) {
     }
 
-    /**
-     * Defines what occurs when the window is deactivated.
-     */
     @Override
     public void windowDeactivated(WindowEvent e) {
+    }
+
+    /**
+     * Shuts down the system tray.
+     */
+    private void shutDownSystemTray() {
+        if (minimizeToTray.getSystemTray() != null) {
+            minimizeToTray.getSystemTray().setEnabled(false);
+            minimizeToTray.getSystemTray().shutdown();
+        }
     }
 
 }

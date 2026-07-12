@@ -1,13 +1,30 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.model;
 
 import java.util.List;
 
 /**
  * Defines the model for a Hot Key. States and the string representation of the Hot Key are defined here.
- * 
- * @author Jonathan Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ *
+ * @author Jonathan R. Miller
  */
 public class HotKey {
 
@@ -17,8 +34,8 @@ public class HotKey {
     private boolean changingHotKey;
 
     /**
-     * Constructor for the HotKey class.
-     * 
+     * Constructor for the {@link HotKey} class.
+     *
      * @param hotKey
      *            - The array list of keys that make up the hot key
      */
@@ -31,7 +48,7 @@ public class HotKey {
 
     /**
      * Builds a hot key string from an array list of keys.
-     * 
+     *
      * @return The hot key string
      */
     public String getHotKeyString() {
@@ -54,7 +71,7 @@ public class HotKey {
 
     /**
      * Gets the key array list that makes up the hot key.
-     * 
+     *
      * @return The key array list that makes up the hot key
      */
     public List<Key> getKeys() {
@@ -63,7 +80,7 @@ public class HotKey {
 
     /**
      * Sets the key array list that makes up the hot key.
-     * 
+     *
      * @param keys
      *            - The new key array list that makes up the hot key
      */
@@ -73,7 +90,7 @@ public class HotKey {
 
     /**
      * Gets the "changing hot key" state of the slot.
-     * 
+     *
      * @return Whether or not the user is changing the hot key for the slot
      */
     public boolean isChangingHotKey() {
@@ -82,7 +99,7 @@ public class HotKey {
 
     /**
      * Sets the "changing hot key" state of the slot.
-     * 
+     *
      * @param changingHotKey
      *            - The new boolean for the "changing hot key" state of the slot
      */
@@ -92,7 +109,7 @@ public class HotKey {
 
     /**
      * Gets the hot key's "pressed" state.
-     * 
+     *
      * @return Whether or not the hot key is pressed
      */
     public boolean isHotKeyPressed() {
@@ -101,7 +118,7 @@ public class HotKey {
 
     /**
      * Sets the hot key's "pressed" state.
-     * 
+     *
      * @param hotKeyPressed
      *            - The new "pressed" state for the hot key
      */
@@ -111,7 +128,7 @@ public class HotKey {
 
     /**
      * Gets the hot key's "held down" state.
-     * 
+     *
      * @return The "held down" state of the hot key
      */
     public boolean isHotKeyHeldDown() {
@@ -120,7 +137,7 @@ public class HotKey {
 
     /**
      * Sets the hot key's "held down" state.
-     * 
+     *
      * @param hotKeyHeldDown
      *            - The new "held down" state for the hot key
      */

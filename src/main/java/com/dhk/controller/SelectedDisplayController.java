@@ -1,25 +1,41 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.controller;
 
 import com.dhk.model.DhkModel;
+import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
-import com.dhk.window.FrameUpdater;
 
 /**
  * Controls the combo box for the selected display. Listeners are added to the corresponding view component so that when
  * a new display is selected, the view components are changed to those for the selected display.
- * 
- * @author Jonathan Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ *
+ * @author Jonathan R. Miller
  */
 public class SelectedDisplayController implements IController {
 
     private DhkView view;
     private DhkModel model;
-    private FrameUpdater frameUpdater;
 
     /**
-     * Constructor for the SelectedDisplayController class.
+     * Constructor for the {@link SelectedDisplayController} class.
      *
      * @param model
      *            - The model for the application
@@ -31,20 +47,17 @@ public class SelectedDisplayController implements IController {
         this.view = view;
     }
 
-    /**
-     * Creates a new frame updater.
-     */
     @Override
     public void initController() {
-        frameUpdater = new FrameUpdater(view);
     }
 
-    /**
-     * Initializes the listeners for the display IDs combo box.
-     */
     @Override
     public void initListeners() {
         view.getDisplayIds().addActionListener(e -> updateSlots());
+    }
+
+    @Override
+    public void cleanUp() {
     }
 
     /**
@@ -68,12 +81,8 @@ public class SelectedDisplayController implements IController {
             }
 
             view.setPreviouslySelectedDisplayIndex(view.getDisplayIds().getSelectedIndex());
-            frameUpdater.updateUI();
+            FrameUtil.refreshFrame(view.getFrame());
         }
-    }
-
-    @Override
-    public void cleanUp() {
     }
 
 }

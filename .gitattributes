@@ -1,0 +1,13 @@
+# Enforce consistent line endings so working-tree files never drift between LF and CRLF.
+# DisplayHotKeys is a Windows-only project and its code-style convention is CRLF for source.
+
+* text=auto eol=crlf
+
+# Binary assets - never normalize or convert these.
+*.png binary
+*.ico binary
+*.dll binary
+*.o binary
+*.exe binary
+*.jar binary
+*.class binary

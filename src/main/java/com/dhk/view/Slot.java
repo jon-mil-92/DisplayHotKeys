@@ -1,45 +1,59 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.view;
 
 import java.awt.Dimension;
 import java.awt.DisplayMode;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
+
 import com.dhk.model.button.Button;
+import com.dhk.model.button.ButtonProperties;
 
 /**
  * Defines the view components of a Slot.
- * 
- * @author Jonathan Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ *
+ * @author Jonathan R. Miller
  */
 public class Slot {
 
     private JLabel slotIndicatorLabel;
     private Button applyDisplayModeButton;
-    private JComboBox<DisplayMode> slotDisplayModes;
-    private JComboBox<String> slotScalingModes;
-    private JComboBox<Integer> slotDpiScalePercentages;
-    private JComboBox<String> slotOrientationModes;
+    private CenteredComboBox<DisplayMode> slotDisplayModes;
+    private CenteredComboBox<String> slotScalingModes;
+    private CenteredComboBox<Integer> slotDpiScalePercentages;
+    private CenteredComboBox<String> slotOrientationModes;
     private JLabel slotHotKey;
     private Button slotClearHotKeyButton;
     private JButton slotChangeHotKeyButton;
-
-    private final String APPLY_DISPLAY_MODE_BUTTON_TOOLTIP = "Apply Display Mode";
-    private final Dimension APPLY_DISPLAY_MODE_BUTTON_SIZE = new Dimension(28, 28);
-    private final float APPLY_DISPLAY_MODE_BUTTON_IDLE_SCALE = 0.80f;
-    private final float APPLY_DISPLAY_MODE_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String CLEAR_HOT_KEY_BUTTON_TOOLTIP = "Clear Hot Key";
-    private final Dimension CLEAR_HOT_KEY_BUTTON_SIZE = new Dimension(20, 24);
-    private final float CLEAR_HOT_KEY_BUTTON_IDLE_SCALE = 0.70f;
-    private final float CLEAR_HOT_KEY_BUTTON_HELD_SCALE = 0.60f;
+    private List<Button> buttons;
 
     /**
-     * Constructor for the Slot class.
-     * 
+     * Constructor for the {@link Slot} class.
+     *
      * @param slotIndex
      *            - The index of the slot
      * @param displayIndex
@@ -58,37 +72,42 @@ public class Slot {
         String slotID = Integer.toString(slotIndex + 1);
 
         slotIndicatorLabel = new JLabel("Slot " + slotID + " :", SwingConstants.CENTER);
-        slotIndicatorLabel.setPreferredSize(new Dimension(50, 28));
+        slotIndicatorLabel.setPreferredSize(new Dimension(52, 28));
 
-        applyDisplayModeButton = new Button("/apply_idle.svg", "/apply_hover.svg", APPLY_DISPLAY_MODE_BUTTON_TOOLTIP,
-                APPLY_DISPLAY_MODE_BUTTON_SIZE, APPLY_DISPLAY_MODE_BUTTON_IDLE_SCALE,
-                APPLY_DISPLAY_MODE_BUTTON_HELD_SCALE, true);
+        ButtonProperties applyDisplayModeButtonProps = new ButtonProperties("Apply Display Mode", new Dimension(20, 20),
+                0.80f, 0.68f);
+        applyDisplayModeButton = new Button("/apply_idle.svg", "/apply_hover.svg", applyDisplayModeButtonProps, true);
 
-        slotDisplayModes = new JComboBox<DisplayMode>(displayModes);
-        slotDisplayModes.setPreferredSize(new Dimension(220, 28));
+        slotDisplayModes = new CenteredComboBox<DisplayMode>(displayModes);
+        slotDisplayModes.setPreferredSize(new Dimension(240, 28));
 
-        slotScalingModes = new JComboBox<String>(scalingModes);
+        slotScalingModes = new CenteredComboBox<String>(scalingModes);
         slotScalingModes.setPreferredSize(new Dimension(110, 28));
 
-        slotDpiScalePercentages = new JComboBox<Integer>(dpiScalePercentages);
+        slotDpiScalePercentages = new CenteredComboBox<Integer>(dpiScalePercentages);
         slotDpiScalePercentages.setPreferredSize(new Dimension(70, 28));
 
-        slotOrientationModes = new JComboBox<String>(orientationModes);
-        slotOrientationModes.setPreferredSize(new Dimension(115, 28));
+        slotOrientationModes = new CenteredComboBox<String>(orientationModes);
+        slotOrientationModes.setPreferredSize(new Dimension(118, 28));
 
         slotHotKey = new JLabel("", SwingConstants.CENTER);
 
+        ButtonProperties slotClearHotKeyButtonProps = new ButtonProperties("Clear Hot Key", new Dimension(17, 20),
+                0.70f, 0.60f);
         slotClearHotKeyButton = new Button("/clear_hot_key_idle.svg", "/clear_hot_key_hover.svg",
-                CLEAR_HOT_KEY_BUTTON_TOOLTIP, CLEAR_HOT_KEY_BUTTON_SIZE, CLEAR_HOT_KEY_BUTTON_IDLE_SCALE,
-                CLEAR_HOT_KEY_BUTTON_HELD_SCALE, false);
+                slotClearHotKeyButtonProps, false);
 
         slotChangeHotKeyButton = new JButton("Change Hot Key");
         slotChangeHotKeyButton.setPreferredSize(new Dimension(150, 28));
+
+        buttons = new ArrayList<>();
+        buttons.add(applyDisplayModeButton);
+        buttons.add(slotClearHotKeyButton);
     }
 
     /**
      * Gets the indicator label of the slot.
-     * 
+     *
      * @return The indicator label of the slot
      */
     public JLabel getIndicatorLabel() {
@@ -97,7 +116,7 @@ public class Slot {
 
     /**
      * Gets the apply display mode button.
-     * 
+     *
      * @return The apply display mode button
      */
     public Button getApplyDisplayModeButton() {
@@ -106,43 +125,63 @@ public class Slot {
 
     /**
      * Gets the display modes combo box of the slot.
-     * 
+     *
      * @return The display modes combo box of the slot
      */
-    public JComboBox<DisplayMode> getDisplayModes() {
+    public CenteredComboBox<DisplayMode> getDisplayModes() {
         return slotDisplayModes;
     }
 
     /**
      * Gets the scaling modes combo box of the slot.
-     * 
+     *
      * @return The scaling modes combo box of the slot
      */
-    public JComboBox<String> getScalingModes() {
+    public CenteredComboBox<String> getScalingModes() {
         return slotScalingModes;
     }
 
     /**
      * Gets the DPI scale percentages combo box of the slot.
-     * 
+     *
      * @return The DPI scale percentages combo box of the slot
      */
-    public JComboBox<Integer> getDpiScalePercentages() {
+    public CenteredComboBox<Integer> getDpiScalePercentages() {
         return slotDpiScalePercentages;
     }
 
     /**
+     * Replaces the items in the DPI scale percentages combo box with the given supported percentages. The previously
+     * selected percentage is preserved when it is still supported; otherwise the combo box falls back to the first
+     * (lowest) supported percentage. This is used to reflect the variable set of DPI scale percentages Windows supports
+     * for the slot's currently selected resolution.
+     *
+     * @param dpiScalePercentages
+     *            - The array of supported DPI scale percentages to populate the combo box with
+     */
+    public void setDpiScalePercentages(Integer[] dpiScalePercentages) {
+        Integer previouslySelected = (Integer) slotDpiScalePercentages.getSelectedItem();
+
+        // Replacing the model leaves the registered action listeners attached so model updates still fire
+        slotDpiScalePercentages.setModel(new DefaultComboBoxModel<Integer>(dpiScalePercentages));
+
+        if (previouslySelected != null && Arrays.asList(dpiScalePercentages).contains(previouslySelected)) {
+            slotDpiScalePercentages.setSelectedItem(previouslySelected);
+        }
+    }
+
+    /**
      * Gets the orientation modes combo box of the slot.
-     * 
+     *
      * @return The orientation modes combo box of the slot
      */
-    public JComboBox<String> getOrientationModes() {
+    public CenteredComboBox<String> getOrientationModes() {
         return slotOrientationModes;
     }
 
     /**
      * Gets the hot key of the slot.
-     * 
+     *
      * @return The hot key of the slot
      */
     public JLabel getHotKey() {
@@ -151,7 +190,7 @@ public class Slot {
 
     /**
      * Gets the clear hot key button of the slot.
-     * 
+     *
      * @return The clear hot key button of the slot
      */
     public Button getClearHotKeyButton() {
@@ -160,11 +199,20 @@ public class Slot {
 
     /**
      * Gets the change hot key button of the slot.
-     * 
+     *
      * @return The change hot key button of the slot
      */
     public JButton getChangeHotKeyButton() {
         return slotChangeHotKeyButton;
+    }
+
+    /**
+     * Gets a list of buttons in the slot.
+     *
+     * @return A list of buttons in the slot
+     */
+    public List<Button> getButtons() {
+        return buttons;
     }
 
 }

@@ -1,129 +1,117 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.view;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.DisplayMode;
+import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.Point;
 import java.awt.Toolkit;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.swing.JComboBox;
+
+import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+
 import com.dhk.io.DisplayConfig;
 import com.dhk.model.DhkModel;
+import com.dhk.model.FramePlacement;
 import com.dhk.model.button.Button;
+import com.dhk.model.button.ButtonProperties;
 import com.dhk.model.button.ThemeableButton;
 import com.dhk.model.button.ThemeableToggleButton;
+import com.dhk.utility.FrameUtil;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.ui.FlatUIUtils;
 
 /**
  * Defines the view for Display Hot Keys. The layout for the view components is defined here. View components are
  * initialized and arranged in a GridBag layout.
- * 
- * @author Jonathan Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ *
+ * @author Jonathan R. Miller
  */
-public class DhkView {
+public class DhkView implements IView {
 
     private DhkModel model;
+    private DisplayConfig displayConfig;
     private JFrame frame;
     private JPanel mainPanel;
     private JPanel displayPanel;
     private JPanel menuPanel;
     private GridBagLayout mainPanelLayout;
-    private GridBagLayout displayPanelLayout;
-    private GridBagLayout menuPanelLayout;
+    private FlowLayout displayPanelLayout;
+    private FlowLayout menuPanelLayout;
     private GridBagConstraints mainPanelConstraints;
     private GridBagConstraints displayPanelConstraints;
     private GridBagConstraints menuPanelConstraints;
     private JLabel selectedDisplayLabel;
     private JLabel numberOfActiveSlotsLabel;
-    private JLabel displayModeLabel;
-    private JLabel scalingModeLabel;
-    private JLabel dpiScaleLabel;
-    private JLabel orientationLabel;
-    private JLabel hotKeyLabel;
-    private JComboBox<Integer> displayIds;
+    private JLabel applyDisplayModeHeader;
+    private JLabel displayModeHeader;
+    private JLabel scalingModeHeader;
+    private JLabel dpiScaleHeader;
+    private JLabel orientationHeader;
+    private JLabel hotKeyHeader;
+    private JLabel clearHotKeyHeader;
+    private JLabel changeHotKeyHeader;
+    private CenteredComboBox<Integer> displayIds;
     private Map<Integer, List<Slot>> displayMap;
-    private Map<Integer, JComboBox<Integer>> numberOfActiveSlotsMap;
+    private Map<Integer, CenteredComboBox<Integer>> numberOfActiveSlotsMap;
+    private CenteredComboBox<Integer> noDisplayIdsPlaceholder;
+    private CenteredComboBox<Integer> noActiveSlotsPlaceholder;
+    private Button clearAllButton;
+    private ThemeableButton refreshAppButton;
+    private ThemeableButton aboutButton;
     private ThemeableButton themeButton;
     private ThemeableToggleButton minimizeToTrayButton;
     private ThemeableToggleButton runOnStartupButton;
-    private Button refreshAppButton;
-    private Button clearAllButton;
-    private Button minimizeButton;
-    private Button exitButton;
-    private ThemeableButton paypalDonateButton;
-    private List<ThemeableButton> themeableButtons;
-    private boolean appLaunching;
+    private List<Button> buttons;
     private int previouslySelectedDisplayIndex;
     private int gridYPosForSlotInPanel;
 
-    private final int NUM_OF_SLOT_COMPONENTS = 9;
-    private final String[] ORIENTATION_MODES = {"Landscape", "Portrait", "iLandscape", "iPortrait"};
-    private final String[] SCALING_MODES = new String[]{"Preserved", "Stretched", "Centered"};
-    private final Integer[] DPI_SCALE_PERCENTAGES = new Integer[]{100, 125, 150, 175, 200, 225, 250, 300, 350};
-
-    private final String THEME_BUTTON_TOOLTIP = "Change Theme";
-    private final Dimension THEME_BUTTON_SIZE = new Dimension(50, 50);
-    private final float THEME_BUTTON_IDLE_SCALE = 0.80f;
-    private final float THEME_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String MINIMIZE_TO_TRAY_BUTTON_TOOLTIP = "Minimize To Tray";
-    private final Dimension MINIMIZE_TO_TRAY_BUTTON_SIZE = new Dimension(48, 50);
-    private final float MINIMIZE_TO_TRAY_BUTTON_IDLE_SCALE = 0.80f;
-    private final float MINIMIZE_TO_TRAY_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String RUN_ON_STARTUP_BUTTON_TOOLTIP = "Run On Startup";
-    private final Dimension RUN_ON_STARTUP_BUTTON_SIZE = new Dimension(48, 50);
-    private final float RUN_ON_STARTUP_BUTTON_IDLE_SCALE = 0.80f;
-    private final float RUN_ON_STARTUP_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String REFRESH_APP_BUTTON_TOOLTIP = "Refresh App";
-    private final Dimension REFRESH_APP_BUTTON_SIZE = new Dimension(40, 50);
-    private final float REFRESH_APP_BUTTON_IDLE_SCALE = 0.80f;
-    private final float REFRESH_APP_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String CLEAR_ALL_BUTTON_TOOLTIP = "Clear All Slots";
-    private final Dimension CLEAR_ALL_BUTTON_SIZE = new Dimension(44, 50);
-    private final float CLEAR_ALL_BUTTON_IDLE_SCALE = 0.80f;
-    private final float CLEAR_ALL_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String MINIMIZE_BUTTON_TOOLTIP = "Minimize App";
-    private final Dimension MINIMIZE_BUTTON_SIZE = new Dimension(32, 50);
-    private final float MINIMIZE_BUTTON_IDLE_SCALE = 0.80f;
-    private final float MINIMIZE_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String EXIT_BUTTON_TOOLTIP = "Exit App";
-    private final Dimension EXIT_BUTTON_SIZE = new Dimension(34, 50);
-    private final float EXIT_BUTTON_IDLE_SCALE = 0.80f;
-    private final float EXIT_BUTTON_HELD_SCALE = 0.68f;
-
-    private final String PAYPAL_DONATE_BUTTON_TOOLTIP = "PayPal Donate";
-    private final Dimension PAYPAL_DONATE_BUTTON_SIZE = new Dimension(134, 46);
-    private final float PAYPAL_DONATE_BUTTON_IDLE_SCALE = 0.70f;
-    private final float PAYPAL_DONATE_BUTTON_HELD_SCALE = 0.63f;
+    private static final int NUM_OF_SLOT_COMPONENTS = 9;
+    private static final String[] ORIENTATION_MODES = {"Landscape", "Portrait", "iLandscape", "iPortrait"};
+    private static final String[] SCALING_MODES = new String[]{"Preserved", "Stretched", "Centered"};
 
     /**
-     * Constructor for the DhkView class.
-     * 
+     * Constructor for the {@link DhkView} class.
+     *
      * @param model
      *            - The model for the application
      */
     public DhkView(DhkModel model) {
         this.model = model;
-        appLaunching = true;
-        themeableButtons = new ArrayList<>();
+        buttons = new ArrayList<>();
 
         // Disable logging for icons
         FlatSVGIcon.setLoggingEnabled(false);
@@ -132,130 +120,195 @@ public class DhkView {
         gridYPosForSlotInPanel = 2;
     }
 
+    @Override
+    public Component getDefaultFocusComponent() {
+        return selectedDisplayLabel;
+    }
+
     /**
      * Initializes the view of the application. It creates a new frame, sets the frame properties, initializes the
      * panels, and initializes the view components.
-     * 
-     * @param frameLocation
-     *            - The point to spawn the view's frame at
+     *
+     * @param previousPlacement
+     *            - The captured placement of the previous frame, or null to center on the default screen
+     * @param selectedDisplayIndex
+     *            - The index of the display to select in the new view; clamped to the current number of connected
+     *            displays so the selection is preserved across re-initialization even if displays were added or removed
      */
-    public void initView(Point frameLocation) {
-        displayMap = new HashMap<Integer, List<Slot>>();
-        numberOfActiveSlotsMap = new HashMap<Integer, JComboBox<Integer>>();
-        previouslySelectedDisplayIndex = 0;
+    public void initView(FramePlacement previousPlacement, int selectedDisplayIndex) {
+        final JFrame previousFrame = frame;
 
-        frame = new JFrame();
-        frame.setUndecorated(true);
-        frame.setResizable(false);
-        frame.setVisible(true);
+        /*
+         * Clamp the requested selection to a valid display index. When displays were removed since the previous view
+         * was built the requested index may now be out of range; fall back to index 0 when no displays are connected
+         */
+        int desiredDisplayIndex = (model.getNumOfConnectedDisplays() > 0)
+                ? Math.max(0, Math.min(selectedDisplayIndex, model.getNumOfConnectedDisplays() - 1))
+                : 0;
+
+        // Reset view state used by component initialization
+        displayConfig = model.getDisplayConfig();
+        displayMap = new HashMap<>();
+        numberOfActiveSlotsMap = new HashMap<>();
+        previouslySelectedDisplayIndex = desiredDisplayIndex;
+        gridYPosForSlotInPanel = 2;
+
+        // Build and populate the frame
+        final JFrame newFrame = new JFrame("Display Hot Keys");
+        newFrame.setResizable(false);
 
         initPanels();
         initComponents();
 
-        frame.add(mainPanel);
-        frame.pack();
+        /*
+         * Scroll the content so every component stays reachable when the frame is capped to a small display; the
+         * borderless, as-needed scroll bars are invisible at normal resolutions where the whole frame fits
+         */
+        JScrollPane scrollPane = new JScrollPane(mainPanel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        scrollPane.getHorizontalScrollBar().setUnitIncrement(16);
 
-        if (appLaunching) {
-            appLaunching = false;
+        newFrame.setContentPane(scrollPane);
+        frame = newFrame;
+        newFrame.pack();
 
-            // Set the location of the frame to the center of the screen during the "launching" state
-            frame.setLocationRelativeTo(null);
-        } else {
-            frame.setLocation(frameLocation);
+        /*
+         * Cap the packed size to the display's working area (reserving room for any needed scroll bars) before
+         * computing the location, so the frame fits on screen immediately and the location uses the final size
+         */
+        final Dimension workingAreaSize = FrameUtil.workingAreaSize(previousPlacement);
+        Dimension fittedFrameSize = FrameUtil.fitToWorkingArea(newFrame.getSize(), scrollPane, workingAreaSize);
 
-            // Force a redraw to prevent window corruption
-            frame.setSize(0, 0);
+        if (!fittedFrameSize.equals(newFrame.getSize())) {
+            newFrame.setSize(fittedFrameSize);
         }
 
-        // Set the taskbar icon
-        frame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
+        final Dimension expectedFrameSize = newFrame.getSize();
+        newFrame.setLocation(FrameUtil.computeLocation(previousPlacement, expectedFrameSize));
 
-        selectedDisplayLabel.requestFocusInWindow();
+        // Set the taskbar icon
+        newFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
+
+        /*
+         * Clear focus when clicking empty space. The listener is added to the panel and viewport, not only the frame,
+         * because the scroll pane consumes the press before it can bubble up to the frame
+         */
+        MouseAdapter clearFocusOnPress = new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent mousePressedEvent) {
+                getDefaultFocusComponent().requestFocusInWindow();
+            }
+        };
+
+        newFrame.addMouseListener(clearFocusOnPress);
+        mainPanel.addMouseListener(clearFocusOnPress);
+        scrollPane.getViewport().addMouseListener(clearFocusOnPress);
+
+        /*
+         * Make the frame visible after all components are added and the frame is packed. Showing the frame earlier can
+         * cause transient artifacts (ghost copies) during repaint
+         */
+        newFrame.setVisible(true);
+
+        // Grow the frame to absorb any pack shortfall so scroll bars do not appear when the content fits on screen
+        SwingUtilities.invokeLater(() -> FrameUtil.settleScrollBars(newFrame, scrollPane, workingAreaSize));
+
+        // Re-assert the placement after the frame is shown, in case the OS positioned it elsewhere
+        SwingUtilities.invokeLater(() -> FrameUtil.correctLocation(newFrame, previousPlacement));
+
+        // Dispose of the previous frame
+        if (previousFrame != null) {
+            previousFrame.setVisible(false);
+            previousFrame.dispose();
+        }
+
+        getDefaultFocusComponent().requestFocusInWindow();
     }
 
     /**
-     * Re-initializes the view of the application.
+     * Re-initialize the view by creating a new frame and disposing the old one. Captures the current frame's placement
+     * live and reproduces it. Suitable when the display geometry is unchanged.
      */
     public void reInitView() {
-        Point oldFrameLocation = frame.getLocation();
-        frame.dispose();
+        reInitView(null);
+    }
 
-        // Re-initialize the view and place the frame in the same location
-        initView(oldFrameLocation);
+    /**
+     * Re-initialize the view by creating a new frame and disposing the old one. Preserves the previous frame's
+     * on-screen placement and selected display, even when the display it was on has just been reconfigured.
+     *
+     * @param preCapturedPlacement
+     *            - A frame placement captured before a display reconfiguration, or null to capture the current frame's
+     *            placement live. A pre-captured placement is required after a resolution or DPI change, because the OS
+     *            moves the existing frame as part of the change, so capturing here would record the wrong position.
+     */
+    public void reInitView(FramePlacement preCapturedPlacement) {
+        FramePlacement previousPlacement = (preCapturedPlacement != null)
+                ? preCapturedPlacement
+                : FrameUtil.capturePlacement(frame);
+
+        // Capture the currently selected display so it stays selected after the view is rebuilt
+        int previousSelectedDisplayIndex = (displayIds != null) ? displayIds.getSelectedIndex() : 0;
+
+        // Re-initialize the view, reproducing the previous frame's placement and selected display
+        initView(previousPlacement, previousSelectedDisplayIndex);
     }
 
     /**
      * Adds slots to the main panel until the number of active slots for the given display is reached.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to add slots in the view for
      * @param startIndex
      *            - The index in which to start adding slots to the view
      */
     public void pushSlots(int displayIndex, int startIndex) {
-        for (int slotIndex = startIndex; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
-            mainPanelConstraints.anchor = GridBagConstraints.CENTER;
+        if (model.getNumOfConnectedDisplays() > 0) {
+            for (int slotIndex = startIndex; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
+                mainPanelConstraints.anchor = GridBagConstraints.CENTER;
+                mainPanelConstraints.gridwidth = 1;
+                mainPanelConstraints.gridx = 0;
+                mainPanelConstraints.gridy = gridYPosForSlotInPanel;
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getIndicatorLabel(), mainPanelConstraints);
 
-            mainPanelConstraints.gridwidth = 1;
-            mainPanelConstraints.gridx = 0;
-            mainPanelConstraints.gridy = gridYPosForSlotInPanel;
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getIndicatorLabel(), mainPanelConstraints);
+                mainPanelConstraints.gridx = 1;
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplyDisplayModeButton(),
+                        mainPanelConstraints);
 
-            mainPanelConstraints.anchor = GridBagConstraints.WEST;
+                mainPanelConstraints.gridx = 2;
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDisplayModes(), mainPanelConstraints);
 
-            mainPanelConstraints.gridwidth = 1;
-            mainPanelConstraints.gridx = 1;
-            mainPanelConstraints.gridy = gridYPosForSlotInPanel;
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplyDisplayModeButton(),
-                    mainPanelConstraints);
+                mainPanelConstraints.gridx = 3;
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getScalingModes(), mainPanelConstraints);
 
-            mainPanelConstraints.anchor = GridBagConstraints.EAST;
+                mainPanelConstraints.gridx = 4;
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDpiScalePercentages(),
+                        mainPanelConstraints);
 
-            mainPanelConstraints.gridwidth = 1;
-            mainPanelConstraints.gridx = 1;
-            mainPanelConstraints.gridy = gridYPosForSlotInPanel;
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDisplayModes(), mainPanelConstraints);
+                mainPanelConstraints.gridx = 5;
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getOrientationModes(), mainPanelConstraints);
 
-            mainPanelConstraints.anchor = GridBagConstraints.CENTER;
+                mainPanelConstraints.gridx = 6;
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getHotKey(), mainPanelConstraints);
 
-            mainPanelConstraints.gridwidth = 1;
-            mainPanelConstraints.gridx = 2;
-            mainPanelConstraints.gridy = gridYPosForSlotInPanel;
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getScalingModes(), mainPanelConstraints);
+                mainPanelConstraints.gridx = 7;
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearHotKeyButton(), mainPanelConstraints);
 
-            mainPanelConstraints.gridwidth = 1;
-            mainPanelConstraints.gridx = 3;
-            mainPanelConstraints.gridy = gridYPosForSlotInPanel;
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDpiScalePercentages(), mainPanelConstraints);
+                mainPanelConstraints.gridx = 8;
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getChangeHotKeyButton(),
+                        mainPanelConstraints);
 
-            mainPanelConstraints.gridwidth = 1;
-            mainPanelConstraints.gridx = 4;
-            mainPanelConstraints.gridy = gridYPosForSlotInPanel;
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getOrientationModes(), mainPanelConstraints);
-
-            mainPanelConstraints.gridwidth = 1;
-            mainPanelConstraints.gridx = 5;
-            mainPanelConstraints.gridy = gridYPosForSlotInPanel;
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getHotKey(), mainPanelConstraints);
-
-            mainPanelConstraints.gridwidth = 1;
-            mainPanelConstraints.gridx = 6;
-            mainPanelConstraints.gridy = gridYPosForSlotInPanel;
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearHotKeyButton(), mainPanelConstraints);
-
-            mainPanelConstraints.gridwidth = 1;
-            mainPanelConstraints.gridx = 7;
-            mainPanelConstraints.gridy = gridYPosForSlotInPanel;
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getChangeHotKeyButton(), mainPanelConstraints);
-
-            // Add the next slot to the following row in the layout
-            gridYPosForSlotInPanel++;
+                // Add the next slot to the following row in the layout
+                gridYPosForSlotInPanel++;
+            }
         }
     }
 
     /**
      * Removes the specified number of slots from the end of the main panel.
-     * 
+     *
      * @param numOfSlotsToRemove
      *            - The number of slots to remove from the end of the main panel
      */
@@ -347,16 +400,28 @@ public class DhkView {
 
     /**
      * Removes the current number of active slots combo box and adds the correct one for the selected display.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to show the number of active slots combo box for
      */
     public void showNumberOfActiveSlotsForDisplay(int displayIndex) {
-        GridBagConstraints prevNumberOfSlotsConstraints = displayPanelLayout
-                .getConstraints(numberOfActiveSlotsMap.get(previouslySelectedDisplayIndex));
+        Component oldActiveSlots = numberOfActiveSlotsMap.get(previouslySelectedDisplayIndex);
+        Component newActiveSlots = numberOfActiveSlotsMap.get(displayIndex);
+        int oldActiveSlotsPanelIndex = -1;
 
-        displayPanel.remove(numberOfActiveSlotsMap.get(previouslySelectedDisplayIndex));
-        displayPanel.add(numberOfActiveSlotsMap.get(displayIndex), prevNumberOfSlotsConstraints);
+        for (int i = 0; i < displayPanel.getComponentCount(); i++) {
+            if (displayPanel.getComponent(i) == oldActiveSlots) {
+                oldActiveSlotsPanelIndex = i;
+                break;
+            }
+        }
+
+        if (oldActiveSlotsPanelIndex != -1) {
+            displayPanel.remove(oldActiveSlots);
+            displayPanel.add(newActiveSlots, oldActiveSlotsPanelIndex);
+            displayPanel.revalidate();
+            displayPanel.repaint();
+        }
     }
 
     /**
@@ -366,9 +431,10 @@ public class DhkView {
         mainPanel = new JPanel();
         displayPanel = new JPanel();
         menuPanel = new JPanel();
+
         mainPanelLayout = new GridBagLayout();
-        displayPanelLayout = new GridBagLayout();
-        menuPanelLayout = new GridBagLayout();
+        displayPanelLayout = new FlowLayout(FlowLayout.LEFT, 16, 8);
+        menuPanelLayout = new FlowLayout(FlowLayout.RIGHT, 16, 8);
 
         mainPanel.setLayout(mainPanelLayout);
         displayPanel.setLayout(displayPanelLayout);
@@ -380,105 +446,133 @@ public class DhkView {
 
         displayPanelConstraints = new GridBagConstraints();
         displayPanelConstraints.fill = GridBagConstraints.NONE;
-        displayPanelConstraints.insets = new Insets(0, 7, 0, 7);
 
         menuPanelConstraints = new GridBagConstraints();
         menuPanelConstraints.fill = GridBagConstraints.NONE;
-        menuPanelConstraints.insets = new Insets(0, 6, 0, 6);
     }
 
     /**
      * Initializes the components and the initial selection for each interactive component.
      */
     private void initComponents() {
-        selectedDisplayLabel = new JLabel("Selected Display :", SwingConstants.LEFT);
-        selectedDisplayLabel.setPreferredSize(new Dimension(110, 28));
+        noDisplayIdsPlaceholder = new CenteredComboBox<Integer>(new Integer[]{-1});
+        noDisplayIdsPlaceholder.setPreferredSize(new Dimension(60, 28));
+        noDisplayIdsPlaceholder.setEnabled(false);
 
-        displayIds = new JComboBox<Integer>(generateDisplayIds());
+        noActiveSlotsPlaceholder = new CenteredComboBox<Integer>(new Integer[]{0});
+        noActiveSlotsPlaceholder.setPreferredSize(new Dimension(60, 28));
+        noActiveSlotsPlaceholder.setEnabled(false);
+
+        selectedDisplayLabel = new JLabel("Selected Display :", SwingConstants.LEFT);
+        selectedDisplayLabel.setPreferredSize(new Dimension(112, 28));
+
+        displayIds = model.getNumOfConnectedDisplays() > 0
+                ? new CenteredComboBox<Integer>(generateDisplayIds())
+                : noDisplayIdsPlaceholder;
         displayIds.setPreferredSize(new Dimension(60, 28));
 
-        numberOfActiveSlotsLabel = new JLabel("Active Slots :", SwingConstants.LEFT);
-        numberOfActiveSlotsLabel.setPreferredSize(new Dimension(81, 28));
-
-        for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
-            JComboBox<Integer> numberOfActiveSlots = new JComboBox<Integer>(generateNumOfSlotsValues());
-            numberOfActiveSlots.setPreferredSize(new Dimension(60, 28));
-            numberOfActiveSlots.setSelectedItem(model.getNumOfSlotsForDisplay(displayIndex));
-
-            numberOfActiveSlotsMap.put(displayIndex, numberOfActiveSlots);
+        // Select the preserved display before the dependent components are added so the view is built for it directly
+        if (model.getNumOfConnectedDisplays() > 0) {
+            displayIds.setSelectedIndex(previouslySelectedDisplayIndex);
         }
 
-        paypalDonateButton = new ThemeableButton("/paypal_donate_light_idle.svg", "/paypal_donate_light_hover.svg",
-                "/paypal_donate_dark_idle.svg", "/paypal_donate_dark_hover.svg", PAYPAL_DONATE_BUTTON_TOOLTIP,
-                PAYPAL_DONATE_BUTTON_SIZE, PAYPAL_DONATE_BUTTON_IDLE_SCALE, PAYPAL_DONATE_BUTTON_HELD_SCALE, true,
+        numberOfActiveSlotsLabel = new JLabel("Active Slots :", SwingConstants.LEFT);
+        numberOfActiveSlotsLabel.setPreferredSize(new Dimension(82, 28));
+
+        if (model.getNumOfConnectedDisplays() > 0) {
+            for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
+                CenteredComboBox<Integer> numberOfActiveSlots = new CenteredComboBox<Integer>(
+                        generateNumOfSlotsValues());
+                numberOfActiveSlots.setPreferredSize(new Dimension(60, 28));
+                numberOfActiveSlots.setSelectedItem(model.getNumOfSlotsForDisplay(displayIndex));
+
+                numberOfActiveSlotsMap.put(displayIndex, numberOfActiveSlots);
+            }
+        } else {
+            numberOfActiveSlotsMap.put(-1, noActiveSlotsPlaceholder);
+        }
+
+        ButtonProperties clearAllButtonProps = new ButtonProperties("Clear All Slots", new Dimension(50, 28), 0.70f,
+                0.60f);
+        clearAllButton = new Button("/clear_all_idle.svg", "/clear_all_hover.svg", clearAllButtonProps, true);
+
+        ButtonProperties refreshAppButtonProps = new ButtonProperties("Refresh App", new Dimension(31, 40), 0.70f,
+                0.60f);
+        refreshAppButton = new ThemeableButton("/refresh_app_idle.svg", "/refresh_app_light_hover.svg",
+                "/refresh_app_idle.svg", "/refresh_app_dark_hover.svg", refreshAppButtonProps, true,
                 model.isDarkMode());
 
-        themeableButtons.add(paypalDonateButton);
+        ButtonProperties aboutButtonProps = new ButtonProperties("About App", new Dimension(36, 40), 0.70f, 0.60f);
+        aboutButton = new ThemeableButton("/about_idle.svg", "/about_light_hover.svg", "/about_idle.svg",
+                "/about_dark_hover.svg", aboutButtonProps, true, model.isDarkMode());
 
+        ButtonProperties themeButtonProps = new ButtonProperties("Change Theme", new Dimension(40, 40), 0.70f, 0.60f);
         themeButton = new ThemeableButton("/light_mode_idle.svg", "/light_mode_hover.svg", "/dark_mode_idle.svg",
-                "/dark_mode_hover.svg", THEME_BUTTON_TOOLTIP, THEME_BUTTON_SIZE, THEME_BUTTON_IDLE_SCALE,
-                THEME_BUTTON_HELD_SCALE, true, model.isDarkMode());
+                "/dark_mode_hover.svg", themeButtonProps, true, model.isDarkMode());
 
-        themeableButtons.add(themeButton);
-
+        ButtonProperties minimizeToTrayButtonProps = new ButtonProperties("Minimize To Tray", new Dimension(36, 40),
+                0.70f, 0.60f);
         minimizeToTrayButton = new ThemeableToggleButton("/minimize_to_tray_enabled_idle.svg",
                 "/minimize_to_tray_disabled_idle.svg", "/minimize_to_tray_enabled_light_hover.svg",
                 "/minimize_to_tray_disabled_light_hover.svg", "/minimize_to_tray_enabled_dark_hover.svg",
-                "/minimize_to_tray_disabled_dark_hover.svg", MINIMIZE_TO_TRAY_BUTTON_TOOLTIP,
-                MINIMIZE_TO_TRAY_BUTTON_SIZE, MINIMIZE_TO_TRAY_BUTTON_IDLE_SCALE, MINIMIZE_TO_TRAY_BUTTON_HELD_SCALE,
-                true, model.isDarkMode(), model.isMinimizeToTray());
+                "/minimize_to_tray_disabled_dark_hover.svg", minimizeToTrayButtonProps, true, model.isDarkMode(),
+                model.isMinimizeToTray());
 
-        themeableButtons.add(minimizeToTrayButton);
-
+        ButtonProperties runOnStartupButtonProps = new ButtonProperties("Run On Startup", new Dimension(36, 40), 0.70f,
+                0.60f);
         runOnStartupButton = new ThemeableToggleButton("/run_on_startup_enabled_idle.svg",
                 "/run_on_startup_disabled_idle.svg", "/run_on_startup_enabled_light_hover.svg",
                 "/run_on_startup_disabled_light_hover.svg", "/run_on_startup_enabled_dark_hover.svg",
-                "/run_on_startup_disabled_dark_hover.svg", RUN_ON_STARTUP_BUTTON_TOOLTIP, RUN_ON_STARTUP_BUTTON_SIZE,
-                RUN_ON_STARTUP_BUTTON_IDLE_SCALE, RUN_ON_STARTUP_BUTTON_HELD_SCALE, true, model.isDarkMode(),
+                "/run_on_startup_disabled_dark_hover.svg", runOnStartupButtonProps, true, model.isDarkMode(),
                 model.isRunOnStartup());
 
-        themeableButtons.add(runOnStartupButton);
+        buttons.add(clearAllButton);
+        buttons.add(refreshAppButton);
+        buttons.add(aboutButton);
+        buttons.add(themeButton);
+        buttons.add(minimizeToTrayButton);
+        buttons.add(runOnStartupButton);
 
-        refreshAppButton = new Button("/refresh_app_idle.svg", "/refresh_app_hover.svg", REFRESH_APP_BUTTON_TOOLTIP,
-                REFRESH_APP_BUTTON_SIZE, REFRESH_APP_BUTTON_IDLE_SCALE, REFRESH_APP_BUTTON_HELD_SCALE, true);
+        applyDisplayModeHeader = new JLabel("", SwingConstants.CENTER);
+        applyDisplayModeHeader.setPreferredSize(new Dimension(36, 28));
+        makeLabelBold(applyDisplayModeHeader);
 
-        clearAllButton = new Button("/clear_all_idle.svg", "/clear_all_hover.svg", CLEAR_ALL_BUTTON_TOOLTIP,
-                CLEAR_ALL_BUTTON_SIZE, CLEAR_ALL_BUTTON_IDLE_SCALE, CLEAR_ALL_BUTTON_HELD_SCALE, true);
+        displayModeHeader = new JLabel("Display Mode", SwingConstants.CENTER);
+        displayModeHeader.setPreferredSize(new Dimension(240, 28));
+        makeLabelBold(displayModeHeader);
 
-        minimizeButton = new Button("/minimize_idle.svg", "/minimize_hover.svg", MINIMIZE_BUTTON_TOOLTIP,
-                MINIMIZE_BUTTON_SIZE, MINIMIZE_BUTTON_IDLE_SCALE, MINIMIZE_BUTTON_HELD_SCALE, true);
+        scalingModeHeader = new JLabel("Scaling Mode", SwingConstants.CENTER);
+        scalingModeHeader.setPreferredSize(new Dimension(110, 28));
+        makeLabelBold(scalingModeHeader);
 
-        exitButton = new Button("/exit_idle.svg", "/exit_hover.svg", EXIT_BUTTON_TOOLTIP, EXIT_BUTTON_SIZE,
-                EXIT_BUTTON_IDLE_SCALE, EXIT_BUTTON_HELD_SCALE, true);
+        dpiScaleHeader = new JLabel("DPI Scale", SwingConstants.CENTER);
+        dpiScaleHeader.setPreferredSize(new Dimension(90, 28));
+        makeLabelBold(dpiScaleHeader);
 
-        displayModeLabel = new JLabel("Display Mode", SwingConstants.CENTER);
-        displayModeLabel.setPreferredSize(new Dimension(256, 28));
-        makeLabelBold(displayModeLabel);
+        orientationHeader = new JLabel("Orientation", SwingConstants.CENTER);
+        orientationHeader.setPreferredSize(new Dimension(118, 28));
+        makeLabelBold(orientationHeader);
 
-        scalingModeLabel = new JLabel("Scaling Mode", SwingConstants.CENTER);
-        scalingModeLabel.setPreferredSize(new Dimension(90, 28));
-        makeLabelBold(scalingModeLabel);
+        hotKeyHeader = new JLabel("Hot Key", SwingConstants.CENTER);
+        hotKeyHeader.setPreferredSize(new Dimension(90, 28));
+        makeLabelBold(hotKeyHeader);
 
-        dpiScaleLabel = new JLabel("DPI Scale", SwingConstants.CENTER);
-        dpiScaleLabel.setPreferredSize(new Dimension(90, 28));
-        makeLabelBold(dpiScaleLabel);
+        clearHotKeyHeader = new JLabel("", SwingConstants.CENTER);
+        clearHotKeyHeader.setPreferredSize(new Dimension(32, 28));
+        makeLabelBold(clearHotKeyHeader);
 
-        orientationLabel = new JLabel("Orientation", SwingConstants.CENTER);
-        orientationLabel.setPreferredSize(new Dimension(90, 28));
-        makeLabelBold(orientationLabel);
-
-        hotKeyLabel = new JLabel("Hot Key", SwingConstants.CENTER);
-        hotKeyLabel.setPreferredSize(new Dimension(90, 28));
-        makeLabelBold(hotKeyLabel);
+        changeHotKeyHeader = new JLabel("", SwingConstants.CENTER);
+        changeHotKeyHeader.setPreferredSize(new Dimension(150, 28));
+        makeLabelBold(changeHotKeyHeader);
 
         initSlotComponents();
         addNonSlotComponents();
-        pushSlots(0, 0);
+        pushSlots(previouslySelectedDisplayIndex, 0);
     }
 
     /**
      * Generates the array of connected display IDs.
-     * 
+     *
      * @return The array of display IDs for all actively connected displays
      */
     private Integer[] generateDisplayIds() {
@@ -493,7 +587,7 @@ public class DhkView {
 
     /**
      * Generates the array of number of active slots values.
-     * 
+     *
      * @return The array of number of active slots values
      */
     private Integer[] generateNumOfSlotsValues() {
@@ -519,151 +613,155 @@ public class DhkView {
      * Initializes the components for each slot.
      */
     private void initSlotComponents() {
-        DisplayConfig displayConfig = model.getDisplayConfig();
-        String[] displayIds = model.getDisplayIds();
+        if (model.getNumOfConnectedDisplays() > 0) {
+            String[] displayIds = model.getDisplayIds();
 
-        for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
-            List<Slot> slots = new ArrayList<Slot>();
+            for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
+                List<Slot> slots = new ArrayList<Slot>();
 
-            for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
-                int slotOrientationMode = model.getSlot(displayIndex, slotIndex).getOrientationMode();
-                boolean landscapeOrientation = slotOrientationMode == 0 || slotOrientationMode == 2;
-                DisplayMode[] displayModes = landscapeOrientation
-                        ? displayConfig.getLandscapeDisplayModes(displayIds[displayIndex])
-                        : displayConfig.getPortraitDisplayModes(displayIds[displayIndex]);
+                for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
+                    int slotOrientationMode = model.getSlot(displayIndex, slotIndex).getOrientationMode();
+                    boolean landscapeOrientation = slotOrientationMode == 0 || slotOrientationMode == 2;
+                    DisplayMode[] displayModes = landscapeOrientation
+                            ? displayConfig.getLandscapeDisplayModes(displayIds[displayIndex])
+                            : displayConfig.getPortraitDisplayModes(displayIds[displayIndex]);
 
-                slots.add(new Slot(slotIndex, displayIndex, displayModes, SCALING_MODES, DPI_SCALE_PERCENTAGES,
-                        ORIENTATION_MODES));
+                    // Offer only the DPI scale percentages Windows supports for the slot's stored resolution
+                    DisplayMode slotDisplayMode = model.getSlot(displayIndex, slotIndex).getDisplayMode();
+                    Integer[] dpiScalePercentages = displayConfig
+                            .getSupportedDpiScalePercentages(slotDisplayMode.getWidth(), slotDisplayMode.getHeight());
 
-                slots.get(slotIndex).getDisplayModes()
-                        .setSelectedItem(model.getSlot(displayIndex, slotIndex).getDisplayMode());
+                    slots.add(new Slot(slotIndex, displayIndex, displayModes, SCALING_MODES, dpiScalePercentages,
+                            ORIENTATION_MODES));
 
-                slots.get(slotIndex).getScalingModes()
-                        .setSelectedIndex(model.getSlot(displayIndex, slotIndex).getScalingMode());
+                    slots.get(slotIndex).getDisplayModes()
+                            .setSelectedItem(model.getSlot(displayIndex, slotIndex).getDisplayMode());
 
-                slots.get(slotIndex).getDpiScalePercentages()
-                        .setSelectedItem(model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
+                    slots.get(slotIndex).getScalingModes()
+                            .setSelectedIndex(model.getSlot(displayIndex, slotIndex).getScalingMode());
 
-                slots.get(slotIndex).getOrientationModes()
-                        .setSelectedIndex(model.getSlot(displayIndex, slotIndex).getOrientationMode());
+                    slots.get(slotIndex).getDpiScalePercentages()
+                            .setSelectedItem(model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
 
-                slots.get(slotIndex).getHotKey()
-                        .setText(model.getSlot(displayIndex, slotIndex).getHotKey().getHotKeyString());
+                    slots.get(slotIndex).getOrientationModes()
+                            .setSelectedIndex(model.getSlot(displayIndex, slotIndex).getOrientationMode());
+
+                    slots.get(slotIndex).getHotKey()
+                            .setText(model.getSlot(displayIndex, slotIndex).getHotKey().getHotKeyString());
+                }
+
+                displayMap.put(displayIndex, slots);
             }
-
-            displayMap.put(displayIndex, slots);
         }
     }
 
     /**
-     * This method adds the labels and sub-panels to the main panel.
+     * Adds the labels and sub-panels to the main panel.
      */
     private void addNonSlotComponents() {
-        mainPanelConstraints.anchor = GridBagConstraints.WEST;
-
-        mainPanelConstraints.gridwidth = 7;
-        mainPanelConstraints.gridx = 0;
-        mainPanelConstraints.gridy = 0;
-        mainPanel.add(displayPanel, mainPanelConstraints);
-
         displayPanelConstraints.gridwidth = 1;
         displayPanelConstraints.gridx = 0;
         displayPanelConstraints.gridy = 0;
         displayPanel.add(selectedDisplayLabel, displayPanelConstraints);
 
-        displayPanelConstraints.gridwidth = 1;
         displayPanelConstraints.gridx = 1;
-        displayPanelConstraints.gridy = 0;
         displayPanel.add(displayIds, displayPanelConstraints);
 
-        displayPanelConstraints.gridwidth = 1;
         displayPanelConstraints.gridx = 2;
-        displayPanelConstraints.gridy = 0;
         displayPanel.add(numberOfActiveSlotsLabel, displayPanelConstraints);
 
-        displayPanelConstraints.gridwidth = 1;
         displayPanelConstraints.gridx = 3;
-        displayPanelConstraints.gridy = 0;
-        displayPanel.add(numberOfActiveSlotsMap.get(displayIds.getSelectedIndex()), displayPanelConstraints);
 
-        mainPanelConstraints.anchor = GridBagConstraints.EAST;
-
-        mainPanelConstraints.gridwidth = 8;
-        mainPanelConstraints.gridx = 0;
-        mainPanelConstraints.gridy = 0;
-        mainPanel.add(menuPanel, mainPanelConstraints);
+        if (model.getNumOfConnectedDisplays() > 0) {
+            displayPanel.add(numberOfActiveSlotsMap.get(displayIds.getSelectedIndex()), displayPanelConstraints);
+        } else {
+            displayPanel.add(numberOfActiveSlotsMap.get(displayIds.getSelectedItem()), displayPanelConstraints);
+        }
 
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 0;
         menuPanelConstraints.gridy = 0;
-        menuPanel.add(paypalDonateButton, menuPanelConstraints);
-
-        menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 1;
-        menuPanelConstraints.gridy = 0;
-        menuPanel.add(themeButton, menuPanelConstraints);
-
-        menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 2;
-        menuPanelConstraints.gridy = 0;
-        menuPanel.add(minimizeToTrayButton, menuPanelConstraints);
-
-        menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 3;
-        menuPanelConstraints.gridy = 0;
-        menuPanel.add(runOnStartupButton, menuPanelConstraints);
-
-        menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 4;
-        menuPanelConstraints.gridy = 0;
         menuPanel.add(refreshAppButton, menuPanelConstraints);
 
-        menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 5;
-        menuPanelConstraints.gridy = 0;
-        menuPanel.add(clearAllButton, menuPanelConstraints);
+        menuPanelConstraints.gridx = 1;
+        menuPanel.add(aboutButton, menuPanelConstraints);
 
-        menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 6;
-        menuPanelConstraints.gridy = 0;
-        menuPanel.add(minimizeButton, menuPanelConstraints);
+        menuPanelConstraints.gridx = 2;
+        menuPanel.add(themeButton, menuPanelConstraints);
 
-        menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 7;
-        menuPanelConstraints.gridy = 0;
-        menuPanel.add(exitButton, menuPanelConstraints);
+        menuPanelConstraints.gridx = 3;
+        menuPanel.add(minimizeToTrayButton, menuPanelConstraints);
+
+        menuPanelConstraints.gridx = 4;
+        menuPanel.add(runOnStartupButton, menuPanelConstraints);
+
+        mainPanelConstraints.anchor = GridBagConstraints.WEST;
+        mainPanelConstraints.gridwidth = 9;
+        mainPanelConstraints.gridx = 0;
+        mainPanelConstraints.gridy = 0;
+        mainPanel.add(displayPanel, mainPanelConstraints);
+
+        mainPanelConstraints.anchor = GridBagConstraints.EAST;
+        mainPanel.add(menuPanel, mainPanelConstraints);
 
         mainPanelConstraints.anchor = GridBagConstraints.CENTER;
+        mainPanelConstraints.gridwidth = 1;
+        mainPanelConstraints.gridy = 1;
+        mainPanel.add(clearAllButton, mainPanelConstraints);
 
         mainPanelConstraints.gridwidth = 1;
         mainPanelConstraints.gridx = 1;
-        mainPanelConstraints.gridy = 1;
-        mainPanel.add(displayModeLabel, mainPanelConstraints);
+        mainPanel.add(applyDisplayModeHeader, mainPanelConstraints);
 
-        mainPanelConstraints.gridwidth = 1;
         mainPanelConstraints.gridx = 2;
-        mainPanelConstraints.gridy = 1;
-        mainPanel.add(scalingModeLabel, mainPanelConstraints);
+        mainPanel.add(displayModeHeader, mainPanelConstraints);
 
-        mainPanelConstraints.gridwidth = 1;
         mainPanelConstraints.gridx = 3;
-        mainPanelConstraints.gridy = 1;
-        mainPanel.add(dpiScaleLabel, mainPanelConstraints);
+        mainPanel.add(scalingModeHeader, mainPanelConstraints);
 
-        mainPanelConstraints.gridwidth = 1;
         mainPanelConstraints.gridx = 4;
-        mainPanelConstraints.gridy = 1;
-        mainPanel.add(orientationLabel, mainPanelConstraints);
+        mainPanel.add(dpiScaleHeader, mainPanelConstraints);
 
-        mainPanelConstraints.gridwidth = 1;
         mainPanelConstraints.gridx = 5;
-        mainPanelConstraints.gridy = 1;
-        mainPanel.add(hotKeyLabel, mainPanelConstraints);
+        mainPanel.add(orientationHeader, mainPanelConstraints);
+
+        mainPanelConstraints.gridx = 6;
+        mainPanel.add(hotKeyHeader, mainPanelConstraints);
+
+        mainPanelConstraints.gridx = 7;
+        mainPanel.add(clearHotKeyHeader, mainPanelConstraints);
+
+        mainPanelConstraints.gridx = 8;
+        mainPanel.add(changeHotKeyHeader, mainPanelConstraints);
+    }
+
+    /**
+     * Updates the DPI scale percentages combo box for the specified slot to reflect the percentages Windows supports
+     * for the slot's currently selected resolution. This is called when a new resolution is selected so the DPI Scale
+     * combo box always offers a valid set of percentages for that resolution.
+     *
+     * @param displayIndex
+     *            - The index of the display the slot resides in
+     * @param slotIndex
+     *            - The index of the slot to update the DPI scale percentages for
+     */
+    public void updateSlotDpiScalePercentages(int displayIndex, int slotIndex) {
+        DisplayMode selectedDisplayMode = (DisplayMode) getSlot(displayIndex, slotIndex).getDisplayModes()
+                .getSelectedItem();
+
+        if (selectedDisplayMode == null) {
+            return;
+        }
+
+        Integer[] dpiScalePercentages = displayConfig.getSupportedDpiScalePercentages(selectedDisplayMode.getWidth(),
+                selectedDisplayMode.getHeight());
+
+        getSlot(displayIndex, slotIndex).setDpiScalePercentages(dpiScalePercentages);
     }
 
     /**
      * Gets the frame of the view.
-     * 
+     *
      * @return The frame of the view
      */
     public JFrame getFrame() {
@@ -671,35 +769,17 @@ public class DhkView {
     }
 
     /**
-     * Gets the frame's main panel.
-     * 
-     * @return The frame's main panel
-     */
-    public JPanel getMainPanel() {
-        return mainPanel;
-    }
-
-    /**
-     * Gets the selected display label.
-     * 
-     * @return The label for the selected display combo box in the view
-     */
-    public JLabel getSelectedDisplayLabel() {
-        return selectedDisplayLabel;
-    }
-
-    /**
      * Gets the display IDs combo box.
-     * 
+     *
      * @return The combo box for the current display ID in the view
      */
-    public JComboBox<Integer> getDisplayIds() {
+    public CenteredComboBox<Integer> getDisplayIds() {
         return displayIds;
     }
 
     /**
      * Gets the previously selected display index.
-     * 
+     *
      * @return The previously selected display index
      */
     public int getPreviouslySelectedDisplayIndex() {
@@ -708,7 +788,7 @@ public class DhkView {
 
     /**
      * Sets the previously selected display index.
-     * 
+     *
      * @param previouslySelectedDisplayIndex
      *            - The previously selected display index
      */
@@ -718,19 +798,46 @@ public class DhkView {
 
     /**
      * Gets the number of active slots combo box for the given display index.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to get the number of active slots combo box for
      *
      * @return The number of active slots combo box for the given display index
      */
-    public JComboBox<Integer> getNumberOfActiveSlots(int displayIndex) {
+    public CenteredComboBox<Integer> getNumberOfActiveSlots(int displayIndex) {
         return numberOfActiveSlotsMap.get(displayIndex);
     }
 
     /**
+     * Gets the clear all button.
+     *
+     * @return The clear all button
+     */
+    public Button getClearAllButton() {
+        return clearAllButton;
+    }
+
+    /**
+     * Gets the refresh app button.
+     *
+     * @return The refresh app button
+     */
+    public ThemeableButton getRefreshAppButton() {
+        return refreshAppButton;
+    }
+
+    /**
+     * Gets the about button.
+     *
+     * @return The about button
+     */
+    public ThemeableButton getAboutButton() {
+        return aboutButton;
+    }
+
+    /**
      * Gets the theme button.
-     * 
+     *
      * @return The theme button
      */
     public ThemeableButton getThemeButton() {
@@ -739,7 +846,7 @@ public class DhkView {
 
     /**
      * Gets the minimize to tray button.
-     * 
+     *
      * @return The minimize to tray button
      */
     public ThemeableToggleButton getMinimizeToTrayButton() {
@@ -748,7 +855,7 @@ public class DhkView {
 
     /**
      * Gets the run on startup button.
-     * 
+     *
      * @return The run on startup button
      */
     public ThemeableToggleButton getRunOnStartupButton() {
@@ -756,62 +863,45 @@ public class DhkView {
     }
 
     /**
-     * Gets the refresh app button.
-     * 
-     * @return The refresh app button
+     * Gets the list of buttons used by the view, including toolbar buttons and buttons from all active slots.
+     *
+     * @return The list of buttons used by the view
      */
-    public Button getRefreshAppButton() {
-        return refreshAppButton;
-    }
+    public List<Button> getButtons() {
+        List<Button> allButtons = new ArrayList<Button>();
 
-    /**
-     * Gets the clear all button.
-     * 
-     * @return The clear all button
-     */
-    public Button getClearAllButton() {
-        return clearAllButton;
-    }
+        try {
+            if (buttons != null) {
+                allButtons.addAll(buttons);
+            }
 
-    /**
-     * Gets the minimize button.
-     * 
-     * @return The minimize button
-     */
-    public Button getMinimizeButton() {
-        return minimizeButton;
-    }
+            if (displayMap != null && model.getNumOfConnectedDisplays() > 0) {
+                for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
+                    List<Slot> slots = displayMap.get(displayIndex);
 
-    /**
-     * Gets the exit button.
-     * 
-     * @return The exit button
-     */
-    public Button getExitButton() {
-        return exitButton;
-    }
+                    if (slots != null) {
+                        int activeSlots = model.getNumOfSlotsForDisplay(displayIndex);
 
-    /**
-     * Gets the paypal donate button.
-     * 
-     * @return The paypal donate button
-     */
-    public ThemeableButton getPaypalDonateButton() {
-        return paypalDonateButton;
-    }
+                        for (int slotIndex = 0; slotIndex < activeSlots; slotIndex++) {
+                            List<Button> slotButtons = slots.get(slotIndex).getButtons();
 
-    /**
-     * Gets a list of themeable buttons in the view.
-     * 
-     * @return A list of themeable buttons in the view
-     */
-    public List<ThemeableButton> getThemeableButtons() {
-        return themeableButtons;
+                            if (slotButtons != null) {
+                                allButtons.addAll(slotButtons);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return allButtons;
     }
 
     /**
      * Gets the specified slot.
-     * 
+     *
      * @param displayIndex
      *            - The index of the display to get the slot for
      * @param slotIndex

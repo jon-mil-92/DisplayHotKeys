@@ -1,10 +1,19 @@
-### Eclipse ###
+# Eclipse
 bin/
 tmp/
 
-### Maven ###
+# Maven
 target/
+
+# Distribution
+distribution/JDK
+distribution/DisplayHotKeys.exe
+distribution/DisplayHotKeysInstaller.exe
 
 # JNI DLLs
 GetDisplay.dll
 SetDisplay.dll
+DisplayEventNotifier.dll
+GetDisplay.res.o
+SetDisplay.res.o
+DisplayEventNotifier.res.o

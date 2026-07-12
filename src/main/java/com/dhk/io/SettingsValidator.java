@@ -1,3 +1,22 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright © 2026 Jonathan R. Miller
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 package com.dhk.io;
 
 import java.awt.DisplayMode;
@@ -8,21 +27,22 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+
 import org.ini4j.Wini;
+
 import lc.kra.system.keyboard.event.GlobalKeyEvent;
 
 /**
  * Validates all of the property values in the settings file. It makes sure that each property value is either a
  * positive integer or a boolean, and that it is in the correct range of valid values. If a property value fails
  * validation, then it is reset to the default value.
- * 
- * @author Jonathan Miller
- * @license <a href="https://mit-license.org/">The MIT License</a>
- * @copyright © 2025 Jonathan Miller
+ *
+ * @author Jonathan R. Miller
  */
 public class SettingsValidator {
 
     private SettingsManager settingsMgr;
+    private DisplayConfig displayConfig;
     private Wini ini;
     private String[] displayIds;
     private Map<String, DisplayMode[]> landscapeDisplayModesMap;
@@ -30,19 +50,19 @@ public class SettingsValidator {
     private List<Integer> validkeyCodes;
     private RunOnStartupManager runOnStartupManager;
 
-    private final int UNSET_KEY_CODE = 0;
-    private final String[] VALID_SCALING_MODES = {"0", "1", "2"};
-    private final String[] VALID_DPI_SCALE_PERCENTAGES = {"100", "125", "150", "175", "200", "225", "250", "300",
-            "350"};
+    private static final int UNSET_KEY_CODE = 0;
+    private static final String[] VALID_SCALING_MODES = {"0", "1", "2"};
+    private static final DisplayMode DEFAULT_DISPLAY_MODE = new DisplayMode(0, 0, 0, 0);
 
     /**
-     * Constructor for the SettingsValidator class.
-     * 
+     * Constructor for the {@link SettingsValidator} class.
+     *
      * @param settingsMgr
      *            - The manager for the settings file
      */
     public SettingsValidator(SettingsManager settingsMgr) {
         this.settingsMgr = settingsMgr;
+        displayConfig = settingsMgr.getDisplayConfig();
         ini = settingsMgr.getIni();
         displayIds = settingsMgr.getDisplayIds();
         landscapeDisplayModesMap = settingsMgr.getLandscapeDisplayModesMap();
@@ -105,10 +125,10 @@ public class SettingsValidator {
 
     /**
      * Checks if a given string is a string representation of a positive integer.
-     * 
+     *
      * @param intString
      *            - The supposed string representation of a positive integer
-     * 
+     *
      * @return Whether or not the given string is a string representation of a positive integer
      */
     private boolean isPositiveInt(String intString) {
@@ -236,19 +256,16 @@ public class SettingsValidator {
                     DisplayMode displayMode = new DisplayMode(Integer.valueOf(width), Integer.valueOf(height),
                             Integer.valueOf(bitDepth), Integer.valueOf(refreshRate));
 
-                    if (landscapeOrientation
-                            && !Arrays.asList(landscapeDisplayModesMap.get(displayId)).contains(displayMode)) {
-                        writeDefaultDisplayMode(false, displayId, slotId);
-                    } else if (!landscapeOrientation
-                            && !Arrays.asList(portraitDisplayModesMap.get(displayId)).contains(displayMode)) {
-                        writeDefaultDisplayMode(true, displayId, slotId);
+                    boolean validForOrientation = landscapeOrientation
+                            ? Arrays.asList(landscapeDisplayModesMap.get(displayId)).contains(displayMode)
+                            : Arrays.asList(portraitDisplayModesMap.get(displayId)).contains(displayMode);
+
+                    // Repair with a default matching the slot's own orientation
+                    if (!validForOrientation) {
+                        writeDefaultDisplayMode(landscapeOrientation, displayId, slotId);
                     }
                 } else {
-                    if (landscapeOrientation) {
-                        writeDefaultDisplayMode(false, displayId, slotId);
-                    } else {
-                        writeDefaultDisplayMode(true, displayId, slotId);
-                    }
+                    writeDefaultDisplayMode(landscapeOrientation, displayId, slotId);
                 }
             }
         }
@@ -256,7 +273,7 @@ public class SettingsValidator {
 
     /**
      * Writes the default display mode property values to the give slot section in the settings file.
-     * 
+     *
      * @param landscapeOrientation
      *            - Whether or not to write a landscape display mode
      * @param displayId
@@ -267,7 +284,13 @@ public class SettingsValidator {
     private void writeDefaultDisplayMode(boolean landscapeOrientation, String displayId, int slotId) {
         DisplayMode[] landscapeDisplayModes = landscapeDisplayModesMap.get(displayId);
         DisplayMode[] portraitDisplayModes = portraitDisplayModesMap.get(displayId);
-        DisplayMode defaultDisplayMode = landscapeOrientation ? landscapeDisplayModes[0] : portraitDisplayModes[0];
+        DisplayMode defaultDisplayMode = DEFAULT_DISPLAY_MODE;
+
+        if (landscapeOrientation && landscapeDisplayModes.length > 0) {
+            defaultDisplayMode = landscapeDisplayModes[0];
+        } else if (!landscapeOrientation && portraitDisplayModes.length > 0) {
+            defaultDisplayMode = portraitDisplayModes[0];
+        }
 
         settingsMgr.saveIniSlotDisplayMode(displayId, slotId, defaultDisplayMode.getWidth(),
                 defaultDisplayMode.getHeight(), defaultDisplayMode.getBitDepth(), defaultDisplayMode.getRefreshRate());
@@ -294,8 +317,11 @@ public class SettingsValidator {
     }
 
     /**
-     * Validates the value for each dpiScalePercentage property from the settings file. If the value is not a valid
-     * value, then it writes the default value for the dpiScalePercentage property.
+     * Validates the value for each dpiScalePercentage property from the settings file. The set of valid DPI scale
+     * percentages depends on the slot's resolution, so each value is validated against the percentages Windows supports
+     * for that slot's stored resolution. If the value is not a supported value, then it writes the default value for
+     * the dpiScalePercentage property. This runs after the display modes are validated, so each slot's stored
+     * resolution is already a valid resolution for its display.
      */
     private void validateDpiScalePercentages() {
         for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
@@ -306,11 +332,37 @@ public class SettingsValidator {
                 String dpiScalePercentage = ini.get(iniSection, "dpiScalePercentage");
 
                 if (dpiScalePercentage == null || !isPositiveInt(dpiScalePercentage)
-                        || !Arrays.asList(VALID_DPI_SCALE_PERCENTAGES).contains(dpiScalePercentage)) {
+                        || !isSupportedDpiScalePercentage(iniSection, dpiScalePercentage)) {
                     settingsMgr.saveIniSlotDpiScalePercentage(displayId, slotId, 100);
                 }
             }
         }
+    }
+
+    /**
+     * Determines whether the given DPI scale percentage is supported for the resolution stored in the given slot
+     * section. The supported set depends on the slot's resolution, so the stored display mode width and height are used
+     * to look up the percentages Windows supports for that resolution.
+     *
+     * @param iniSection
+     *            - The slot section to read the stored resolution from
+     * @param dpiScalePercentage
+     *            - The string representation of the DPI scale percentage to check
+     *
+     * @return Whether or not the given DPI scale percentage is supported for the slot's stored resolution
+     */
+    private boolean isSupportedDpiScalePercentage(String iniSection, String dpiScalePercentage) {
+        String width = ini.get(iniSection, "displayModeWidth");
+        String height = ini.get(iniSection, "displayModeHeight");
+
+        if (width == null || !isPositiveInt(width) || height == null || !isPositiveInt(height)) {
+            return false;
+        }
+
+        Integer[] supportedDpiScalePercentages = displayConfig.getSupportedDpiScalePercentages(Integer.valueOf(width),
+                Integer.valueOf(height));
+
+        return Arrays.asList(supportedDpiScalePercentages).contains(Integer.valueOf(dpiScalePercentage));
     }
 
     /**

@@ -1,182 +1,459 @@
 /*
- * Gets current display settings for a given display.
+ * The MIT License (MIT)
  *
- * Author: Jonathan Miller
- * License: The MIT License - https://mit-license.org/
+ * Copyright © 2026 Jonathan R. Miller
  *
- * Copyright © 2025 Jonathan Miller
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+ * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ * the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
  */
-
-#include <jni.h>
-#include "DisplayConfig.h"
 #include "com_dhk_io_GetDisplay.h"
+#include "ArrangeDisplay.h"
+#include "DisplayConfig.h"
+
+#include <cstdint>
+#include <jni.h>
+#include <map>
+#include <set>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+#include <windows.h>
 
 using namespace std;
 
-/*
- * Outputs an array of supported display modes for the given display
+static void addCustomResolutionRefreshRates(const string &displayId, vector<ModeInfo> &modes,
+                                            vector<DISPLAYCONFIG_PATH_INFO> paths,
+                                            vector<DISPLAYCONFIG_MODE_INFO> ccdModes, int pathIndex);
+
+/**
+ * Enumerates the supported display modes for the given display, mirroring Windows Advanced Display Settings by
+ * skipping interlaced and zero-size modes, then augmenting GPU-scaled custom resolutions with the refresh rates the
+ * legacy mode table omits. The returned modes are de-duplicated in first-seen order.
  *
  * @param env
- *            - The structure containing methods to use to to access Java elements
+ *            - The JNI environment pointer
  * @param obj
- *            - The reference to the Java native object instance
+ *            - The Java GetDisplay instance
  * @param displayId
- *            - The ID of the display to get the display modes for
+ *            - The stable display ID to enumerate modes for
  *
- * @return The array of supported display modes for the given display
+ * @return A DisplayMode[] of supported modes, an empty array if none, or null on unrecoverable native failure
  */
 JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEnv *env, jobject obj,
-        jstring displayId) {
-    DEVMODE displayMode;
+                                                                           jstring displayId) {
+    if (displayId == nullptr) {
+        return nullptr;
+    }
 
-    SecureZeroMemory(&displayMode, sizeof(DEVMODE));
-    displayMode.dmSize = sizeof(displayMode);
+    // Acquire UTF chars for the incoming jstring and ensure we release them on all paths
+    jboolean isCopy = JNI_FALSE;
+    const char *displayIdChars = env->GetStringUTFChars(displayId, &isCopy);
 
-    DISPLAY_DEVICE displayDevice;
+    if (displayIdChars == nullptr) {
+        return nullptr;
+    }
 
-    SecureZeroMemory(&displayDevice, sizeof(DISPLAY_DEVICE));
-    displayDevice.cb = sizeof(displayDevice);
+    string stableDisplayId = displayIdChars;
 
-    jboolean isCopy;
-    const char *displayIdChars = (env)->GetStringUTFChars(displayId, &isCopy);
-    string displayIdString = displayIdChars;
-    int displayIndex = getEnumDisplayDevicesDisplayIdIndex(displayIdString);
+    vector<ModeInfo> modeList;
 
-    EnumDisplayDevices(NULL, displayIndex, &displayDevice, 0);
+    // Skip zero-size and interlaced modes so the reported set mirrors Advanced Display Settings (progressive only)
+    auto collectMode = [&modeList](const DEVMODEW &devModeW) {
+        if (devModeW.dmPelsWidth == 0 || devModeW.dmPelsHeight == 0) {
+            return;
+        }
 
-    bool enumDisplaySettingsResult = true;
-    UINT32 displayModeIndex = 0;
-    vector<DEVMODE> displayModesVector;
+        if ((devModeW.dmFields & DM_DISPLAYFLAGS) && (devModeW.dmDisplayFlags & DM_INTERLACED)) {
+            return;
+        }
 
-    while (enumDisplaySettingsResult == true) {
-        if (displayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
-            enumDisplaySettingsResult = EnumDisplaySettings(displayDevice.DeviceName, displayModeIndex, &displayMode);
-            displayModesVector.push_back(displayMode);
+        modeList.push_back({static_cast<int>(devModeW.dmPelsWidth), static_cast<int>(devModeW.dmPelsHeight),
+                            static_cast<int>(devModeW.dmBitsPerPel), static_cast<int>(devModeW.dmDisplayFrequency)});
+    };
 
-            displayModeIndex++;
+    // Default (EDID-pruned) enumeration so the reported set matches Advanced Display Settings
+    auto enumerateModes = [&collectMode](LPCWSTR gdiDeviceName) {
+        DEVMODEW devModeW;
+        SecureZeroMemory(&devModeW, sizeof(DEVMODEW));
+        devModeW.dmSize = sizeof(devModeW);
+
+        for (UINT32 i = 0; EnumDisplaySettingsExW(gdiDeviceName, i, &devModeW, 0); i++) {
+            collectMode(devModeW);
+        }
+    };
+
+    /*
+     * Resolve the display's GDI device name from the active CCD config and remember its active-path index, so the
+     * custom-resolution expansion below reuses this one snapshot instead of querying the config a second time. Fall
+     * back to the persisted DB config so a display not on an active path is still found (matching the prior lookup)
+     */
+    vector<DISPLAYCONFIG_PATH_INFO> paths;
+    vector<DISPLAYCONFIG_MODE_INFO> ccdModes;
+    int activePathIndex = -1;
+    wstring gdiDeviceName;
+
+    if (queryActiveCcdConfig(paths, ccdModes)) {
+        activePathIndex = findActivePathForDisplay(paths, stableDisplayId);
+
+        if (activePathIndex >= 0) {
+            gdiDeviceName = sourceGdiDeviceName(paths[activePathIndex].sourceInfo);
         }
     }
 
+    if (gdiDeviceName.empty()) {
+        DisplayConfig displayConfig = getDisplayConfig();
+
+        for (UINT32 i = 0; i < displayConfig.numPathInfoArrayElements; i++) {
+            if (stableIdForTarget(displayConfig.pathInfoArray[i].targetInfo) == stableDisplayId) {
+                gdiDeviceName = sourceGdiDeviceName(displayConfig.pathInfoArray[i].sourceInfo);
+                break;
+            }
+        }
+    }
+
+    if (!gdiDeviceName.empty()) {
+        enumerateModes(gdiDeviceName.c_str());
+    } else {
+        // Otherwise, locate the display by its EnumDisplayDevices index and enumerate by its device name
+        DISPLAY_DEVICEW displayDeviceW;
+        SecureZeroMemory(&displayDeviceW, sizeof(DISPLAY_DEVICEW));
+        displayDeviceW.cb = sizeof(displayDeviceW);
+
+        int enumDisplayIndex = getEnumDisplayDevicesDisplayIdIndex(stableDisplayId);
+
+        if (EnumDisplayDevicesW(NULL, enumDisplayIndex, &displayDeviceW, 0)) {
+            if (displayDeviceW.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
+                enumerateModes(displayDeviceW.DeviceName);
+            }
+        } else {
+            // Fallback enumeration failed, so release and return null
+            env->ReleaseStringUTFChars(displayId, displayIdChars);
+            return nullptr;
+        }
+    }
+
+    env->ReleaseStringUTFChars(displayId, displayIdChars);
+
+    /*
+     * Expand GPU-scaled custom resolutions with the extra refresh rates the legacy mode table omits, reusing the
+     * active config and path index already resolved above so no second QueryDisplayConfig is issued
+     */
+    addCustomResolutionRefreshRates(stableDisplayId, modeList, paths, ccdModes, activePathIndex);
+
+    // De-duplicate in first-seen order, since EnumDisplaySettingsExW repeats modes and the expansion may re-add a rate
+    unordered_set<uint64_t> seenModes;
+    seenModes.reserve(modeList.size());
+    vector<ModeInfo> uniqueModes;
+    uniqueModes.reserve(modeList.size());
+
+    for (const ModeInfo &mode : modeList) {
+        // Pack the four fields into one 64-bit key for hashed O(1) membership
+        uint64_t modeKey = (static_cast<uint64_t>(static_cast<uint32_t>(mode.width)) << 40) |
+                           (static_cast<uint64_t>(static_cast<uint32_t>(mode.height)) << 24) |
+                           (static_cast<uint64_t>(static_cast<uint32_t>(mode.bitsPerPel)) << 16) |
+                           static_cast<uint64_t>(static_cast<uint32_t>(mode.frequency));
+
+        if (seenModes.insert(modeKey).second) {
+            uniqueModes.push_back(mode);
+        }
+    }
+
+    modeList = std::move(uniqueModes);
+
+    // Prepare Java DisplayMode class and constructor
     jclass displayModeClass = env->FindClass("java/awt/DisplayMode");
 
-    if (displayModeClass == NULL) {
-        return NULL;
+    if (displayModeClass == nullptr) {
+        return nullptr;
     }
 
-    jmethodID displayModeConstructor = env->GetMethodID(displayModeClass, "<init>", "(IIII)V");
+    jmethodID displayModeCtor = env->GetMethodID(displayModeClass, "<init>", "(IIII)V");
 
-    if (displayModeConstructor == NULL) {
-        return NULL;
+    if (displayModeCtor == nullptr) {
+        env->DeleteLocalRef(displayModeClass);
+        return nullptr;
     }
 
-    jobjectArray displayModeArray = env->NewObjectArray(displayModesVector.size(), displayModeClass, NULL);
+    // Create the Java array (may be empty if no modes found)
+    jsize modeCount = static_cast<jsize>(modeList.size());
+    jobjectArray displayModeArray = env->NewObjectArray(modeCount, displayModeClass, nullptr);
 
-    if (displayModeArray == NULL) {
-        return NULL;
+    if (displayModeArray == nullptr) {
+        env->DeleteLocalRef(displayModeClass);
+        return nullptr;
     }
 
-    displayModeIndex = 0;
+    // Populate the Java array
+    for (jsize i = 0; i < modeCount; ++i) {
+        const ModeInfo &modeInfo = modeList[static_cast<size_t>(i)];
+        jobject displayModeObj = env->NewObject(displayModeClass, displayModeCtor, modeInfo.width, modeInfo.height,
+                                                modeInfo.bitsPerPel, modeInfo.frequency);
 
-    for (const DEVMODE &displayMode : displayModesVector) {
-        jobject displayModeObject = env->NewObject(displayModeClass, displayModeConstructor, displayMode.dmPelsWidth,
-                displayMode.dmPelsHeight, displayMode.dmBitsPerPel, displayMode.dmDisplayFrequency);
-
-        if (displayModeObject == NULL) {
-            for (int j = 0; j < displayModeIndex; j++) {
-                jobject displayModeToDelete = (jobject) env->GetObjectArrayElement(displayModeArray, j);
-                env->DeleteLocalRef(displayModeToDelete);
+        if (displayModeObj == nullptr) {
+            // Clean up created local refs and return null
+            for (jsize j = 0; j < i; ++j) {
+                jobject tmp = (jobject) env->GetObjectArrayElement(displayModeArray, j);
+                env->DeleteLocalRef(tmp);
             }
 
             env->DeleteLocalRef(displayModeArray);
+            env->DeleteLocalRef(displayModeClass);
 
-            return NULL;
+            return nullptr;
         }
 
-        env->SetObjectArrayElement(displayModeArray, displayModeIndex, displayModeObject);
-        env->DeleteLocalRef(displayModeObject);
-
-        displayModeIndex++;
+        env->SetObjectArrayElement(displayModeArray, i, displayModeObj);
+        env->DeleteLocalRef(displayModeObj);
     }
+
+    env->DeleteLocalRef(displayModeClass);
 
     return displayModeArray;
 }
 
-/*
- * Gets the current number of connected displays.
+/**
+ * Gets the stabilized IDs for visible displays.
  *
  * @param env
- *            - The structure containing methods to use to to access Java elements
+ *            - The JNI environment pointer
  * @param obj
- *            - The reference to the Java native object instance
+ *            - The Java GetDisplay instance
  *
- * @return The current number of connected displays
+ * @return A Java String[] of stable display IDs for visible displays
  */
-JNIEXPORT jint JNICALL Java_com_dhk_io_GetDisplay_queryNumOfConnectedDisplays(JNIEnv *env, jobject obj) {
-    /*
-     * Initialize a structure to hold the active paths as defined in the persistence database for the currently
-     * connected displays.
-     */
-    DisplayConfig displayConfig = getDisplayConfig();
+JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumVisibleDisplayIds(JNIEnv *env, jobject obj) {
+    (void) obj;
+    vector<string> visibleIds = getVisibleDisplayIds();
+    jclass strClass = env->FindClass("java/lang/String");
+    jobjectArray displayIds = env->NewObjectArray(visibleIds.size(), strClass, NULL);
 
-    return displayConfig.numPathInfoArrayElements;
+    for (int i = 0; i < (int) visibleIds.size(); i++) {
+        jstring visibleId = env->NewStringUTF(visibleIds[i].c_str());
+        env->SetObjectArrayElement(displayIds, i, visibleId);
+        env->DeleteLocalRef(visibleId);
+    }
+
+    return displayIds;
 }
 
-/*
- * Gets the IDs for the connected displays.
+/**
+ * Computes the DPI scale percentages Windows supports for the given resolution, capping the maximum so the effective
+ * resolution stays usable. Derives the set directly so a not-yet-applied resolution can report its scales without a
+ * mode change, since Windows reports the live range only for the applied resolution.
  *
  * @param env
- *            - The structure containing methods to use to to access Java elements
+ *            - The JNI environment pointer
  * @param obj
- *            - The reference to the Java native object instance
+ *            - The Java GetDisplay instance
+ * @param width
+ *            - The horizontal resolution to compute supported DPI scale percentages for
+ * @param height
+ *            - The vertical resolution to compute supported DPI scale percentages for
  *
- * @return An array of IDs for the connected displays
+ * @return An int[] of supported DPI scale percentages (always at least {100}), or null on native failure
  */
-JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayIds(JNIEnv *env, jobject obj) {
-    vector<string> displayIdsVector = getQueryDisplayConfigDisplayIds();
-    jclass stringClass = env->FindClass("java/lang/String");
+JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_getSupportedDpiScalePercentages(JNIEnv *env, jobject obj,
+                                                                                       jint width, jint height) {
+    (void) obj;
 
-    if (stringClass == NULL) {
-        return NULL;
+    // Compare against the long and short edges so the supported set does not depend on orientation
+    int32_t longEdge = (width >= height) ? width : height;
+    int32_t shortEdge = (width >= height) ? height : width;
+
+    vector<int32_t> supported;
+
+    for (int32_t i = 0; i < NUM_OF_DPI_SCALE_PERCENTAGES; i++) {
+        int32_t percentage = DPI_SCALE_PERCENTAGES.at(i);
+        int32_t effectiveLong = longEdge * 100 / percentage;
+        int32_t effectiveShort = shortEdge * 100 / percentage;
+
+        // Index 0 (100%) is always supported and percentages ascend, so stop at the first one that does not fit
+        if (i == 0 || (effectiveLong >= MIN_EFFECTIVE_LONG_EDGE && effectiveShort >= MIN_EFFECTIVE_SHORT_EDGE)) {
+            supported.push_back(percentage);
+        } else {
+            break;
+        }
     }
 
-    jobjectArray displayIdsArray = env->NewObjectArray(displayIdsVector.size(), stringClass, NULL);
+    jsize count = static_cast<jsize>(supported.size());
+    jintArray supportedArray = env->NewIntArray(count);
 
-    if (displayIdsArray == NULL) {
-        return NULL;
+    if (supportedArray == nullptr) {
+        return nullptr;
     }
 
-    for (int displayIndex = 0; displayIndex < displayIdsVector.size(); displayIndex++) {
-        jstring displayId = env->NewStringUTF(displayIdsVector.at(displayIndex).c_str());
+    env->SetIntArrayRegion(supportedArray, 0, count, reinterpret_cast<const jint *>(supported.data()));
 
-        if (displayId == NULL) {
-            for (int j = 0; j < displayIndex; j++) {
-                jstring displayIdToDelete = (jstring) env->GetObjectArrayElement(displayIdsArray, j);
-                env->DeleteLocalRef(displayIdToDelete);
-            }
+    return supportedArray;
+}
 
-            env->DeleteLocalRef(displayIdsArray);
+/**
+ * Gets the orientation of each visible display, aligned index-for-index with getVisibleDisplayIds so a display's
+ * rotation matches its ID at the same index.
+ *
+ * @param env
+ *            - The JNI environment pointer
+ * @param obj
+ *            - The Java GetDisplay instance
+ *
+ * @return An int[] of orientation values (1 = Landscape, 2 = Portrait, etc.), in getVisibleDisplayIds order
+ */
+JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_queryVisibleDisplayOrientations(JNIEnv *env, jobject obj) {
+    (void) obj;
+    vector<int> rotations = getVisibleDisplayOrientations();
+    jsize count = (jsize) rotations.size();
+    jintArray orientations = env->NewIntArray(count);
 
-            return NULL;
+    if (orientations == nullptr) {
+        return nullptr;
+    }
+
+    if (count > 0) {
+        env->SetIntArrayRegion(orientations, 0, count, reinterpret_cast<const jint *>(rotations.data()));
+    }
+
+    return orientations;
+}
+
+/**
+ * Captures the current multi-monitor arrangement, forwarding to ArrangeDisplay so the caller can hand it back to
+ * SetDisplay's preserveDisplayArrangement after a batch of display changes.
+ *
+ * @param env
+ *            - The JNI environment pointer
+ * @param obj
+ *            - The Java GetDisplay instance
+ *
+ * @return A String[] with one encoded rectangle per active display
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_captureDisplayArrangement(JNIEnv *env, jobject obj) {
+    (void) obj;
+    return captureDisplayArrangement(env);
+}
+
+/**
+ * Adds the refresh rates a GPU-scaled custom resolution supports but the legacy mode table omits, identifying such a
+ * resolution by its small distinct-rate count. Each resolution's drivable ceiling is found with as few SDC_VALIDATE
+ * probes as possible, and every panel rate at or below it is then added.
+ *
+ * @param displayId
+ *            - The stable display ID being enumerated
+ * @param modes
+ *            - The mode list to augment in place
+ */
+static void addCustomResolutionRefreshRates(const string &displayId, vector<ModeInfo> &modes,
+                                            vector<DISPLAYCONFIG_PATH_INFO> paths,
+                                            vector<DISPLAYCONFIG_MODE_INFO> ccdModes, int pathIndex) {
+    const size_t MAX_RATES_FOR_CUSTOM_RESOLUTION = 2;
+
+    /*
+     * The caller resolved the display against the active CCD config and passed that snapshot plus its path index in,
+     * so every probe below reuses them with no second query. Fall back to the persisted DB config only when the
+     * caller could not locate the path, so a display not yet on an active path still gets its rates
+     */
+    if (pathIndex < 0) {
+        DisplayConfig dbConfig = getDisplayConfig();
+        paths.assign(dbConfig.pathInfoArray, dbConfig.pathInfoArray + dbConfig.numPathInfoArrayElements);
+        ccdModes.assign(dbConfig.modeInfoArray, dbConfig.modeInfoArray + dbConfig.numModeInfoArrayElements);
+        pathIndex = findActivePathForDisplay(paths, displayId);
+    }
+
+    if (pathIndex < 0) {
+        return;
+    }
+
+    // Distinct rates per resolution, since the driver lists each mode many times across bit depths and flags
+    set<int> panelRates;
+    map<pair<int, int>, set<int>> ratesByResolution;
+
+    for (const ModeInfo &mode : modes) {
+        panelRates.insert(mode.frequency);
+        ratesByResolution[make_pair(mode.width, mode.height)].insert(mode.frequency);
+    }
+
+    vector<int> candidateRates(panelRates.begin(), panelRates.end());
+
+    // The rational form (integer or NTSC fractional) that first validated for a rate, reused as the first try elsewhere
+    map<int, DISPLAYCONFIG_RATIONAL> workingRational;
+
+    /*
+     * Validates a single rate at a resolution by trying the form that already worked for this rate first and then the
+     * remaining candidate forms. SDC_VALIDATE does not change the display, and the rate is drivable if any form works
+     */
+    auto validatesRate = [&](int width, int height, int rate) {
+        vector<DISPLAYCONFIG_RATIONAL> forms;
+        map<int, DISPLAYCONFIG_RATIONAL>::iterator cached = workingRational.find(rate);
+
+        if (cached != workingRational.end()) {
+            forms.push_back(cached->second);
         }
 
-        env->SetObjectArrayElement(displayIdsArray, displayIndex, displayId);
-        env->DeleteLocalRef(displayId);
+        for (const DISPLAYCONFIG_RATIONAL &rational : toRefreshRationalCandidates(rate)) {
+            bool alreadyQueued = cached != workingRational.end() && rational.Numerator == cached->second.Numerator &&
+                                 rational.Denominator == cached->second.Denominator;
+
+            if (!alreadyQueued) {
+                forms.push_back(rational);
+            }
+        }
+
+        for (const DISPLAYCONFIG_RATIONAL &rational : forms) {
+            if (submitCcdSourceMode(paths, ccdModes, pathIndex, (UINT32) width, (UINT32) height, rational,
+                                    SDC_VALIDATE | SDC_USE_SUPPLIED_DISPLAY_CONFIG) == ERROR_SUCCESS) {
+                workingRational[rate] = rational;
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    for (const pair<const pair<int, int>, set<int>> &entry : ratesByResolution) {
+        if (entry.second.size() > MAX_RATES_FOR_CUSTOM_RESOLUTION) {
+            continue;
+        }
+
+        int width = entry.first.first;
+        int height = entry.first.second;
+        const set<int> &existingRates = entry.second;
+        int maxExistingRate = *existingRates.rbegin();
+
+        /*
+         * Raise the drivable ceiling by validating panel rates above the existing max, highest first, stopping at the
+         * first that validates. The existing max is already drivable, so it stays the ceiling if nothing higher works
+         */
+        int ceilingRate = maxExistingRate;
+
+        for (vector<int>::const_reverse_iterator it = candidateRates.rbegin(); it != candidateRates.rend(); ++it) {
+            if (*it <= maxExistingRate) {
+                break;
+            }
+
+            if (validatesRate(width, height, *it)) {
+                ceilingRate = *it;
+                break;
+            }
+        }
+
+        /*
+         * Every panel rate at or below the ceiling is drivable (lower rate = lower pixel clock), so add the ones the
+         * legacy table omitted without probing
+         */
+        for (int rate : candidateRates) {
+            if (rate <= ceilingRate && existingRates.find(rate) == existingRates.end()) {
+                modes.push_back({width, height, 32, rate});
+            }
+        }
     }
-
-    return displayIdsArray;
-}
-
-/*
- * Gets the orientation for the given display.
- *
- * @param displayIndex
- *            - The index of the display to get the orientation for
- *
- * @return 1 for Landscape, 2 for Portrait, 3 for Inverted Landscape, 4 for Inverted Portrait
- */
-JNIEXPORT jint JNICALL Java_com_dhk_io_GetDisplay_queryDisplayOrientation(JNIEnv *env, jobject obj, jint displayIndex) {
-    DisplayConfig displayConfig = getDisplayConfig();
-    DISPLAYCONFIG_ROTATION orientation = displayConfig.pathInfoArray[displayIndex].targetInfo.rotation;
-
-    return orientation;
 }
