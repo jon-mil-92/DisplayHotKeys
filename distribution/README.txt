@@ -1,40 +1,6 @@
-<!-- PROJECT LOGO -->
-
-<a name="readme-top"></a>
-<div align="center">
-  <a href="https://github.com/jon-mil-92/DisplayHotKeys">
-    <img src="src/main/resources/images/tray_icon.png" alt="Logo" width="80" height="80" align="center" />
-  </a>
-  <br/>
-  <h3 align="center">Display Hot Keys</h3>
-  <p align="center">
-    <i>Effortlessly control display settings!</i>
-    <br/>
-    <a href="https://github.com/jon-mil-92/DisplayHotKeys/issues">Report Bug</a>
-    <b>·</b>
-    <a href="https://github.com/jon-mil-92/DisplayHotKeys/issues">Request Feature</a>
-    <b>·</b>
-    <a href="https://github.com/jon-mil-92/DisplayHotKeys/releases">Releases</a>
-  </p>
-</div>
-
-## Table of Contents
-<ol>
-  <li><a href="#about-the-project">About The Project</a></li>
-  <li><a href="#getting-started">Getting Started</a></li>
-  <li><a href="#usage">Usage</a></li>
-  <li><a href="#screenshots">Screenshots</a></li>
-  <li><a href="#roadmap">Roadmap</a></li>
-  <li><a href="#license">License</a></li>
-  <li><a href="#contact">Contact</a></li>
-  <li><a href="#dependencies">Dependencies</a></li>
-</ol>
-
 ## About The Project
 
 This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, bit depth, refresh rate, scaling mode, DPI scale percentage, and orientation can be changed for each connected display with user-defined hot keys.
-
-<img src="src/main/resources/images/product_screenshot.png" alt="Display Hot Keys" width="800"></p>
 
 ### Common Use Cases
 
@@ -83,8 +49,6 @@ This application will be distributed as a portable package and as an installer. 
 3. Follow the installer prompts.
 
 4. Double-click the created shortcut or the DisplayHotKeys executable file in the install directory to run the application.
-
-<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
 ## Usage
 
@@ -142,8 +106,6 @@ This application will be distributed as a portable package and as an installer. 
 	
 **Note:** Make sure you can rotate your display before changing the orientation; otherwise, it may be difficult to operate your computer.
 
-<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
-
 ### Button Interaction
 
 #### Apply Display Mode
@@ -194,23 +156,6 @@ If you find the application useful and wish to donate, the "PayPal Donate" butto
 
 Opens a web page in the default browser to display the releases for Display Hot Keys in descending order.
 
-<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
-
-## Roadmap
-
-- [x] &thinsp; Release the initial build.
-- [x] &thinsp; Add scaling mode selection.
-- [x] &thinsp; Add multi-monitor support.
-- [x] &thinsp; Add display orientation selection.
-- [x] &thinsp; Add button to immediately apply display modes.
-- [x] &thinsp; Add a minimize to tray toggle.
-- [x] &thinsp; Add ability to change display orientation with hot keys.
-- [x] &thinsp; Add an "About" view to display current app information.
-- [x] &thinsp; Add support for virtual displays and display duplication.
-- [x] &thinsp; Add event-driven display configuration detection.
-- [ ] &thinsp; Add event-driven new display mode detection.
-- [ ] &thinsp; Add clearing of individual slots.
-
 See [open issues] for a full list of proposed features (and known issues).
 
 ## License
@@ -245,22 +190,7 @@ Distribution made possible with the following tools:
 
 * [Inno Setup]
 
-<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
-
-<!-- PAYPAL DONATE -->
-
-**Disclaimer:** Development of Display Hot Keys is not contingent on donations. PayPal is a registered trademark of PayPal, Inc. The PayPal logo is a trademark of PayPal, Inc.
-
-<div align="left">
-  <a href="https://www.paypal.com/donate/?business=A6U7KG5BDZTRE&no_recurring=0&item_name=I+appreciate+you+visiting+this+page%21+Thank+you%21&currency_code=USD">
-    <img src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" align="left" height="72"/>
-  </a>
-</div>
-<br/>
-<br/>
-<br/>
-
-<!-- MARKDOWN LINKS -->
+## Links
 
 [disable UAC]: https://pureinfotech.com/disable-user-account-control-uac-windows-11/
 [open issues]: https://github.com/jon-mil-92/DisplayHotKeys/issues
@@ -277,4 +207,3 @@ Distribution made possible with the following tools:
 [MIT License]: https://mit-license.org
 [Apache License 2.0]: https://www.apache.org/licenses/LICENSE-2.0
 [AGPL License 3.0]: https://www.gnu.org/licenses/agpl-3.0.en.html
-

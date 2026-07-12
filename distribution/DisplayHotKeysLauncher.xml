@@ -12,7 +12,7 @@
   <supportUrl></supportUrl>
   <stayAlive>false</stayAlive>
   <restartOnCrash>false</restartOnCrash>
-  <manifest>C:\Users\jonRock\git\DisplayHotKeys\distribution\DisplayHotKeys.exe.manifest</manifest>
+  <manifest>C:\Users\jonRock\git\DisplayHotKeys\distribution\DisplayHotKeys.manifest</manifest>
   <icon>C:\Users\jonRock\git\DisplayHotKeys\distribution\dhk.ico</icon>
   <singleInstance>
     <mutexName>DisplayHotKeys.exe</mutexName>
