@@ -72,13 +72,7 @@ public class WindowController implements IController, WindowListener {
     @Override
     public void windowIconified(WindowEvent e) {
         if (model.isMinimizeToTray()) {
-            if (minimizeToTray.getSystemTray() != null) {
-                // Hide the taskbar icon
-                view.getFrame().setVisible(false);
-                minimizeToTray.getSystemTray().setEnabled(true);
-            } else {
-                minimizeToTray.execute();
-            }
+            minimizeToTray.execute();
         }
     }
 
