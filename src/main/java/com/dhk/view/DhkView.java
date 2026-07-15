@@ -76,7 +76,8 @@ public class DhkView implements IView {
     private GridBagConstraints menuPanelConstraints;
     private JLabel selectedDisplayLabel;
     private JLabel numberOfActiveSlotsLabel;
-    private JLabel applyDisplayModeHeader;
+    private JLabel clearSlotHeader;
+    private JLabel applySlotHeader;
     private JLabel displayModeHeader;
     private JLabel scalingModeHeader;
     private JLabel dpiScaleHeader;
@@ -99,7 +100,7 @@ public class DhkView implements IView {
     private int previouslySelectedDisplayIndex;
     private int gridYPosForSlotInPanel;
 
-    private static final int NUM_OF_SLOT_COMPONENTS = 9;
+    private static final int NUM_OF_SLOT_COMPONENTS = 10;
     private static final String[] ORIENTATION_MODES = {"Landscape", "Portrait", "iLandscape", "iPortrait"};
     private static final String[] SCALING_MODES = new String[]{"Preserved", "Stretched", "Centered"};
 
@@ -274,8 +275,7 @@ public class DhkView implements IView {
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getIndicatorLabel(), mainPanelConstraints);
 
                 mainPanelConstraints.gridx = 1;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplyDisplayModeButton(),
-                        mainPanelConstraints);
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplySlotButton(), mainPanelConstraints);
 
                 mainPanelConstraints.gridx = 2;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDisplayModes(), mainPanelConstraints);
@@ -299,6 +299,9 @@ public class DhkView implements IView {
                 mainPanelConstraints.gridx = 8;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getChangeHotKeyButton(),
                         mainPanelConstraints);
+
+                mainPanelConstraints.gridx = 9;
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearSlotButton(), mainPanelConstraints);
 
                 // Add the next slot to the following row in the layout
                 gridYPosForSlotInPanel++;
@@ -343,12 +346,12 @@ public class DhkView implements IView {
             mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getIndicatorLabel(),
                     prevIndicatorLabelConstraints);
 
-            GridBagConstraints prevApplyDisplayModeButtonConstraints = mainPanelLayout.getConstraints(
-                    displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getApplyDisplayModeButton());
+            GridBagConstraints prevApplySlotButtonConstraints = mainPanelLayout
+                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getApplySlotButton());
 
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getApplyDisplayModeButton());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplyDisplayModeButton(),
-                    prevApplyDisplayModeButtonConstraints);
+            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getApplySlotButton());
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplySlotButton(),
+                    prevApplySlotButtonConstraints);
 
             GridBagConstraints prevDisplayModesConstraints = mainPanelLayout
                     .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getDisplayModes());
@@ -382,6 +385,13 @@ public class DhkView implements IView {
             mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getHotKey());
             mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getHotKey(), prevHotKeyConstraints);
 
+            GridBagConstraints prevClearHotKeyButtonConstraints = mainPanelLayout.getConstraints(
+                    displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getClearHotKeyButton());
+
+            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getClearHotKeyButton());
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearHotKeyButton(),
+                    prevClearHotKeyButtonConstraints);
+
             GridBagConstraints prevChangeHotKeyButtonConstraints = mainPanelLayout.getConstraints(
                     displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getChangeHotKeyButton());
 
@@ -389,12 +399,12 @@ public class DhkView implements IView {
             mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getChangeHotKeyButton(),
                     prevChangeHotKeyButtonConstraints);
 
-            GridBagConstraints prevClearHotKeyButtonConstraints = mainPanelLayout.getConstraints(
-                    displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getClearHotKeyButton());
+            GridBagConstraints prevClearSlotButtonConstraints = mainPanelLayout
+                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getClearSlotButton());
 
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getClearHotKeyButton());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearHotKeyButton(),
-                    prevClearHotKeyButtonConstraints);
+            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getClearSlotButton());
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearSlotButton(),
+                    prevClearSlotButtonConstraints);
         }
     }
 
@@ -533,9 +543,9 @@ public class DhkView implements IView {
         buttons.add(minimizeToTrayButton);
         buttons.add(runOnStartupButton);
 
-        applyDisplayModeHeader = new JLabel("", SwingConstants.CENTER);
-        applyDisplayModeHeader.setPreferredSize(new Dimension(36, 28));
-        makeLabelBold(applyDisplayModeHeader);
+        applySlotHeader = new JLabel("", SwingConstants.CENTER);
+        applySlotHeader.setPreferredSize(new Dimension(36, 28));
+        makeLabelBold(applySlotHeader);
 
         displayModeHeader = new JLabel("Display Mode", SwingConstants.CENTER);
         displayModeHeader.setPreferredSize(new Dimension(240, 28));
@@ -564,6 +574,10 @@ public class DhkView implements IView {
         changeHotKeyHeader = new JLabel("", SwingConstants.CENTER);
         changeHotKeyHeader.setPreferredSize(new Dimension(150, 28));
         makeLabelBold(changeHotKeyHeader);
+
+        clearSlotHeader = new JLabel("", SwingConstants.CENTER);
+        clearSlotHeader.setPreferredSize(new Dimension(32, 28));
+        makeLabelBold(clearSlotHeader);
 
         initSlotComponents();
         addNonSlotComponents();
@@ -696,7 +710,7 @@ public class DhkView implements IView {
         menuPanel.add(runOnStartupButton, menuPanelConstraints);
 
         mainPanelConstraints.anchor = GridBagConstraints.WEST;
-        mainPanelConstraints.gridwidth = 9;
+        mainPanelConstraints.gridwidth = 10;
         mainPanelConstraints.gridx = 0;
         mainPanelConstraints.gridy = 0;
         mainPanel.add(displayPanel, mainPanelConstraints);
@@ -709,9 +723,8 @@ public class DhkView implements IView {
         mainPanelConstraints.gridy = 1;
         mainPanel.add(clearAllButton, mainPanelConstraints);
 
-        mainPanelConstraints.gridwidth = 1;
         mainPanelConstraints.gridx = 1;
-        mainPanel.add(applyDisplayModeHeader, mainPanelConstraints);
+        mainPanel.add(applySlotHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 2;
         mainPanel.add(displayModeHeader, mainPanelConstraints);
@@ -733,6 +746,9 @@ public class DhkView implements IView {
 
         mainPanelConstraints.gridx = 8;
         mainPanel.add(changeHotKeyHeader, mainPanelConstraints);
+
+        mainPanelConstraints.gridx = 9;
+        mainPanel.add(clearSlotHeader, mainPanelConstraints);
     }
 
     /**

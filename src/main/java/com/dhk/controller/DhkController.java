@@ -25,9 +25,10 @@ import java.util.List;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
-import com.dhk.controller.button.ApplyDisplayModeButtonController;
+import com.dhk.controller.button.ApplySlotButtonController;
 import com.dhk.controller.button.ClearAllButtonController;
 import com.dhk.controller.button.ClearHotKeyButtonController;
+import com.dhk.controller.button.ClearSlotButtonController;
 import com.dhk.io.DisplayConfigUpdater;
 import com.dhk.io.DisplayEventNotifier;
 import com.dhk.io.SettingsManager;
@@ -103,9 +104,10 @@ public class DhkController implements IController {
         hotKeysController = new HotKeysController(model, view, this, settingsMgr, heldKeyTracker);
         controllers.add(hotKeysController);
 
-        controllers.add(new ApplyDisplayModeButtonController(model, view, this, settingsMgr));
+        controllers.add(new ApplySlotButtonController(model, view, this, settingsMgr));
         controllers.add(new ClearAllButtonController(model, view, this, settingsMgr));
         controllers.add(new ClearHotKeyButtonController(model, view, settingsMgr, hotKeysController));
+        controllers.add(new ClearSlotButtonController(model, view, this, settingsMgr));
         controllers.add(new DisplayModeController(model, view, settingsMgr));
         controllers.add(new DpiScaleController(model, view, settingsMgr));
         controllers.add(new FrameDragController(view, mouseHook));

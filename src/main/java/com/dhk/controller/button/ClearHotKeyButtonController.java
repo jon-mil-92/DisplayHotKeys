@@ -72,7 +72,7 @@ public class ClearHotKeyButtonController extends AbstractButtonController implem
                 int slotIndex = j;
 
                 view.getSlot(displayIndex, slotIndex).getClearHotKeyButton()
-                        .addActionListener(e -> slotClearHotKeyEvent(displayIndex, slotIndex));
+                        .addActionListener(e -> clearHotKeyButtonAction(displayIndex, slotIndex));
 
                 initStateChangeListeners(view.getSlot(displayIndex, slotIndex).getClearHotKeyButton(),
                         view.getDefaultFocusComponent());
@@ -97,7 +97,7 @@ public class ClearHotKeyButtonController extends AbstractButtonController implem
      * @param slotIndex
      *            - The index of the slot to clear the hot key for
      */
-    private void slotClearHotKeyEvent(int displayIndex, int slotIndex) {
+    private void clearHotKeyButtonAction(int displayIndex, int slotIndex) {
         String displayId = model.getDisplayIds()[displayIndex];
         int slotId = slotIndex + 1;
 

@@ -35,12 +35,12 @@ import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
 
 /**
- * Controls the Apply Display Mode button. Listeners are added to the corresponding view component so that when the
- * Apply Display Mode button is pressed, the associated display mode is immediately applied.
+ * Controls the Apply Slot button. Listeners are added to the corresponding view component so that when the Apply Slot
+ * button is pressed, the associated slot display settings are immediately applied.
  *
  * @author Jonathan R. Miller
  */
-public class ApplyDisplayModeButtonController extends AbstractButtonController implements IController {
+public class ApplySlotButtonController extends AbstractButtonController implements IController {
 
     private DhkView view;
     private DhkModel model;
@@ -51,7 +51,7 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
     private AppRefresher appRefresher;
 
     /**
-     * Constructor for the {@link ApplyDisplayModeButtonController} class.
+     * Constructor for the {@link ApplySlotButtonController} class.
      *
      * @param model
      *            - The model for the application
@@ -62,7 +62,7 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
      * @param settingsMgr
      *            - The settings manager for the application
      */
-    public ApplyDisplayModeButtonController(DhkModel model, DhkView view, DhkController controller,
+    public ApplySlotButtonController(DhkModel model, DhkView view, DhkController controller,
             SettingsManager settingsMgr) {
         this.model = model;
         this.view = view;
@@ -85,10 +85,10 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
             for (int j = 0; j < model.getMaxNumOfSlots(); j++) {
                 int slotIndex = j;
 
-                view.getSlot(displayIndex, slotIndex).getApplyDisplayModeButton()
-                        .addActionListener(e -> applyDisplayModeButtonAction(displayIndex, slotIndex));
+                view.getSlot(displayIndex, slotIndex).getApplySlotButton()
+                        .addActionListener(e -> applySlotButtonAction(displayIndex, slotIndex));
 
-                initStateChangeListeners(view.getSlot(displayIndex, slotIndex).getApplyDisplayModeButton(),
+                initStateChangeListeners(view.getSlot(displayIndex, slotIndex).getApplySlotButton(),
                         view.getDefaultFocusComponent());
             }
         }
@@ -99,14 +99,14 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
     }
 
     /**
-     * Immediately applies the associated display mode.
+     * Immediately applies the associated slot display settings.
      *
      * @param displayIndex
      *            - The index of the display to set the display settings for
      * @param slotIndex
      *            - The index of the slot to set the display settings for
      */
-    private void applyDisplayModeButtonAction(int displayIndex, int slotIndex) {
+    private void applySlotButtonAction(int displayIndex, int slotIndex) {
         displayConfig.updateConnectedDisplays();
 
         String displayId = model.getDisplayIds()[displayIndex];
@@ -116,7 +116,9 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
             // Capture the frame placement before the display reconfiguration relocates the window
             FramePlacement placement = FrameUtil.capturePlacement(view.getFrame());
 
+            // Capture the display arrangement before the display reconfiguration rearranges the display
             String[] arrangementSnapshot = displayConfig.captureArrangement();
+
             setDisplay.applyDisplayOrientation(displayId, model.getSlot(displayIndex, slotIndex).getOrientationMode());
             setDisplay.applyDisplaySettings(displayId,
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getWidth(),
@@ -129,9 +131,9 @@ public class ApplyDisplayModeButtonController extends AbstractButtonController i
 
             /*
              * Re-initialize the app to prevent window corruption, but defer briefly so the display reconfiguration
-             * settles first; otherwise the rebuilt frame is placed against stale display bounds and jumps up and to the
-             * left. The Timer fires once on the EDT. The placement captured above is reproduced, since the OS will have
-             * moved the existing frame
+             * settles first; otherwise the rebuilt frame is placed against stale display bounds. The Timer fires once
+             * on the EDT, and the placement captured above is reproduced since the OS will have moved the existing
+             * frame
              */
             Timer reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp(placement));
             reInitTimer.setRepeats(false);
