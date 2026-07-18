@@ -111,7 +111,7 @@ public class DhkController implements IController {
         controllers.add(new DisplayModeController(model, view, settingsMgr));
         controllers.add(new DpiScaleController(model, view, settingsMgr));
         controllers.add(new FrameDragController(view, mouseHook));
-        controllers.add(new MenuController(model, view, this, settingsMgr));
+        controllers.add(new MenuController(model, view, settingsMgr));
         controllers.add(new NumberOfSlotsController(model, view, settingsMgr));
         controllers.add(new OrientationController(model, view, this, settingsMgr));
         controllers.add(new ScalingModeController(model, view, settingsMgr));

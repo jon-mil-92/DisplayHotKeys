@@ -91,7 +91,6 @@ public class DhkView implements IView {
     private CenteredComboBox<Integer> noDisplayIdsPlaceholder;
     private CenteredComboBox<Integer> noActiveSlotsPlaceholder;
     private Button clearAllButton;
-    private ThemeableButton refreshAppButton;
     private ThemeableButton aboutButton;
     private ThemeableButton themeButton;
     private ThemeableToggleButton minimizeToTrayButton;
@@ -506,12 +505,6 @@ public class DhkView implements IView {
                 0.60f);
         clearAllButton = new Button("/clear_all_idle.svg", "/clear_all_hover.svg", clearAllButtonProps, true);
 
-        ButtonProperties refreshAppButtonProps = new ButtonProperties("Refresh App", new Dimension(31, 40), 0.70f,
-                0.60f);
-        refreshAppButton = new ThemeableButton("/refresh_app_idle.svg", "/refresh_app_light_hover.svg",
-                "/refresh_app_idle.svg", "/refresh_app_dark_hover.svg", refreshAppButtonProps, true,
-                model.isDarkMode());
-
         ButtonProperties aboutButtonProps = new ButtonProperties("About App", new Dimension(36, 40), 0.70f, 0.60f);
         aboutButton = new ThemeableButton("/about_idle.svg", "/about_light_hover.svg", "/about_idle.svg",
                 "/about_dark_hover.svg", aboutButtonProps, true, model.isDarkMode());
@@ -537,7 +530,6 @@ public class DhkView implements IView {
                 model.isRunOnStartup());
 
         buttons.add(clearAllButton);
-        buttons.add(refreshAppButton);
         buttons.add(aboutButton);
         buttons.add(themeButton);
         buttons.add(minimizeToTrayButton);
@@ -695,18 +687,15 @@ public class DhkView implements IView {
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 0;
         menuPanelConstraints.gridy = 0;
-        menuPanel.add(refreshAppButton, menuPanelConstraints);
-
-        menuPanelConstraints.gridx = 1;
         menuPanel.add(aboutButton, menuPanelConstraints);
 
-        menuPanelConstraints.gridx = 2;
+        menuPanelConstraints.gridx = 1;
         menuPanel.add(themeButton, menuPanelConstraints);
 
-        menuPanelConstraints.gridx = 3;
+        menuPanelConstraints.gridx = 2;
         menuPanel.add(minimizeToTrayButton, menuPanelConstraints);
 
-        menuPanelConstraints.gridx = 4;
+        menuPanelConstraints.gridx = 3;
         menuPanel.add(runOnStartupButton, menuPanelConstraints);
 
         mainPanelConstraints.anchor = GridBagConstraints.WEST;
@@ -831,15 +820,6 @@ public class DhkView implements IView {
      */
     public Button getClearAllButton() {
         return clearAllButton;
-    }
-
-    /**
-     * Gets the refresh app button.
-     *
-     * @return The refresh app button
-     */
-    public ThemeableButton getRefreshAppButton() {
-        return refreshAppButton;
     }
 
     /**

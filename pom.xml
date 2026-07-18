@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>DisplayHotKeys</groupId>
     <artifactId>DisplayHotKeys</artifactId>
-    <version>3.0.0</version>
+    <version>3.0.1</version>
     <name>DisplayHotKeys</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
