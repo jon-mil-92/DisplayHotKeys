@@ -41,14 +41,15 @@ import com.dhk.model.button.ButtonProperties;
 public class Slot {
 
     private JLabel slotIndicatorLabel;
-    private Button applyDisplayModeButton;
+    private Button applySlotButton;
     private CenteredComboBox<DisplayMode> slotDisplayModes;
     private CenteredComboBox<String> slotScalingModes;
     private CenteredComboBox<Integer> slotDpiScalePercentages;
     private CenteredComboBox<String> slotOrientationModes;
     private JLabel slotHotKey;
-    private Button slotClearHotKeyButton;
+    private Button clearHotKeyButton;
     private JButton slotChangeHotKeyButton;
+    private Button clearSlotButton;
     private List<Button> buttons;
 
     /**
@@ -69,14 +70,13 @@ public class Slot {
      */
     public Slot(int slotIndex, int displayIndex, DisplayMode[] displayModes, String[] scalingModes,
             Integer[] dpiScalePercentages, String[] orientationModes) {
-        String slotID = Integer.toString(slotIndex + 1);
+        String slotId = Integer.toString(slotIndex + 1);
 
-        slotIndicatorLabel = new JLabel("Slot " + slotID + " :", SwingConstants.CENTER);
+        slotIndicatorLabel = new JLabel("Slot " + slotId + " :", SwingConstants.CENTER);
         slotIndicatorLabel.setPreferredSize(new Dimension(52, 28));
 
-        ButtonProperties applyDisplayModeButtonProps = new ButtonProperties("Apply Display Mode", new Dimension(20, 20),
-                0.80f, 0.68f);
-        applyDisplayModeButton = new Button("/apply_idle.svg", "/apply_hover.svg", applyDisplayModeButtonProps, true);
+        ButtonProperties applySlotButtonProps = new ButtonProperties("Apply Slot", new Dimension(20, 20), 0.80f, 0.68f);
+        applySlotButton = new Button("/apply_slot_idle.svg", "/apply_slot_hover.svg", applySlotButtonProps, true);
 
         slotDisplayModes = new CenteredComboBox<DisplayMode>(displayModes);
         slotDisplayModes.setPreferredSize(new Dimension(240, 28));
@@ -92,17 +92,21 @@ public class Slot {
 
         slotHotKey = new JLabel("", SwingConstants.CENTER);
 
-        ButtonProperties slotClearHotKeyButtonProps = new ButtonProperties("Clear Hot Key", new Dimension(17, 20),
-                0.70f, 0.60f);
-        slotClearHotKeyButton = new Button("/clear_hot_key_idle.svg", "/clear_hot_key_hover.svg",
-                slotClearHotKeyButtonProps, false);
+        ButtonProperties clearHotKeyButtonProps = new ButtonProperties("Clear Hot Key", new Dimension(17, 20), 0.70f,
+                0.60f);
+        clearHotKeyButton = new Button("/clear_hot_key_idle.svg", "/clear_hot_key_hover.svg", clearHotKeyButtonProps,
+                false);
 
         slotChangeHotKeyButton = new JButton("Change Hot Key");
         slotChangeHotKeyButton.setPreferredSize(new Dimension(150, 28));
 
+        ButtonProperties clearSlotButtonProps = new ButtonProperties("Clear Slot", new Dimension(22, 20), 0.80f, 0.68f);
+        clearSlotButton = new Button("/clear_slot_idle.svg", "/clear_slot_hover.svg", clearSlotButtonProps, true);
+
         buttons = new ArrayList<>();
-        buttons.add(applyDisplayModeButton);
-        buttons.add(slotClearHotKeyButton);
+        buttons.add(clearSlotButton);
+        buttons.add(applySlotButton);
+        buttons.add(clearHotKeyButton);
     }
 
     /**
@@ -115,12 +119,12 @@ public class Slot {
     }
 
     /**
-     * Gets the apply display mode button.
+     * Gets the apply slot button.
      *
-     * @return The apply display mode button
+     * @return The apply slot button
      */
-    public Button getApplyDisplayModeButton() {
-        return applyDisplayModeButton;
+    public Button getApplySlotButton() {
+        return applySlotButton;
     }
 
     /**
@@ -194,7 +198,7 @@ public class Slot {
      * @return The clear hot key button of the slot
      */
     public Button getClearHotKeyButton() {
-        return slotClearHotKeyButton;
+        return clearHotKeyButton;
     }
 
     /**
@@ -204,6 +208,15 @@ public class Slot {
      */
     public JButton getChangeHotKeyButton() {
         return slotChangeHotKeyButton;
+    }
+
+    /**
+     * Gets the clear slot button of the slot.
+     *
+     * @return The clear slot button of the slot
+     */
+    public Button getClearSlotButton() {
+        return clearSlotButton;
     }
 
     /**

@@ -141,6 +141,7 @@ public class ClearAllButtonController extends AbstractButtonController implement
         for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
             int slotId = slotIndex + 1;
 
+            // Flag the slot as clearing so the orientation combo box change does not raise the confirmation dialog
             model.getSlot(displayIndex, slotIndex).setClearingSlot(true);
             model.getSlot(displayIndex, slotIndex).setOrientationMode(0);
             view.getSlot(displayIndex, slotIndex).getOrientationModes().setSelectedIndex(0);

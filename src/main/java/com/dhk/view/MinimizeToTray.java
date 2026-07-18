@@ -73,8 +73,12 @@ public class MinimizeToTray {
         // Hide the taskbar icon
         frame.setVisible(false);
 
-        startSystemTray();
-        addMenuItems();
+        if (systemTray == null) {
+            startSystemTray();
+            addMenuItems();
+        } else {
+            systemTray.setEnabled(true);
+        }
     }
 
     /**
@@ -153,7 +157,7 @@ public class MinimizeToTray {
             }
         });
 
-        hideSystemTray();
+        shutDownSystemTray();
     }
 
     /**
@@ -168,17 +172,27 @@ public class MinimizeToTray {
      * Exits the application.
      */
     private void exitAction() {
-        hideSystemTray();
-        systemTray.shutdown();
+        shutDownSystemTray();
         System.exit(0);
     }
 
     /**
-     * Hides the system tray.
+     * Hides the system tray, keeping it alive so dialogs can re-enable the same instance on close.
      */
     private void hideSystemTray() {
         if (systemTray != null) {
             systemTray.setEnabled(false);
+        }
+    }
+
+    /**
+     * Shuts down the system tray and clears it so the next minimize rebuilds it with the correct theme.
+     */
+    private void shutDownSystemTray() {
+        if (systemTray != null) {
+            systemTray.setEnabled(false);
+            systemTray.shutdown();
+            systemTray = null;
         }
     }
 

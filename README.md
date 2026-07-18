@@ -34,7 +34,7 @@
 
 This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, bit depth, refresh rate, scaling mode, DPI scale percentage, and orientation can be changed for each connected display with user-defined hot keys.
 
-<img src="src/main/resources/images/product_screenshot.png" alt="Display Hot Keys" width="800" />
+<img src="src/main/resources/images/screenshot.png" alt="Display Hot Keys" width="800" />
 
 ### Common Use Cases
 
@@ -208,8 +208,7 @@ Opens a web page in the default browser to display the releases for Display Hot 
 - [x] &thinsp; Add an "About" view to display current app information.
 - [x] &thinsp; Add support for virtual displays and display duplication.
 - [x] &thinsp; Add event-driven display configuration detection.
-- [ ] &thinsp; Add event-driven new display mode detection.
-- [ ] &thinsp; Add clearing of individual slots.
+- [x] &thinsp; Add clearing of individual slots.
 
 See [open issues] for a full list of proposed features (and known issues).
 
