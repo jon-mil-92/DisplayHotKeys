@@ -37,6 +37,7 @@ import com.dhk.utility.DisplayModeInverter;
 public class DisplayConfig {
 
     private String[] displayIds;
+    private int[] displayNumbers;
     private GetDisplay getDisplay;
     private Map<String, DisplayMode[]> landscapeDisplayModesMap;
     private Map<String, DisplayMode[]> portraitDisplayModesMap;
@@ -58,6 +59,7 @@ public class DisplayConfig {
      */
     public void updateDisplayConfig() {
         updateConnectedDisplays();
+        updateDisplayNumbers();
         updateDisplayModes();
     }
 
@@ -85,6 +87,13 @@ public class DisplayConfig {
 
         displayIds = filteredDisplayIds;
         numOfConnectedDisplays = filteredDisplayIds.length;
+    }
+
+    /**
+     * Updates each connected display's Windows Display Settings number, aligned index-for-index with the display IDs.
+     */
+    private void updateDisplayNumbers() {
+        displayNumbers = getDisplay.getVisibleDisplayNumbers(displayIds);
     }
 
     /**
@@ -125,6 +134,16 @@ public class DisplayConfig {
      */
     public String[] getDisplayIds() {
         return displayIds;
+    }
+
+    /**
+     * Gets the Windows Display Settings number of each connected (visible) display, aligned index-for-index with
+     * getDisplayIds. The numbers can skip values, matching the gaps Windows leaves for disconnected displays.
+     *
+     * @return The Windows display number of each connected display, in getDisplayIds order
+     */
+    public int[] getDisplayNumbers() {
+        return displayNumbers;
     }
 
     /**
@@ -187,7 +206,7 @@ public class DisplayConfig {
     }
 
     /**
-     * Captures the current multi-monitor arrangement so a following batch of applied display settings can be reflowed
+     * Captures the current multi-display arrangement so a following batch of applied display settings can be reflowed
      * against it. The result is opaque and is passed back to SetDisplay to preserve the arrangement.
      *
      * @return The captured arrangement, one encoded rectangle per active display

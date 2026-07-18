@@ -69,6 +69,17 @@ public class GetDisplay {
     private native String[] enumVisibleDisplayIds();
 
     /**
+     * Defines a JNI function to get the Windows Display Settings number of each given visible display, index-for-index
+     * with the provided IDs. Taking the IDs the caller already holds avoids re-querying them.
+     *
+     * @param visibleIds
+     *            - The visible display IDs to number, typically from getVisibleDisplayIds
+     *
+     * @return The Windows display number of each given visible display, index-for-index with visibleIds
+     */
+    private native int[] enumVisibleDisplayNumbers(String[] visibleIds);
+
+    /**
      * Defines a JNI function to compute the supported DPI scale percentages for the given resolution.
      *
      * @param width
@@ -81,7 +92,7 @@ public class GetDisplay {
     private native int[] getSupportedDpiScalePercentages(int width, int height);
 
     /**
-     * Defines a JNI function to capture the current multi-monitor arrangement as encoded strings.
+     * Defines a JNI function to capture the current multi-display arrangement as encoded strings.
      *
      * @return The captured arrangement, one encoded rectangle per active display
      */
@@ -118,6 +129,18 @@ public class GetDisplay {
     }
 
     /**
+     * Gets the Windows Display Settings number of each given visible display, index-for-index with the provided IDs.
+     *
+     * @param visibleIds
+     *            - The visible display IDs to number, typically from getVisibleDisplayIds
+     *
+     * @return The Windows display number of each given visible display, index-for-index with visibleIds
+     */
+    public int[] getVisibleDisplayNumbers(String[] visibleIds) {
+        return enumVisibleDisplayNumbers(visibleIds);
+    }
+
+    /**
      * Gets the supported DPI scale percentages for the given resolution. The supported set matches the percentages
      * Windows would offer for that resolution.
      *
@@ -140,7 +163,7 @@ public class GetDisplay {
     }
 
     /**
-     * Captures the current multi-monitor arrangement so a following batch of applied display settings can be reflowed
+     * Captures the current multi-display arrangement so a following batch of applied display settings can be reflowed
      * against it. The result is opaque and is passed back to SetDisplay to preserve the arrangement.
      *
      * @return The captured arrangement, one encoded rectangle per active display

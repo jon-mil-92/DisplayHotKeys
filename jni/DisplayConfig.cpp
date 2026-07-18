@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cctype>
 #include <string>
+#include <utility>
 #include <vector>
 #include <windows.h>
 
@@ -117,16 +118,15 @@ vector<string> getQueryDisplayConfigDisplayIds() {
             continue;
         }
 
-        displayIds.push_back(displayId);
+        displayIds.push_back(std::move(displayId));
     }
 
     return displayIds;
 }
 
 /**
- * Queries paths with the given flags and returns the stable ID of each visible display, ordered by adapter (in
- * first-seen order) then by target id within each adapter, which is how Windows Display Settings numbers displays, so
- * DHK's display indices match Windows even after a disconnect/reconnect reassigns target ids.
+ * Queries paths with the given flags and returns the stable ID of each visible display, ordered by ascending CCD target
+ * id, which is how Windows Display Settings orders displays.
  *
  * @param flags
  *            - The QueryDisplayConfig flags selecting which paths to enumerate
@@ -231,36 +231,21 @@ static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGe
             }
         }
 
-        entries.push_back({path.targetInfo.adapterId.HighPart, path.targetInfo.adapterId.LowPart, path.targetInfo.id, 0,
-                           entry, (int) path.targetInfo.rotation});
+        entries.push_back({path.targetInfo.id, entry, (int) path.targetInfo.rotation});
     }
 
     delete[] pathArray;
     delete[] modeArray;
 
-    /*
-     * Rank each display's adapter by first appearance (entries are still in path order here), so adapters group the
-     * way Windows lists them; entries sharing an adapter take that adapter's first-seen rank
-     */
-    for (size_t i = 0; i < entries.size(); i++) {
-        entries[i].adapterRank = (int) i;
+    // Order by ascending target id to match how Windows Display Settings orders displays across all adapters
+    stable_sort(entries.begin(), entries.end(),
+                [](const VisibleDisplay &a, const VisibleDisplay &b) { return a.targetId < b.targetId; });
 
-        for (size_t j = 0; j < i; j++) {
-            if (entries[j].adapterHigh == entries[i].adapterHigh && entries[j].adapterLow == entries[i].adapterLow) {
-                entries[i].adapterRank = entries[j].adapterRank;
-                break;
-            }
-        }
+    visible.reserve(entries.size());
+
+    if (rotationsOut != nullptr) {
+        rotationsOut->reserve(entries.size());
     }
-
-    // Order by adapter rank, then by target id within the adapter, to match Windows Display Settings numbering
-    stable_sort(entries.begin(), entries.end(), [](const VisibleDisplay &a, const VisibleDisplay &b) {
-        if (a.adapterRank != b.adapterRank) {
-            return a.adapterRank < b.adapterRank;
-        }
-
-        return a.targetId < b.targetId;
-    });
 
     for (const VisibleDisplay &display : entries) {
         visible.push_back(display.descriptor);
@@ -276,7 +261,7 @@ static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGe
 
 /**
  * Gets stable IDs for the currently visible displays via QDC_ONLY_ACTIVE_PATHS, falling back to QDC_DATABASE_CURRENT.
- * Displays are ordered by adapter (first-seen) then target id, matching Windows Display Settings numbering.
+ * Displays are ordered by ascending target id, matching how Windows Display Settings orders displays.
  *
  * @return Stable display IDs for the currently visible displays
  */
@@ -311,19 +296,180 @@ vector<int> getVisibleDisplayOrientations() {
 }
 
 /**
- * Gets per-display geometry signatures for the visible displays, using the same active-then-database fallback as
- * getVisibleDisplayIds.
+ * Ranks the displays Windows still knows by ascending target id, returning their stable IDs in that order. The set is
+ * the distinct resolvable targets in QDC_ALL_PATHS, which retains a display after a disconnect (that is why Windows
+ * leaves a gap in its numbering); a display's 1-based position here is the number Windows Display Settings shows for
+ * it.
  *
- * @return Signatures for the currently visible displays
+ * @return The stable IDs of the known displays, ordered by ascending target id
+ */
+static vector<string> knownDisplaysByNumber() {
+    vector<string> ordered;
+
+    UINT32 numPath = 0;
+    UINT32 numMode = 0;
+
+    if (GetDisplayConfigBufferSizes(QDC_ALL_PATHS, &numPath, &numMode) != ERROR_SUCCESS || numPath == 0) {
+        return ordered;
+    }
+
+    // Over-allocate to avoid ERROR_INVALID_PARAMETER from drivers that under-report the required sizes
+    UINT32 allocPath = numPath + 4;
+    UINT32 allocMode = numMode + 8;
+
+    DISPLAYCONFIG_PATH_INFO *pathArray = new DISPLAYCONFIG_PATH_INFO[allocPath];
+    DISPLAYCONFIG_MODE_INFO *modeArray = new DISPLAYCONFIG_MODE_INFO[allocMode];
+
+    SecureZeroMemory(pathArray, sizeof(DISPLAYCONFIG_PATH_INFO) * allocPath);
+    SecureZeroMemory(modeArray, sizeof(DISPLAYCONFIG_MODE_INFO) * allocMode);
+
+    UINT32 queryPath = allocPath;
+    UINT32 queryMode = allocMode;
+
+    if (QueryDisplayConfig(QDC_ALL_PATHS, &queryPath, pathArray, &queryMode, modeArray, nullptr) != ERROR_SUCCESS) {
+        delete[] pathArray;
+        delete[] modeArray;
+        return ordered;
+    }
+
+    // Each known display's stable ID paired with the target id that ranks it
+    vector<pair<string, UINT32>> known;
+
+    // Adapter+target keys already resolved, so the repeated QDC_ALL_PATHS paths for one target hit only one name lookup
+    vector<pair<long long, UINT32>> seenTargets;
+
+    for (UINT32 i = 0; i < queryPath; i++) {
+        const auto &target = pathArray[i].targetInfo;
+
+        // Pack the adapter LUID into one integer so targets dedup by a numeric compare, not a per-path string
+        long long adapterKey = ((long long) target.adapterId.HighPart << 32) | (unsigned long) target.adapterId.LowPart;
+        bool seenTarget = false;
+
+        for (const pair<long long, UINT32> &key : seenTargets) {
+            if (key.first == adapterKey && key.second == target.id) {
+                seenTarget = true;
+                break;
+            }
+        }
+
+        if (seenTarget) {
+            continue;
+        }
+
+        seenTargets.push_back({adapterKey, target.id});
+
+        // A target Windows no longer keeps a name for is a stale spare slot, not a known display, so skip it
+        string displayId = stableIdForTarget(target);
+
+        if (displayId.empty()) {
+            continue;
+        }
+
+        bool merged = false;
+
+        for (pair<string, UINT32> &display : known) {
+            if (display.first == displayId) {
+                // The same display can appear under a stale and a current target, so rank it by its smallest target id
+                if (target.id < display.second) {
+                    display.second = target.id;
+                }
+
+                merged = true;
+                break;
+            }
+        }
+
+        if (!merged) {
+            known.push_back({displayId, target.id});
+        }
+    }
+
+    delete[] pathArray;
+    delete[] modeArray;
+
+    stable_sort(known.begin(), known.end(),
+                [](const pair<string, UINT32> &a, const pair<string, UINT32> &b) { return a.second < b.second; });
+
+    ordered.reserve(known.size());
+
+    for (const pair<string, UINT32> &display : known) {
+        ordered.push_back(display.first);
+    }
+
+    return ordered;
+}
+
+/**
+ * Gets the Windows Display Settings number of each given visible display. Each number is the display's rank among the
+ * displays Windows still knows (active or retained after a disconnect). Taking the visible IDs as input avoids
+ * re-querying them and keeps the result aligned with the caller's list. Falls back to a compact 1..N whenever a visible
+ * display is missing from the ranking, so numbering never regresses.
+ *
+ * @param visibleIds
+ *            - The visible display IDs to number, typically from getVisibleDisplayIds
+ *
+ * @return The Windows display number of each given visible display, index-for-index with visibleIds
+ */
+vector<int> getVisibleDisplayNumbers(const vector<string> &visibleIds) {
+    vector<string> ranking = knownDisplaysByNumber();
+    vector<int> numbers(visibleIds.size(), 0);
+    bool complete = !ranking.empty();
+
+    for (size_t i = 0; i < visibleIds.size(); i++) {
+        for (size_t rank = 0; rank < ranking.size(); rank++) {
+            if (ranking[rank] == visibleIds[i]) {
+                numbers[i] = (int) rank + 1;
+                break;
+            }
+        }
+
+        if (numbers[i] == 0) {
+            complete = false;
+        }
+    }
+
+    if (!complete) {
+        for (size_t i = 0; i < numbers.size(); i++) {
+            numbers[i] = (int) i + 1;
+        }
+    }
+
+    return numbers;
+}
+
+/**
+ * Gets per-display geometry signatures for the visible displays, using the same active-then-database fallback as
+ * getVisibleDisplayIds, then appends each display's Windows display number. Including the display number lets the
+ * change notifier catch a numbering shift even when the active set is unchanged and a display is in the "Disconnect
+ * this display" state.
+ *
+ * @return Signatures for the currently visible displays, each suffixed with its Windows display number
  */
 vector<string> getVisibleDisplaySignatures() {
     vector<string> signatures = queryVisibleDisplaysWithFlags(QDC_ONLY_ACTIVE_PATHS, true);
 
-    if (!signatures.empty()) {
-        return signatures;
+    if (signatures.empty()) {
+        signatures = queryVisibleDisplaysWithFlags(QDC_DATABASE_CURRENT, true);
     }
 
-    return queryVisibleDisplaysWithFlags(QDC_DATABASE_CURRENT, true);
+    vector<string> ranking = knownDisplaysByNumber();
+
+    for (string &signature : signatures) {
+        // The signature starts with the stable ID (no '|' in it), so match it against the known-display ranking
+        string displayId = signature.substr(0, signature.find('|'));
+        int number = 0;
+
+        for (size_t rank = 0; rank < ranking.size(); rank++) {
+            if (ranking[rank] == displayId) {
+                number = (int) rank + 1;
+                break;
+            }
+        }
+
+        signature += "|n" + to_string(number);
+    }
+
+    return signatures;
 }
 
 /**
@@ -334,7 +480,7 @@ vector<string> getVisibleDisplaySignatures() {
  *
  * @return The index, or 0 if not found
  */
-int getEnumDisplayDevicesDisplayIdIndex(string displayId) {
+int getEnumDisplayDevicesDisplayIdIndex(const string &displayId) {
     vector<string> displayIds = getEnumDisplayDevicesDisplayIds();
 
     for (int i = 0; i < (int) displayIds.size(); i++) {
@@ -357,7 +503,7 @@ int getEnumDisplayDevicesDisplayIdIndex(string displayId) {
  *
  * @return The index, or 0 if not found
  */
-int getQueryDisplayConfigDisplayIdIndex(string displayId) {
+int getQueryDisplayConfigDisplayIdIndex(const string &displayId) {
     vector<string> displayIds = getQueryDisplayConfigDisplayIds();
 
     for (int i = 0; i < (int) displayIds.size(); i++) {
@@ -370,14 +516,14 @@ int getQueryDisplayConfigDisplayIdIndex(string displayId) {
 }
 
 /**
- * Builds a compact, stable display ID from a monitor device path and its friendly name. Strips the constant
+ * Builds a compact, stable display ID from a display's device path and its friendly name. Strips the constant
  * device-interface boilerplate, the volatile connection UID, and the trailing GUID so the ID survives instance
  * changes, then appends the sanitized friendly name so displays sharing a device-path prefix stay distinct.
  *
  * @param monitorDevicePath
- *            - The raw monitor device path from DisplayConfigGetDeviceInfo
+ *            - The raw device path from DisplayConfigGetDeviceInfo
  * @param friendlyName
- *            - The monitor/client name from DISPLAYCONFIG_TARGET_DEVICE_NAME, or empty when unavailable
+ *            - The display/client name from DISPLAYCONFIG_TARGET_DEVICE_NAME, or empty when unavailable
  *
  * @return A normalized, stable display ID
  */
@@ -431,6 +577,7 @@ string buildStableDisplayId(const wstring &monitorDevicePath, const wstring &fri
 
     // Append the sanitized friendly name ([a-z0-9]) so clients sharing one device-path prefix stay distinct
     string nameToken;
+    nameToken.reserve(friendlyName.size());
 
     for (wchar_t wc : friendlyName) {
         if (wc < 128 && isalnum((unsigned char) wc)) {
@@ -471,7 +618,7 @@ string wStrToStr(const wstring &wideString) {
 }
 
 /**
- * Resolves a path target's monitor device path to a stable display ID, centralizing the
+ * Resolves a path target's device path to a stable display ID, centralizing the
  * DisplayConfigGetDeviceInfo(GET_TARGET_NAME) then buildStableDisplayId sequence.
  *
  * @param targetInfo

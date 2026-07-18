@@ -50,7 +50,7 @@ static const UINT32 SDC_SUPPLIED_APPLY_FLAGS = SDC_APPLY | SDC_USE_SUPPLIED_DISP
  * @param env
  *            - The JNI environment pointer
  * @param obj
- *            - The Java SetDisplay instance
+ *            - The calling object instance
  * @param displayId
  *            - The stable display ID of the display to modify
  * @param resWidth
@@ -99,7 +99,7 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv *env, jobjec
  * @param env
  *            - The JNI environment pointer
  * @param obj
- *            - The Java SetDisplay instance
+ *            - The calling object instance
  * @param displayId
  *            - The stable display ID of the display to modify
  * @param orientation
@@ -126,13 +126,13 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setOrientation(JNIEnv *env, jo
 }
 
 /**
- * Reflows the multi-monitor arrangement against the snapshot from GetDisplay's captureDisplayArrangement, forwarding to
+ * Reflows the multi-display arrangement against the snapshot from GetDisplay's captureDisplayArrangement, forwarding to
  * ArrangeDisplay so every display keeps its relative position and alignment after a batch of display changes.
  *
  * @param env
  *            - The JNI environment pointer
  * @param obj
- *            - The Java SetDisplay instance
+ *            - The calling object instance
  * @param snapshot
  *            - The arrangement snapshot as "id|x|y|width|height" strings, one per display
  */

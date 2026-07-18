@@ -90,7 +90,7 @@ This application will be distributed as a portable package and as an installer. 
 	
 	* Select "Centered" to center the image in the middle of the panel without scaling.
 	
-**Note:** You may need to use GPU Scaling in your display driver settings to prevent the monitor from overriding the scaling mode.
+**Note:** You may need to use GPU Scaling in your display driver settings to prevent the display from overriding the scaling mode.
 
 3. Select a DPI scale percentage value in the "DPI Scale" drop-down box for the hot key slot.
 

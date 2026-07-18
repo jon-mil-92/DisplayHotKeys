@@ -27,7 +27,7 @@ using namespace std;
 
 /**
  * A display's stable ID paired with its captured desktop rectangle (source-mode position and size), used to preserve
- * the multi-monitor arrangement across a resolution or orientation change that resizes one display.
+ * the multi-display arrangement across a resolution or orientation change that resizes one display.
  */
 struct DisplayRect {
     /**
@@ -118,7 +118,7 @@ struct ReflowRect {
 };
 
 /**
- * Captures the current multi-monitor arrangement as an encoded String[] (one rectangle per active display) for the
+ * Captures the current multi-display arrangement as an encoded String[] (one rectangle per active display) for the
  * caller to hold and hand back to preserveDisplayArrangement after a batch of display changes. This is the read half of
  * arrangement preservation; GetDisplay's JNI simply forwards to it.
  *
@@ -130,7 +130,7 @@ struct ReflowRect {
 jobjectArray captureDisplayArrangement(JNIEnv *env);
 
 /**
- * Reflows the multi-monitor arrangement from the given snapshot so every display keeps its relative position and
+ * Reflows the multi-display arrangement from the given snapshot so every display keeps its relative position and
  * alignment after one or more displays were resized. This is the write half; SetDisplay's JNI simply forwards to it.
  *
  * @param env

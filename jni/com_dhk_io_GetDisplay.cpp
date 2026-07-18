@@ -44,7 +44,7 @@ static void addCustomResolutionRefreshRates(const string &displayId, vector<Mode
  * @param env
  *            - The JNI environment pointer
  * @param obj
- *            - The Java GetDisplay instance
+ *            - The calling object instance
  * @param displayId
  *            - The stable display ID to enumerate modes for
  *
@@ -147,9 +147,10 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
 
     /*
      * Expand GPU-scaled custom resolutions with the extra refresh rates the legacy mode table omits, reusing the
-     * active config and path index already resolved above so no second QueryDisplayConfig is issued
+     * active config and path index already resolved above so no second QueryDisplayConfig is issued. The paths and
+     * ccdModes arrays are unused after this, so they are moved in to avoid copying the full CCD arrays
      */
-    addCustomResolutionRefreshRates(stableDisplayId, modeList, paths, ccdModes, activePathIndex);
+    addCustomResolutionRefreshRates(stableDisplayId, modeList, std::move(paths), std::move(ccdModes), activePathIndex);
 
     // De-duplicate in first-seen order, since EnumDisplaySettingsExW repeats modes and the expansion may re-add a rate
     unordered_set<uint64_t> seenModes;
@@ -171,7 +172,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
 
     modeList = std::move(uniqueModes);
 
-    // Prepare Java DisplayMode class and constructor
+    // Prepare the DisplayMode class and constructor
     jclass displayModeClass = env->FindClass("java/awt/DisplayMode");
 
     if (displayModeClass == nullptr) {
@@ -185,7 +186,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
         return nullptr;
     }
 
-    // Create the Java array (may be empty if no modes found)
+    // Create the result array (may be empty if no modes found)
     jsize modeCount = static_cast<jsize>(modeList.size());
     jobjectArray displayModeArray = env->NewObjectArray(modeCount, displayModeClass, nullptr);
 
@@ -194,7 +195,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
         return nullptr;
     }
 
-    // Populate the Java array
+    // Populate the result array
     for (jsize i = 0; i < modeCount; ++i) {
         const ModeInfo &modeInfo = modeList[static_cast<size_t>(i)];
         jobject displayModeObj = env->NewObject(displayModeClass, displayModeCtor, modeInfo.width, modeInfo.height,
@@ -228,9 +229,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
  * @param env
  *            - The JNI environment pointer
  * @param obj
- *            - The Java GetDisplay instance
+ *            - The calling object instance
  *
- * @return A Java String[] of stable display IDs for visible displays
+ * @return A String[] of stable display IDs for visible displays
  */
 JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumVisibleDisplayIds(JNIEnv *env, jobject obj) {
     (void) obj;
@@ -255,7 +256,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumVisibleDisplayIds(
  * @param env
  *            - The JNI environment pointer
  * @param obj
- *            - The Java GetDisplay instance
+ *            - The calling object instance
  * @param width
  *            - The horizontal resolution to compute supported DPI scale percentages for
  * @param height
@@ -272,6 +273,7 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_getSupportedDpiScalePerce
     int32_t shortEdge = (width >= height) ? height : width;
 
     vector<int32_t> supported;
+    supported.reserve(NUM_OF_DPI_SCALE_PERCENTAGES);
 
     for (int32_t i = 0; i < NUM_OF_DPI_SCALE_PERCENTAGES; i++) {
         int32_t percentage = DPI_SCALE_PERCENTAGES.at(i);
@@ -305,7 +307,7 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_getSupportedDpiScalePerce
  * @param env
  *            - The JNI environment pointer
  * @param obj
- *            - The Java GetDisplay instance
+ *            - The calling object instance
  *
  * @return An int[] of orientation values (1 = Landscape, 2 = Portrait, etc.), in getVisibleDisplayIds order
  */
@@ -327,13 +329,67 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_queryVisibleDisplayOrient
 }
 
 /**
- * Captures the current multi-monitor arrangement, forwarding to ArrangeDisplay so the caller can hand it back to
+ * Gets the Windows Display Settings number of each given visible display, index-for-index with the provided IDs. Taking
+ * the IDs the caller already holds avoids re-querying them, and the numbers carry the gaps Windows leaves for
+ * disconnected displays.
+ *
+ * @param env
+ *            - The JNI environment pointer
+ * @param obj
+ *            - The calling object instance
+ * @param visibleIds
+ *            - The visible display IDs to number, typically from getVisibleDisplayIds
+ *
+ * @return An int[] of Windows display numbers, index-for-index with visibleIds
+ */
+JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_enumVisibleDisplayNumbers(JNIEnv *env, jobject obj,
+                                                                                 jobjectArray visibleIds) {
+    (void) obj;
+    vector<string> ids;
+    jsize idCount = visibleIds != nullptr ? env->GetArrayLength(visibleIds) : 0;
+    ids.reserve((size_t) idCount);
+
+    for (jsize i = 0; i < idCount; i++) {
+        jstring element = (jstring) env->GetObjectArrayElement(visibleIds, i);
+
+        if (element == nullptr) {
+            ids.push_back("");
+            continue;
+        }
+
+        const char *chars = env->GetStringUTFChars(element, nullptr);
+        ids.push_back(chars != nullptr ? chars : "");
+
+        if (chars != nullptr) {
+            env->ReleaseStringUTFChars(element, chars);
+        }
+
+        env->DeleteLocalRef(element);
+    }
+
+    vector<int> displayNumbers = getVisibleDisplayNumbers(ids);
+    jsize count = (jsize) displayNumbers.size();
+    jintArray numbers = env->NewIntArray(count);
+
+    if (numbers == nullptr) {
+        return nullptr;
+    }
+
+    if (count > 0) {
+        env->SetIntArrayRegion(numbers, 0, count, reinterpret_cast<const jint *>(displayNumbers.data()));
+    }
+
+    return numbers;
+}
+
+/**
+ * Captures the current multi-display arrangement, forwarding to ArrangeDisplay so the caller can hand it back to
  * SetDisplay's preserveDisplayArrangement after a batch of display changes.
  *
  * @param env
  *            - The JNI environment pointer
  * @param obj
- *            - The Java GetDisplay instance
+ *            - The calling object instance
  *
  * @return A String[] with one encoded rectangle per active display
  */

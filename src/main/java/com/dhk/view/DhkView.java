@@ -577,15 +577,20 @@ public class DhkView implements IView {
     }
 
     /**
-     * Generates the array of connected display IDs.
+     * Generates the combo box labels for the connected displays, using each display's Windows Display Settings number
+     * so the labels match Windows, including the gaps Windows leaves for disconnected displays.
      *
-     * @return The array of display IDs for all actively connected displays
+     * @return The Windows display number of each connected display, in connected-display order
      */
     private Integer[] generateDisplayIds() {
+        int[] displayNumbers = model.getDisplayNumbers();
         Integer[] displayIds = new Integer[model.getNumOfConnectedDisplays()];
 
-        for (int displayId = 1; displayId <= model.getNumOfConnectedDisplays(); displayId++) {
-            displayIds[displayId - 1] = displayId;
+        for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
+            // Fall back to a sequential label when the numbers are missing or shorter than the connected count
+            displayIds[displayIndex] = (displayNumbers != null && displayIndex < displayNumbers.length)
+                    ? displayNumbers[displayIndex]
+                    : displayIndex + 1;
         }
 
         return displayIds;

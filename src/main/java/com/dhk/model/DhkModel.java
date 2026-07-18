@@ -35,6 +35,7 @@ public class DhkModel {
 
     private DisplayConfig displayConfig;
     private String[] displayIds;
+    private int[] displayNumbers;
     private List<Display> displays;
     private int numOfConnectedDisplays;
     private int maxNumOfSlots;
@@ -61,6 +62,7 @@ public class DhkModel {
         displayConfig = settingsMgr.getDisplayConfig();
         maxNumOfSlots = settingsMgr.getMaxNumOfSlots();
         displayIds = settingsMgr.getDisplayIds();
+        displayNumbers = settingsMgr.getDisplayNumbers();
         displays = new ArrayList<Display>(maxNumOfSlots);
         numOfConnectedDisplays = displayIds.length;
 
@@ -100,6 +102,16 @@ public class DhkModel {
      */
     public String[] getDisplayIds() {
         return displayIds;
+    }
+
+    /**
+     * Gets the Windows Display Settings number of each connected display, aligned index-for-index with getDisplayIds.
+     * The numbers can skip values, matching the gaps Windows leaves for disconnected displays.
+     *
+     * @return The Windows display number of each connected display, in getDisplayIds order
+     */
+    public int[] getDisplayNumbers() {
+        return displayNumbers;
     }
 
     /**

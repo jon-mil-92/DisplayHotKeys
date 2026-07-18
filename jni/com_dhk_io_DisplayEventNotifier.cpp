@@ -40,22 +40,22 @@ static vector<string> normalizeSignatures(const vector<string> &rawSignatures);
 static void invokeJavaCallback(jmethodID methodId);
 
 /**
- * Global Java VM pointer used to attach native threads when invoking Java callbacks.
+ * Global JavaVM pointer used to attach native threads when invoking callbacks.
  */
 static JavaVM *jvm = nullptr;
 
 /**
- * Global reference to the Java DisplayEventNotifier instance used for callbacks from native code.
+ * Global reference to the registered notifier instance used for callbacks from native code.
  */
 static jobject displayEventNotifierGlobalRef = nullptr;
 
 /**
- * Cached method ID for the Java callback DisplayEventNotifier.onNativeNotify().
+ * Cached method ID for the onNativeNotify() callback.
  */
 static jmethodID onNativeNotifyMethodId = nullptr;
 
 /**
- * Cached method ID for the Java callback DisplayEventNotifier.onShellRestart(); null when the method is unavailable.
+ * Cached method ID for the onShellRestart() callback; null when the method is unavailable.
  */
 static jmethodID onShellRestartMethodId = nullptr;
 
@@ -95,12 +95,12 @@ static atomic_bool classRegistered(false);
 static UINT taskbarCreatedMessage = 0;
 
 /**
- * Debounce interval (ms) limiting how often Java can be notified, even after stabilization.
+ * Debounce interval (ms) limiting how often the callback fires, even after stabilization.
  */
 static constexpr long DEBOUNCE_MS = 200;
 
 /**
- * Stabilization interval (ms) the display configuration must stay unchanged before notifying Java.
+ * Stabilization interval (ms) the display configuration must stay unchanged before firing the callback.
  */
 static constexpr long STABILIZATION_MS = 600;
 
@@ -110,7 +110,7 @@ static constexpr long STABILIZATION_MS = 600;
 static constexpr long POLL_INTERVAL_MS = 400;
 
 /**
- * Timestamp of the last notification forwarded to Java, used for debounce logic.
+ * Timestamp of the last notification, used for debounce logic.
  */
 static chrono::steady_clock::time_point lastNotifyTime;
 
@@ -136,7 +136,7 @@ static vector<string> lastVisibleSignatures;
 static vector<string> lastNormalizedSignatures;
 
 /**
- * Last normalized set actually notified to Java, preventing repeated notifications for the same stable config.
+ * Last normalized set actually notified, preventing repeated notifications for the same stable config.
  */
 static vector<string> lastNotifiedNormalizedSignatures;
 
@@ -166,14 +166,14 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 }
 
 /**
- * Starts native display event notifications. Stores a global reference to the Java DisplayEventNotifier instance,
+ * Starts native display event notifications. Stores a global reference to the registered notifier instance,
  * resolves the onNativeNotify callback and the optional onShellRestart callback, and launches the message loop thread.
  * Performs basic JNI error checks and does not start the thread if setup fails.
  *
  * @param env
  *            - The JNI environment pointer
  * @param obj
- *            - The Java DisplayEventNotifier instance
+ *            - The calling object instance
  */
 extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeStart(JNIEnv *env, jobject obj) {
     if (isRunning.load()) {
@@ -218,12 +218,12 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeSta
 }
 
 /**
- * Stops native display event notifications, shuts down the message loop thread, and releases the global Java reference.
+ * Stops native display event notifications, shuts down the message loop thread, and releases the global reference.
  *
  * @param env
  *            - The JNI environment pointer
  * @param obj
- *            - The Java DisplayEventNotifier instance
+ *            - The calling object instance
  */
 extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeStop(JNIEnv *env, jobject obj) {
     (void) obj;
@@ -393,8 +393,8 @@ static void runMessageLoopThread() {
 }
 
 /**
- * Window procedure for the hidden message window. Handles monitor arrival/removal and display change broadcasts,
- * forwarding meaningful changes to Java via the common display-change processing logic, and forwards the shell's
+ * Window procedure for the hidden message window. Handles display arrival/removal and display change broadcasts,
+ * forwarding meaningful changes through the common display-change processing logic, and forwards the shell's
  * TaskbarCreated broadcast as a separate shell-restart callback.
  *
  * @param windowHandle
@@ -446,9 +446,10 @@ LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType,
  * Runs the common stabilization, debounce, query, and compare logic shared by event-driven notifications
  * (WM_DEVICECHANGE, WM_DISPLAYCHANGE) and periodic polling. It compares the current visible display signatures to the
  * last-known set, records the new state and timestamp without notifying when they differ, checks that an unchanged set
- * has stayed stable for STABILIZATION_MS, and notifies Java exactly once per real change when stable and debounced.
+ * has stayed stable for STABILIZATION_MS, and fires the callback exactly once per real change when stable and
+ * debounced.
  *
- * @return Whether a real display configuration change was detected and Java was notified
+ * @return Whether a real display configuration change was detected and the callback was fired
  */
 static bool processPotentialDisplayChange() {
     auto now = chrono::steady_clock::now();
@@ -465,8 +466,9 @@ static bool processPotentialDisplayChange() {
 
     // If normalized differs from lastNormalizedSignatures, update state and reset stabilization timer
     if (normalizedCurrent != lastNormalizedSignatures) {
-        lastVisibleSignatures = currentVisibleSignatures;
-        lastNormalizedSignatures = normalizedCurrent;
+        // Neither local is read after this branch returns, so move instead of copying into the cache fields
+        lastVisibleSignatures = std::move(currentVisibleSignatures);
+        lastNormalizedSignatures = std::move(normalizedCurrent);
         lastStateChangeTime = now;
 
         return false;
@@ -501,8 +503,8 @@ static bool processPotentialDisplayChange() {
     lastNotifyTime = now;
     invokeJavaCallback(onNativeNotifyMethodId);
 
-    // Record what we notified
-    lastNotifiedNormalizedSignatures = normalizedCurrent;
+    // Record what we notified; normalizedCurrent is not read again, so move it
+    lastNotifiedNormalizedSignatures = std::move(normalizedCurrent);
 
     return true;
 }
@@ -521,17 +523,19 @@ static vector<string> normalizeSignatures(const vector<string> &rawSignatures) {
     normalizedIds.reserve(rawSignatures.size());
 
     for (const auto &id : rawSignatures) {
-        string trimmedId = id;
+        // Compute the trim bounds and build each result once, avoiding a full copy plus front-erase shifting
+        size_t begin = 0;
+        size_t end = id.size();
 
-        while (!trimmedId.empty() && isspace((unsigned char) trimmedId.front())) {
-            trimmedId.erase(trimmedId.begin());
+        while (begin < end && isspace((unsigned char) id[begin])) {
+            begin++;
         }
 
-        while (!trimmedId.empty() && isspace((unsigned char) trimmedId.back())) {
-            trimmedId.pop_back();
+        while (end > begin && isspace((unsigned char) id[end - 1])) {
+            end--;
         }
 
-        normalizedIds.push_back(std::move(trimmedId));
+        normalizedIds.emplace_back(id, begin, end - begin);
     }
 
     sort(normalizedIds.begin(), normalizedIds.end());
@@ -540,8 +544,8 @@ static vector<string> normalizeSignatures(const vector<string> &rawSignatures) {
 }
 
 /**
- * Invokes a cached no-argument Java callback on the stored DisplayEventNotifier instance, attaching the current thread
- * to the JVM if necessary and detaching it when done. A null method id is ignored so an unavailable callback is safe.
+ * Invokes a cached no-argument callback on the registered notifier instance, attaching the current thread to the JVM
+ * if necessary and detaching it when done. A null method id is ignored so an unavailable callback is safe.
  *
  * @param methodId
  *            - The cached method id to invoke, or null to do nothing

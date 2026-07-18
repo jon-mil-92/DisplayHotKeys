@@ -47,6 +47,7 @@ public class SettingsManager {
     private DisplayConfig displayConfig;
     private int numOfConnectedDisplays;
     private String[] displayIds;
+    private int[] displayNumbers;
     private Map<String, DisplayMode[]> landscapeDisplayModesMap;
     private Map<String, DisplayMode[]> portraitDisplayModesMap;
     private File settingsFile;
@@ -394,6 +395,15 @@ public class SettingsManager {
     }
 
     /**
+     * Gets the Windows Display Settings number of each connected display, aligned index-for-index with getDisplayIds.
+     *
+     * @return The Windows display number of each connected display, in getDisplayIds order
+     */
+    public int[] getDisplayNumbers() {
+        return displayNumbers;
+    }
+
+    /**
      * Gets the map of display IDs to supported landscape display modes array.
      *
      * @return The map of display IDs to supported landscape display modes array
@@ -428,6 +438,7 @@ public class SettingsManager {
         displayConfig.updateDisplayConfig();
         numOfConnectedDisplays = displayConfig.getNumOfConnectedDisplays();
         displayIds = displayConfig.getDisplayIds();
+        displayNumbers = displayConfig.getDisplayNumbers();
         landscapeDisplayModesMap = new HashMap<String, DisplayMode[]>();
         portraitDisplayModesMap = new HashMap<String, DisplayMode[]>();
 

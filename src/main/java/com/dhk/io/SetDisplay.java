@@ -74,7 +74,7 @@ public class SetDisplay {
     private native void setOrientation(String displayId, int orientationMode);
 
     /**
-     * Defines a JNI function to reflow the multi-monitor arrangement after a batch of display changes.
+     * Defines a JNI function to reflow the multi-display arrangement after a batch of display changes.
      *
      * @param arrangementSnapshot
      *            - The arrangement captured before the batch, one encoded rectangle per display
@@ -118,7 +118,7 @@ public class SetDisplay {
     }
 
     /**
-     * Reflows the multi-monitor arrangement against the given snapshot (from GetDisplay's captureArrangement), so every
+     * Reflows the multi-display arrangement against the given snapshot (from GetDisplay's captureArrangement), so every
      * display keeps its relative position and alignment after one or more displays were resized.
      *
      * @param arrangementSnapshot

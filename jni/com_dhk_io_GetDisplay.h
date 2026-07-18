@@ -33,6 +33,14 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumVisibleDisplayIds
 
 /*
  * Class:     com_dhk_io_GetDisplay
+ * Method:    enumVisibleDisplayNumbers
+ * Signature: ([Ljava/lang/String;)[I
+ */
+JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_enumVisibleDisplayNumbers
+  (JNIEnv *, jobject, jobjectArray);
+
+/*
+ * Class:     com_dhk_io_GetDisplay
  * Method:    getSupportedDpiScalePercentages
  * Signature: (II)[I
  */

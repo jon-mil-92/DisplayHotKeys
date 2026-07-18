@@ -154,7 +154,7 @@ public class FrameUtil {
 
     /**
      * Schedules a background collection after an in-place refresh to reclaim the native back-buffer surfaces AWT
-     * orphans while re-rendering across per-monitor-DPI displays.
+     * orphans while re-rendering across displays.
      */
     private static void scheduleNativeSurfaceReclaim() {
         if (nativeReclaimInProgress) {

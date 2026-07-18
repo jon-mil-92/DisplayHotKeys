@@ -57,7 +57,7 @@ static const LONG ALIGNMENT_TOLERANCE_PX = 80;
 static const LONG GAP_TOLERANCE_PX = 20;
 
 /**
- * Captures the current multi-monitor arrangement as an encoded String[] (one rectangle per active display) for the
+ * Captures the current multi-display arrangement as an encoded String[] (one rectangle per active display) for the
  * caller to hold and hand back to preserveDisplayArrangement after a batch of display changes. This is the read half of
  * arrangement preservation; GetDisplay's JNI simply forwards to it.
  *
@@ -96,7 +96,7 @@ jobjectArray captureDisplayArrangement(JNIEnv *env) {
 }
 
 /**
- * Reflows the multi-monitor arrangement from the given snapshot so every display keeps its relative position and
+ * Reflows the multi-display arrangement from the given snapshot so every display keeps its relative position and
  * alignment after one or more displays were resized. This is the write half; SetDisplay's JNI simply forwards to it.
  *
  * @param env
@@ -111,6 +111,7 @@ void preserveDisplayArrangement(JNIEnv *env, jobjectArray snapshot) {
 
     jsize count = env->GetArrayLength(snapshot);
     vector<DisplayRect> savedRects;
+    savedRects.reserve(count);
 
     for (jsize i = 0; i < count; i++) {
         jstring entry = (jstring) env->GetObjectArrayElement(snapshot, i);
@@ -163,6 +164,8 @@ static vector<DisplayRect> captureDisplayRects() {
         return rects;
     }
 
+    rects.reserve(paths.size());
+
     for (const DISPLAYCONFIG_PATH_INFO &path : paths) {
         if ((path.flags & DISPLAYCONFIG_PATH_ACTIVE) == 0) {
             continue;
@@ -195,7 +198,7 @@ static vector<DisplayRect> captureDisplayRects() {
 }
 
 /**
- * Preserves the multi-monitor arrangement after a resolution or orientation change resized one or more displays. It
+ * Preserves the multi-display arrangement after a resolution or orientation change resized one or more displays. It
  * anchors the primary at the desktop origin and rebuilds the rest so every display keeps its relative position and
  * alignment.
  *

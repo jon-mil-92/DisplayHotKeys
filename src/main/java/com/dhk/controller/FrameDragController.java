@@ -39,7 +39,7 @@ import lc.kra.system.mouse.event.GlobalMouseEvent;
 
 /**
  * Controls frame drag synchronization so a cross-display drag refreshes and re-fits the frame only after the drag has
- * settled on the destination monitor.
+ * settled on the destination display.
  *
  * @author Jonathan R. Miller
  */
@@ -170,7 +170,7 @@ public class FrameDragController implements IController {
 
     /**
      * Marks that a cross-display move is underway. The refresh waits for the real left-button release, then runs once
-     * the destination monitor has settled.
+     * the destination display has settled.
      */
     private void beginDisplayTransition() {
         displayTransitionPending = true;

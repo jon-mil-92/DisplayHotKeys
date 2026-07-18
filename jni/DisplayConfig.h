@@ -131,30 +131,14 @@ struct DisplayConfig {
 };
 
 /**
- * A single visible display collected during enumeration, carrying the source adapter LUID and the target id so the
- * list can be ordered to match how Windows Display Settings numbers displays before the descriptor is emitted.
+ * A single visible display collected during enumeration, carrying its CCD target id so the list can be ordered to match
+ * how Windows Display Settings numbers displays before the descriptor is emitted.
  */
 struct VisibleDisplay {
     /**
-     * High part of the display's adapter LUID, paired with the low part to identify (and group by) the adapter.
-     */
-    LONG adapterHigh;
-
-    /**
-     * Low part of the display's adapter LUID, paired with the high part to identify (and group by) the adapter.
-     */
-    ULONG adapterLow;
-
-    /**
-     * The CCD target id. Within an adapter, Windows Display Settings numbers monitors by target id, and it tracks the
-     * target id across reconnects (a reconnect reassigns target ids and Settings renumbers to follow them).
+     * The CCD target id. Windows Display Settings orders displays by ascending target id across all adapters.
      */
     UINT32 targetId;
-
-    /**
-     * Rank of this display's adapter in first-seen order, so adapters group the way Windows lists them.
-     */
-    int adapterRank;
 
     /**
      * The stable display ID, or the geometry signature when geometry is included.
@@ -215,7 +199,7 @@ vector<string> getQueryDisplayConfigDisplayIds();
 
 /**
  * Gets stable IDs for currently visible displays (active path, non-zero source resolution, on-screen position),
- * ordered by adapter then target id, matching the order Windows Display Settings numbers displays in.
+ * ordered by ascending GDI device number, matching the order Windows Display Settings numbers displays in.
  *
  * @return Stable display IDs for the currently visible displays
  */
@@ -230,8 +214,21 @@ vector<string> getVisibleDisplayIds();
 vector<int> getVisibleDisplayOrientations();
 
 /**
- * Gets a per-display signature (stable ID plus source resolution, position, rotation, and DPI scale index) for each
- * visible display, so resolution/DPI/orientation changes are detectable even when the visible set is unchanged.
+ * Gets the Windows Display Settings number of each given visible display. The number is the display's rank by ascending
+ * target id among the displays Windows still knows (active or retained after a disconnect). Taking the visible IDs as
+ * input avoids re-querying them and keeps the result aligned with the caller's list.
+ *
+ * @param visibleIds
+ *            - The visible display IDs to number, typically from getVisibleDisplayIds
+ *
+ * @return The Windows display number of each given visible display, index-for-index with visibleIds
+ */
+vector<int> getVisibleDisplayNumbers(const vector<string> &visibleIds);
+
+/**
+ * Gets a per-display signature (stable ID plus source resolution, position, rotation, DPI scale index, and Windows
+ * display number) for each visible display, so resolution/DPI/orientation/identifier changes are detectable even when
+ * the visible set is unchanged.
  *
  * @return Signatures for the currently visible displays
  */
@@ -245,7 +242,7 @@ vector<string> getVisibleDisplaySignatures();
  *
  * @return The index, or 0 if not found
  */
-int getEnumDisplayDevicesDisplayIdIndex(string displayId);
+int getEnumDisplayDevicesDisplayIdIndex(const string &displayId);
 
 /**
  * Gets the index of the given stable ID in the QueryDisplayConfig ID list.
@@ -255,17 +252,17 @@ int getEnumDisplayDevicesDisplayIdIndex(string displayId);
  *
  * @return The index, or 0 if not found
  */
-int getQueryDisplayConfigDisplayIdIndex(string displayId);
+int getQueryDisplayConfigDisplayIdIndex(const string &displayId);
 
 /**
- * Builds a compact, stable display ID from a monitor device path and its friendly name. Strips the constant
+ * Builds a compact, stable display ID from a display's device path and its friendly name. Strips the constant
  * device-interface boilerplate, the volatile connection UID, and the trailing GUID so the ID survives instance
  * changes, then appends the sanitized friendly name so displays sharing a device-path prefix stay distinct.
  *
  * @param monitorDevicePath
- *            - The raw monitor device path from DisplayConfigGetDeviceInfo
+ *            - The raw device path from DisplayConfigGetDeviceInfo
  * @param friendlyName
- *            - The monitor/client name from DISPLAYCONFIG_TARGET_DEVICE_NAME, or empty when unavailable
+ *            - The display/client name from DISPLAYCONFIG_TARGET_DEVICE_NAME, or empty when unavailable
  *
  * @return A normalized, stable display ID
  */
@@ -282,7 +279,7 @@ string buildStableDisplayId(const wstring &monitorDevicePath, const wstring &fri
 string wStrToStr(const wstring &wideString);
 
 /**
- * Resolves a path target's monitor device path to a stable display ID, centralizing the
+ * Resolves a path target's device path to a stable display ID, centralizing the
  * DisplayConfigGetDeviceInfo(GET_TARGET_NAME) then buildStableDisplayId sequence.
  *
  * @param targetInfo
