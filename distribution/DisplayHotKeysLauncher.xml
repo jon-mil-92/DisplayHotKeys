@@ -2,7 +2,7 @@
 <launch4jConfig>
   <dontWrapJar>false</dontWrapJar>
   <headerType>gui</headerType>
-  <jar>C:\Users\jonRock\git\DisplayHotKeys\target\DisplayHotKeys-3.0.1.jar</jar>
+  <jar>C:\Users\jonRock\git\DisplayHotKeys\target\DisplayHotKeys-3.1.0.jar</jar>
   <outfile>C:\Users\jonRock\git\DisplayHotKeys\distribution\DisplayHotKeys.exe</outfile>
   <errTitle></errTitle>
   <cmdLine></cmdLine>
@@ -20,7 +20,7 @@
   </singleInstance>
   <classPath>
     <mainClass>com.dhk.main.DhkDriver</mainClass>
-    <cp>DisplayHotKeys-3.0.1.jar</cp>
+    <cp>DisplayHotKeys-3.1.0.jar</cp>
   </classPath>
   <jre>
     <path>JDK</path>
@@ -49,8 +49,8 @@
     <txtFileVersion>1.0.0.0</txtFileVersion>
     <fileDescription>Apply display settings with hot keys.</fileDescription>
     <copyright>Copyright © 2026 Jonathan R. Miller</copyright>
-    <productVersion>3.0.1.0</productVersion>
-    <txtProductVersion>3.0.1</txtProductVersion>
+    <productVersion>3.1.0.0</productVersion>
+    <txtProductVersion>3.1.0</txtProductVersion>
     <productName>Display Hot Keys</productName>
     <companyName>Jonathan R. Miller</companyName>
     <internalName>DisplayHotKeys</internalName>

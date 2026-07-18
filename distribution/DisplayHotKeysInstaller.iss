@@ -1,6 +1,6 @@
 #define MyAppName "Display Hot Keys"
 #define MyVersionInfoVersion "1.0.0.0"
-#define MyAppVersion "3.0.1"
+#define MyAppVersion "3.1.0"
 #define MyAppCopyright "Copyright © 2026 Jonathan R. Miller"
 #define MyAppPublisher "Jonathan R. Miller"
 #define MyAppURL "https://github.com/jon-mil-92/DisplayHotKeys"
