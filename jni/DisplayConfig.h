@@ -131,14 +131,16 @@ struct DisplayConfig {
 };
 
 /**
- * A single visible display collected during enumeration, carrying its CCD target id so the list can be ordered to match
- * how Windows Display Settings numbers displays before the descriptor is emitted.
+ * A single visible display collected during enumeration, carrying its GDI device number so the list can be ordered to
+ * match how Windows Display Settings numbers displays before the descriptor is emitted.
  */
 struct VisibleDisplay {
     /**
-     * The CCD target id. Windows Display Settings orders displays by ascending target id across all adapters.
+     * The GDI device number (the trailing integer of \\.\DISPLAYn). Windows Display Settings orders and numbers
+     * displays by this value across all adapters, so it is the correct ordering key even when a virtual-display
+     * adapter hands out target ids that do not follow the on-screen order.
      */
-    UINT32 targetId;
+    UINT32 gdiNumber;
 
     /**
      * The stable display ID, or the geometry signature when geometry is included.

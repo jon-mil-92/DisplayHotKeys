@@ -125,8 +125,62 @@ vector<string> getQueryDisplayConfigDisplayIds() {
 }
 
 /**
- * Queries paths with the given flags and returns the stable ID of each visible display, ordered by ascending CCD target
- * id, which is how Windows Display Settings orders displays.
+ * Sentinel returned when a source's GDI device number cannot be resolved, so such displays sort after every
+ * resolvable one and numbering never regresses.
+ */
+static constexpr UINT32 GDI_NUMBER_UNRESOLVED = 0xFFFFFFFFu;
+
+/**
+ * Reads the GDI device number of a path's source: the trailing integer of its \\.\DISPLAYn name. Windows Display
+ * Settings orders and numbers displays by this value, and it resolves even for inactive retained displays, making it
+ * the correct ordering key where target ids do not follow the on-screen order (for example a virtual-display adapter).
+ *
+ * @param sourceInfo
+ *            - The path source to resolve
+ *
+ * @return The GDI device number, or GDI_NUMBER_UNRESOLVED if the name is unavailable
+ */
+static UINT32 gdiNumberForSource(const DISPLAYCONFIG_PATH_SOURCE_INFO &sourceInfo) {
+    DISPLAYCONFIG_SOURCE_DEVICE_NAME sourceName = {};
+    sourceName.header.adapterId = sourceInfo.adapterId;
+    sourceName.header.id = sourceInfo.id;
+    sourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+    sourceName.header.size = sizeof(sourceName);
+
+    if (DisplayConfigGetDeviceInfo(&sourceName.header) != ERROR_SUCCESS) {
+        return GDI_NUMBER_UNRESOLVED;
+    }
+
+    // Walk to the end of the name, then back over its trailing digits to isolate the \\.\DISPLAYn index
+    const wchar_t *name = sourceName.viewGdiDeviceName;
+    size_t end = 0;
+
+    while (name[end] != L'\0') {
+        end++;
+    }
+
+    size_t start = end;
+
+    while (start > 0 && name[start - 1] >= L'0' && name[start - 1] <= L'9') {
+        start--;
+    }
+
+    if (start == end) {
+        return GDI_NUMBER_UNRESOLVED;
+    }
+
+    UINT32 number = 0;
+
+    for (size_t i = start; i < end; i++) {
+        number = number * 10 + (UINT32) (name[i] - L'0');
+    }
+
+    return number;
+}
+
+/**
+ * Queries paths with the given flags and returns the stable ID of each visible display, ordered by ascending GDI
+ * device number, which is how Windows Display Settings orders displays.
  *
  * @param flags
  *            - The QueryDisplayConfig flags selecting which paths to enumerate
@@ -231,15 +285,15 @@ static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGe
             }
         }
 
-        entries.push_back({path.targetInfo.id, entry, (int) path.targetInfo.rotation});
+        entries.push_back({gdiNumberForSource(path.sourceInfo), entry, (int) path.targetInfo.rotation});
     }
 
     delete[] pathArray;
     delete[] modeArray;
 
-    // Order by ascending target id to match how Windows Display Settings orders displays across all adapters
+    // Order by ascending GDI device number to match how Windows Display Settings orders displays across all adapters
     stable_sort(entries.begin(), entries.end(),
-                [](const VisibleDisplay &a, const VisibleDisplay &b) { return a.targetId < b.targetId; });
+                [](const VisibleDisplay &a, const VisibleDisplay &b) { return a.gdiNumber < b.gdiNumber; });
 
     visible.reserve(entries.size());
 
@@ -296,16 +350,15 @@ vector<int> getVisibleDisplayOrientations() {
 }
 
 /**
- * Ranks the displays Windows still knows by ascending target id, returning their stable IDs in that order. The set is
- * the distinct resolvable targets in QDC_ALL_PATHS, which retains a display after a disconnect (that is why Windows
- * leaves a gap in its numbering); a display's 1-based position here is the number Windows Display Settings shows for
- * it.
+ * Ranks the displays Windows still knows by ascending GDI device number, returning their stable IDs in that order. A
+ * display's 1-based position here is the number Windows Display Settings shows for it.
  *
- * @return The stable IDs of the known displays, ordered by ascending target id
+ * @return The stable IDs of the known displays, ordered by ascending GDI device number
  */
 static vector<string> knownDisplaysByNumber() {
     vector<string> ordered;
 
+    // QDC_ALL_PATHS keeps a disconnected display as an inactive path, so its retained slot preserves Windows' gaps
     UINT32 numPath = 0;
     UINT32 numMode = 0;
 
@@ -332,7 +385,7 @@ static vector<string> knownDisplaysByNumber() {
         return ordered;
     }
 
-    // Each known display's stable ID paired with the target id that ranks it
+    // Each known display's stable ID paired with the GDI device number that ranks it
     vector<pair<string, UINT32>> known;
 
     // Adapter+target keys already resolved, so the repeated QDC_ALL_PATHS paths for one target hit only one name lookup
@@ -361,6 +414,8 @@ static vector<string> knownDisplaysByNumber() {
         // A target Windows no longer keeps a name for is a stale spare slot, not a known display, so skip it
         string displayId = stableIdForTarget(target);
 
+        UINT32 gdiNumber = gdiNumberForSource(pathArray[i].sourceInfo);
+
         if (displayId.empty()) {
             continue;
         }
@@ -369,9 +424,9 @@ static vector<string> knownDisplaysByNumber() {
 
         for (pair<string, UINT32> &display : known) {
             if (display.first == displayId) {
-                // The same display can appear under a stale and a current target, so rank it by its smallest target id
-                if (target.id < display.second) {
-                    display.second = target.id;
+                // The same display can appear under several targets, so rank it by its smallest GDI device number
+                if (gdiNumber < display.second) {
+                    display.second = gdiNumber;
                 }
 
                 merged = true;
@@ -380,7 +435,7 @@ static vector<string> knownDisplaysByNumber() {
         }
 
         if (!merged) {
-            known.push_back({displayId, target.id});
+            known.push_back({displayId, gdiNumber});
         }
     }
 
