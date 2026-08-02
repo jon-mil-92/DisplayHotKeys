@@ -19,10 +19,9 @@
  */
 package com.dhk.controller;
 
-import java.awt.DisplayMode;
-
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
+import com.dhk.model.DisplayMode;
 import com.dhk.view.DhkView;
 
 /**
@@ -91,9 +90,7 @@ public class DisplayModeController implements IController {
                 .getSelectedItem();
 
         model.getSlot(displayIndex, slotIndex).setDisplayMode(selectedDisplayMode);
-        settingsMgr.saveIniSlotDisplayMode(displayId, slotId, selectedDisplayMode.getWidth(),
-                selectedDisplayMode.getHeight(), selectedDisplayMode.getBitDepth(),
-                selectedDisplayMode.getRefreshRate());
+        settingsMgr.saveIniSlotDisplayMode(displayId, slotId, selectedDisplayMode);
 
         // Refresh the DPI Scale combo box for the new resolution, falling back to a supported percentage if needed
         view.updateSlotDpiScalePercentages(displayIndex, slotIndex);

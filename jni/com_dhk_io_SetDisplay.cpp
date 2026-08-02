@@ -25,13 +25,11 @@
 using namespace std;
 
 static int resolveDisplayIndex(const string &stableId);
-bool setDisplayMode(const string &stableId, UINT32 displayIndex, UINT32 width, UINT32 height, UINT32 bitDepth,
-                    UINT32 refreshRate);
-static bool tryApplyModeExact(const WCHAR *gdiDeviceName, UINT32 width, UINT32 height, UINT32 bitDepth,
-                              UINT32 refreshRate);
-static bool tryApplyMode(const WCHAR *gdiDeviceName, UINT32 width, UINT32 height, UINT32 bitDepth, UINT32 refreshRate);
+bool setDisplayMode(const string &stableId, UINT32 displayIndex, UINT32 width, UINT32 height, UINT32 refreshNumerator,
+                    UINT32 refreshDenominator);
 static bool applyLargestSelectableMode(const WCHAR *gdiDeviceName, UINT32 excludeWidth, UINT32 excludeHeight);
-static bool ccdApplySourceMode(const string &stableId, UINT32 width, UINT32 height, UINT32 refreshRate);
+static bool ccdApplySourceMode(const string &stableId, UINT32 width, UINT32 height, UINT32 refreshNumerator,
+                               UINT32 refreshDenominator);
 static void waitForCcdSourceModeResolution(UINT32 displayIndex, UINT32 width, UINT32 height);
 void setDisplayScalingMode(UINT32 displayIndex, UINT32 scalingMode);
 static DISPLAYCONFIG_SCALING toScalingValue(UINT32 scalingMode);
@@ -45,7 +43,7 @@ void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation);
 static const UINT32 SDC_SUPPLIED_APPLY_FLAGS = SDC_APPLY | SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE;
 
 /**
- * Applies display settings (resolution, bit depth, refresh rate, scaling mode, and DPI scale percentage) to a display.
+ * Applies display settings (resolution, refresh rate, scaling mode, and DPI scale percentage) to a display.
  *
  * @param env
  *            - The JNI environment pointer
@@ -57,18 +55,19 @@ static const UINT32 SDC_SUPPLIED_APPLY_FLAGS = SDC_APPLY | SDC_USE_SUPPLIED_DISP
  *            - The horizontal resolution to apply
  * @param resHeight
  *            - The vertical resolution to apply
- * @param bitDepth
- *            - The bit depth to apply
- * @param refreshRate
- *            - The refresh rate to apply
+ * @param refreshNumerator
+ *            - The numerator of the exact refresh rate to apply (Hz = numerator / denominator)
+ * @param refreshDenominator
+ *            - The denominator of the exact refresh rate to apply (Hz = numerator / denominator)
  * @param scalingMode
  *            - The scaling mode to apply (0 = aspect ratio, 1 = stretched, 2 = centered)
  * @param dpiScalePercentage
  *            - The DPI scale percentage to apply (e.g. 100, 125, 150)
  */
 JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv *env, jobject obj, jstring displayId, jint resWidth,
-                                                             jint resHeight, jint bitDepth, jint refreshRate,
-                                                             jint scalingMode, jint dpiScalePercentage) {
+                                                             jint resHeight, jint refreshNumerator,
+                                                             jint refreshDenominator, jint scalingMode,
+                                                             jint dpiScalePercentage) {
     jboolean isCopy;
     const char *displayIdChars = env->GetStringUTFChars(displayId, &isCopy);
     string stableId = displayIdChars;
@@ -83,7 +82,7 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv *env, jobjec
     }
 
     // Apply the resolution, then settle so the scaling re-apply does not revert it with a stale source mode
-    if (setDisplayMode(stableId, displayIndex, resWidth, resHeight, bitDepth, refreshRate)) {
+    if (setDisplayMode(stableId, displayIndex, resWidth, resHeight, refreshNumerator, refreshDenominator)) {
         waitForCcdSourceModeResolution(displayIndex, resWidth, resHeight);
     }
 
@@ -167,30 +166,37 @@ static int resolveDisplayIndex(const string &stableId) {
 }
 
 /**
- * Sets the display mode (resolution, bit depth, refresh rate) for the given display. An exact ChangeDisplaySettingsExW
- * attempt is tried first so the refresh rate is never silently dropped. If it fails (e.g. a GPU-scaled custom
- * resolution at a rate the legacy API rejects with DISP_CHANGE_BADMODE), the CCD API applies it the way Advanced
- * Display Settings does. Otherwise it steps through the largest selectable mode (letting driver-virtualized DSR/VSR
- * resolutions be selected from a small current mode, e.g. 5760x3240 from 800x600) then retries both paths. A lenient
- * ChangeDisplaySettingsExW fallback (dropping the refresh rate, then the bit depth) is the last resort.
+ * Sets the display mode (resolution and exact refresh rate) for the given display through the CCD API the way Advanced
+ * Display Settings does, so an existing mode is selected and Windows never creates a new one. If the first apply fails,
+ * it steps through the largest selectable mode (letting driver-virtualized DSR/VSR resolutions be selected from a small
+ * current mode, e.g. 5760x3240 from 800x600) then retries, restoring the original mode if that retry also fails.
  *
  * @param stableId
- *            - The stable display ID of the display to modify (used for the CCD path)
+ *            - The stable display ID of the display to modify
  * @param displayIndex
  *            - The QueryDisplayConfig index of the display to modify
  * @param resWidth
  *            - The horizontal resolution to apply
  * @param resHeight
  *            - The vertical resolution to apply
- * @param bitDepth
- *            - The bit depth to apply
- * @param refreshRate
- *            - The refresh rate to apply
+ * @param refreshNumerator
+ *            - The numerator of the exact refresh rate to apply (Hz = numerator / denominator)
+ * @param refreshDenominator
+ *            - The denominator of the exact refresh rate to apply (Hz = numerator / denominator)
  *
  * @return Whether the resolution was applied
  */
-bool setDisplayMode(const string &stableId, UINT32 displayIndex, UINT32 resWidth, UINT32 resHeight, UINT32 bitDepth,
-                    UINT32 refreshRate) {
+bool setDisplayMode(const string &stableId, UINT32 displayIndex, UINT32 resWidth, UINT32 resHeight,
+                    UINT32 refreshNumerator, UINT32 refreshDenominator) {
+    if (stableId.empty()) {
+        return false;
+    }
+
+    // Apply through the CCD API with the exact rational so an existing mode is selected and Windows never creates one
+    if (ccdApplySourceMode(stableId, resWidth, resHeight, refreshNumerator, refreshDenominator)) {
+        return true;
+    }
+
     DisplayConfig displayConfig = getDisplayConfig();
 
     if (displayIndex >= displayConfig.numPathInfoArrayElements) {
@@ -205,20 +211,7 @@ bool setDisplayMode(const string &stableId, UINT32 displayIndex, UINT32 resWidth
 
     const WCHAR *gdi = gdiDeviceName.c_str();
 
-    // Strict exact attempt first so the requested refresh rate is never silently dropped
-    if (tryApplyModeExact(gdi, resWidth, resHeight, bitDepth, refreshRate)) {
-        return true;
-    }
-
-    /*
-     * Applies resolution/refresh-rate combinations the legacy API rejects (e.g., a scaled custom resolution at an
-     * alternate rate), matching what Windows Advanced Display Settings can do
-     */
-    if (!stableId.empty() && ccdApplySourceMode(stableId, resWidth, resHeight, refreshRate)) {
-        return true;
-    }
-
-    // Capture the current (still original) mode before stepping so it can be restored if the retries also fail
+    // Capture the current (still original) mode before stepping so it can be restored if the retry also fails
     DEVMODEW originalMode = {};
     originalMode.dmSize = sizeof(originalMode);
     bool haveOriginal = EnumDisplaySettingsW(gdi, ENUM_CURRENT_SETTINGS, &originalMode);
@@ -228,11 +221,7 @@ bool setDisplayMode(const string &stableId, UINT32 displayIndex, UINT32 resWidth
         // Let the driver re-enumerate the resolutions available from the intermediate mode before retrying
         Sleep(100);
 
-        if (tryApplyModeExact(gdi, resWidth, resHeight, bitDepth, refreshRate)) {
-            return true;
-        }
-
-        if (!stableId.empty() && ccdApplySourceMode(stableId, resWidth, resHeight, refreshRate)) {
+        if (ccdApplySourceMode(stableId, resWidth, resHeight, refreshNumerator, refreshDenominator)) {
             return true;
         }
 
@@ -241,97 +230,6 @@ bool setDisplayMode(const string &stableId, UINT32 displayIndex, UINT32 resWidth
             originalMode.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
             ChangeDisplaySettingsExW(gdi, &originalMode, NULL, CDS_UPDATEREGISTRY, NULL);
         }
-    }
-
-    // As a last resort, apply the resolution even if the exact refresh rate or bit depth is unavailable
-    return tryApplyMode(gdi, resWidth, resHeight, bitDepth, refreshRate);
-}
-
-/**
- * Applies exactly the given resolution, bit depth, and refresh rate through ChangeDisplaySettingsExW with no fallback,
- * so the requested refresh rate is never silently dropped. Used as the first, strict attempt before the CCD and lenient
- * paths.
- *
- * @param gdiDeviceName
- *            - The GDI device name of the display to modify
- * @param width
- *            - The horizontal resolution to apply
- * @param height
- *            - The vertical resolution to apply
- * @param bitDepth
- *            - The bit depth to apply
- * @param refreshRate
- *            - The refresh rate to apply
- *
- * @return Whether the exact mode was applied
- */
-static bool tryApplyModeExact(const WCHAR *gdiDeviceName, UINT32 width, UINT32 height, UINT32 bitDepth,
-                              UINT32 refreshRate) {
-    DEVMODEW devModeW;
-    SecureZeroMemory(&devModeW, sizeof(DEVMODEW));
-    devModeW.dmSize = sizeof(devModeW);
-    devModeW.dmPelsWidth = width;
-    devModeW.dmPelsHeight = height;
-    devModeW.dmBitsPerPel = bitDepth;
-    devModeW.dmDisplayFrequency = refreshRate;
-    devModeW.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
-
-    if (ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_TEST, NULL) == DISP_CHANGE_SUCCESSFUL) {
-        ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_UPDATEREGISTRY, NULL);
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * Applies the given resolution, bit depth, and refresh rate through ChangeDisplaySettingsExW, retrying without the
- * refresh rate and then without the bit depth so a mode is still applied when an exact match is unavailable.
- *
- * @param gdiDeviceName
- *            - The GDI device name of the display to modify
- * @param width
- *            - The horizontal resolution to apply
- * @param height
- *            - The vertical resolution to apply
- * @param bitDepth
- *            - The bit depth to apply
- * @param refreshRate
- *            - The refresh rate to apply
- *
- * @return Whether the mode was applied
- */
-static bool tryApplyMode(const WCHAR *gdiDeviceName, UINT32 width, UINT32 height, UINT32 bitDepth, UINT32 refreshRate) {
-    DEVMODEW devModeW;
-    SecureZeroMemory(&devModeW, sizeof(DEVMODEW));
-    devModeW.dmSize = sizeof(devModeW);
-    devModeW.dmPelsWidth = width;
-    devModeW.dmPelsHeight = height;
-    devModeW.dmBitsPerPel = bitDepth;
-    devModeW.dmDisplayFrequency = refreshRate;
-    devModeW.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL | DM_DISPLAYFREQUENCY;
-
-    if (ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_TEST, NULL) == DISP_CHANGE_SUCCESSFUL) {
-        ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_UPDATEREGISTRY, NULL);
-        return true;
-    }
-
-    // Retry without refresh rate
-    devModeW.dmFields &= ~DM_DISPLAYFREQUENCY;
-    devModeW.dmDisplayFrequency = 0;
-
-    if (ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_TEST, NULL) == DISP_CHANGE_SUCCESSFUL) {
-        ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_UPDATEREGISTRY, NULL);
-        return true;
-    }
-
-    // Retry without bit depth
-    devModeW.dmFields &= ~DM_BITSPERPEL;
-    devModeW.dmBitsPerPel = 0;
-
-    if (ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_TEST, NULL) == DISP_CHANGE_SUCCESSFUL) {
-        ChangeDisplaySettingsExW(gdiDeviceName, &devModeW, NULL, CDS_UPDATEREGISTRY, NULL);
-        return true;
     }
 
     return false;
@@ -402,11 +300,12 @@ static bool applyLargestSelectableMode(const WCHAR *gdiDeviceName, UINT32 exclud
 }
 
 /**
- * Applies the given desktop (source) resolution and target refresh rate through the CCD API (SetDisplayConfig), the way
- * Windows Advanced Display Settings does. This can apply resolution/refresh-rate combinations that the legacy API
+ * Applies the given desktop (source) resolution and exact target refresh rate through the CCD API (SetDisplayConfig),
+ * the way Windows Advanced Display Settings does. This can apply resolution/refresh-rate combinations the legacy API
  * rejects with DISP_CHANGE_BADMODE (e.g. a GPU-scaled custom resolution at an alternate rate). The active config is
- * queried once, then each rational form of the rate is tried with a strict apply and finally with SDC_ALLOW_CHANGES so
- * Windows may adjust the rest of the configuration around the requested mode.
+ * queried once, then the exact rational is applied strictly and finally with SDC_ALLOW_CHANGES so Windows may adjust
+ * the rest of the configuration around the requested mode. Only the exact rational is submitted, so an existing mode is
+ * selected and no new mode is created.
  *
  * @param stableId
  *            - The stable display ID of the display to modify
@@ -414,12 +313,15 @@ static bool applyLargestSelectableMode(const WCHAR *gdiDeviceName, UINT32 exclud
  *            - The horizontal (source) resolution to apply
  * @param height
  *            - The vertical (source) resolution to apply
- * @param refreshRate
- *            - The refresh rate (Hz) to apply
+ * @param refreshNumerator
+ *            - The numerator of the exact refresh rate to apply (Hz = numerator / denominator)
+ * @param refreshDenominator
+ *            - The denominator of the exact refresh rate to apply (Hz = numerator / denominator)
  *
  * @return Whether the mode was applied
  */
-static bool ccdApplySourceMode(const string &stableId, UINT32 width, UINT32 height, UINT32 refreshRate) {
+static bool ccdApplySourceMode(const string &stableId, UINT32 width, UINT32 height, UINT32 refreshNumerator,
+                               UINT32 refreshDenominator) {
     vector<DISPLAYCONFIG_PATH_INFO> paths;
     vector<DISPLAYCONFIG_MODE_INFO> modes;
 
@@ -433,26 +335,19 @@ static bool ccdApplySourceMode(const string &stableId, UINT32 width, UINT32 heig
         return false;
     }
 
-    vector<DISPLAYCONFIG_RATIONAL> candidates = toRefreshRationalCandidates((int) refreshRate);
+    DISPLAYCONFIG_RATIONAL rational = {};
+    rational.Numerator = refreshNumerator;
+    rational.Denominator = refreshDenominator;
 
-    // First try each rational representation with a strict apply
-    for (const DISPLAYCONFIG_RATIONAL &rational : candidates) {
-        if (submitCcdSourceMode(paths, modes, pathIndex, width, height, rational,
-                                SDC_APPLY | SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE) == ERROR_SUCCESS) {
-            return true;
-        }
+    // Strict apply first, so an existing mode is selected without disturbing the rest of the configuration
+    if (submitCcdSourceMode(paths, modes, pathIndex, width, height, rational, SDC_SUPPLIED_APPLY_FLAGS) ==
+        ERROR_SUCCESS) {
+        return true;
     }
 
-    // Then retry each letting Windows adjust the remainder of the configuration around the requested mode
-    for (const DISPLAYCONFIG_RATIONAL &rational : candidates) {
-        if (submitCcdSourceMode(paths, modes, pathIndex, width, height, rational,
-                                SDC_APPLY | SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE |
-                                    SDC_ALLOW_CHANGES) == ERROR_SUCCESS) {
-            return true;
-        }
-    }
-
-    return false;
+    // Then retry letting Windows adjust the remainder of the configuration around the requested mode
+    return submitCcdSourceMode(paths, modes, pathIndex, width, height, rational,
+                               SDC_SUPPLIED_APPLY_FLAGS | SDC_ALLOW_CHANGES) == ERROR_SUCCESS;
 }
 
 /**

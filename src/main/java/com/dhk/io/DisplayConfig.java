@@ -19,12 +19,12 @@
  */
 package com.dhk.io;
 
-import java.awt.DisplayMode;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.dhk.model.DisplayMode;
 import com.dhk.utility.DisplayModeInverter;
 
 /**
@@ -43,6 +43,19 @@ public class DisplayConfig {
     private Map<String, DisplayMode[]> portraitDisplayModesMap;
     private Map<Long, Integer[]> supportedDpiScalePercentages;
     private int numOfConnectedDisplays;
+
+    /**
+     * Number of int fields per mode in a getDisplayModeRecords result: width, height, refresh numerator, and refresh
+     * denominator.
+     */
+    private static final int FIELDS_PER_MODE = 4;
+
+    /**
+     * Comparator for display mode sorting.
+     */
+    private static final Comparator<DisplayMode> DISPLAY_MODE_COMPARATOR = Comparator
+            .comparingInt(DisplayMode::getWidth).thenComparingInt(DisplayMode::getHeight)
+            .thenComparingDouble(DisplayMode::getRefreshRateHz).reversed();
 
     /**
      * Constructor for the {@link DisplayConfig} class.
@@ -111,7 +124,7 @@ public class DisplayConfig {
             int orientation = displayIndex < orientations.length ? orientations[displayIndex] : 1;
             boolean landscapeOrientation = (orientation == 1 || orientation == 3);
 
-            DisplayMode[] displayModes = getDisplay.getDisplayModes(displayId);
+            DisplayMode[] displayModes = buildDisplayModes(getDisplay.getDisplayModeRecords(displayId));
             Arrays.sort(displayModes, DISPLAY_MODE_COMPARATOR);
             DisplayMode[] invertedDisplayModes = DisplayModeInverter.invertDisplayModes(displayModes);
 
@@ -121,11 +134,26 @@ public class DisplayConfig {
     }
 
     /**
-     * Comparator for display mode sorting.
+     * Builds the display mode array from the flat record array returned by the native enumeration, where each mode is
+     * four consecutive ints: width, height, refresh numerator, and refresh denominator.
+     *
+     * @param modeRecords
+     *            - The flat int array of {width, height, refreshNumerator, refreshDenominator} records
+     *
+     * @return The display modes rebuilt from the records
      */
-    private static final Comparator<DisplayMode> DISPLAY_MODE_COMPARATOR = Comparator
-            .comparingInt(DisplayMode::getWidth).thenComparingInt(DisplayMode::getHeight)
-            .thenComparingInt(DisplayMode::getBitDepth).thenComparingInt(DisplayMode::getRefreshRate).reversed();
+    private DisplayMode[] buildDisplayModes(int[] modeRecords) {
+        int modeCount = modeRecords.length / FIELDS_PER_MODE;
+        DisplayMode[] displayModes = new DisplayMode[modeCount];
+
+        for (int i = 0; i < modeCount; i++) {
+            int offset = i * FIELDS_PER_MODE;
+            displayModes[i] = new DisplayMode(modeRecords[offset], modeRecords[offset + 1], modeRecords[offset + 2],
+                    modeRecords[offset + 3]);
+        }
+
+        return displayModes;
+    }
 
     /**
      * Gets the array of display IDs.

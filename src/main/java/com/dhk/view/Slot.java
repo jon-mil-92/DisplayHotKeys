@@ -20,7 +20,6 @@
 package com.dhk.view;
 
 import java.awt.Dimension;
-import java.awt.DisplayMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,6 +29,7 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 
+import com.dhk.model.DisplayMode;
 import com.dhk.model.button.Button;
 import com.dhk.model.button.ButtonProperties;
 

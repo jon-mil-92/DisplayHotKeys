@@ -19,8 +19,6 @@
  */
 package com.dhk.io;
 
-import java.awt.DisplayMode;
-
 /**
  * Utilizes the GetDisplay JNI library to retrieve current display settings, including supported display modes,
  * connected display IDs, visible display IDs, and display orientations.
@@ -49,9 +47,9 @@ public class GetDisplay {
      * @param displayId
      *            - The ID of the display to get the array of supported display modes for
      *
-     * @return The current array of supported display modes for the given display
+     * @return A flat int array of {width, height, refreshNumerator, refreshDenominator} per supported mode
      */
-    private native DisplayMode[] enumDisplayModes(String displayId);
+    private native int[] enumDisplayModes(String displayId);
 
     /**
      * Defines a JNI function to get the current orientation of each visible display, aligned index-for-index with
@@ -99,14 +97,16 @@ public class GetDisplay {
     private native String[] captureDisplayArrangement();
 
     /**
-     * Gets the current supported display modes for the given display.
+     * Gets the supported display modes for the given display as a flat int array of {width, height, refreshNumerator,
+     * refreshDenominator} records. The caller rebuilds the display-mode objects from these fields so the JNI boundary
+     * stays primitive and the exact rational refresh rate is preserved.
      *
      * @param displayId
-     *            - The ID of the display to get the array of supported display modes for
+     *            - The ID of the display to get the supported display mode records for
      *
-     * @return The current array of supported display modes for the given display
+     * @return A flat int array of {width, height, refreshNumerator, refreshDenominator} per supported mode
      */
-    public DisplayMode[] getDisplayModes(String displayId) {
+    public int[] getDisplayModeRecords(String displayId) {
         return enumDisplayModes(displayId);
     }
 

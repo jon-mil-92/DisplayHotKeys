@@ -777,34 +777,6 @@ int findActivePathForDisplay(const vector<DISPLAYCONFIG_PATH_INFO> &paths, const
 }
 
 /**
- * Maps a truncated integer refresh rate to the rational encodings the CCD API may expect. The exact integer form
- * (rate / 1) is tried first, then the two forms of a fractional NTSC rate ((rate + 1) * 1000 / 1001 and its rounded
- * decimal). Derived from the value itself with no per-rate table, and the caller uses whichever encoding validates.
- *
- * @param rate
- *            - The integer refresh rate to map
- *
- * @return The ordered candidate rationals to try
- */
-vector<DISPLAYCONFIG_RATIONAL> toRefreshRationalCandidates(int rate) {
-    auto rational = [](UINT32 numerator, UINT32 denominator) {
-        DISPLAYCONFIG_RATIONAL value = {};
-        value.Numerator = numerator;
-        value.Denominator = denominator;
-        return value;
-    };
-
-    /*
-     * Offer the exact integer form (60, 120, 144, ...) first, then the two rational encodings drivers use for a
-     * fractional NTSC rate (n000/1001 and its rounded decimal, where n is rate + 1). Deriving both from the rate itself
-     * covers every fractional rate without a per-rate table, and the caller uses whichever one validates
-     */
-    UINT32 nominal = (UINT32) rate + 1;
-
-    return {rational((UINT32) rate, 1), rational(nominal * 1000, 1001), rational((nominal * 100000 + 500) / 1001, 100)};
-}
-
-/**
  * Sets the source resolution and refresh rate on the chosen path of copies of the base arrays, then submits them to
  * SetDisplayConfig with the given flags. Taking the arrays by value keeps the caller's base config reusable.
  *

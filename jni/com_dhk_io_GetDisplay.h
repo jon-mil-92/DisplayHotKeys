@@ -10,9 +10,9 @@ extern "C" {
 /*
  * Class:     com_dhk_io_GetDisplay
  * Method:    enumDisplayModes
- * Signature: (Ljava/lang/String;)[Ljava/awt/DisplayMode;
+ * Signature: (Ljava/lang/String;)[I
  */
-JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes
+JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes
   (JNIEnv *, jobject, jstring);
 
 /*

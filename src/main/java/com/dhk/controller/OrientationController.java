@@ -19,14 +19,13 @@
  */
 package com.dhk.controller;
 
-import java.awt.DisplayMode;
-
 import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 
 import com.dhk.io.SettingsManager;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
+import com.dhk.model.DisplayMode;
 import com.dhk.utility.DisplayModeInverter;
 import com.dhk.view.DhkView;
 
@@ -178,9 +177,7 @@ public class OrientationController implements IController {
                 DisplayMode invertedDisplayMode = DisplayModeInverter
                         .invertDisplayMode(model.getSlot(displayIndex, slotIndex).getDisplayMode());
 
-                settingsMgr.saveIniSlotDisplayMode(displayId, slotId, invertedDisplayMode.getWidth(),
-                        invertedDisplayMode.getHeight(), invertedDisplayMode.getBitDepth(),
-                        invertedDisplayMode.getRefreshRate());
+                settingsMgr.saveIniSlotDisplayMode(displayId, slotId, invertedDisplayMode);
             }
 
             appRefresher.reInitApp();

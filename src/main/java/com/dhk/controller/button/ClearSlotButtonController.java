@@ -19,14 +19,13 @@
  */
 package com.dhk.controller.button;
 
-import java.awt.DisplayMode;
-
 import com.dhk.controller.DhkController;
 import com.dhk.controller.IController;
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.SettingsManager;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
+import com.dhk.model.DisplayMode;
 import com.dhk.view.DhkView;
 
 /**
@@ -146,8 +145,7 @@ public class ClearSlotButtonController extends AbstractButtonController implemen
 
         model.getSlot(displayIndex, slotIndex).setDisplayMode(defaultDisplayMode);
         view.getSlot(displayIndex, slotIndex).getDisplayModes().setSelectedIndex(0);
-        settingsMgr.saveIniSlotDisplayMode(displayId, slotId, defaultDisplayMode.getWidth(),
-                defaultDisplayMode.getHeight(), defaultDisplayMode.getBitDepth(), defaultDisplayMode.getRefreshRate());
+        settingsMgr.saveIniSlotDisplayMode(displayId, slotId, defaultDisplayMode);
     }
 
     /**

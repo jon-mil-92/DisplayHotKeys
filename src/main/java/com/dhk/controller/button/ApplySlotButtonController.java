@@ -123,8 +123,8 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
             setDisplay.applyDisplaySettings(displayId,
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getWidth(),
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getHeight(),
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getBitDepth(),
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshRate(),
+                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshNumerator(),
+                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshDenominator(),
                     model.getSlot(displayIndex, slotIndex).getScalingMode(),
                     model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
             setDisplay.preserveArrangement(arrangementSnapshot);

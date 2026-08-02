@@ -168,14 +168,14 @@ struct ModeInfo {
     int height;
 
     /**
-     * Color depth in bits per pixel.
+     * Numerator of the exact refresh rate as a rational, where Hz = refreshNumerator / refreshDenominator.
      */
-    int bitsPerPel;
+    int refreshNumerator;
 
     /**
-     * Refresh rate in hertz.
+     * Denominator of the exact refresh rate as a rational, where Hz = refreshNumerator / refreshDenominator.
      */
-    int frequency;
+    int refreshDenominator;
 };
 
 /**
@@ -331,18 +331,6 @@ bool queryActiveCcdConfig(vector<DISPLAYCONFIG_PATH_INFO> &paths, vector<DISPLAY
  * @return The matching path index, or -1 if not found
  */
 int findActivePathForDisplay(const vector<DISPLAYCONFIG_PATH_INFO> &paths, const string &stableId);
-
-/**
- * Maps a truncated integer refresh rate to the rational encodings the CCD API may expect. The exact integer form
- * (rate / 1) is tried first, then the two forms of a fractional NTSC rate ((rate + 1) * 1000 / 1001 and its rounded
- * decimal). Derived from the value itself with no per-rate table, and the caller uses whichever encoding validates.
- *
- * @param rate
- *            - The integer refresh rate to map
- *
- * @return The ordered candidate rationals to try
- */
-vector<DISPLAYCONFIG_RATIONAL> toRefreshRationalCandidates(int rate);
 
 /**
  * Sets the source resolution and target refresh rate on the chosen path of copies of the base arrays, then submits them

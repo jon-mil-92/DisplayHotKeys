@@ -21,7 +21,6 @@ package com.dhk.view;
 
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.DisplayMode;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -45,6 +44,7 @@ import javax.swing.UIManager;
 
 import com.dhk.io.DisplayConfig;
 import com.dhk.model.DhkModel;
+import com.dhk.model.DisplayMode;
 import com.dhk.model.FramePlacement;
 import com.dhk.model.button.Button;
 import com.dhk.model.button.ButtonProperties;
