@@ -116,9 +116,11 @@ This application will be distributed as a portable package and as an installer. 
 
 ### Selecting Display Settings
 
-1. Select a display mode value in the "Display Mode" drop-down box for the hot key slot.
+1. Select a resolution value in the "Resolution" drop-down box for the hot key slot.
 
-2. Select a scaling mode value in the "Scaling Mode" drop-down box for the hot key slot.
+2. Select a refresh rate value in the "Refresh Rate" drop-down box for the hot key slot.
+
+3. Select a scaling mode value in the "Scaling Mode" drop-down box for the hot key slot.
 
 	* Select "Preserved" to preserve the aspect ratio of the image.
 	
@@ -128,9 +130,9 @@ This application will be distributed as a portable package and as an installer. 
 	
 **Note:** You may need to use GPU Scaling in your display driver settings to prevent the display from overriding the scaling mode.
 
-3. Select a DPI scale percentage value in the "DPI Scale" drop-down box for the hot key slot.
+4. Select a DPI scale percentage value in the "DPI Scale" drop-down box for the hot key slot.
 
-4. Select a display orientation in the "Orientation" drop-down box for the hot key slot.
+5. Select a display orientation value in the "Orientation" drop-down box for the hot key slot.
 
 	* Select "Landscape" for a landscape orientation of no rotation.
     
