@@ -99,6 +99,24 @@ public class DisplayMode {
         return refreshDenominator == 0 ? 0.0 : (double) refreshNumerator / refreshDenominator;
     }
 
+    /**
+     * Gets the resolution half of this display mode.
+     *
+     * @return The resolution of this display mode
+     */
+    public Resolution getResolution() {
+        return new Resolution(width, height);
+    }
+
+    /**
+     * Gets the refresh-rate half of this display mode.
+     *
+     * @return The exact refresh rate of this display mode
+     */
+    public RefreshRate getRefreshRate() {
+        return new RefreshRate(refreshNumerator, refreshDenominator);
+    }
+
     @Override
     public boolean equals(Object object) {
         if (this == object) {
@@ -132,13 +150,7 @@ public class DisplayMode {
      * @return The formatted refresh rate
      */
     private String formatRefreshRate() {
-        double refreshRateHz = getRefreshRateHz();
-
-        if (refreshDenominator == 1 || refreshRateHz == Math.rint(refreshRateHz)) {
-            return Integer.toString((int) Math.rint(refreshRateHz));
-        }
-
-        return String.format("%.2f", refreshRateHz);
+        return RefreshRate.format(refreshNumerator, refreshDenominator);
     }
 
 }

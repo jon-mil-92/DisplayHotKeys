@@ -162,7 +162,8 @@ public class ClearAllButtonController extends AbstractButtonController implement
             DisplayMode defaultDisplayMode = displayModes[0];
 
             model.getSlot(displayIndex, slotIndex).setDisplayMode(defaultDisplayMode);
-            view.getSlot(displayIndex, slotIndex).getDisplayModes().setSelectedIndex(0);
+            view.getSlot(displayIndex, slotIndex).getResolutions().setSelectedIndex(0);
+            view.getSlot(displayIndex, slotIndex).getRefreshRates().setSelectedIndex(0);
             settingsMgr.saveIniSlotDisplayMode(displayId, slotId, defaultDisplayMode);
         }
     }

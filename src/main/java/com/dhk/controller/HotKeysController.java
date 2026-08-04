@@ -758,7 +758,8 @@ public class HotKeysController implements IController, GlobalKeyListener {
             view.getNumberOfActiveSlots(displayIndex).setEnabled(false);
 
             for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
-                view.getSlot(displayIndex, slotIndex).getDisplayModes().setEnabled(false);
+                view.getSlot(displayIndex, slotIndex).getResolutions().setEnabled(false);
+                view.getSlot(displayIndex, slotIndex).getRefreshRates().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getScalingModes().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getDpiScalePercentages().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getOrientationModes().setEnabled(false);
@@ -794,7 +795,8 @@ public class HotKeysController implements IController, GlobalKeyListener {
             view.getNumberOfActiveSlots(displayIndex).setEnabled(true);
 
             for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
-                view.getSlot(displayIndex, slotIndex).getDisplayModes().setEnabled(true);
+                view.getSlot(displayIndex, slotIndex).getResolutions().setEnabled(true);
+                view.getSlot(displayIndex, slotIndex).getRefreshRates().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getScalingModes().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getDpiScalePercentages().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getOrientationModes().setEnabled(true);

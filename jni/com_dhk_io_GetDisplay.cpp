@@ -32,7 +32,6 @@
 #include <cstdint>
 #include <jni.h>
 #include <map>
-#include <set>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -455,49 +454,47 @@ static void collectOutputModes(IDXGIOutput *output, vector<ModeInfo> &modes) {
  */
 static void addCustomResolutionRefreshRates(vector<ModeInfo> &modes) {
     /*
-     * Use the resolution with the most modes (the panel's native resolution) as the canonical rate set. DXGI reports
-     * one rate with slightly different rationals across resolutions, so drawing from a single resolution gives one
-     * clean representation per rate and avoids duplicating rates that only differ by representation
+     * Group every mode by resolution in one pass, mapping each resolution's rateKey to a single exact rational
+     * (first seen wins, so the representation-variant rationals DXGI reports for one rate collapse to one entry). The
+     * raw mode count per resolution then selects the canonical rate set below
      */
     map<pair<int, int>, int> modeCountByResolution;
+    map<pair<int, int>, map<long long, pair<int, int>>> ratesByResolution;
 
     for (const ModeInfo &mode : modes) {
-        modeCountByResolution[{mode.width, mode.height}]++;
+        pair<int, int> resolution = {mode.width, mode.height};
+        modeCountByResolution[resolution]++;
+        ratesByResolution[resolution].emplace(rateKey(mode.refreshNumerator, mode.refreshDenominator),
+                                              make_pair(mode.refreshNumerator, mode.refreshDenominator));
     }
 
+    /*
+     * The resolution with the most modes carries the fullest rate set and is the canonical source: drawing every fill
+     * rate from one resolution yields one clean representation per rate and avoids the cross-resolution duplicates
+     */
     pair<int, int> richest = {0, 0};
     int richestCount = -1;
 
-    for (const pair<const pair<int, int>, int> &entry : modeCountByResolution) {
-        if (entry.second > richestCount) {
-            richestCount = entry.second;
-            richest = entry.first;
+    for (const auto &[resolution, count] : modeCountByResolution) {
+        if (count > richestCount) {
+            richestCount = count;
+            richest = resolution;
         }
     }
 
-    // Canonical panel rates keyed by rounded value, so a rate appears once regardless of its rational representation
-    map<long long, pair<int, int>> panelRates;
-    map<pair<int, int>, set<long long>> keysByResolution;
-
-    for (const ModeInfo &mode : modes) {
-        long long key = rateKey(mode.refreshNumerator, mode.refreshDenominator);
-        keysByResolution[{mode.width, mode.height}].insert(key);
-
-        if (mode.width == richest.first && mode.height == richest.second) {
-            panelRates.emplace(key, make_pair(mode.refreshNumerator, mode.refreshDenominator));
-        }
+    if (richestCount < 0) {
+        return;
     }
 
-    for (const pair<const pair<int, int>, set<long long>> &entry : keysByResolution) {
-        int width = entry.first.first;
-        int height = entry.first.second;
-        const set<long long> &existingKeys = entry.second;
-        long long maxKey = *existingKeys.rbegin();
+    const map<long long, pair<int, int>> &panelRates = ratesByResolution.at(richest);
 
-        // Add every canonical panel rate at or below this resolution's ceiling that it is missing
-        for (const pair<const long long, pair<int, int>> &rate : panelRates) {
-            if (rate.first <= maxKey && existingKeys.find(rate.first) == existingKeys.end()) {
-                modes.push_back({width, height, rate.second.first, rate.second.second});
+    for (const auto &[resolution, rates] : ratesByResolution) {
+        long long ceilingKey = rates.rbegin()->first;
+
+        // Add every canonical panel rate at or below this resolution's own ceiling that it is missing
+        for (const auto &[key, rate] : panelRates) {
+            if (key <= ceilingKey && !rates.contains(key)) {
+                modes.push_back({resolution.first, resolution.second, rate.first, rate.second});
             }
         }
     }
