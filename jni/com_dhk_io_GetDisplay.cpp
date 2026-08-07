@@ -40,7 +40,7 @@ using namespace std;
 
 static vector<ModeInfo> enumDisplayOutputModes(const wstring &gdiDeviceName);
 static void collectOutputModes(IDXGIOutput *output, vector<ModeInfo> &modes);
-static void addCustomResolutionRefreshRates(vector<ModeInfo> &modes);
+static void addCustomResolutionRefreshRates(vector<ModeInfo> &modes, map<long long, pair<int, int>> &canonicalRates);
 static long long rateKey(int refreshNumerator, int refreshDenominator);
 
 /**
@@ -126,8 +126,9 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEnv *
         modeList = enumDisplayOutputModes(gdiDeviceName);
     }
 
-    // Fill GPU-scaled custom resolutions with the panel rates their DXGI mode list omits but Windows still offers
-    addCustomResolutionRefreshRates(modeList);
+    // Fill GPU-scaled custom resolutions with the panel rates DXGI omits, capturing the canonical rational per rate
+    map<long long, pair<int, int>> canonicalRates;
+    addCustomResolutionRefreshRates(modeList, canonicalRates);
 
     // De-duplicate in first-seen order, since a resolution/rate can repeat across the output's scaling variants
     unordered_set<uint64_t> seenModes;
@@ -136,14 +137,28 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEnv *
     uniqueModes.reserve(modeList.size());
 
     for (const ModeInfo &mode : modeList) {
+        long long modeRateKey = rateKey(mode.refreshNumerator, mode.refreshDenominator);
+
         // Pack width, height, and the rounded rate key so representation-variant rationals of one rate collapse
         uint64_t modeKey = (static_cast<uint64_t>(static_cast<uint32_t>(mode.width)) << 48) |
                            (static_cast<uint64_t>(static_cast<uint32_t>(mode.height)) << 32) |
-                           static_cast<uint64_t>(rateKey(mode.refreshNumerator, mode.refreshDenominator));
+                           static_cast<uint64_t>(modeRateKey);
 
-        if (seenModes.insert(modeKey).second) {
-            uniqueModes.push_back(mode);
+        if (!seenModes.insert(modeKey).second) {
+            continue;
         }
+
+        ModeInfo uniqueMode = mode;
+
+        // Rewrite the rate to its canonical rational so one rate reads identically across every resolution
+        auto canonicalRate = canonicalRates.find(modeRateKey);
+
+        if (canonicalRate != canonicalRates.end()) {
+            uniqueMode.refreshNumerator = canonicalRate->second.first;
+            uniqueMode.refreshDenominator = canonicalRate->second.second;
+        }
+
+        uniqueModes.push_back(uniqueMode);
     }
 
     modeList = std::move(uniqueModes);
@@ -445,14 +460,16 @@ static void collectOutputModes(IDXGIOutput *output, vector<ModeInfo> &modes) {
 }
 
 /**
- * Augments GPU-scaled custom resolutions with the refresh rates their DXGI mode list omits: a fixed resolution needs
- * less bandwidth at a lower rate, so every panel rate at or below the resolution's own maximum is added. A resolution
- * that already lists its full rate set gains nothing.
+ * Fills GPU-scaled custom resolutions with the panel rates their DXGI mode list omits and reports the canonical
+ * rational for each rate. Every panel rate at or below a resolution's own maximum is added, and the richest
+ * resolution's rate set is handed back so callers collapse DXGI's representation-variant rationals to one.
  *
  * @param modes
  *            - The mode list to augment in place
+ * @param canonicalRates
+ *            - Populated with the canonical rational (value) for each rounded rate key (key)
  */
-static void addCustomResolutionRefreshRates(vector<ModeInfo> &modes) {
+static void addCustomResolutionRefreshRates(vector<ModeInfo> &modes, map<long long, pair<int, int>> &canonicalRates) {
     /*
      * Group every mode by resolution in one pass, mapping each resolution's rateKey to a single exact rational
      * (first seen wins, so the representation-variant rationals DXGI reports for one rate collapse to one entry). The
@@ -486,13 +503,14 @@ static void addCustomResolutionRefreshRates(vector<ModeInfo> &modes) {
         return;
     }
 
-    const map<long long, pair<int, int>> &panelRates = ratesByResolution.at(richest);
+    // The richest resolution's rate set is the canonical source: one clean rational per rate for callers to match
+    canonicalRates = ratesByResolution.at(richest);
 
     for (const auto &[resolution, rates] : ratesByResolution) {
         long long ceilingKey = rates.rbegin()->first;
 
         // Add every canonical panel rate at or below this resolution's own ceiling that it is missing
-        for (const auto &[key, rate] : panelRates) {
+        for (const auto &[key, rate] : canonicalRates) {
             if (key <= ceilingKey && !rates.contains(key)) {
                 modes.push_back({resolution.first, resolution.second, rate.first, rate.second});
             }
