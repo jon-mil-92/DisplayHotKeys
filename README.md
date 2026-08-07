@@ -203,6 +203,8 @@ Opens a web page in the default browser to display the releases for Display Hot 
 - [x] &thinsp; Add support for virtual displays and display duplication.
 - [x] &thinsp; Add event-driven display configuration detection.
 - [x] &thinsp; Add clearing of individual slots.
+- [x] &thinsp; Add exact refresh rate support.
+- [x] &thinsp; Split display mode into resolution and refresh rate.
 
 See [open issues] for a full list of proposed features (and known issues).
 
