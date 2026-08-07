@@ -17,29 +17,42 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-#include "com_dhk_io_GetDisplay.h"
+/*
+ * The Windows and DXGI COM headers must precede the project headers here: DisplayConfig.h pulls in a
+ * "using namespace std;", and the DXGI include chain (objbase -> oaidl) uses an unqualified "byte" that becomes
+ * ambiguous with std::byte once that using-directive is in scope, so DXGI must be parsed before it
+ */
+#include <dxgi.h>
+#include <windows.h>
+
 #include "ArrangeDisplay.h"
 #include "DisplayConfig.h"
+#include "com_dhk_io_GetDisplay.h"
 
 #include <cstdint>
 #include <jni.h>
 #include <map>
-#include <set>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <windows.h>
 
 using namespace std;
 
-static void addCustomResolutionRefreshRates(const string &displayId, vector<ModeInfo> &modes,
-                                            vector<DISPLAYCONFIG_PATH_INFO> paths,
-                                            vector<DISPLAYCONFIG_MODE_INFO> ccdModes, int pathIndex);
+static vector<ModeInfo> enumDisplayOutputModes(const wstring &gdiDeviceName);
+static void collectOutputModes(IDXGIOutput *output, vector<ModeInfo> &modes);
+static void addCustomResolutionRefreshRates(vector<ModeInfo> &modes, map<long long, pair<int, int>> &canonicalRates);
+static long long rateKey(int refreshNumerator, int refreshDenominator);
 
 /**
- * Enumerates the supported display modes for the given display, mirroring Windows Advanced Display Settings by
- * skipping interlaced and zero-size modes, then augmenting GPU-scaled custom resolutions with the refresh rates the
- * legacy mode table omits. The returned modes are de-duplicated in first-seen order.
+ * Number of integer fields packed per mode in the flat enumDisplayModes result: width, height, refresh-rate numerator,
+ * and refresh-rate denominator.
+ */
+static const jsize FIELDS_PER_MODE = 4;
+
+/**
+ * Enumerates the supported display modes for the given display, reading each mode's exact rational refresh rate from
+ * the matching DXGI output so no truncated integer rate is ever used, then augmenting GPU-scaled custom resolutions
+ * with the panel rates DXGI omits. The returned modes are de-duplicated in first-seen order.
  *
  * @param env
  *            - The JNI environment pointer
@@ -48,15 +61,16 @@ static void addCustomResolutionRefreshRates(const string &displayId, vector<Mode
  * @param displayId
  *            - The stable display ID to enumerate modes for
  *
- * @return A DisplayMode[] of supported modes, an empty array if none, or null on unrecoverable native failure
+ * @return A flat int array of {width, height, refreshNumerator, refreshDenominator} per mode, an empty array if none,
+ *         or null on unrecoverable native failure
  */
-JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEnv *env, jobject obj,
-                                                                           jstring displayId) {
+JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEnv *env, jobject obj, jstring displayId) {
+    (void) obj;
+
     if (displayId == nullptr) {
         return nullptr;
     }
 
-    // Acquire UTF chars for the incoming jstring and ensure we release them on all paths
     jboolean isCopy = JNI_FALSE;
     const char *displayIdChars = env->GetStringUTFChars(displayId, &isCopy);
 
@@ -65,52 +79,22 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
     }
 
     string stableDisplayId = displayIdChars;
+    env->ReleaseStringUTFChars(displayId, displayIdChars);
 
-    vector<ModeInfo> modeList;
-
-    // Skip zero-size and interlaced modes so the reported set mirrors Advanced Display Settings (progressive only)
-    auto collectMode = [&modeList](const DEVMODEW &devModeW) {
-        if (devModeW.dmPelsWidth == 0 || devModeW.dmPelsHeight == 0) {
-            return;
-        }
-
-        if ((devModeW.dmFields & DM_DISPLAYFLAGS) && (devModeW.dmDisplayFlags & DM_INTERLACED)) {
-            return;
-        }
-
-        modeList.push_back({static_cast<int>(devModeW.dmPelsWidth), static_cast<int>(devModeW.dmPelsHeight),
-                            static_cast<int>(devModeW.dmBitsPerPel), static_cast<int>(devModeW.dmDisplayFrequency)});
-    };
-
-    // Default (EDID-pruned) enumeration so the reported set matches Advanced Display Settings
-    auto enumerateModes = [&collectMode](LPCWSTR gdiDeviceName) {
-        DEVMODEW devModeW;
-        SecureZeroMemory(&devModeW, sizeof(DEVMODEW));
-        devModeW.dmSize = sizeof(devModeW);
-
-        for (UINT32 i = 0; EnumDisplaySettingsExW(gdiDeviceName, i, &devModeW, 0); i++) {
-            collectMode(devModeW);
-        }
-    };
-
-    /*
-     * Resolve the display's GDI device name from the active CCD config and remember its active-path index, so the
-     * custom-resolution expansion below reuses this one snapshot instead of querying the config a second time. Fall
-     * back to the persisted DB config so a display not on an active path is still found (matching the prior lookup)
-     */
+    // Resolve the display's GDI device name (\\.\DISPLAYn) so the matching DXGI output can be found by its DeviceName
+    wstring gdiDeviceName;
     vector<DISPLAYCONFIG_PATH_INFO> paths;
     vector<DISPLAYCONFIG_MODE_INFO> ccdModes;
-    int activePathIndex = -1;
-    wstring gdiDeviceName;
 
     if (queryActiveCcdConfig(paths, ccdModes)) {
-        activePathIndex = findActivePathForDisplay(paths, stableDisplayId);
+        int activePathIndex = findActivePathForDisplay(paths, stableDisplayId);
 
         if (activePathIndex >= 0) {
             gdiDeviceName = sourceGdiDeviceName(paths[activePathIndex].sourceInfo);
         }
     }
 
+    // Fall back to the persisted DB config so a display not on an active path is still found
     if (gdiDeviceName.empty()) {
         DisplayConfig displayConfig = getDisplayConfig();
 
@@ -122,105 +106,88 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_enumDisplayModes(JNIEn
         }
     }
 
-    if (!gdiDeviceName.empty()) {
-        enumerateModes(gdiDeviceName.c_str());
-    } else {
-        // Otherwise, locate the display by its EnumDisplayDevices index and enumerate by its device name
+    // Last resort: locate the display by its EnumDisplayDevices index to read its GDI device name
+    if (gdiDeviceName.empty()) {
         DISPLAY_DEVICEW displayDeviceW;
         SecureZeroMemory(&displayDeviceW, sizeof(DISPLAY_DEVICEW));
         displayDeviceW.cb = sizeof(displayDeviceW);
 
         int enumDisplayIndex = getEnumDisplayDevicesDisplayIdIndex(stableDisplayId);
 
-        if (EnumDisplayDevicesW(NULL, enumDisplayIndex, &displayDeviceW, 0)) {
-            if (displayDeviceW.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
-                enumerateModes(displayDeviceW.DeviceName);
-            }
-        } else {
-            // Fallback enumeration failed, so release and return null
-            env->ReleaseStringUTFChars(displayId, displayIdChars);
-            return nullptr;
+        if (EnumDisplayDevicesW(NULL, enumDisplayIndex, &displayDeviceW, 0) &&
+            (displayDeviceW.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP)) {
+            gdiDeviceName = displayDeviceW.DeviceName;
         }
     }
 
-    env->ReleaseStringUTFChars(displayId, displayIdChars);
+    vector<ModeInfo> modeList;
 
-    /*
-     * Expand GPU-scaled custom resolutions with the extra refresh rates the legacy mode table omits, reusing the
-     * active config and path index already resolved above so no second QueryDisplayConfig is issued. The paths and
-     * ccdModes arrays are unused after this, so they are moved in to avoid copying the full CCD arrays
-     */
-    addCustomResolutionRefreshRates(stableDisplayId, modeList, std::move(paths), std::move(ccdModes), activePathIndex);
+    if (!gdiDeviceName.empty()) {
+        modeList = enumDisplayOutputModes(gdiDeviceName);
+    }
 
-    // De-duplicate in first-seen order, since EnumDisplaySettingsExW repeats modes and the expansion may re-add a rate
+    // Fill GPU-scaled custom resolutions with the panel rates DXGI omits, capturing the canonical rational per rate
+    map<long long, pair<int, int>> canonicalRates;
+    addCustomResolutionRefreshRates(modeList, canonicalRates);
+
+    // De-duplicate in first-seen order, since a resolution/rate can repeat across the output's scaling variants
     unordered_set<uint64_t> seenModes;
     seenModes.reserve(modeList.size());
     vector<ModeInfo> uniqueModes;
     uniqueModes.reserve(modeList.size());
 
     for (const ModeInfo &mode : modeList) {
-        // Pack the four fields into one 64-bit key for hashed O(1) membership
-        uint64_t modeKey = (static_cast<uint64_t>(static_cast<uint32_t>(mode.width)) << 40) |
-                           (static_cast<uint64_t>(static_cast<uint32_t>(mode.height)) << 24) |
-                           (static_cast<uint64_t>(static_cast<uint32_t>(mode.bitsPerPel)) << 16) |
-                           static_cast<uint64_t>(static_cast<uint32_t>(mode.frequency));
+        long long modeRateKey = rateKey(mode.refreshNumerator, mode.refreshDenominator);
 
-        if (seenModes.insert(modeKey).second) {
-            uniqueModes.push_back(mode);
+        // Pack width, height, and the rounded rate key so representation-variant rationals of one rate collapse
+        uint64_t modeKey = (static_cast<uint64_t>(static_cast<uint32_t>(mode.width)) << 48) |
+                           (static_cast<uint64_t>(static_cast<uint32_t>(mode.height)) << 32) |
+                           static_cast<uint64_t>(modeRateKey);
+
+        if (!seenModes.insert(modeKey).second) {
+            continue;
         }
+
+        ModeInfo uniqueMode = mode;
+
+        // Rewrite the rate to its canonical rational so one rate reads identically across every resolution
+        auto canonicalRate = canonicalRates.find(modeRateKey);
+
+        if (canonicalRate != canonicalRates.end()) {
+            uniqueMode.refreshNumerator = canonicalRate->second.first;
+            uniqueMode.refreshDenominator = canonicalRate->second.second;
+        }
+
+        uniqueModes.push_back(uniqueMode);
     }
 
     modeList = std::move(uniqueModes);
 
-    // Prepare the DisplayMode class and constructor
-    jclass displayModeClass = env->FindClass("java/awt/DisplayMode");
-
-    if (displayModeClass == nullptr) {
-        return nullptr;
-    }
-
-    jmethodID displayModeCtor = env->GetMethodID(displayModeClass, "<init>", "(IIII)V");
-
-    if (displayModeCtor == nullptr) {
-        env->DeleteLocalRef(displayModeClass);
-        return nullptr;
-    }
-
-    // Create the result array (may be empty if no modes found)
+    /*
+     * Marshal the modes as one flat int array of {width, height, refreshNumerator, refreshDenominator} records,
+     * keeping the JNI boundary primitive; the calling object instance rebuilds the display-mode objects from these
+     * fields, so the exact rational refresh rate survives without a custom cross-boundary type
+     */
     jsize modeCount = static_cast<jsize>(modeList.size());
-    jobjectArray displayModeArray = env->NewObjectArray(modeCount, displayModeClass, nullptr);
+    jintArray resultArray = env->NewIntArray(modeCount * FIELDS_PER_MODE);
 
-    if (displayModeArray == nullptr) {
-        env->DeleteLocalRef(displayModeClass);
+    if (resultArray == nullptr) {
         return nullptr;
     }
 
-    // Populate the result array
-    for (jsize i = 0; i < modeCount; ++i) {
-        const ModeInfo &modeInfo = modeList[static_cast<size_t>(i)];
-        jobject displayModeObj = env->NewObject(displayModeClass, displayModeCtor, modeInfo.width, modeInfo.height,
-                                                modeInfo.bitsPerPel, modeInfo.frequency);
+    vector<jint> flat;
+    flat.reserve(static_cast<size_t>(modeCount) * FIELDS_PER_MODE);
 
-        if (displayModeObj == nullptr) {
-            // Clean up created local refs and return null
-            for (jsize j = 0; j < i; ++j) {
-                jobject tmp = (jobject) env->GetObjectArrayElement(displayModeArray, j);
-                env->DeleteLocalRef(tmp);
-            }
-
-            env->DeleteLocalRef(displayModeArray);
-            env->DeleteLocalRef(displayModeClass);
-
-            return nullptr;
-        }
-
-        env->SetObjectArrayElement(displayModeArray, i, displayModeObj);
-        env->DeleteLocalRef(displayModeObj);
+    for (const ModeInfo &modeInfo : modeList) {
+        flat.push_back(modeInfo.width);
+        flat.push_back(modeInfo.height);
+        flat.push_back(modeInfo.refreshNumerator);
+        flat.push_back(modeInfo.refreshDenominator);
     }
 
-    env->DeleteLocalRef(displayModeClass);
+    env->SetIntArrayRegion(resultArray, 0, modeCount * FIELDS_PER_MODE, flat.data());
 
-    return displayModeArray;
+    return resultArray;
 }
 
 /**
@@ -399,117 +366,174 @@ JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_captureDisplayArrangem
 }
 
 /**
- * Adds the refresh rates a GPU-scaled custom resolution supports but the legacy mode table omits, identifying such a
- * resolution by its small distinct-rate count. Each resolution's drivable ceiling is found with as few SDC_VALIDATE
- * probes as possible, and every panel rate at or below it is then added.
+ * Enumerates the supported modes of the display driven by the given GDI device name by matching it to a DXGI output
+ * and reading that output's mode list. DXGI supplies the exact rational refresh rate of every mode, so no truncated
+ * integer rate is involved.
  *
- * @param displayId
- *            - The stable display ID being enumerated
- * @param modes
- *            - The mode list to augment in place
+ * @param gdiDeviceName
+ *            - The GDI device name (\\.\DISPLAYn) of the display to enumerate
+ *
+ * @return The supported modes, or an empty list if no matching output or its modes could be read
  */
-static void addCustomResolutionRefreshRates(const string &displayId, vector<ModeInfo> &modes,
-                                            vector<DISPLAYCONFIG_PATH_INFO> paths,
-                                            vector<DISPLAYCONFIG_MODE_INFO> ccdModes, int pathIndex) {
-    const size_t MAX_RATES_FOR_CUSTOM_RESOLUTION = 2;
+static vector<ModeInfo> enumDisplayOutputModes(const wstring &gdiDeviceName) {
+    vector<ModeInfo> modes;
 
-    /*
-     * The caller resolved the display against the active CCD config and passed that snapshot plus its path index in,
-     * so every probe below reuses them with no second query. Fall back to the persisted DB config only when the
-     * caller could not locate the path, so a display not yet on an active path still gets its rates
-     */
-    if (pathIndex < 0) {
-        DisplayConfig dbConfig = getDisplayConfig();
-        paths.assign(dbConfig.pathInfoArray, dbConfig.pathInfoArray + dbConfig.numPathInfoArrayElements);
-        ccdModes.assign(dbConfig.modeInfoArray, dbConfig.modeInfoArray + dbConfig.numModeInfoArrayElements);
-        pathIndex = findActivePathForDisplay(paths, displayId);
+    IDXGIFactory1 *factory = nullptr;
+
+    if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), reinterpret_cast<void **>(&factory))) ||
+        factory == nullptr) {
+        return modes;
     }
 
-    if (pathIndex < 0) {
+    IDXGIAdapter1 *adapter = nullptr;
+
+    for (UINT adapterIndex = 0; factory->EnumAdapters1(adapterIndex, &adapter) != DXGI_ERROR_NOT_FOUND;
+         adapterIndex++) {
+        IDXGIOutput *output = nullptr;
+
+        for (UINT outputIndex = 0; adapter->EnumOutputs(outputIndex, &output) != DXGI_ERROR_NOT_FOUND; outputIndex++) {
+            DXGI_OUTPUT_DESC desc = {};
+
+            // Match the output to the requested display by its GDI device name (\\.\DISPLAYn)
+            if (SUCCEEDED(output->GetDesc(&desc)) && gdiDeviceName == desc.DeviceName) {
+                collectOutputModes(output, modes);
+                output->Release();
+                adapter->Release();
+                factory->Release();
+                return modes;
+            }
+
+            output->Release();
+        }
+
+        adapter->Release();
+    }
+
+    factory->Release();
+
+    return modes;
+}
+
+/**
+ * Reads every supported mode of the given DXGI output for the 32-bit desktop format, appending each progressive,
+ * non-zero mode as {width, height, exact refresh numerator, exact refresh denominator}.
+ *
+ * @param output
+ *            - The DXGI output to read modes from
+ * @param modes
+ *            - The mode list to append to
+ */
+static void collectOutputModes(IDXGIOutput *output, vector<ModeInfo> &modes) {
+    // The 32-bit BGRA desktop format, with the scaling flag so GPU-scaled custom resolutions are included
+    const DXGI_FORMAT format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    const UINT flags = DXGI_ENUM_MODES_SCALING;
+
+    UINT numModes = 0;
+
+    if (FAILED(output->GetDisplayModeList(format, flags, &numModes, nullptr)) || numModes == 0) {
         return;
     }
 
-    // Distinct rates per resolution, since the driver lists each mode many times across bit depths and flags
-    set<int> panelRates;
-    map<pair<int, int>, set<int>> ratesByResolution;
+    vector<DXGI_MODE_DESC> dxgiModes(numModes);
 
-    for (const ModeInfo &mode : modes) {
-        panelRates.insert(mode.frequency);
-        ratesByResolution[make_pair(mode.width, mode.height)].insert(mode.frequency);
+    if (FAILED(output->GetDisplayModeList(format, flags, &numModes, dxgiModes.data()))) {
+        return;
     }
 
-    vector<int> candidateRates(panelRates.begin(), panelRates.end());
+    for (UINT i = 0; i < numModes; i++) {
+        const DXGI_MODE_DESC &mode = dxgiModes[i];
 
-    // The rational form (integer or NTSC fractional) that first validated for a rate, reused as the first try elsewhere
-    map<int, DISPLAYCONFIG_RATIONAL> workingRational;
-
-    /*
-     * Validates a single rate at a resolution by trying the form that already worked for this rate first and then the
-     * remaining candidate forms. SDC_VALIDATE does not change the display, and the rate is drivable if any form works
-     */
-    auto validatesRate = [&](int width, int height, int rate) {
-        vector<DISPLAYCONFIG_RATIONAL> forms;
-        map<int, DISPLAYCONFIG_RATIONAL>::iterator cached = workingRational.find(rate);
-
-        if (cached != workingRational.end()) {
-            forms.push_back(cached->second);
-        }
-
-        for (const DISPLAYCONFIG_RATIONAL &rational : toRefreshRationalCandidates(rate)) {
-            bool alreadyQueued = cached != workingRational.end() && rational.Numerator == cached->second.Numerator &&
-                                 rational.Denominator == cached->second.Denominator;
-
-            if (!alreadyQueued) {
-                forms.push_back(rational);
-            }
-        }
-
-        for (const DISPLAYCONFIG_RATIONAL &rational : forms) {
-            if (submitCcdSourceMode(paths, ccdModes, pathIndex, (UINT32) width, (UINT32) height, rational,
-                                    SDC_VALIDATE | SDC_USE_SUPPLIED_DISPLAY_CONFIG) == ERROR_SUCCESS) {
-                workingRational[rate] = rational;
-                return true;
-            }
-        }
-
-        return false;
-    };
-
-    for (const pair<const pair<int, int>, set<int>> &entry : ratesByResolution) {
-        if (entry.second.size() > MAX_RATES_FOR_CUSTOM_RESOLUTION) {
+        // Skip zero-size and unspecified-rate modes so only real desktop modes are reported
+        if (mode.Width == 0 || mode.Height == 0 || mode.RefreshRate.Denominator == 0) {
             continue;
         }
 
-        int width = entry.first.first;
-        int height = entry.first.second;
-        const set<int> &existingRates = entry.second;
-        int maxExistingRate = *existingRates.rbegin();
-
-        /*
-         * Raise the drivable ceiling by validating panel rates above the existing max, highest first, stopping at the
-         * first that validates. The existing max is already drivable, so it stays the ceiling if nothing higher works
-         */
-        int ceilingRate = maxExistingRate;
-
-        for (vector<int>::const_reverse_iterator it = candidateRates.rbegin(); it != candidateRates.rend(); ++it) {
-            if (*it <= maxExistingRate) {
-                break;
-            }
-
-            if (validatesRate(width, height, *it)) {
-                ceilingRate = *it;
-                break;
-            }
+        // Skip interlaced modes so only progressive desktop modes are reported
+        if (mode.ScanlineOrdering == DXGI_MODE_SCANLINE_ORDER_UPPER_FIELD_FIRST ||
+            mode.ScanlineOrdering == DXGI_MODE_SCANLINE_ORDER_LOWER_FIELD_FIRST) {
+            continue;
         }
 
-        /*
-         * Every panel rate at or below the ceiling is drivable (lower rate = lower pixel clock), so add the ones the
-         * legacy table omitted without probing
-         */
-        for (int rate : candidateRates) {
-            if (rate <= ceilingRate && existingRates.find(rate) == existingRates.end()) {
-                modes.push_back({width, height, 32, rate});
+        modes.push_back({static_cast<int>(mode.Width), static_cast<int>(mode.Height),
+                         static_cast<int>(mode.RefreshRate.Numerator), static_cast<int>(mode.RefreshRate.Denominator)});
+    }
+}
+
+/**
+ * Fills GPU-scaled custom resolutions with the panel rates their DXGI mode list omits and reports the canonical
+ * rational for each rate. Every panel rate at or below a resolution's own maximum is added, and the richest
+ * resolution's rate set is handed back so callers collapse DXGI's representation-variant rationals to one.
+ *
+ * @param modes
+ *            - The mode list to augment in place
+ * @param canonicalRates
+ *            - Populated with the canonical rational (value) for each rounded rate key (key)
+ */
+static void addCustomResolutionRefreshRates(vector<ModeInfo> &modes, map<long long, pair<int, int>> &canonicalRates) {
+    /*
+     * Group every mode by resolution in one pass, mapping each resolution's rateKey to a single exact rational
+     * (first seen wins, so the representation-variant rationals DXGI reports for one rate collapse to one entry). The
+     * raw mode count per resolution then selects the canonical rate set below
+     */
+    map<pair<int, int>, int> modeCountByResolution;
+    map<pair<int, int>, map<long long, pair<int, int>>> ratesByResolution;
+
+    for (const ModeInfo &mode : modes) {
+        pair<int, int> resolution = {mode.width, mode.height};
+        modeCountByResolution[resolution]++;
+        ratesByResolution[resolution].emplace(rateKey(mode.refreshNumerator, mode.refreshDenominator),
+                                              make_pair(mode.refreshNumerator, mode.refreshDenominator));
+    }
+
+    /*
+     * The resolution with the most modes carries the fullest rate set and is the canonical source: drawing every fill
+     * rate from one resolution yields one clean representation per rate and avoids the cross-resolution duplicates
+     */
+    pair<int, int> richest = {0, 0};
+    int richestCount = -1;
+
+    for (const auto &[resolution, count] : modeCountByResolution) {
+        if (count > richestCount) {
+            richestCount = count;
+            richest = resolution;
+        }
+    }
+
+    if (richestCount < 0) {
+        return;
+    }
+
+    // The richest resolution's rate set is the canonical source: one clean rational per rate for callers to match
+    canonicalRates = ratesByResolution.at(richest);
+
+    for (const auto &[resolution, rates] : ratesByResolution) {
+        long long ceilingKey = rates.rbegin()->first;
+
+        // Add every canonical panel rate at or below this resolution's own ceiling that it is missing
+        for (const auto &[key, rate] : canonicalRates) {
+            if (key <= ceilingKey && !rates.contains(key)) {
+                modes.push_back({resolution.first, resolution.second, rate.first, rate.second});
             }
         }
     }
+}
+
+/**
+ * Rounds a rational refresh rate to hundredths of a hertz, giving a single key for rationals that render as the same
+ * rate. This collapses the timing-variant representations DXGI reports for one rate while keeping genuinely distinct
+ * rates apart (for example 23.98 stays separate from 24.00).
+ *
+ * @param refreshNumerator
+ *            - The numerator of the refresh rate
+ * @param refreshDenominator
+ *            - The denominator of the refresh rate
+ *
+ * @return The refresh rate rounded to hundredths of a hertz
+ */
+static long long rateKey(int refreshNumerator, int refreshDenominator) {
+    if (refreshDenominator == 0) {
+        return 0;
+    }
+
+    return ((long long) refreshNumerator * 100 + refreshDenominator / 2) / refreshDenominator;
 }

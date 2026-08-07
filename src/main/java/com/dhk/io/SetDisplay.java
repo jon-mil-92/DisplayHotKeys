@@ -50,17 +50,17 @@ public class SetDisplay {
      *            - The new horizontal resolution for the given display
      * @param resHeight
      *            - The new vertical resolution for the given display
-     * @param bitDepth
-     *            - The new bit depth for the given display
-     * @param refreshRate
-     *            - The new refresh rate for the given display
+     * @param refreshNumerator
+     *            - The numerator of the new exact refresh rate (Hz = numerator / denominator)
+     * @param refreshDenominator
+     *            - The denominator of the new exact refresh rate (Hz = numerator / denominator)
      * @param scalingMode
      *            - The new scaling mode for the given display
      * @param dpiScalePercentage
      *            - The new DPI scale percentage for the given display
      */
-    private native void setDisplay(String displayId, int resWidth, int resHeight, int bitDepth, int refreshRate,
-            int scalingMode, int dpiScalePercentage);
+    private native void setDisplay(String displayId, int resWidth, int resHeight, int refreshNumerator,
+            int refreshDenominator, int scalingMode, int dpiScalePercentage);
 
     /**
      * Defines a JNI function to immediately apply the given orientation mode for the given display.
@@ -90,18 +90,19 @@ public class SetDisplay {
      *            - The new horizontal resolution for the given display
      * @param resHeight
      *            - The new vertical resolution for the given display
-     * @param bitDepth
-     *            - The new bit depth for the given display
-     * @param refreshRate
-     *            - The new refresh rate for the given display
+     * @param refreshNumerator
+     *            - The numerator of the new exact refresh rate (Hz = numerator / denominator)
+     * @param refreshDenominator
+     *            - The denominator of the new exact refresh rate (Hz = numerator / denominator)
      * @param scalingMode
      *            - The new scaling mode for the given display
      * @param dpiScalePercentage
      *            - The new DPI scale percentage for the given display
      */
-    public void applyDisplaySettings(String displayId, int resWidth, int resHeight, int bitDepth, int refreshRate,
-            int scalingMode, int dpiScalePercentage) {
-        setDisplay(displayId, resWidth, resHeight, bitDepth, refreshRate, scalingMode, dpiScalePercentage);
+    public void applyDisplaySettings(String displayId, int resWidth, int resHeight, int refreshNumerator,
+            int refreshDenominator, int scalingMode, int dpiScalePercentage) {
+        setDisplay(displayId, resWidth, resHeight, refreshNumerator, refreshDenominator, scalingMode,
+                dpiScalePercentage);
     }
 
     /**

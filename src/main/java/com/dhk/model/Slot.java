@@ -19,8 +19,6 @@
  */
 package com.dhk.model;
 
-import java.awt.DisplayMode;
-
 /**
  * Defines the model for a Slot. The display mode, scaling mode, DPI scale percentage, orientation mode, and hot key for
  * a slot are initialized here.

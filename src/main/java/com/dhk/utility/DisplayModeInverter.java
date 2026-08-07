@@ -19,7 +19,7 @@
  */
 package com.dhk.utility;
 
-import java.awt.DisplayMode;
+import com.dhk.model.DisplayMode;
 
 /**
  * Inverts a given display mode by swapping the width and height of the resolution.
@@ -45,11 +45,11 @@ public class DisplayModeInverter {
     public static DisplayMode invertDisplayMode(DisplayMode displayMode) {
         int width = displayMode.getWidth();
         int height = displayMode.getHeight();
-        int bitDepth = displayMode.getBitDepth();
-        int refreshRate = displayMode.getRefreshRate();
+        int refreshNumerator = displayMode.getRefreshNumerator();
+        int refreshDenominator = displayMode.getRefreshDenominator();
 
-        // Swap the width and height for the inverted display mode
-        DisplayMode invertedDisplayMode = new DisplayMode(height, width, bitDepth, refreshRate);
+        // Swap the width and height for the inverted display mode, preserving the exact refresh rate
+        DisplayMode invertedDisplayMode = new DisplayMode(height, width, refreshNumerator, refreshDenominator);
 
         return invertedDisplayMode;
     }

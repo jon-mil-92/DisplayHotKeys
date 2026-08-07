@@ -21,7 +21,6 @@ package com.dhk.view;
 
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.DisplayMode;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -45,11 +44,15 @@ import javax.swing.UIManager;
 
 import com.dhk.io.DisplayConfig;
 import com.dhk.model.DhkModel;
+import com.dhk.model.DisplayMode;
 import com.dhk.model.FramePlacement;
+import com.dhk.model.RefreshRate;
+import com.dhk.model.Resolution;
 import com.dhk.model.button.Button;
 import com.dhk.model.button.ButtonProperties;
 import com.dhk.model.button.ThemeableButton;
 import com.dhk.model.button.ThemeableToggleButton;
+import com.dhk.utility.DisplayModeUtil;
 import com.dhk.utility.FrameUtil;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.ui.FlatUIUtils;
@@ -78,7 +81,8 @@ public class DhkView implements IView {
     private JLabel numberOfActiveSlotsLabel;
     private JLabel clearSlotHeader;
     private JLabel applySlotHeader;
-    private JLabel displayModeHeader;
+    private JLabel resolutionHeader;
+    private JLabel refreshRateHeader;
     private JLabel scalingModeHeader;
     private JLabel dpiScaleHeader;
     private JLabel orientationHeader;
@@ -99,7 +103,7 @@ public class DhkView implements IView {
     private int previouslySelectedDisplayIndex;
     private int gridYPosForSlotInPanel;
 
-    private static final int NUM_OF_SLOT_COMPONENTS = 10;
+    private static final int NUM_OF_SLOT_COMPONENTS = 11;
     private static final String[] ORIENTATION_MODES = {"Landscape", "Portrait", "iLandscape", "iPortrait"};
     private static final String[] SCALING_MODES = new String[]{"Preserved", "Stretched", "Centered"};
 
@@ -277,29 +281,32 @@ public class DhkView implements IView {
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplySlotButton(), mainPanelConstraints);
 
                 mainPanelConstraints.gridx = 2;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDisplayModes(), mainPanelConstraints);
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getResolutions(), mainPanelConstraints);
 
                 mainPanelConstraints.gridx = 3;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getScalingModes(), mainPanelConstraints);
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getRefreshRates(), mainPanelConstraints);
 
                 mainPanelConstraints.gridx = 4;
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getScalingModes(), mainPanelConstraints);
+
+                mainPanelConstraints.gridx = 5;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDpiScalePercentages(),
                         mainPanelConstraints);
 
-                mainPanelConstraints.gridx = 5;
+                mainPanelConstraints.gridx = 6;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getOrientationModes(), mainPanelConstraints);
 
-                mainPanelConstraints.gridx = 6;
+                mainPanelConstraints.gridx = 7;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getHotKey(), mainPanelConstraints);
 
-                mainPanelConstraints.gridx = 7;
+                mainPanelConstraints.gridx = 8;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearHotKeyButton(), mainPanelConstraints);
 
-                mainPanelConstraints.gridx = 8;
+                mainPanelConstraints.gridx = 9;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getChangeHotKeyButton(),
                         mainPanelConstraints);
 
-                mainPanelConstraints.gridx = 9;
+                mainPanelConstraints.gridx = 10;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearSlotButton(), mainPanelConstraints);
 
                 // Add the next slot to the following row in the layout
@@ -352,11 +359,17 @@ public class DhkView implements IView {
             mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplySlotButton(),
                     prevApplySlotButtonConstraints);
 
-            GridBagConstraints prevDisplayModesConstraints = mainPanelLayout
-                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getDisplayModes());
+            GridBagConstraints prevResolutionsConstraints = mainPanelLayout
+                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getResolutions());
 
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getDisplayModes());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDisplayModes(), prevDisplayModesConstraints);
+            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getResolutions());
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getResolutions(), prevResolutionsConstraints);
+
+            GridBagConstraints prevRefreshRatesConstraints = mainPanelLayout
+                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getRefreshRates());
+
+            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getRefreshRates());
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getRefreshRates(), prevRefreshRatesConstraints);
 
             GridBagConstraints prevScalingModesConstraints = mainPanelLayout
                     .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getScalingModes());
@@ -536,19 +549,23 @@ public class DhkView implements IView {
         buttons.add(runOnStartupButton);
 
         applySlotHeader = new JLabel("", SwingConstants.CENTER);
-        applySlotHeader.setPreferredSize(new Dimension(36, 28));
+        applySlotHeader.setPreferredSize(new Dimension(20, 28));
         makeLabelBold(applySlotHeader);
 
-        displayModeHeader = new JLabel("Display Mode", SwingConstants.CENTER);
-        displayModeHeader.setPreferredSize(new Dimension(240, 28));
-        makeLabelBold(displayModeHeader);
+        resolutionHeader = new JLabel("Resolution", SwingConstants.CENTER);
+        resolutionHeader.setPreferredSize(new Dimension(138, 28));
+        makeLabelBold(resolutionHeader);
+
+        refreshRateHeader = new JLabel("Refresh Rate", SwingConstants.CENTER);
+        refreshRateHeader.setPreferredSize(new Dimension(116, 28));
+        makeLabelBold(refreshRateHeader);
 
         scalingModeHeader = new JLabel("Scaling Mode", SwingConstants.CENTER);
         scalingModeHeader.setPreferredSize(new Dimension(110, 28));
         makeLabelBold(scalingModeHeader);
 
         dpiScaleHeader = new JLabel("DPI Scale", SwingConstants.CENTER);
-        dpiScaleHeader.setPreferredSize(new Dimension(90, 28));
+        dpiScaleHeader.setPreferredSize(new Dimension(70, 28));
         makeLabelBold(dpiScaleHeader);
 
         orientationHeader = new JLabel("Orientation", SwingConstants.CENTER);
@@ -556,19 +573,19 @@ public class DhkView implements IView {
         makeLabelBold(orientationHeader);
 
         hotKeyHeader = new JLabel("Hot Key", SwingConstants.CENTER);
-        hotKeyHeader.setPreferredSize(new Dimension(90, 28));
+        hotKeyHeader.setPreferredSize(new Dimension(52, 28));
         makeLabelBold(hotKeyHeader);
 
         clearHotKeyHeader = new JLabel("", SwingConstants.CENTER);
-        clearHotKeyHeader.setPreferredSize(new Dimension(32, 28));
+        clearHotKeyHeader.setPreferredSize(new Dimension(18, 28));
         makeLabelBold(clearHotKeyHeader);
 
         changeHotKeyHeader = new JLabel("", SwingConstants.CENTER);
-        changeHotKeyHeader.setPreferredSize(new Dimension(150, 28));
+        changeHotKeyHeader.setPreferredSize(new Dimension(148, 28));
         makeLabelBold(changeHotKeyHeader);
 
         clearSlotHeader = new JLabel("", SwingConstants.CENTER);
-        clearSlotHeader.setPreferredSize(new Dimension(32, 28));
+        clearSlotHeader.setPreferredSize(new Dimension(22, 28));
         makeLabelBold(clearSlotHeader);
 
         initSlotComponents();
@@ -636,17 +653,27 @@ public class DhkView implements IView {
                     DisplayMode[] displayModes = landscapeOrientation
                             ? displayConfig.getLandscapeDisplayModes(displayIds[displayIndex])
                             : displayConfig.getPortraitDisplayModes(displayIds[displayIndex]);
+                    DisplayMode slotDisplayMode = model.getSlot(displayIndex, slotIndex).getDisplayMode();
 
                     // Offer only the DPI scale percentages Windows supports for the slot's stored resolution
-                    DisplayMode slotDisplayMode = model.getSlot(displayIndex, slotIndex).getDisplayMode();
                     Integer[] dpiScalePercentages = displayConfig
                             .getSupportedDpiScalePercentages(slotDisplayMode.getWidth(), slotDisplayMode.getHeight());
+
+                    /*
+                     * Split the stored display mode across the resolution and refresh rate combo boxes, populating the
+                     * refresh rates from the stored resolution so only its supported rates are offered
+                     */
+                    Resolution slotResolution = slotDisplayMode.getResolution();
 
                     slots.add(new Slot(slotIndex, displayIndex, displayModes, SCALING_MODES, dpiScalePercentages,
                             ORIENTATION_MODES));
 
-                    slots.get(slotIndex).getDisplayModes()
-                            .setSelectedItem(model.getSlot(displayIndex, slotIndex).getDisplayMode());
+                    slots.get(slotIndex).getResolutions().setSelectedItem(slotResolution);
+
+                    slots.get(slotIndex)
+                            .setRefreshRates(DisplayModeUtil.refreshRatesForResolution(displayModes, slotResolution));
+
+                    slots.get(slotIndex).getRefreshRates().setSelectedItem(slotDisplayMode.getRefreshRate());
 
                     slots.get(slotIndex).getScalingModes()
                             .setSelectedIndex(model.getSlot(displayIndex, slotIndex).getScalingMode());
@@ -704,7 +731,7 @@ public class DhkView implements IView {
         menuPanel.add(runOnStartupButton, menuPanelConstraints);
 
         mainPanelConstraints.anchor = GridBagConstraints.WEST;
-        mainPanelConstraints.gridwidth = 10;
+        mainPanelConstraints.gridwidth = 11;
         mainPanelConstraints.gridx = 0;
         mainPanelConstraints.gridy = 0;
         mainPanel.add(displayPanel, mainPanelConstraints);
@@ -721,27 +748,30 @@ public class DhkView implements IView {
         mainPanel.add(applySlotHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 2;
-        mainPanel.add(displayModeHeader, mainPanelConstraints);
+        mainPanel.add(resolutionHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 3;
-        mainPanel.add(scalingModeHeader, mainPanelConstraints);
+        mainPanel.add(refreshRateHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 4;
-        mainPanel.add(dpiScaleHeader, mainPanelConstraints);
+        mainPanel.add(scalingModeHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 5;
-        mainPanel.add(orientationHeader, mainPanelConstraints);
+        mainPanel.add(dpiScaleHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 6;
-        mainPanel.add(hotKeyHeader, mainPanelConstraints);
+        mainPanel.add(orientationHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 7;
-        mainPanel.add(clearHotKeyHeader, mainPanelConstraints);
+        mainPanel.add(hotKeyHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 8;
-        mainPanel.add(changeHotKeyHeader, mainPanelConstraints);
+        mainPanel.add(clearHotKeyHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 9;
+        mainPanel.add(changeHotKeyHeader, mainPanelConstraints);
+
+        mainPanelConstraints.gridx = 10;
         mainPanel.add(clearSlotHeader, mainPanelConstraints);
     }
 
@@ -756,17 +786,41 @@ public class DhkView implements IView {
      *            - The index of the slot to update the DPI scale percentages for
      */
     public void updateSlotDpiScalePercentages(int displayIndex, int slotIndex) {
-        DisplayMode selectedDisplayMode = (DisplayMode) getSlot(displayIndex, slotIndex).getDisplayModes()
+        Resolution selectedResolution = (Resolution) getSlot(displayIndex, slotIndex).getResolutions()
                 .getSelectedItem();
 
-        if (selectedDisplayMode == null) {
+        if (selectedResolution == null) {
             return;
         }
 
-        Integer[] dpiScalePercentages = displayConfig.getSupportedDpiScalePercentages(selectedDisplayMode.getWidth(),
-                selectedDisplayMode.getHeight());
+        Integer[] dpiScalePercentages = displayConfig.getSupportedDpiScalePercentages(selectedResolution.getWidth(),
+                selectedResolution.getHeight());
 
         getSlot(displayIndex, slotIndex).setDpiScalePercentages(dpiScalePercentages);
+    }
+
+    /**
+     * Updates the refresh rates combo box for the specified slot to reflect the rates the slot's currently selected
+     * resolution supports. This is called when a new resolution is selected so the Refresh Rate combo box always offers
+     * a valid set of rates for that resolution.
+     *
+     * @param displayIndex
+     *            - The index of the display the slot resides in
+     * @param slotIndex
+     *            - The index of the slot to update the refresh rates for
+     */
+    public void updateSlotRefreshRates(int displayIndex, int slotIndex) {
+        Resolution selectedResolution = (Resolution) getSlot(displayIndex, slotIndex).getResolutions()
+                .getSelectedItem();
+
+        if (selectedResolution == null) {
+            return;
+        }
+
+        RefreshRate[] refreshRates = DisplayModeUtil.refreshRatesForResolution(
+                getSlot(displayIndex, slotIndex).getSupportedDisplayModes(), selectedResolution);
+
+        getSlot(displayIndex, slotIndex).setRefreshRates(refreshRates);
     }
 
     /**

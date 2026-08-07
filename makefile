@@ -35,7 +35,7 @@ dll:
 	# TOOLCHAIN_FLAGS is empty by default to avoid passing unsupported options to g++ in some environments
 	# Compile the version-info resources so each DLL carries its Details-tab metadata, then link them into the DLLs
 	$(WINDRES) $(RCFLAGS) jni/GetDisplay.rc GetDisplay.res.o
-	$(CXX) $(CXXSTD) $(OPT) jni/com_dhk_io_GetDisplay.cpp jni/DisplayConfig.cpp jni/ArrangeDisplay.cpp GetDisplay.res.o $(COMMON_DEFS) $(INCLUDES) $(TOOLCHAIN_FLAGS) $(LDFLAGS) -o GetDisplay.dll
+	$(CXX) $(CXXSTD) $(OPT) jni/com_dhk_io_GetDisplay.cpp jni/DisplayConfig.cpp jni/ArrangeDisplay.cpp GetDisplay.res.o $(COMMON_DEFS) $(INCLUDES) $(TOOLCHAIN_FLAGS) $(LDFLAGS) -ldxgi -o GetDisplay.dll
 	$(WINDRES) $(RCFLAGS) jni/SetDisplay.rc SetDisplay.res.o
 	$(CXX) $(CXXSTD) $(OPT) jni/com_dhk_io_SetDisplay.cpp jni/DisplayConfig.cpp jni/ArrangeDisplay.cpp SetDisplay.res.o $(COMMON_DEFS) $(INCLUDES) $(TOOLCHAIN_FLAGS) $(LDFLAGS) -o SetDisplay.dll
 	$(WINDRES) $(RCFLAGS) jni/DisplayEventNotifier.rc DisplayEventNotifier.res.o

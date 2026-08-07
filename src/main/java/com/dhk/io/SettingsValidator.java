@@ -19,7 +19,6 @@
  */
 package com.dhk.io;
 
-import java.awt.DisplayMode;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -29,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.ini4j.Wini;
+
+import com.dhk.model.DisplayMode;
 
 import lc.kra.system.keyboard.event.GlobalKeyEvent;
 
@@ -233,9 +234,9 @@ public class SettingsValidator {
     }
 
     /**
-     * Validates the display modes properties for each slot in the settings file. If the value for any display mode
-     * property for any slot fails validation, the default display mode property values are written to the settings file
-     * for that slot.
+     * Validates the display mode for each slot in the settings file. A slot whose stored exact display mode is not a
+     * currently-supported mode for its orientation is reset to the default. A pre-fractional slot lacks the
+     * numerator/denominator pair, so it is treated as invalid and reset.
      */
     private void validateDisplayModes() {
         for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
@@ -247,20 +248,20 @@ public class SettingsValidator {
                 String iniSection = displayId + "--Slot" + Integer.toString(slotId);
                 String width = ini.get(iniSection, "displayModeWidth");
                 String height = ini.get(iniSection, "displayModeHeight");
-                String bitDepth = ini.get(iniSection, "displayModeBitDepth");
-                String refreshRate = ini.get(iniSection, "displayModeRefreshRate");
+                String refreshNumerator = ini.get(iniSection, "displayModeRefreshNumerator");
+                String refreshDenominator = ini.get(iniSection, "displayModeRefreshDenominator");
 
-                if ((width != null && isPositiveInt(width)) && (height != null && isPositiveInt(height))
-                        && (bitDepth != null && isPositiveInt(bitDepth))
-                        && (refreshRate != null && isPositiveInt(refreshRate))) {
+                if (width != null && isPositiveInt(width) && height != null && isPositiveInt(height)
+                        && refreshNumerator != null && isPositiveInt(refreshNumerator) && refreshDenominator != null
+                        && isPositiveInt(refreshDenominator)) {
                     DisplayMode displayMode = new DisplayMode(Integer.valueOf(width), Integer.valueOf(height),
-                            Integer.valueOf(bitDepth), Integer.valueOf(refreshRate));
+                            Integer.valueOf(refreshNumerator), Integer.valueOf(refreshDenominator));
 
                     boolean validForOrientation = landscapeOrientation
                             ? Arrays.asList(landscapeDisplayModesMap.get(displayId)).contains(displayMode)
                             : Arrays.asList(portraitDisplayModesMap.get(displayId)).contains(displayMode);
 
-                    // Repair with a default matching the slot's own orientation
+                    // Repair with a default matching the slot's own orientation when the stored mode is not supported
                     if (!validForOrientation) {
                         writeDefaultDisplayMode(landscapeOrientation, displayId, slotId);
                     }
@@ -292,8 +293,7 @@ public class SettingsValidator {
             defaultDisplayMode = portraitDisplayModes[0];
         }
 
-        settingsMgr.saveIniSlotDisplayMode(displayId, slotId, defaultDisplayMode.getWidth(),
-                defaultDisplayMode.getHeight(), defaultDisplayMode.getBitDepth(), defaultDisplayMode.getRefreshRate());
+        settingsMgr.saveIniSlotDisplayMode(displayId, slotId, defaultDisplayMode);
     }
 
     /**

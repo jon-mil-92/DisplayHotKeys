@@ -20,7 +20,6 @@
 package com.dhk.view;
 
 import java.awt.Dimension;
-import java.awt.DisplayMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,8 +29,12 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 
+import com.dhk.model.DisplayMode;
+import com.dhk.model.RefreshRate;
+import com.dhk.model.Resolution;
 import com.dhk.model.button.Button;
 import com.dhk.model.button.ButtonProperties;
+import com.dhk.utility.DisplayModeUtil;
 
 /**
  * Defines the view components of a Slot.
@@ -42,7 +45,9 @@ public class Slot {
 
     private JLabel slotIndicatorLabel;
     private Button applySlotButton;
-    private CenteredComboBox<DisplayMode> slotDisplayModes;
+    private DisplayMode[] supportedDisplayModes;
+    private CenteredComboBox<Resolution> slotResolutions;
+    private CenteredComboBox<RefreshRate> slotRefreshRates;
     private CenteredComboBox<String> slotScalingModes;
     private CenteredComboBox<Integer> slotDpiScalePercentages;
     private CenteredComboBox<String> slotOrientationModes;
@@ -78,8 +83,18 @@ public class Slot {
         ButtonProperties applySlotButtonProps = new ButtonProperties("Apply Slot", new Dimension(20, 20), 0.80f, 0.68f);
         applySlotButton = new Button("/apply_slot_idle.svg", "/apply_slot_hover.svg", applySlotButtonProps, true);
 
-        slotDisplayModes = new CenteredComboBox<DisplayMode>(displayModes);
-        slotDisplayModes.setPreferredSize(new Dimension(240, 28));
+        supportedDisplayModes = displayModes;
+
+        Resolution[] resolutions = DisplayModeUtil.distinctResolutions(displayModes);
+        slotResolutions = new CenteredComboBox<Resolution>(resolutions);
+        slotResolutions.setPreferredSize(new Dimension(138, 28));
+
+        // Start with the first resolution's refresh rates; the view sets the real selection right after construction
+        RefreshRate[] refreshRates = resolutions.length > 0
+                ? DisplayModeUtil.refreshRatesForResolution(displayModes, resolutions[0])
+                : new RefreshRate[0];
+        slotRefreshRates = new CenteredComboBox<RefreshRate>(refreshRates);
+        slotRefreshRates.setPreferredSize(new Dimension(116, 28));
 
         slotScalingModes = new CenteredComboBox<String>(scalingModes);
         slotScalingModes.setPreferredSize(new Dimension(110, 28));
@@ -92,13 +107,13 @@ public class Slot {
 
         slotHotKey = new JLabel("", SwingConstants.CENTER);
 
-        ButtonProperties clearHotKeyButtonProps = new ButtonProperties("Clear Hot Key", new Dimension(17, 20), 0.70f,
+        ButtonProperties clearHotKeyButtonProps = new ButtonProperties("Clear Hot Key", new Dimension(18, 20), 0.70f,
                 0.60f);
         clearHotKeyButton = new Button("/clear_hot_key_idle.svg", "/clear_hot_key_hover.svg", clearHotKeyButtonProps,
                 false);
 
         slotChangeHotKeyButton = new JButton("Change Hot Key");
-        slotChangeHotKeyButton.setPreferredSize(new Dimension(150, 28));
+        slotChangeHotKeyButton.setPreferredSize(new Dimension(148, 28));
 
         ButtonProperties clearSlotButtonProps = new ButtonProperties("Clear Slot", new Dimension(22, 20), 0.80f, 0.68f);
         clearSlotButton = new Button("/clear_slot_idle.svg", "/clear_slot_hover.svg", clearSlotButtonProps, true);
@@ -128,12 +143,49 @@ public class Slot {
     }
 
     /**
-     * Gets the display modes combo box of the slot.
+     * Gets the supported display modes the slot's resolution and refresh rate selections are derived from.
      *
-     * @return The display modes combo box of the slot
+     * @return The supported display modes of the slot
      */
-    public CenteredComboBox<DisplayMode> getDisplayModes() {
-        return slotDisplayModes;
+    public DisplayMode[] getSupportedDisplayModes() {
+        return supportedDisplayModes;
+    }
+
+    /**
+     * Gets the resolutions combo box of the slot.
+     *
+     * @return The resolutions combo box of the slot
+     */
+    public CenteredComboBox<Resolution> getResolutions() {
+        return slotResolutions;
+    }
+
+    /**
+     * Gets the refresh rates combo box of the slot.
+     *
+     * @return The refresh rates combo box of the slot
+     */
+    public CenteredComboBox<RefreshRate> getRefreshRates() {
+        return slotRefreshRates;
+    }
+
+    /**
+     * Replaces the items in the refresh rates combo box with the given rates. The previously selected rate is preserved
+     * when it is still supported; otherwise the combo box falls back to the first (highest) rate. This is used to offer
+     * only the refresh rates the slot's currently selected resolution supports.
+     *
+     * @param refreshRates
+     *            - The array of refresh rates to populate the combo box with
+     */
+    public void setRefreshRates(RefreshRate[] refreshRates) {
+        RefreshRate previouslySelected = (RefreshRate) slotRefreshRates.getSelectedItem();
+
+        // Replacing the model leaves the registered action listeners attached so model updates still fire
+        slotRefreshRates.setModel(new DefaultComboBoxModel<RefreshRate>(refreshRates));
+
+        if (previouslySelected != null && Arrays.asList(refreshRates).contains(previouslySelected)) {
+            slotRefreshRates.setSelectedItem(previouslySelected);
+        }
     }
 
     /**

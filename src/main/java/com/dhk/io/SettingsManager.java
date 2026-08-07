@@ -19,7 +19,6 @@
  */
 package com.dhk.io;
 
-import java.awt.DisplayMode;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -31,6 +30,7 @@ import java.util.Map;
 
 import org.ini4j.Wini;
 
+import com.dhk.model.DisplayMode;
 import com.dhk.model.HotKey;
 import com.dhk.model.Key;
 
@@ -172,38 +172,36 @@ public class SettingsManager {
     public DisplayMode getIniSlotDisplayMode(String displayId, int slotId) {
         String iniSection = displayId + "--Slot" + Integer.toString(slotId);
 
+        /*
+         * The validator writes the exact refresh rate as a numerator/denominator pair before the model is built (a slot
+         * missing it, such as a pre-fractional one, is reset to the default), so both are present here
+         */
         DisplayMode slotDisplayMode = new DisplayMode(ini.get(iniSection, "displayModeWidth", int.class),
                 ini.get(iniSection, "displayModeHeight", int.class),
-                ini.get(iniSection, "displayModeBitDepth", int.class),
-                ini.get(iniSection, "displayModeRefreshRate", int.class));
+                ini.get(iniSection, "displayModeRefreshNumerator", int.class),
+                ini.get(iniSection, "displayModeRefreshDenominator", int.class));
 
         return slotDisplayMode;
     }
 
     /**
-     * Sets the specified slot's display mode properties in the settings file object.
+     * Sets the specified slot's display mode properties in the settings file object, persisting the exact refresh rate
+     * as a numerator/denominator pair.
      *
      * @param displayId
      *            - The ID of the display to set the display mode for
      * @param slotId
      *            - The ID of the slot to set the display mode for
-     * @param width
-     *            - The new display mode width for the specified slot
-     * @param height
-     *            - The new display mode height for the specified slot
-     * @param bitDepth
-     *            - The new display mode bit depth for the specified slot
-     * @param refreshRate
-     *            - The new display mode refresh rate for the specified slot
+     * @param displayMode
+     *            - The new display mode for the specified slot
      */
-    public void saveIniSlotDisplayMode(String displayId, int slotId, int width, int height, int bitDepth,
-            int refreshRate) {
+    public void saveIniSlotDisplayMode(String displayId, int slotId, DisplayMode displayMode) {
         String iniSection = displayId + "--Slot" + Integer.toString(slotId);
 
-        ini.put(iniSection, "displayModeWidth", width);
-        ini.put(iniSection, "displayModeHeight", height);
-        ini.put(iniSection, "displayModeBitDepth", bitDepth);
-        ini.put(iniSection, "displayModeRefreshRate", refreshRate);
+        ini.put(iniSection, "displayModeWidth", displayMode.getWidth());
+        ini.put(iniSection, "displayModeHeight", displayMode.getHeight());
+        ini.put(iniSection, "displayModeRefreshNumerator", displayMode.getRefreshNumerator());
+        ini.put(iniSection, "displayModeRefreshDenominator", displayMode.getRefreshDenominator());
 
         updateSettingsFile();
     }

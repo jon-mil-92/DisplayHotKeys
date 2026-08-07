@@ -19,15 +19,17 @@
  */
 package com.dhk.controller;
 
-import java.awt.DisplayMode;
-
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
+import com.dhk.model.DisplayMode;
+import com.dhk.model.RefreshRate;
+import com.dhk.model.Resolution;
 import com.dhk.view.DhkView;
 
 /**
- * Controls the Display Mode combo boxes. Listeners are added to the corresponding view components so that when a new
- * display mode is selected from a Display Mode combo box, the model is updated.
+ * Controls the Resolution and Refresh Rate combo boxes, which together select a display mode. Listeners are added to
+ * the corresponding view components so that selecting a resolution refreshes the rates it supports and, along with
+ * selecting a refresh rate, updates the model with the recombined display mode.
  *
  * @author Jonathan R. Miller
  */
@@ -62,11 +64,14 @@ public class DisplayModeController implements IController {
         for (int i = 0; i < model.getNumOfConnectedDisplays(); i++) {
             int displayIndex = i;
 
-            // Set the action listener for each slot in the view
+            // Set the action listeners for each slot in the view
             for (int j = 0; j < model.getMaxNumOfSlots(); j++) {
                 int slotIndex = j;
 
-                view.getSlot(displayIndex, slotIndex).getDisplayModes()
+                view.getSlot(displayIndex, slotIndex).getResolutions()
+                        .addActionListener(e -> selectSlotResolution(displayIndex, slotIndex));
+
+                view.getSlot(displayIndex, slotIndex).getRefreshRates()
                         .addActionListener(e -> saveSlotDisplayMode(displayIndex, slotIndex));
             }
         }
@@ -77,7 +82,28 @@ public class DisplayModeController implements IController {
     }
 
     /**
-     * Updates the model's display mode for the specified slot with the selected display mode from the view.
+     * Reacts to a new resolution selection by refreshing the rates and DPI scale percentages it supports, then saving
+     * the recombined display mode. Repopulating the rates does not reliably fire the refresh rate listener, so the save
+     * is performed here rather than relied upon as a side effect.
+     *
+     * @param displayIndex
+     *            - The index of the display the slot resides in
+     * @param slotIndex
+     *            - The index of the slot to react to the resolution selection for
+     */
+    private void selectSlotResolution(int displayIndex, int slotIndex) {
+        view.updateSlotRefreshRates(displayIndex, slotIndex);
+
+        // Refresh the DPI Scale combo box for the new resolution, falling back to a supported percentage if needed
+        view.updateSlotDpiScalePercentages(displayIndex, slotIndex);
+
+        // Persist the recombined display mode, since repopulating the rate combo box may not fire its listener
+        saveSlotDisplayMode(displayIndex, slotIndex);
+    }
+
+    /**
+     * Updates the model's display mode for the specified slot with the display mode recombined from the selected
+     * resolution and refresh rate in the view.
      *
      * @param displayIndex
      *            - The index of the display to update the display mode for
@@ -85,18 +111,23 @@ public class DisplayModeController implements IController {
      *            - The index of the slot update the display mode for
      */
     private void saveSlotDisplayMode(int displayIndex, int slotIndex) {
-        String displayId = model.getDisplayIds()[displayIndex];
-        int slotId = slotIndex + 1;
-        DisplayMode selectedDisplayMode = (DisplayMode) view.getSlot(displayIndex, slotIndex).getDisplayModes()
+        Resolution selectedResolution = (Resolution) view.getSlot(displayIndex, slotIndex).getResolutions()
+                .getSelectedItem();
+        RefreshRate selectedRefreshRate = (RefreshRate) view.getSlot(displayIndex, slotIndex).getRefreshRates()
                 .getSelectedItem();
 
-        model.getSlot(displayIndex, slotIndex).setDisplayMode(selectedDisplayMode);
-        settingsMgr.saveIniSlotDisplayMode(displayId, slotId, selectedDisplayMode.getWidth(),
-                selectedDisplayMode.getHeight(), selectedDisplayMode.getBitDepth(),
-                selectedDisplayMode.getRefreshRate());
+        // The refresh rates are repopulated as the resolution changes, so guard against a momentarily empty selection
+        if (selectedResolution == null || selectedRefreshRate == null) {
+            return;
+        }
 
-        // Refresh the DPI Scale combo box for the new resolution, falling back to a supported percentage if needed
-        view.updateSlotDpiScalePercentages(displayIndex, slotIndex);
+        String displayId = model.getDisplayIds()[displayIndex];
+        int slotId = slotIndex + 1;
+        DisplayMode selectedDisplayMode = new DisplayMode(selectedResolution.getWidth(), selectedResolution.getHeight(),
+                selectedRefreshRate.getNumerator(), selectedRefreshRate.getDenominator());
+
+        model.getSlot(displayIndex, slotIndex).setDisplayMode(selectedDisplayMode);
+        settingsMgr.saveIniSlotDisplayMode(displayId, slotId, selectedDisplayMode);
     }
 
 }
