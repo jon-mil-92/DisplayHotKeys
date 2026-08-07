@@ -34,7 +34,7 @@
 
 This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, refresh rate, scaling mode, DPI scale percentage, and orientation can be changed for each connected display with user-defined hot keys.
 
-<img src="src/main/resources/images/screenshot.png" alt="Display Hot Keys" width="800" />
+<img src="screenshot.png" alt="Display Hot Keys" width="800" />
 
 ### Common Use Cases
 
