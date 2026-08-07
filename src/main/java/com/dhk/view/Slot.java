@@ -94,7 +94,7 @@ public class Slot {
                 ? DisplayModeUtil.refreshRatesForResolution(displayModes, resolutions[0])
                 : new RefreshRate[0];
         slotRefreshRates = new CenteredComboBox<RefreshRate>(refreshRates);
-        slotRefreshRates.setPreferredSize(new Dimension(116, 28));
+        slotRefreshRates.setPreferredSize(new Dimension(118, 28));
 
         slotScalingModes = new CenteredComboBox<String>(scalingModes);
         slotScalingModes.setPreferredSize(new Dimension(110, 28));

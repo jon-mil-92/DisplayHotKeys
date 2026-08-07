@@ -557,7 +557,7 @@ public class DhkView implements IView {
         makeLabelBold(resolutionHeader);
 
         refreshRateHeader = new JLabel("Refresh Rate", SwingConstants.CENTER);
-        refreshRateHeader.setPreferredSize(new Dimension(116, 28));
+        refreshRateHeader.setPreferredSize(new Dimension(118, 28));
         makeLabelBold(refreshRateHeader);
 
         scalingModeHeader = new JLabel("Scaling Mode", SwingConstants.CENTER);
