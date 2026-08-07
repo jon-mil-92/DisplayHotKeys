@@ -573,7 +573,7 @@ public class DhkView implements IView {
         makeLabelBold(orientationHeader);
 
         hotKeyHeader = new JLabel("Hot Key", SwingConstants.CENTER);
-        hotKeyHeader.setPreferredSize(new Dimension(54, 28));
+        hotKeyHeader.setPreferredSize(new Dimension(52, 28));
         makeLabelBold(hotKeyHeader);
 
         clearHotKeyHeader = new JLabel("", SwingConstants.CENTER);
@@ -581,7 +581,7 @@ public class DhkView implements IView {
         makeLabelBold(clearHotKeyHeader);
 
         changeHotKeyHeader = new JLabel("", SwingConstants.CENTER);
-        changeHotKeyHeader.setPreferredSize(new Dimension(150, 28));
+        changeHotKeyHeader.setPreferredSize(new Dimension(148, 28));
         makeLabelBold(changeHotKeyHeader);
 
         clearSlotHeader = new JLabel("", SwingConstants.CENTER);
