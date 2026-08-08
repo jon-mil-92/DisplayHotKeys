@@ -74,6 +74,7 @@ public class AboutDialog implements IView {
     private GridBagConstraints infoPanelConstraints;
     private JLabel headerLabel;
     private JLabel versionLabel;
+    private JLabel latestVersionLabel;
     private JLabel developedByLabel;
     private JButton licenseButton;
     private JButton releasesButton;
@@ -85,10 +86,7 @@ public class AboutDialog implements IView {
     private Component darkeningGlassPane;
 
     private static final String GITHUB_DOMAIN = "https://github.com";
-    private static final String GITHUB_CONTENT_DOMAIN = "https://raw.githubusercontent.com";
-    private static final String LICENSE_PATH = "/jon-mil-92/DisplayHotKeys/refs/heads/main/LICENSE.txt";
     private static final String REALEASES_PATH = "/jon-mil-92/DisplayHotKeys/releases";
-    private static final String LICENSE_LINK = GITHUB_CONTENT_DOMAIN + LICENSE_PATH;
     private static final String RELEASES_LINK = GITHUB_DOMAIN + REALEASES_PATH;
     private static final float HEADER_FONT_SCALE = 1.6f;
 
@@ -141,6 +139,9 @@ public class AboutDialog implements IView {
                 parentFrame.setGlassPane(darkeningGlassPane);
                 darkeningGlassPane.setVisible(true);
 
+                // Start off-EDT before the modal setVisible blocks, so the label updates while the dialog is shown
+                fetchLatestVersion();
+
                 // Pack and position to fit the info text, then show
                 aboutDialog.pack();
                 aboutDialog.setLocationRelativeTo(parentFrame);
@@ -159,6 +160,69 @@ public class AboutDialog implements IView {
     @Override
     public Component getDefaultFocusComponent() {
         return headerLabel;
+    }
+
+    /**
+     * Fetches the latest released version on a background daemon thread and updates the latest-version label on the AWT
+     * event dispatching thread, keeping the blocking network request off the AWT event dispatching thread.
+     */
+    private void fetchLatestVersion() {
+        Thread fetchThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final String latestVersion = VersionRetriever.getLatestVersion();
+
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        latestVersionLabel.setText("Latest Version: " + latestVersion);
+
+                        // Emphasize the label when a newer release is available than the current version
+                        if (isNewerVersion(latestVersion, VersionRetriever.getVersion())) {
+                            latestVersionLabel.putClientProperty("FlatLaf.style", "font: bold; foreground: #00c853");
+                        }
+                    }
+                });
+            }
+        }, "dhk-latest-version-fetch");
+
+        fetchThread.setDaemon(true);
+        fetchThread.start();
+    }
+
+    /**
+     * Determines whether the latest released version is greater than the current version. An unknown or malformed
+     * version on either side is treated as not newer, so the label is emphasized only on a confident comparison.
+     *
+     * @param latestVersion
+     *            - The latest released version in "MAJOR.MINOR.PATCH" form
+     * @param currentVersion
+     *            - The current version in "MAJOR.MINOR.PATCH" form
+     *
+     * @return True if the latest version is greater than the current version, otherwise false
+     */
+    private boolean isNewerVersion(String latestVersion, String currentVersion) {
+        String[] latestParts = latestVersion.split("\\.");
+        String[] currentParts = currentVersion.split("\\.");
+
+        if (latestParts.length != 3 || currentParts.length != 3) {
+            return false;
+        }
+
+        try {
+            for (int componentIndex = 0; componentIndex < 3; componentIndex++) {
+                int latestComponent = Integer.parseInt(latestParts[componentIndex]);
+                int currentComponent = Integer.parseInt(currentParts[componentIndex]);
+
+                if (latestComponent != currentComponent) {
+                    return latestComponent > currentComponent;
+                }
+            }
+        } catch (NumberFormatException ex) {
+            return false;
+        }
+
+        return false;
     }
 
     /**
@@ -208,8 +272,12 @@ public class AboutDialog implements IView {
         headerLabel.setHorizontalAlignment(SwingConstants.CENTER);
         headerLabel.putClientProperty("FlatLaf.style", "font: bold " + Math.round(HEADER_FONT_SCALE * 100) + "%");
 
-        versionLabel = new JLabel("Version: " + VersionRetriever.getVersion());
+        versionLabel = new JLabel("Current Version: " + VersionRetriever.getVersion());
         versionLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+        // Placeholder text is the widest state, so the async result never clips in the non-resizable dialog
+        latestVersionLabel = new JLabel("Latest Version: checking…");
+        latestVersionLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         developedByLabel = new JLabel("Developed by Jonathan R. Miller");
         developedByLabel.setHorizontalAlignment(SwingConstants.CENTER);
@@ -221,8 +289,11 @@ public class AboutDialog implements IView {
 
         paypalButtonController = new PaypalDonateButtonController(AboutDialog.this, paypalDonateButton);
         licenseButton = new JButton("License");
+        licenseButton.setFocusPainted(false);
         releasesButton = new JButton("Releases");
+        releasesButton.setFocusPainted(false);
         closeButton = new JButton("Close");
+        closeButton.setFocusPainted(false);
     }
 
     /**
@@ -236,13 +307,9 @@ public class AboutDialog implements IView {
     private void initAboutComponentListeners(final JDialog aboutDialog, final SystemTray systemTray) {
         paypalButtonController.initListeners();
 
-        licenseButton.addActionListener(createLicenseActionListener());
+        licenseButton.addActionListener(createLicenseActionListener(aboutDialog));
         releasesButton.addActionListener(createReleasesActionListener());
         closeButton.addActionListener(createCloseActionListener(aboutDialog, systemTray));
-
-        licenseButton.addMouseListener(createMouseAdapter());
-        releasesButton.addMouseListener(createMouseAdapter());
-        closeButton.addMouseListener(createMouseAdapter());
 
         // Prevent default close and handle the title-bar close ourselves
         aboutDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
@@ -291,6 +358,10 @@ public class AboutDialog implements IView {
 
         infoPanelConstraints.gridx = 0;
         infoPanelConstraints.gridy = 2;
+        infoPanel.add(latestVersionLabel, infoPanelConstraints);
+
+        infoPanelConstraints.gridx = 0;
+        infoPanelConstraints.gridy = 3;
         infoPanel.add(developedByLabel, infoPanelConstraints);
 
         mainConstraints.gridx = 0;
@@ -307,15 +378,28 @@ public class AboutDialog implements IView {
     }
 
     /**
-     * Creates an action listener that opens the license link.
+     * Creates an action listener that shows the bundled license text in its own dialog.
      *
-     * @return An action listener that opens the license link
+     * @param aboutDialog
+     *            - The about dialog that owns the license dialog
+     *
+     * @return An action listener that shows the license dialog
      */
-    private ActionListener createLicenseActionListener() {
+    private ActionListener createLicenseActionListener(JDialog aboutDialog) {
         return new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                openLinkButtonAction(LICENSE_LINK);
+                // The modal grabs input before a mouse-exit fires, so clear the button's rollover highlight first
+                licenseButton.getModel().setRollover(false);
+                getDefaultFocusComponent().requestFocusInWindow();
+
+                // Defer the modal show so the button finishes its mouse-release repaint before the modal blocks
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        new LicenseDialog(aboutDialog).showLicenseDialog();
+                    }
+                });
             }
         };
     }
@@ -349,20 +433,6 @@ public class AboutDialog implements IView {
             @Override
             public void actionPerformed(ActionEvent e) {
                 closeButtonAction(aboutDialog, systemTray);
-            }
-        };
-    }
-
-    /**
-     * Creates a mouse adapter that gives focus to the default focus component upon mouse exit.
-     *
-     * @return A mouse adapter that gives focus to the default focus component upon mouse exit
-     */
-    private MouseAdapter createMouseAdapter() {
-        return new MouseAdapter() {
-            @Override
-            public void mouseExited(MouseEvent e) {
-                getDefaultFocusComponent().requestFocusInWindow();
             }
         };
     }

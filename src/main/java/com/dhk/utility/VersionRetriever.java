@@ -21,14 +21,47 @@ package com.dhk.utility;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * Retrieves the current version for the application.
+ * Retrieves the current version for the application and the latest released version from GitHub.
  *
  * @author Jonathan R. Miller
  */
 public class VersionRetriever {
+
+    /**
+     * Sentinel returned when a version cannot be resolved.
+     */
+    private static final String UNKNOWN_VERSION = "Unknown";
+
+    /**
+     * GitHub REST endpoint that returns the latest release for the DisplayHotKeys repository.
+     */
+    private static final URI LATEST_RELEASE_URI = URI
+            .create("https://api.github.com/repos/jon-mil-92/DisplayHotKeys/releases/latest");
+
+    /**
+     * Timeout applied to both establishing the connection and completing the request.
+     */
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
+
+    /**
+     * Extracts the untrusted tag_name value from the release JSON, bounded to a safe length.
+     */
+    private static final Pattern TAG_NAME_PATTERN = Pattern.compile("\"tag_name\"\\s*:\\s*\"([^\"\\\\]{1,32})\"");
+
+    /**
+     * Strict allow-list for a valid version tag, guaranteeing the returned value is a sanitized "vMAJOR.MINOR.PATCH".
+     */
+    private static final Pattern VERSION_PATTERN = Pattern.compile("v\\d{1,4}\\.\\d{1,4}\\.\\d{1,4}");
 
     /**
      * Default constructor for the {@link VersionRetriever} class.
@@ -46,15 +79,74 @@ public class VersionRetriever {
 
         try (InputStream in = VersionRetriever.class.getResourceAsStream("/app.properties")) {
             if (in == null) {
-                return "unknown";
+                return UNKNOWN_VERSION;
             }
 
             props.load(in);
 
-            return props.getProperty("app.version", "unknown");
+            return props.getProperty("app.version", UNKNOWN_VERSION);
         } catch (IOException ex) {
-            return "unknown";
+            return UNKNOWN_VERSION;
         }
+    }
+
+    /**
+     * Gets the latest released version from the GitHub API. The response is validated and sanitized against a strict
+     * allow-list, so a malformed or hostile payload yields the unknown sentinel rather than untrusted text. This
+     * performs a blocking network request and must not run on the AWT event dispatching thread.
+     *
+     * @return The latest released version, or the unknown sentinel if it cannot be resolved
+     */
+    public static String getLatestVersion() {
+        HttpClient client = HttpClient.newBuilder().connectTimeout(REQUEST_TIMEOUT)
+                .followRedirects(HttpClient.Redirect.NORMAL).build();
+
+        // GitHub requires a User-Agent; the versioned Accept header pins a stable response shape
+        HttpRequest request = HttpRequest.newBuilder(LATEST_RELEASE_URI).timeout(REQUEST_TIMEOUT)
+                .header("Accept", "application/vnd.github+json").header("X-GitHub-Api-Version", "2022-11-28")
+                .header("User-Agent", "DisplayHotKeys").GET().build();
+
+        try {
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                return UNKNOWN_VERSION;
+            }
+
+            return sanitizeVersion(extractTagName(response.body()));
+        } catch (IOException ex) {
+            return UNKNOWN_VERSION;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+
+            return UNKNOWN_VERSION;
+        }
+    }
+
+    /**
+     * Extracts the raw, still-untrusted tag_name value from the release JSON without a JSON parser dependency.
+     *
+     * @param responseBody
+     *            - The GitHub release JSON response body
+     *
+     * @return The captured tag_name value, or the unknown sentinel if none is present
+     */
+    private static String extractTagName(String responseBody) {
+        Matcher matcher = TAG_NAME_PATTERN.matcher(responseBody);
+        return matcher.find() ? matcher.group(1) : UNKNOWN_VERSION;
+    }
+
+    /**
+     * Sanitizes an untrusted version string by admitting it only if it matches the strict "vMAJOR.MINOR.PATCH" form,
+     * then strips the leading "v" so the result matches the app properties version format.
+     *
+     * @param version
+     *            - The untrusted version string to validate
+     *
+     * @return The well-formed version without its leading "v", otherwise the unknown sentinel
+     */
+    private static String sanitizeVersion(String version) {
+        return VERSION_PATTERN.matcher(version).matches() ? version.substring(1) : UNKNOWN_VERSION;
     }
 
 }
