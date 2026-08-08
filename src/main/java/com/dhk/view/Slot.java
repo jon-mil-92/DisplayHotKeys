@@ -114,6 +114,7 @@ public class Slot {
 
         slotChangeHotKeyButton = new JButton("Change Hot Key");
         slotChangeHotKeyButton.setPreferredSize(new Dimension(148, 28));
+        slotChangeHotKeyButton.setFocusPainted(false);
 
         ButtonProperties clearSlotButtonProps = new ButtonProperties("Clear Slot", new Dimension(22, 20), 0.80f, 0.68f);
         clearSlotButton = new Button("/clear_slot_idle.svg", "/clear_slot_hover.svg", clearSlotButtonProps, true);

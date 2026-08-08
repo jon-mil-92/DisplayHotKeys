@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import javax.swing.JButton;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
@@ -800,7 +801,12 @@ public class HotKeysController implements IController, GlobalKeyListener {
                 view.getSlot(displayIndex, slotIndex).getScalingModes().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getDpiScalePercentages().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getOrientationModes().setEnabled(true);
-                view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton().setEnabled(true);
+
+                JButton changeHotKeyButton = view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton();
+                changeHotKeyButton.setEnabled(true);
+
+                // A button re-enabled under the cursor gets no mouseEntered, so restore rollover from the pointer
+                changeHotKeyButton.getModel().setRollover(changeHotKeyButton.getMousePosition() != null);
 
                 // Enable the Clear Hot Key button only if a hot key is set for this slot
                 if (model.getSlot(displayIndex, slotIndex).getHotKey().getKeys().size() > 0) {
