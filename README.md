@@ -205,6 +205,7 @@ Opens a web page in the default browser to display the releases for Display Hot 
 - [x] &thinsp; Add clearing of individual slots.
 - [x] &thinsp; Add exact refresh rate support.
 - [x] &thinsp; Split display mode into resolution and refresh rate.
+- [x] &thinsp; Add a latest version check in the "About" view.
 
 See [open issues] for a full list of proposed features (and known issues).
 
