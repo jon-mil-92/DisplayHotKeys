@@ -132,7 +132,7 @@ try {
         '--app-version', $version,
         '--vendor', 'Jonathan R. Miller',
         '--copyright', $copyright,
-        '--description', 'Apply display settings with hot keys',
+        '--description', 'Display Hot Keys - Apply display settings with hot keys',
         '--icon', $icon,
         '--input', $inputDir,
         '--main-jar', $jarName,
