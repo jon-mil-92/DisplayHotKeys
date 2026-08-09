@@ -188,23 +188,23 @@ Distribution made possible with the following tools:
 
 Some antivirus engines may flag Display Hot Keys as malicious (`Trojan:Win32/Wacatac.B!ml`). **This is a false positive.** Display Hot Keys contains no malware.
 
-The `!ml` suffix indicates the file was flagged by a **machine-learning heuristic**, not by a signature matching known malware. These heuristics tend to distrust small, independent utilities that legitimately need low-level system access — which is exactly what a display and hotkey manager requires.
+The `!ml` suffix indicates the file was flagged by a **machine-learning heuristic**, not by a signature matching known malware. These heuristics tend to distrust small, independent utilities that legitimately need low-level system access — which is exactly what Display Hot Keys requires.
 
 ### Why it gets flagged
 
-* **The executable is not yet code-signed.** An unsigned binary with no established reputation is the single strongest trigger for these heuristics.
+* **The executable is not yet code-signed** — An unsigned binary with no established reputation is the single strongest trigger for these heuristics.
 
-* **Low reputation / low prevalence.** Newly released or freshly built binaries have no download history, so reputation-based scanners treat them as unknown.
+* **Low reputation / low prevalence** — Newly released or freshly built binaries have no download history, so reputation-based scanners treat them as unknown.
 
-* **It installs a global keyboard hook.** The core hot key feature requires a keyboard hook, which heuristics can mistake for keylogger behavior.
+* **It installs a global keyboard hook** — The core hot key feature requires a keyboard hook, which heuristics can mistake for keylogger behavior.
 
-* **It requests administrator elevation.** Elevation is needed so hot keys work over full-screen games and other elevated applications.
+* **It requests administrator elevation** — Elevation is needed so hot keys work over full-screen games and other elevated applications.
 
-* **It registers to run at startup** (optional), which scanners weigh as persistence behavior.
+* **It registers to optionally run at startup** — Virus scanners weigh as persistence behavior.
 
-* **It's a packaged Java application bundling native libraries.** Native launchers that load a runtime and native DLLs pattern-match to "packed" software.
+* **It's a packaged Java application bundling native libraries** — Native launchers that load a runtime and native DLLs pattern-match to "packed" software.
 
-None of these are malicious — they are simply what a display and hotkey utility must do to function.
+None of these are malicious — they are simply what Display Hot Keys must do to function.
 
 ### How to Verify for Yourself
 
