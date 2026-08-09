@@ -31,7 +31,7 @@ header:
 	rm -f src/main/java/com/dhk/io/DisplayEventNotifier.class
 
 dll:
-	# Update the JDK include paths to your JDK install location
+	# Update the include paths to your JDK / mingw install locations
 	# TOOLCHAIN_FLAGS is empty by default to avoid passing unsupported options to g++ in some environments
 	# Compile the version-info resources so each DLL carries its Details-tab metadata, then link them into the DLLs
 	$(WINDRES) $(RCFLAGS) jni/GetDisplay.rc GetDisplay.res.o

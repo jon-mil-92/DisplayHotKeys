@@ -38,7 +38,7 @@ public class RunOnStartupManager {
     private String runOnStartupFileName;
     private String runOnStartupFilePath;
     private File runOnStartupFile;
-    private String jarFilePath;
+    private String appExePath;
 
     /**
      * Constructor for the {@link RunOnStartupManager} class.
@@ -51,17 +51,12 @@ public class RunOnStartupManager {
         runOnStartupFilePath = startupPath + runOnStartupFileName;
         runOnStartupFile = new File(runOnStartupFilePath);
 
-        File jarFile = null;
+        // The jpackage launcher exposes its own executable path here; fall back to the code source when unpackaged
+        appExePath = System.getProperty("jpackage.app-path");
 
-        try {
-            jarFile = new File(
-                    RunOnStartupManager.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath());
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
+        if (appExePath == null) {
+            appExePath = deriveExePathFromCodeSource();
         }
-
-        jarFilePath = jarFile.getPath();
-        jarFilePath = jarFilePath.replaceAll(".jar", ".exe");
     }
 
     /**
@@ -72,7 +67,7 @@ public class RunOnStartupManager {
             PrintWriter startupFileWriter = new PrintWriter(runOnStartupFile);
 
             // Write the command that will execute upon user login to the run on startup file
-            startupFileWriter.print("start " + "\"\" \"" + jarFilePath + "\"");
+            startupFileWriter.print("start " + "\"\" \"" + appExePath + "\"");
 
             startupFileWriter.close();
         } catch (FileNotFoundException e) {
@@ -89,6 +84,28 @@ public class RunOnStartupManager {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Derives the launcher executable path from the running code source for unpackaged development runs.
+     *
+     * @return The derived executable path, or null if the code source location cannot be resolved
+     */
+    private String deriveExePathFromCodeSource() {
+        File jarFile = null;
+
+        try {
+            jarFile = new File(
+                    RunOnStartupManager.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath());
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+
+        if (jarFile == null) {
+            return null;
+        }
+
+        return jarFile.getPath().replaceAll(".jar", ".exe");
     }
 
 }

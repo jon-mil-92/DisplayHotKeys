@@ -92,6 +92,30 @@ public class SettingsManager {
     }
 
     /**
+     * Reads only the saved dark mode preference straight from the settings file, without initializing displays or
+     * validating the file, so an early-exit path can match the app theme cheaply.
+     *
+     * @return The saved dark mode value, or false when it cannot be read
+     */
+    public static boolean getSavedDarkMode() {
+        File savedSettingsFile = new File(getSettingsFilePath());
+
+        if (!savedSettingsFile.exists()) {
+            return false;
+        }
+
+        try {
+            Boolean darkMode = new Wini(savedSettingsFile).get("Application", "darkMode", Boolean.class);
+
+            return darkMode != null && darkMode;
+        } catch (IOException e) {
+            e.printStackTrace();
+
+            return false;
+        }
+    }
+
+    /**
      * Gets the minimize to tray property value from the settings file object.
      *
      * @return The value for the minimize to tray property
@@ -449,15 +473,22 @@ public class SettingsManager {
     }
 
     /**
+     * Builds the absolute path to the settings file in the user's Documents folder.
+     *
+     * @return The settings file path
+     */
+    private static String getSettingsFilePath() {
+        return System.getProperty("user.home") + "\\Documents\\DisplayHotKeys\\settings.ini";
+    }
+
+    /**
      * Initializes the settings file.
      */
     private void initSettingsFile() {
         checkSettingsFileVersion();
-        String settingsPath = System.getProperty("user.home") + "\\Documents\\DisplayHotKeys\\";
-        settingsPath = settingsPath + "settings.ini";
 
         try {
-            settingsFile = new File(settingsPath);
+            settingsFile = new File(getSettingsFilePath());
             settingsFile.getParentFile().mkdirs();
             settingsFile.createNewFile();
 
@@ -476,9 +507,7 @@ public class SettingsManager {
      */
     private void checkSettingsFileVersion() {
         boolean oldSettingsFileVersion = false;
-        String settingsPath = System.getProperty("user.home") + "\\Documents\\DisplayHotKeys\\";
-        settingsPath = settingsPath + "settings.ini";
-        File settingsFile = new File(settingsPath);
+        File settingsFile = new File(getSettingsFilePath());
 
         // If the settings file has already been created from previously starting the application
         if (settingsFile.exists()) {

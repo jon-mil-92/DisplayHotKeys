@@ -237,7 +237,7 @@ Jonathan R. Miller - jonRock1992@gmail.com
 
 Distribution made possible with the following tools:
 
-* [launch4j]
+* [jpackage]
 
 * [Inno Setup]
 
@@ -268,7 +268,7 @@ Distribution made possible with the following tools:
 [Ini4j]: https://ini4j.sourceforge.net/
 [Apache Maven Assembly Plugin]: https://maven.apache.org/plugins/maven-assembly-plugin/index.html
 [Maven Compiler Plugin]: https://maven.apache.org/plugins/maven-compiler-plugin/index.html
-[launch4j]: https://launch4j.sourceforge.net/index.html
+[jpackage]: https://docs.oracle.com/en/java/javase/17/docs/specs/man/jpackage.html
 [Inno Setup]: https://jrsoftware.org/isinfo.php
 [MIT License]: https://mit-license.org
 [Apache License 2.0]: https://www.apache.org/licenses/LICENSE-2.0
