@@ -6,7 +6,7 @@ tmp/
 target/
 
 # Distribution
-distribution/JDK
+distribution/jpackage-out
 distribution/DisplayHotKeys.exe
 distribution/DisplayHotKeysInstaller.exe
 

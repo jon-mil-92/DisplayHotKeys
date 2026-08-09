@@ -4,8 +4,12 @@ OPT ?= -O2
 WINDRES ?= windres
 RCFLAGS ?= --codepage=65001 -O coff
 TOOLCHAIN_FLAGS ?=
+JAVA_HOME ?= C:\jdk21
+JAVAC ?= $(subst \,/,$(JAVA_HOME))/bin/javac
+MINGW ?= C:\msys64\mingw64
+GCCVER := $(shell $(CXX) -dumpfullversion)
 COMMON_DEFS = -DUNICODE -D_UNICODE -D_WIN32 -D_WINDOWS -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0A00 -DWINVER=0x0A00
-INCLUDES = -I"C:\jdk21\include" -I"C:\jdk21\include\win32" -I"C:\msys64\mingw64\include" -I"C:\msys64\mingw64\include\c++\16.1.0" -I"C:\msys64\mingw64\lib\gcc\x86_64-w64-mingw32\16.1.0\include" -I"C:\msys64\mingw64\lib\gcc\x86_64-w64-mingw32\16.1.0\include-fixed"
+INCLUDES = -I"$(JAVA_HOME)\include" -I"$(JAVA_HOME)\include\win32" -I"$(MINGW)\include" -I"$(MINGW)\include\c++\$(GCCVER)" -I"$(MINGW)\lib\gcc\x86_64-w64-mingw32\$(GCCVER)\include" -I"$(MINGW)\lib\gcc\x86_64-w64-mingw32\$(GCCVER)\include-fixed"
 LDFLAGS = -shared -static
 
 clean:
@@ -19,19 +23,19 @@ clean:
 header:
 	mkdir -p jni
 
-	javac -h jni src/main/java/com/dhk/io/GetDisplay.java
+	$(JAVAC) -h jni src/main/java/com/dhk/io/GetDisplay.java
 	rm -f src/main/java/com/dhk/io/GetDisplay.class
 
-	javac -h jni src/main/java/com/dhk/io/SetDisplay.java
+	$(JAVAC) -h jni src/main/java/com/dhk/io/SetDisplay.java
 	rm -f src/main/java/com/dhk/io/SetDisplay.class
 
-	javac -h jni src/main/java/com/dhk/io/DisplayChangeListener.java src/main/java/com/dhk/io/ShellRestartListener.java src/main/java/com/dhk/io/DisplayEventNotifier.java
+	$(JAVAC) -h jni src/main/java/com/dhk/io/DisplayChangeListener.java src/main/java/com/dhk/io/ShellRestartListener.java src/main/java/com/dhk/io/DisplayEventNotifier.java
 	rm -f src/main/java/com/dhk/io/DisplayChangeListener.class
 	rm -f src/main/java/com/dhk/io/ShellRestartListener.class
 	rm -f src/main/java/com/dhk/io/DisplayEventNotifier.class
 
 dll:
-	# Update the JDK include paths to your JDK install location
+	# Update the include paths to your JDK / mingw install locations
 	# TOOLCHAIN_FLAGS is empty by default to avoid passing unsupported options to g++ in some environments
 	# Compile the version-info resources so each DLL carries its Details-tab metadata, then link them into the DLLs
 	$(WINDRES) $(RCFLAGS) jni/GetDisplay.rc GetDisplay.res.o

@@ -25,8 +25,10 @@ import javax.swing.ToolTipManager;
 import com.dhk.controller.DhkController;
 import com.dhk.io.RunOnStartupManager;
 import com.dhk.io.SettingsManager;
+import com.dhk.io.SingleInstanceLock;
 import com.dhk.model.DhkModel;
 import com.dhk.theme.ThemeUpdater;
+import com.dhk.view.AlreadyRunningDialog;
 import com.dhk.view.DhkView;
 
 /**
@@ -49,15 +51,25 @@ public class DhkDriver {
      *            - Command line arguments
      */
     public static void main(final String[] args) {
+        // Apply the saved theme before the single-instance check so the already-running dialog matches the app
+        ThemeUpdater themeUpdater = new ThemeUpdater();
+        themeUpdater.useDarkMode(SettingsManager.getSavedDarkMode());
+
+        // Exit after theming when another instance already holds the lock so only one instance ever runs
+        if (!new SingleInstanceLock().tryLock()) {
+            new AlreadyRunningDialog().showAlreadyRunningDialog();
+
+            return;
+        }
+
         System.setProperty("sun.java2d.d3d", "false");
         System.setProperty("sun.java2d.noddraw", "true");
         ToolTipManager.sharedInstance().setEnabled(false);
 
         SettingsManager settingsMgr = new SettingsManager();
         settingsMgr.initSettingsManager();
+
         RunOnStartupManager runOnStartupManager = new RunOnStartupManager();
-        ThemeUpdater themeUpdater = new ThemeUpdater();
-        themeUpdater.useDarkMode(settingsMgr.getIniDarkMode());
 
         if (settingsMgr.getIniRunOnStartup()) {
             runOnStartupManager.addToStartup();

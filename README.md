@@ -23,11 +23,11 @@
   <li><a href="#about-the-project">About The Project</a></li>
   <li><a href="#getting-started">Getting Started</a></li>
   <li><a href="#usage">Usage</a></li>
-  <li><a href="#screenshots">Screenshots</a></li>
   <li><a href="#roadmap">Roadmap</a></li>
   <li><a href="#license">License</a></li>
   <li><a href="#contact">Contact</a></li>
   <li><a href="#dependencies">Dependencies</a></li>
+  <li><a href="#antivirus-notice">Antivirus Notice</a></li>
 </ol>
 
 ## About The Project
@@ -237,9 +237,45 @@ Jonathan R. Miller - jonRock1992@gmail.com
 
 Distribution made possible with the following tools:
 
-* [launch4j]
+* [jpackage]
 
 * [Inno Setup]
+
+<p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
+
+## Antivirus Notice
+
+Some antivirus engines may flag Display Hot Keys as malicious (`Trojan:Win32/Wacatac.B!ml`). **This is a false positive.** Display Hot Keys contains no malware.
+
+The `!ml` suffix indicates the file was flagged by a **machine-learning heuristic**, not by a signature matching known malware. These heuristics tend to distrust small, independent utilities that legitimately need low-level system access — which is exactly what Display Hot Keys requires.
+
+### Why it gets flagged
+
+* **The executable is not yet code-signed** — An unsigned binary with no established reputation is the single strongest trigger for these heuristics.
+
+* **Low reputation / low prevalence** — Newly released or freshly built binaries have no download history, so reputation-based scanners treat them as unknown.
+
+* **It installs a global keyboard hook** — The core hot key feature requires a keyboard hook, which heuristics can mistake for keylogger behavior.
+
+* **It requests administrator elevation** — Elevation is needed so hot keys work over full-screen games and other elevated applications.
+
+* **It registers to optionally run at startup** — Virus scanners weigh as persistence behavior.
+
+* **It's a packaged Java application bundling native libraries** — Native launchers that load a runtime and native DLLs pattern-match to "packed" software.
+
+None of these are malicious — they are simply what Display Hot Keys must do to function.
+
+### How to Verify for Yourself
+
+* Check the [VirusTotal] report: typically only one or two machine-learning engines flag the file while the rest report it clean — the classic false-positive signature.
+
+* The full source code is available in this repository for inspection.
+
+### Resolving the Warning
+
+If Windows Defender quarantines the app, you can restore it and add an exclusion, or report it as a false positive to Microsoft at the [Microsoft Security Intelligence submission portal].
+
+**Note:** Code signing is planned for a future release, which should resolve the majority of these warnings.
 
 <p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
@@ -259,6 +295,8 @@ Distribution made possible with the following tools:
 <!-- MARKDOWN LINKS -->
 
 [disable UAC]: https://pureinfotech.com/disable-user-account-control-uac-windows-11/
+[VirusTotal]: https://www.virustotal.com/
+[Microsoft Security Intelligence submission portal]: https://www.microsoft.com/en-us/wdsi/filesubmission
 [open issues]: https://github.com/jon-mil-92/DisplayHotKeys/issues
 [Java (low-level) System Hook]: https://github.com/kristian/system-hook
 [FlatLaf - Flat Look and Feel]: https://github.com/JFormDesigner/FlatLaf
@@ -268,7 +306,7 @@ Distribution made possible with the following tools:
 [Ini4j]: https://ini4j.sourceforge.net/
 [Apache Maven Assembly Plugin]: https://maven.apache.org/plugins/maven-assembly-plugin/index.html
 [Maven Compiler Plugin]: https://maven.apache.org/plugins/maven-compiler-plugin/index.html
-[launch4j]: https://launch4j.sourceforge.net/index.html
+[jpackage]: https://docs.oracle.com/en/java/javase/17/docs/specs/man/jpackage.html
 [Inno Setup]: https://jrsoftware.org/isinfo.php
 [MIT License]: https://mit-license.org
 [Apache License 2.0]: https://www.apache.org/licenses/LICENSE-2.0

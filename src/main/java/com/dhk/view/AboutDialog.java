@@ -236,7 +236,7 @@ public class AboutDialog implements IView {
         aboutDialog.setLayout(mainLayout);
 
         mainConstraints = new GridBagConstraints();
-        mainConstraints.insets = new Insets(7, 19, 7, 19);
+        mainConstraints.insets = new Insets(8, 20, 8, 20);
         mainConstraints.anchor = GridBagConstraints.CENTER;
         mainConstraints.gridwidth = 1;
 
@@ -245,7 +245,7 @@ public class AboutDialog implements IView {
         buttonPanel.setLayout(buttonPanelLayout);
 
         buttonPanelConstraints = new GridBagConstraints();
-        buttonPanelConstraints.insets = new Insets(2, 7, 10, 7);
+        buttonPanelConstraints.insets = new Insets(2, 8, 10, 8);
         buttonPanelConstraints.anchor = GridBagConstraints.CENTER;
         buttonPanelConstraints.gridwidth = 1;
 
@@ -254,7 +254,7 @@ public class AboutDialog implements IView {
         infoPanel.setLayout(infoPanelLayout);
 
         infoPanelConstraints = new GridBagConstraints();
-        infoPanelConstraints.insets = new Insets(3, 7, 3, 7);
+        infoPanelConstraints.insets = new Insets(4, 8, 4, 8);
         infoPanelConstraints.anchor = GridBagConstraints.CENTER;
         infoPanelConstraints.gridwidth = 1;
     }

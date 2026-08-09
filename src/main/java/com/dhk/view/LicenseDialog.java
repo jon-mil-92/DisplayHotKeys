@@ -71,7 +71,7 @@ public class LicenseDialog {
 
         // The read-only text is display-only, so drop focusability to suppress the leading caret
         licenseTextArea.setFocusable(false);
-        licenseTextArea.setMargin(new Insets(10, 12, 10, 12));
+        licenseTextArea.setMargin(new Insets(0, 0, 0, 0));
 
         JButton licenseCloseButton = new JButton("Close");
 
@@ -87,11 +87,11 @@ public class LicenseDialog {
         GridBagConstraints licenseConstraints = new GridBagConstraints();
         licenseConstraints.gridx = 0;
         licenseConstraints.gridy = 0;
-        licenseConstraints.insets = new Insets(12, 12, 6, 12);
+        licenseConstraints.insets = new Insets(28, 28, 28, 28);
         licenseDialog.add(licenseTextArea, licenseConstraints);
 
         licenseConstraints.gridy = 1;
-        licenseConstraints.insets = new Insets(2, 12, 12, 12);
+        licenseConstraints.insets = new Insets(0, 0, 18, 0);
         licenseDialog.add(licenseCloseButton, licenseConstraints);
 
         licenseDialog.pack();
