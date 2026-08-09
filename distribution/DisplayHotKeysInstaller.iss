@@ -64,3 +64,22 @@ Type: filesandordirs; Name: {app}\EnumDisplayModes.dll;
 Type: filesandordirs; Name: {app}\SetDisplay.dll;
 Type: filesandordirs; Name: {app}\GetDisplay.dll;
 Type: filesandordirs; Name: {app}\DisplayEventNotifier.dll;
+
+[Code]
+procedure ForceCloseRunningApp;
+var
+  TaskKillResultCode: Integer;
+begin
+  // Force close the running app (the launcher and its JVM child) before its files are removed
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /t /im {#MyAppExeName}', '',
+    SW_HIDE, ewWaitUntilTerminated, TaskKillResultCode);
+
+  // Give Windows a moment to release the file handles the terminated processes held
+  Sleep(1000);
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+    ForceCloseRunningApp;
+end;
