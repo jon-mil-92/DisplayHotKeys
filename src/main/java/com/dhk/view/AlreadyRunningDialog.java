@@ -70,14 +70,12 @@ public class AlreadyRunningDialog {
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 0;
         constraints.gridy = 0;
-        constraints.insets = new Insets(15, 20, 10, 20);
+        constraints.insets = new Insets(28, 28, 28, 28);
 
         dialog.add(message, constraints);
 
-        // Right-align the button at its natural size, since the wider message row fixes the column width
         constraints.gridy = 1;
-        constraints.anchor = GridBagConstraints.LINE_END;
-        constraints.insets = new Insets(0, 20, 15, 20);
+        constraints.insets = new Insets(0, 0, 18, 0);
 
         dialog.add(closeButton, constraints);
 
