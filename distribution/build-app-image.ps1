@@ -22,6 +22,13 @@ try {
         throw 'mvn not found on PATH (install Maven or add it to PATH)'
     }
 
+    # Resolve GNU make so the native DLLs can be rebuilt from the makefile before packaging
+    $make = (Get-Command make -ErrorAction SilentlyContinue).Source
+
+    if (-not $make) {
+        throw 'make not found on PATH (install msys2/mingw make or add it to PATH)'
+    }
+
     # Prefer the JDK named by JAVA_HOME, else fall back to jpackage on PATH
     if ($env:JAVA_HOME -and (Test-Path (Join-Path $env:JAVA_HOME 'bin\jpackage.exe'))) {
         $jpackage = Join-Path $env:JAVA_HOME 'bin\jpackage.exe'
@@ -70,6 +77,21 @@ try {
     }
 
     Write-Host "Using JAVA_HOME runtime: $runtime (JDK $featureVersion)"
+
+    # Build the native DLLs from the makefile first so distribution holds fresh libraries before packaging
+    Write-Host 'Building native DLLs with make...'
+
+    # The makefile recipe shells out to unix tools (rm, cp, mkdir, g++, windres) that live in msys' bin dirs
+    $msysUsrBin = Split-Path $make -Parent
+    $mingwBin = Join-Path (Split-Path $msysUsrBin -Parent) 'mingw64\bin'
+    $env:PATH = "$msysUsrBin;$mingwBin;$env:PATH"
+
+    # The makefile derives its javac and JDK includes from JAVA_HOME
+    & $make -C $projectDir all
+
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Native DLL build (make) failed'
+    }
 
     # Verify the remaining packaging inputs exist before building
     foreach ($required in @($icon, $manifest) + ($dllNames | ForEach-Object { Join-Path $distDir $_ })) {
