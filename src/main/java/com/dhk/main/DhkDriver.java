@@ -51,6 +51,14 @@ public class DhkDriver {
      *            - Command line arguments
      */
     public static void main(final String[] args) {
+        /*
+         * Disable the Direct3D pipeline before any UI/graphics init latches it, or frame corruption may occur after
+         * interacting with components in the view
+         */
+        System.setProperty("sun.java2d.d3d", "false");
+        System.setProperty("sun.java2d.noddraw", "true");
+        ToolTipManager.sharedInstance().setEnabled(false);
+
         // Apply the saved theme before the single-instance check so the already-running dialog matches the app
         ThemeUpdater themeUpdater = new ThemeUpdater();
         themeUpdater.useDarkMode(SettingsManager.getSavedDarkMode());
@@ -61,10 +69,6 @@ public class DhkDriver {
 
             return;
         }
-
-        System.setProperty("sun.java2d.d3d", "false");
-        System.setProperty("sun.java2d.noddraw", "true");
-        ToolTipManager.sharedInstance().setEnabled(false);
 
         SettingsManager settingsMgr = new SettingsManager();
         settingsMgr.initSettingsManager();
