@@ -1,5 +1,4 @@
 #define MyAppName "Display Hot Keys"
-#define MyVersionInfoVersion "1.0.0.0"
 #define MyAppVersion "4.0.3"
 #define MyAppCopyright "Copyright (C) 2026 Jonathan R. Miller"
 #define MyAppPublisher "Jonathan R. Miller"
@@ -11,7 +10,7 @@
 [Setup]
 AppId={{8600871E-B870-4E14-807C-E37606DD0855}
 AppName={#MyAppName}
-VersionInfoVersion={#MyVersionInfoVersion}
+VersionInfoVersion={#MyAppVersion}
 AppVersion={#MyAppVersion}
 AppCopyright={#MyAppCopyright}
 AppPublisher={#MyAppPublisher}
