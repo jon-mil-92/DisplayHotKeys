@@ -11,6 +11,7 @@
 AppId={{8600871E-B870-4E14-807C-E37606DD0855}
 AppName={#MyAppName}
 VersionInfoVersion={#MyAppVersion}
+VersionInfoDescription={#MyAppName} Installer
 AppVersion={#MyAppVersion}
 AppCopyright={#MyAppCopyright}
 AppPublisher={#MyAppPublisher}
