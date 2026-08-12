@@ -51,6 +51,16 @@ public class DisplayConfig {
     private static final int FIELDS_PER_MODE = 4;
 
     /**
+     * Number of times to re-enumerate a connected display's modes while the result is empty before giving up.
+     */
+    private static final int MODE_ENUM_RETRIES = 20;
+
+    /**
+     * Delay (ms) between empty mode enumerations while waiting for the display subsystem to finish restoring.
+     */
+    private static final int MODE_ENUM_RETRY_DELAY_MS = 100;
+
+    /**
      * Comparator for display mode sorting.
      */
     private static final Comparator<DisplayMode> DISPLAY_MODE_COMPARATOR = Comparator
@@ -124,13 +134,41 @@ public class DisplayConfig {
             int orientation = displayIndex < orientations.length ? orientations[displayIndex] : 1;
             boolean landscapeOrientation = (orientation == 1 || orientation == 3);
 
-            DisplayMode[] displayModes = buildDisplayModes(getDisplay.getDisplayModeRecords(displayId));
+            DisplayMode[] displayModes = buildDisplayModes(enumerateDisplayModeRecords(displayId));
             Arrays.sort(displayModes, DISPLAY_MODE_COMPARATOR);
             DisplayMode[] invertedDisplayModes = DisplayModeInverter.invertDisplayModes(displayModes);
 
             landscapeDisplayModesMap.put(displayId, landscapeOrientation ? displayModes : invertedDisplayModes);
             portraitDisplayModesMap.put(displayId, landscapeOrientation ? invertedDisplayModes : displayModes);
         }
+    }
+
+    /**
+     * Enumerates the supported mode records for the given connected display, retrying briefly while the result is
+     * empty. A connected display always supports at least one mode, so an empty enumeration means the display subsystem
+     * has not finished restoring (as after waking from sleep) rather than that the display truly has no modes.
+     *
+     * @param displayId
+     *            - The ID of the connected display to enumerate mode records for
+     *
+     * @return The flat mode records for the display, empty only if it never became ready within the retry budget
+     */
+    private int[] enumerateDisplayModeRecords(String displayId) {
+        int[] displayModeRecords = getDisplay.getDisplayModeRecords(displayId);
+
+        for (int attempt = 0; (displayModeRecords == null || displayModeRecords.length == 0)
+                && attempt < MODE_ENUM_RETRIES; attempt++) {
+            try {
+                Thread.sleep(MODE_ENUM_RETRY_DELAY_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+
+            displayModeRecords = getDisplay.getDisplayModeRecords(displayId);
+        }
+
+        return displayModeRecords != null ? displayModeRecords : new int[0];
     }
 
     /**

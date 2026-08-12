@@ -245,6 +245,15 @@ public class SettingsValidator {
             for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
                 int slotOrientationMode = settingsMgr.getIniSlotOrientationMode(displayId, slotId);
                 boolean landscapeOrientation = slotOrientationMode == 0 || slotOrientationMode == 2;
+                DisplayMode[] supportedModes = landscapeOrientation
+                        ? landscapeDisplayModesMap.get(displayId)
+                        : portraitDisplayModesMap.get(displayId);
+
+                // Skip repair when a connected display has no enumerated modes yet; it is still restoring after sleep
+                if (supportedModes == null || supportedModes.length == 0) {
+                    continue;
+                }
+
                 String iniSection = displayId + "--Slot" + Integer.toString(slotId);
                 String width = ini.get(iniSection, "displayModeWidth");
                 String height = ini.get(iniSection, "displayModeHeight");
@@ -257,12 +266,8 @@ public class SettingsValidator {
                     DisplayMode displayMode = new DisplayMode(Integer.valueOf(width), Integer.valueOf(height),
                             Integer.valueOf(refreshNumerator), Integer.valueOf(refreshDenominator));
 
-                    boolean validForOrientation = landscapeOrientation
-                            ? Arrays.asList(landscapeDisplayModesMap.get(displayId)).contains(displayMode)
-                            : Arrays.asList(portraitDisplayModesMap.get(displayId)).contains(displayMode);
-
                     // Repair with a default matching the slot's own orientation when the stored mode is not supported
-                    if (!validForOrientation) {
+                    if (!Arrays.asList(supportedModes).contains(displayMode)) {
                         writeDefaultDisplayMode(landscapeOrientation, displayId, slotId);
                     }
                 } else {
