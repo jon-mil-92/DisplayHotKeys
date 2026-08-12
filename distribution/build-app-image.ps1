@@ -12,6 +12,8 @@ $appImage = Join-Path $outDir 'DisplayHotKeys'
 $launcher = Join-Path $appImage 'DisplayHotKeys.exe'
 $manifest = Join-Path $distDir 'DisplayHotKeys.manifest'
 $icon = Join-Path $distDir 'dhk.ico'
+$resourceDir = Join-Path $distDir 'jpackage-resources'
+$launcherProperties = Join-Path $resourceDir 'DisplayHotKeys.properties'
 $dllNames = @('SetDisplay.dll', 'GetDisplay.dll', 'DisplayEventNotifier.dll')
 
 try {
@@ -94,7 +96,7 @@ try {
     }
 
     # Verify the remaining packaging inputs exist before building
-    foreach ($required in @($icon, $manifest) + ($dllNames | ForEach-Object { Join-Path $distDir $_ })) {
+    foreach ($required in @($icon, $manifest, $launcherProperties) + ($dllNames | ForEach-Object { Join-Path $distDir $_ })) {
         if (-not (Test-Path $required)) {
             throw "Required build input not found: $required"
         }
@@ -134,6 +136,7 @@ try {
         '--copyright', $copyright,
         '--description', 'Display Hot Keys - Apply display settings with hot keys',
         '--icon', $icon,
+        '--resource-dir', $resourceDir,
         '--input', $inputDir,
         '--main-jar', $jarName,
         '--main-class', 'com.dhk.main.DhkDriver',
