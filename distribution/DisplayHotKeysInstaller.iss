@@ -1,9 +1,10 @@
 #define MyAppName "Display Hot Keys"
-#define MyAppVersion "4.0.4"
+#define MyAppVersion "4.0.5"
 #define MyAppCopyright "Copyright (C) 2026 Jonathan R. Miller"
 #define MyAppPublisher "Jonathan R. Miller"
 #define MyAppURL "https://github.com/jon-mil-92/DisplayHotKeys"
 #define MyAppExeName "DisplayHotKeys.exe"
+#define MyAppLauncherExeName "DisplayHotKeysLauncher.exe"
 #define DistDir SourcePath
 #define ProjectDir SourcePath + "\.."
 
@@ -45,11 +46,12 @@ Source: "{#ProjectDir}\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DistDir}\README.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppLauncherExeName}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppLauncherExeName}"; Tasks: desktopicon
 
 [InstallDelete]
 Type: filesandordirs; Name: {app}\DisplayHotKeys.exe;
+Type: filesandordirs; Name: {app}\DisplayHotKeysLauncher.exe;
 Type: filesandordirs; Name: {app}\SetDisplay.exe;
 Type: filesandordirs; Name: {app}\APACHE_LICENSE_3RD_PARTY.txt;
 Type: filesandordirs; Name: {app}\LICENSE.txt;
@@ -78,8 +80,20 @@ begin
   Sleep(1000);
 end;
 
+procedure RemoveTask;
+var
+  TaskDeleteResultCode: Integer;
+begin
+  // Delete the task that would otherwise outlive the uninstall and fail to start every login
+  Exec(ExpandConstant('{sys}\schtasks.exe'), '/Delete /TN "{#MyAppName}" /F', '',
+    SW_HIDE, ewWaitUntilTerminated, TaskDeleteResultCode);
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usUninstall then
+  begin
     ForceCloseRunningApp;
+    RemoveTask;
+  end;
 end;

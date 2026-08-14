@@ -2,7 +2,7 @@
 
 $distDir = $PSScriptRoot
 $projectDir = Split-Path $distDir -Parent
-$version = '4.0.4'
+$version = '4.0.5'
 $jarName = "DisplayHotKeys-$version.jar"
 $copyright = "Copyright $([char]0x00A9) 2026 Jonathan R. Miller"
 $ErrorActionPreference = 'Stop'
@@ -15,6 +15,8 @@ $icon = Join-Path $distDir 'dhk.ico'
 $resourceDir = Join-Path $distDir 'jpackage-resources'
 $launcherProperties = Join-Path $resourceDir 'DisplayHotKeys.properties'
 $dllNames = @('SetDisplay.dll', 'GetDisplay.dll', 'DisplayEventNotifier.dll')
+$startLauncherName = 'DisplayHotKeysLauncher.exe'
+$startLauncher = Join-Path $distDir $startLauncherName
 
 try {
     # Resolve required tools without assuming a fixed drive or PATH layout
@@ -96,7 +98,7 @@ try {
     }
 
     # Verify the remaining packaging inputs exist before building
-    foreach ($required in @($icon, $manifest, $launcherProperties) + ($dllNames | ForEach-Object { Join-Path $distDir $_ })) {
+    foreach ($required in @($icon, $manifest, $launcherProperties, $startLauncher) + ($dllNames | ForEach-Object { Join-Path $distDir $_ })) {
         if (-not (Test-Path $required)) {
             throw "Required build input not found: $required"
         }
@@ -179,6 +181,11 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw 'mt.exe manifest injection failed'
     }
+
+    # Place the unelevated launcher beside the app executable so shortcuts start the app without a consent prompt
+    Write-Host 'Copying the start launcher into the app image...'
+
+    Copy-Item $startLauncher $appImage
 
     # The input folder is only staging for jpackage, so clean it up
     Remove-Item $inputDir -Recurse -Force

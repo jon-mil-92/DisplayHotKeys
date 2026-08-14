@@ -23,12 +23,13 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 
+import com.dhk.utility.LaunchTaskUtility;
+
 /**
- * Gets the application's path and uses it to create or destroy a batch file that will run the application on Windows
- * login.
+ * Enables or disables running the application upon login, preferring the logon trigger of the task that starts it
+ * elevated and falling back to a startup folder batch file when that task cannot be registered.
  *
  * @author Jonathan R. Miller
  */
@@ -38,7 +39,6 @@ public class RunOnStartupManager {
     private String runOnStartupFileName;
     private String runOnStartupFilePath;
     private File runOnStartupFile;
-    private String appExePath;
 
     /**
      * Constructor for the {@link RunOnStartupManager} class.
@@ -50,19 +50,60 @@ public class RunOnStartupManager {
         runOnStartupFileName = "StartDisplayHotKeys.bat";
         runOnStartupFilePath = startupPath + runOnStartupFileName;
         runOnStartupFile = new File(runOnStartupFilePath);
+    }
 
-        // The jpackage launcher exposes its own executable path here; fall back to the code source when unpackaged
-        appExePath = System.getProperty("jpackage.app-path");
+    /**
+     * Enables the logon trigger of the task so the application starts upon login.
+     */
+    public void addToStartup() {
+        setRunOnStartup(true);
+    }
 
-        if (appExePath == null) {
-            appExePath = deriveExePathFromCodeSource();
+    /**
+     * Disables the logon trigger of the task so it no longer starts the application on login. The task itself stays
+     * registered so the launcher can start the application elevated without a consent prompt after the first launch.
+     */
+    public void removeFromStartup() {
+        setRunOnStartup(false);
+    }
+
+    /**
+     * Applies the wanted run on startup state through the task's logon trigger, falling back to the startup folder when
+     * the task cannot be registered.
+     *
+     * @param runOnStartup
+     *            - Whether the application should start upon login
+     */
+    private void setRunOnStartup(boolean runOnStartup) {
+        if (LaunchTaskUtility.registerTask(runOnStartup)) {
+            removeStartupFile();
+
+            return;
         }
+
+        /*
+         * Registering the task needs administrator rights, which a standard account never has. Fall back to the startup
+         * folder batch file so the setting still works there, at the cost of the login console flash
+         */
+        if (runOnStartup) {
+            addStartupFile();
+
+            return;
+        }
+
+        removeStartupFile();
     }
 
     /**
      * Adds a batch file to the user's startup folder that will execute this application upon login.
      */
-    public void addToStartup() {
+    private void addStartupFile() {
+        String appExePath = LaunchTaskUtility.getAppExePath();
+
+        if (appExePath == null) {
+            return;
+        }
+
         try {
             PrintWriter startupFileWriter = new PrintWriter(runOnStartupFile);
 
@@ -78,34 +119,12 @@ public class RunOnStartupManager {
     /**
      * Removes the run on startup file from the user's startup folder.
      */
-    public void removeFromStartup() {
+    private void removeStartupFile() {
         try {
             Files.deleteIfExists(runOnStartupFile.toPath());
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    /**
-     * Derives the launcher executable path from the running code source for unpackaged development runs.
-     *
-     * @return The derived executable path, or null if the code source location cannot be resolved
-     */
-    private String deriveExePathFromCodeSource() {
-        File jarFile = null;
-
-        try {
-            jarFile = new File(
-                    RunOnStartupManager.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath());
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        }
-
-        if (jarFile == null) {
-            return null;
-        }
-
-        return jarFile.getPath().replaceAll(".jar", ".exe");
     }
 
 }

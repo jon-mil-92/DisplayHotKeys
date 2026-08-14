@@ -23,11 +23,11 @@ import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 
 import com.dhk.controller.DhkController;
-import com.dhk.io.RunOnStartupManager;
 import com.dhk.io.SettingsManager;
 import com.dhk.io.SingleInstanceLock;
 import com.dhk.model.DhkModel;
 import com.dhk.theme.ThemeUpdater;
+import com.dhk.utility.LaunchTaskUtility;
 import com.dhk.view.AlreadyRunningDialog;
 import com.dhk.view.DhkView;
 
@@ -73,13 +73,11 @@ public class DhkDriver {
         SettingsManager settingsMgr = new SettingsManager();
         settingsMgr.initSettingsManager();
 
-        RunOnStartupManager runOnStartupManager = new RunOnStartupManager();
-
-        if (settingsMgr.getIniRunOnStartup()) {
-            runOnStartupManager.addToStartup();
-        } else {
-            runOnStartupManager.removeFromStartup();
-        }
+        /*
+         * Register the task that runs this application elevated, whether or not it should start on login, so the
+         * launcher can start it without a consent prompt after the first launch
+         */
+        LaunchTaskUtility.registerTask(settingsMgr.getIniRunOnStartup());
 
         SwingUtilities.invokeLater(new Runnable() {
             @Override
