@@ -102,6 +102,7 @@ public class DhkView implements IView {
     private List<Button> buttons;
     private int previouslySelectedDisplayIndex;
     private int gridYPosForSlotInPanel;
+    private boolean startMinimizedToTray;
 
     private static final int NUM_OF_SLOT_COMPONENTS = 11;
     private static final String[] ORIENTATION_MODES = {"Landscape", "Portrait", "iLandscape", "iPortrait"};
@@ -149,6 +150,14 @@ public class DhkView implements IView {
         int desiredDisplayIndex = (model.getNumOfConnectedDisplays() > 0)
                 ? Math.max(0, Math.min(selectedDisplayIndex, model.getNumOfConnectedDisplays() - 1))
                 : 0;
+
+        /*
+         * Decide the tray handoff before the frame is ever shown, so a frame bound for the tray is never flashed. A
+         * rebuild keeps the frame off screen only when it was already away, so it comes back exactly as the user left
+         * it
+         */
+        boolean previousFrameWasAway = (previousFrame != null) && !previousFrame.isShowing();
+        startMinimizedToTray = model.isMinimizeToTray() && (previousFrame == null || previousFrameWasAway);
 
         // Reset view state used by component initialization
         displayConfig = model.getDisplayConfig();
@@ -212,15 +221,21 @@ public class DhkView implements IView {
 
         /*
          * Make the frame visible after all components are added and the frame is packed. Showing the frame earlier can
-         * cause transient artifacts (ghost copies) during repaint
+         * cause transient artifacts (ghost copies) during repaint. A frame bound for the tray is never shown at all,
+         * since showing and then hiding it flashes an unpainted window for as long as the tray takes to come up
          */
-        newFrame.setVisible(true);
+        if (!startMinimizedToTray) {
+            newFrame.setVisible(true);
 
-        // Grow the frame to absorb any pack shortfall so scroll bars do not appear when the content fits on screen
-        SwingUtilities.invokeLater(() -> FrameUtil.settleScrollBars(newFrame, scrollPane, workingAreaSize));
+            // Grow the frame to absorb any pack shortfall so scroll bars do not appear when the content fits on screen
+            SwingUtilities.invokeLater(() -> FrameUtil.settleScrollBars(newFrame, scrollPane, workingAreaSize));
 
-        // Re-assert the placement after the frame is shown, in case the OS positioned it elsewhere
-        SwingUtilities.invokeLater(() -> FrameUtil.correctLocation(newFrame, previousPlacement));
+            /*
+             * Re-assert the placement after the frame is shown, in case the OS positioned it elsewhere. Both fix-ups
+             * only mean something for a frame on screen, so a frame held back for the tray corrects them when restored
+             */
+            SwingUtilities.invokeLater(() -> FrameUtil.correctLocation(newFrame, previousPlacement));
+        }
 
         // Dispose of the previous frame
         if (previousFrame != null) {
@@ -830,6 +845,15 @@ public class DhkView implements IView {
      */
     public JFrame getFrame() {
         return frame;
+    }
+
+    /**
+     * Gets whether this build left the frame hidden for the tray, which means the tray still has to be brought up.
+     *
+     * @return True if the frame was never shown because it starts minimized to the tray, false otherwise
+     */
+    public boolean isStartMinimizedToTray() {
+        return startMinimizedToTray;
     }
 
     /**

@@ -75,9 +75,18 @@ public class DhkDriver {
 
         /*
          * Register the task that runs this application elevated, whether or not it should start on login, so the
-         * launcher can start it without a consent prompt after the first launch
+         * launcher can start it without a consent prompt after the first launch. Registration shells out to the task
+         * command line utility, which costs seconds, so it runs off the startup path where nothing waits on it
          */
-        LaunchTaskUtility.registerTask(settingsMgr.getIniRunOnStartup());
+        Thread taskRegistration = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                LaunchTaskUtility.registerTask(settingsMgr.getIniRunOnStartup());
+            }
+        });
+
+        taskRegistration.setDaemon(true);
+        taskRegistration.start();
 
         SwingUtilities.invokeLater(new Runnable() {
             @Override

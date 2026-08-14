@@ -46,6 +46,12 @@ public class LaunchTaskUtility {
     private static final int TASK_COMMAND_SUCCESS = 0;
 
     /**
+     * Instance policy of the task, which must start a second instance so it reaches the single-instance check and
+     * reports that the application is already running. Suppressing it here would drop the launch silently instead.
+     */
+    private static final String MULTIPLE_INSTANCES_POLICY = "Parallel";
+
+    /**
      * Little endian UTF-16 byte order mark that must precede a task definition.
      */
     private static final byte[] BYTE_ORDER_MARK = {(byte) 0xFF, (byte) 0xFE};
@@ -98,14 +104,14 @@ public class LaunchTaskUtility {
     }
 
     /**
-     * Determines whether the task is registered, points at the running executable, and already has the wanted logon
-     * trigger state. A portable copy can move between launches, which leaves a stale task that would silently fail to
-     * start.
+     * Determines whether the task is registered and already matches the running executable, the wanted logon trigger
+     * state, and the wanted instance policy. A portable copy can move between launches, which leaves a stale task that
+     * would silently fail to start.
      *
      * @param runOnStartup
      *            - The wanted logon trigger state
      *
-     * @return True if the registered task matches the current executable and trigger state, false otherwise
+     * @return True if the registered task matches the current executable, trigger state, and policy, false otherwise
      */
     private static boolean isTaskCurrent(boolean runOnStartup) {
         String taskXml = queryTaskXml();
@@ -115,6 +121,11 @@ public class LaunchTaskUtility {
         }
 
         if (!taskXml.contains("<Command>" + escapeXml(APP_EXE_PATH) + "</Command>")) {
+            return false;
+        }
+
+        // A task registered by an earlier version suppresses a second instance, so rewrite it when the policy is stale
+        if (!taskXml.contains("<MultipleInstancesPolicy>" + MULTIPLE_INSTANCES_POLICY + "</MultipleInstancesPolicy>")) {
             return false;
         }
 
@@ -257,7 +268,8 @@ public class LaunchTaskUtility {
         taskDefinition.append("    </Principal>\n");
         taskDefinition.append("  </Principals>\n");
         taskDefinition.append("  <Settings>\n");
-        taskDefinition.append("    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>\n");
+        taskDefinition
+                .append("    <MultipleInstancesPolicy>" + MULTIPLE_INSTANCES_POLICY + "</MultipleInstancesPolicy>\n");
         taskDefinition.append("    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>\n");
         taskDefinition.append("    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>\n");
         taskDefinition.append("    <AllowHardTerminate>false</AllowHardTerminate>\n");
