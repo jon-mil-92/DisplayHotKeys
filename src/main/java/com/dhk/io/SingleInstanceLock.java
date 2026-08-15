@@ -81,7 +81,8 @@ public class SingleInstanceLock {
     }
 
     /**
-     * Releases the exclusive lock and closes the lock file resources.
+     * Releases the exclusive lock, closes the lock file resources, and deletes the lock file so it does not linger in
+     * the user's documents folder after the application exits.
      */
     private void release() {
         try {
@@ -98,6 +99,8 @@ public class SingleInstanceLock {
             }
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            new File(LOCK_FILE_PATH).delete();
         }
     }
 
