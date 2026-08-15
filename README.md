@@ -48,7 +48,7 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 * Enlarge or shrink the elements on screen by instantly changing the DPI scale percentage.
 
-* Instantly set a display mode while in a video game if it does not support changing the resolution or refresh rate while in-game.
+* Instantly set resolution and refresh rate while in a video game if it does not support changing these settings while in-game.
 
 * Retain your intended display arrangement while changing display resolutions.
 
@@ -56,7 +56,11 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 ## Getting Started
 
-This application was made only for the Windows platform. Display Hot Keys also uses elevated privileges to set display modes while in video games. Therefore, if you have UAC enabled, you will get a UAC prompt upon launching the application. If you no longer wish to see this prompt, you can [disable UAC]. The sections that follow will help you get the application up and running on your PC!
+This application was made only for the Windows platform. Display Hot Keys also uses elevated privileges to set display settings while in video games and when an app with elevated privileges has focus. Therefore, if you have UAC enabled, you will get a UAC prompt the first time you launch the application. That first launch registers a Windows task that starts Display Hot Keys with the privileges it needs, so every launch after that starts the application without a UAC prompt. The sections that follow will help you get the application up and running on your PC!
+
+**Note:** Always start Display Hot Keys from the shortcut created by the installer, or from DisplayHotKeysLauncher.exe in the install directory. Only the launcher can start the application through the Windows task, which is what avoids the prompt. Starting DisplayHotKeys.exe yourself asks Windows for elevated privileges directly, so it prompts every time no matter how often you run it.
+
+**Note:** Registering the Windows task requires administrator rights. If you are signed in with a standard user account, the task cannot be registered and you will get a UAC prompt on every launch. If you no longer wish to see this prompt, you can [disable UAC].
 
 ### Prerequisites
 
@@ -72,7 +76,7 @@ This application will be distributed as a portable package and as an installer. 
 
 2. Unzip the archive.
 
-3. Double-click the DisplayHotKeys executable file or create a shortcut to run the application.
+3. Double-click the DisplayHotKeysLauncher executable file or create a shortcut to the launcher to run the application.
 
 #### Installer
 
@@ -82,7 +86,7 @@ This application will be distributed as a portable package and as an installer. 
 
 3. Follow the installer prompts.
 
-4. Double-click the created shortcut or the DisplayHotKeys executable file in the install directory to run the application.
+4. Double-click the created shortcut or the DisplayHotKeysLauncher executable file in the install directory to run the application.
 
 <p align="right"><a href="#readme-top">Back to Top</a>&thinsp; &#x25B2;</p>
 
@@ -196,7 +200,7 @@ Opens a web page in the default browser to display the releases for Display Hot 
 - [x] &thinsp; Add scaling mode selection.
 - [x] &thinsp; Add multi-display support.
 - [x] &thinsp; Add display orientation selection.
-- [x] &thinsp; Add button to immediately apply display modes.
+- [x] &thinsp; Add button to immediately apply display settings.
 - [x] &thinsp; Add a minimize to tray toggle.
 - [x] &thinsp; Add ability to change display orientation with hot keys.
 - [x] &thinsp; Add an "About" view to display current app information.
