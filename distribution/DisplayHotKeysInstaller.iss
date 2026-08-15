@@ -23,6 +23,7 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
+UninstallDisplayIcon={app}\{#MyAppExeName}
 DefaultDirName={autopf}\{#MyAppName}
 DisableDirPage=yes
 DisableProgramGroupPage=yes
@@ -34,6 +35,7 @@ Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 CloseApplications=force
+CloseApplicationsFilter=*.exe,*.dll
 RestartApplications=no
 
 [Languages]
@@ -43,11 +45,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "{#DistDir}\jpackage-out\DisplayHotKeys\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#DistDir}\AGPL_3.0_LICENSE_3RD_PARTY.txt"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#DistDir}\APACHE_2.0_LICENSE_3RD_PARTY.txt"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#ProjectDir}\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#DistDir}\README.txt"; DestDir: "{app}"; Flags: ignoreversion
+// The portable cleanup script ships only in the portable package, so exclude it
+Source: "{#DistDir}\jpackage-out\DisplayHotKeys\*"; DestDir: "{app}"; Excludes: "uninstall.bat"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppLauncherExeName}"
@@ -80,12 +79,16 @@ procedure ForceCloseRunningApp;
 var
   TaskKillResultCode: Integer;
 begin
-  // Force close the running app (the launcher and its JVM child) before its files are removed
+  // Force close the running app (the launcher and its JVM child) before its files are replaced or removed
   Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /t /im {#MyAppExeName}', '',
     SW_HIDE, ewWaitUntilTerminated, TaskKillResultCode);
 
+  // The launcher is a separate image, so it survives the kill above and can still hold a handle
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /t /im {#MyAppLauncherExeName}', '',
+    SW_HIDE, ewWaitUntilTerminated, TaskKillResultCode);
+
   // Give Windows a moment to release the file handles the terminated processes held
-  Sleep(1000);
+  Sleep(1500);
 end;
 
 procedure RemoveTask;
@@ -165,11 +168,26 @@ begin
   end;
 end;
 
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  // Close the app before the in-use scan runs, so an upgrade over a running copy never prompts
+  ForceCloseRunningApp;
+
+  // An empty result lets the installation proceed
+  Result := '';
+end;
+
+function InitializeUninstall: Boolean;
+begin
+  // Close the app before the in-use scan runs, so the uninstaller never prompts about the running processes
+  ForceCloseRunningApp;
+  Result := True;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usUninstall then
   begin
-    ForceCloseRunningApp;
     RemoveTask;
     RemoveSettings;
   end;
