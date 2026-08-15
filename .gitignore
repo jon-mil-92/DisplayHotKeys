@@ -8,12 +8,10 @@ target/
 # Distribution
 distribution/jpackage-out
 distribution/DisplayHotKeys.exe
+distribution/DisplayHotKeysLauncher.exe
 distribution/DisplayHotKeysInstaller.exe
 
 # JNI DLLs
 GetDisplay.dll
 SetDisplay.dll
 DisplayEventNotifier.dll
-GetDisplay.res.o
-SetDisplay.res.o
-DisplayEventNotifier.res.o

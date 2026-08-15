@@ -2,7 +2,7 @@
 
 $distDir = $PSScriptRoot
 $projectDir = Split-Path $distDir -Parent
-$version = '4.0.4'
+$version = '4.0.5'
 $jarName = "DisplayHotKeys-$version.jar"
 $copyright = "Copyright $([char]0x00A9) 2026 Jonathan R. Miller"
 $ErrorActionPreference = 'Stop'
@@ -15,6 +15,17 @@ $icon = Join-Path $distDir 'dhk.ico'
 $resourceDir = Join-Path $distDir 'jpackage-resources'
 $launcherProperties = Join-Path $resourceDir 'DisplayHotKeys.properties'
 $dllNames = @('SetDisplay.dll', 'GetDisplay.dll', 'DisplayEventNotifier.dll')
+$startLauncherName = 'DisplayHotKeysLauncher.exe'
+$startLauncher = Join-Path $distDir $startLauncherName
+$uninstallScript = Join-Path $distDir 'uninstall.bat'
+
+# The license lives at the project root while the readme and third-party licenses ship from the distribution folder
+$docFiles = @(
+    (Join-Path $projectDir 'LICENSE.txt'),
+    (Join-Path $distDir 'README.txt'),
+    (Join-Path $distDir 'AGPL_3.0_LICENSE_3RD_PARTY.txt'),
+    (Join-Path $distDir 'APACHE_2.0_LICENSE_3RD_PARTY.txt')
+)
 
 try {
     # Resolve required tools without assuming a fixed drive or PATH layout
@@ -96,7 +107,7 @@ try {
     }
 
     # Verify the remaining packaging inputs exist before building
-    foreach ($required in @($icon, $manifest, $launcherProperties) + ($dllNames | ForEach-Object { Join-Path $distDir $_ })) {
+    foreach ($required in @($icon, $manifest, $launcherProperties, $startLauncher, $uninstallScript) + $docFiles + ($dllNames | ForEach-Object { Join-Path $distDir $_ })) {
         if (-not (Test-Path $required)) {
             throw "Required build input not found: $required"
         }
@@ -178,6 +189,23 @@ try {
 
     if ($LASTEXITCODE -ne 0) {
         throw 'mt.exe manifest injection failed'
+    }
+
+    # Place the unelevated launcher beside the app executable so shortcuts start the app without a consent prompt
+    Write-Host 'Copying the launcher into the app image...'
+
+    Copy-Item $startLauncher $appImage
+
+    # A portable copy has no uninstaller, so ship the cleanup script that removes the task it leaves behind
+    Write-Host 'Copying the portable uninstall script into the app image...'
+
+    Copy-Item $uninstallScript $appImage
+
+    # Ship the readme and licenses beside the app so the image is the complete portable package
+    Write-Host 'Copying the readme and license files into the app image...'
+
+    foreach ($docFile in $docFiles) {
+        Copy-Item $docFile $appImage
     }
 
     # The input folder is only staging for jpackage, so clean it up

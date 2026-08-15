@@ -57,6 +57,14 @@ public class WindowController implements IController, WindowListener {
     @Override
     public void initController() {
         minimizeToTray = new MinimizeToTray(model, view, "/tray_icon.png");
+
+        /*
+         * A frame held back for the tray is never shown, so it raises no iconified event to hand it off. Bring the tray
+         * up here instead, since the tray menu wires its own callbacks and needs nothing from the window listener
+         */
+        if (view.isStartMinimizedToTray()) {
+            minimizeToTray.execute();
+        }
     }
 
     @Override

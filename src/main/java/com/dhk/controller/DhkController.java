@@ -139,7 +139,11 @@ public class DhkController implements IController {
 
         // Attach the new dispatch listener; the persistent held-key tracker remains attached across re-inits
         keyboardHook.addKeyListener(hotKeysController);
-        view.getFrame().setExtendedState(frameState);
+
+        // A frame held back for the tray is handed off by the window controller, so leave its state alone
+        if (!view.isStartMinimizedToTray()) {
+            view.getFrame().setExtendedState(frameState);
+        }
     }
 
     @Override
