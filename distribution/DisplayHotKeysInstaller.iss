@@ -2,6 +2,7 @@
 #define MySettingsDirName "DisplayHotKeys"
 #define MySettingsFileName "settings.ini"
 #define MyLockFileName "DisplayHotKeys.lock"
+#define MyStartupFilePath "AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\StartDisplayHotKeys.bat"
 #define ProfileListKey "SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList"
 #define MyAppVersion "4.0.5"
 #define MyAppCopyright "Copyright (C) 2026 Jonathan R. Miller"
@@ -88,7 +89,7 @@ begin
     SW_HIDE, ewWaitUntilTerminated, TaskKillResultCode);
 
   // Give Windows a moment to release the file handles the terminated processes held
-  Sleep(1500);
+  Sleep(1000);
 end;
 
 procedure RemoveTask;
@@ -103,11 +104,10 @@ begin
   DeleteFile(ExpandConstant('{sys}\Tasks\{#MyAppName}'));
 end;
 
-function GetProfileSettingsDirs: TStringList;
+function GetUserProfileRoots: TStringList;
 var
   ProfileSids: TArrayOfString;
   ProfilePath: String;
-  SettingsDir: String;
   SidIndex: Integer;
 begin
   Result := TStringList.Create;
@@ -117,19 +117,52 @@ begin
 
   for SidIndex := 0 to GetArrayLength(ProfileSids) - 1 do
   begin
-    // Only user accounts hold settings, so this prefix skips the built-in system and service profiles
+    // Only user accounts hold app state, so this prefix skips the built-in system and service profiles
     if Pos('S-1-5-21-', ProfileSids[SidIndex]) <> 1 then
       Continue;
 
-    if not RegQueryStringValue(HKEY_LOCAL_MACHINE, '{#ProfileListKey}\' + ProfileSids[SidIndex], 'ProfileImagePath',
+    if RegQueryStringValue(HKEY_LOCAL_MACHINE, '{#ProfileListKey}\' + ProfileSids[SidIndex], 'ProfileImagePath',
       ProfilePath) then
-      Continue;
+      Result.Add(ProfilePath);
+  end;
+end;
 
-    // The app builds this path from the profile root itself, so resolve it the same way rather than via a shell folder
-    SettingsDir := ProfilePath + '\Documents\{#MySettingsDirName}';
+function GetProfileSettingsDirs: TStringList;
+var
+  ProfileRoots: TStringList;
+  SettingsDir: String;
+  RootIndex: Integer;
+begin
+  Result := TStringList.Create;
+  ProfileRoots := GetUserProfileRoots;
 
-    if DirExists(SettingsDir) then
-      Result.Add(SettingsDir);
+  try
+    for RootIndex := 0 to ProfileRoots.Count - 1 do
+    begin
+      // The app builds this path from the profile root itself
+      SettingsDir := ProfileRoots[RootIndex] + '\Documents\{#MySettingsDirName}';
+
+      if DirExists(SettingsDir) then
+        Result.Add(SettingsDir);
+    end;
+  finally
+    ProfileRoots.Free;
+  end;
+end;
+
+procedure RemoveStartupFiles;
+var
+  ProfileRoots: TStringList;
+  RootIndex: Integer;
+begin
+  ProfileRoots := GetUserProfileRoots;
+
+  try
+    // The app falls back to this file when it cannot register the task, so it would fail to start at every login
+    for RootIndex := 0 to ProfileRoots.Count - 1 do
+      DeleteFile(ProfileRoots[RootIndex] + '\{#MyStartupFilePath}');
+  finally
+    ProfileRoots.Free;
   end;
 end;
 
@@ -189,6 +222,7 @@ begin
   if CurUninstallStep = usUninstall then
   begin
     RemoveTask;
+    RemoveStartupFiles;
     RemoveSettings;
   end;
 end;
