@@ -126,16 +126,6 @@ public class LaunchTaskUtility {
     }
 
     /**
-     * Determines whether the task is registered, which decides whether an account that cannot write the task still has
-     * one that starts the application upon login.
-     *
-     * @return True if the task is registered, false otherwise
-     */
-    public static boolean isTaskRegistered() {
-        return queryTaskXml() != null;
-    }
-
-    /**
      * Reads the logon trigger state the registered task currently carries, which is the state the system will actually
      * act on rather than the one that was last requested.
      *
