@@ -32,16 +32,22 @@ import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 
 /**
- * Shows a modal, icon-free dialog reporting why the run on startup setting could not be changed.
+ * Shows a modal, icon-free dialog reporting why the run on startup setting could not be changed, or why it was
+ * corrected on launch to match what really starts the application.
  *
  * @author Jonathan R. Miller
  */
-public class RunOnStartupFailedDialog {
+public class RunOnStartupNoticeDialog {
 
     /**
-     * Message shown above the reason lines.
+     * Message shown above the reason lines when a requested change could not be made.
      */
-    private static final String MESSAGE_TEXT = "Run On Startup could not be changed!";
+    private static final String FAILED_MESSAGE_TEXT = "Run On Startup could not be changed!";
+
+    /**
+     * Message shown above the reason lines when the saved setting was corrected on launch rather than by a click.
+     */
+    private static final String CHANGED_MESSAGE_TEXT = "Run On Startup was changed to match the scheduled task!";
 
     /**
      * First reason line shown when the setting could not be turned off.
@@ -64,28 +70,77 @@ public class RunOnStartupFailedDialog {
     private static final String ENABLE_REASON_LINE_2 = "and the startup folder could not be written to.";
 
     /**
-     * Default constructor for the {@link RunOnStartupFailedDialog} class.
+     * First reason line shown when the setting was turned on because the task that starts the app could not be turned
+     * off.
      */
-    public RunOnStartupFailedDialog() {
+    private static final String CHANGED_ON_REASON_LINE_1 = "The task that starts the app upon login could not be";
+
+    /**
+     * Second reason line shown when the setting was turned on because the task that starts the app could not be turned
+     * off.
+     */
+    private static final String CHANGED_ON_REASON_LINE_2 = "turned off without administrator rights.";
+
+    /**
+     * First reason line shown when the setting was turned off because the task that starts the app could not be
+     * created.
+     */
+    private static final String CHANGED_OFF_REASON_LINE_1 = "The task that starts the app upon login could not be";
+
+    /**
+     * Second reason line shown when the setting was turned off because the task that starts the app could not be
+     * created.
+     */
+    private static final String CHANGED_OFF_REASON_LINE_2 = "created without administrator rights.";
+
+    /**
+     * Default constructor for the {@link RunOnStartupNoticeDialog} class.
+     */
+    public RunOnStartupNoticeDialog() {
     }
 
     /**
-     * Shows the modal "run on startup failed" dialog with centered message lines above a centered Close button.
+     * Shows the modal notice reporting that a requested change to the setting could not be made.
      *
      * @param runOnStartup
      *            - The state the user asked for, which decides the reason shown
      */
-    public void showRunOnStartupFailedDialog(boolean runOnStartup) {
+    public void showFailedNotice(boolean runOnStartup) {
+        showDialog(FAILED_MESSAGE_TEXT, runOnStartup ? ENABLE_REASON_LINE_1 : DISABLE_REASON_LINE_1,
+                runOnStartup ? ENABLE_REASON_LINE_2 : DISABLE_REASON_LINE_2);
+    }
+
+    /**
+     * Shows the modal notice reporting that the saved setting was corrected on launch to match what really starts the
+     * application, since the account could not change it.
+     *
+     * @param startsOnLogon
+     *            - The state the setting was corrected to, which decides the reason shown
+     */
+    public void showChangedNotice(boolean startsOnLogon) {
+        showDialog(CHANGED_MESSAGE_TEXT, startsOnLogon ? CHANGED_ON_REASON_LINE_1 : CHANGED_OFF_REASON_LINE_1,
+                startsOnLogon ? CHANGED_ON_REASON_LINE_2 : CHANGED_OFF_REASON_LINE_2);
+    }
+
+    /**
+     * Shows the modal dialog with centered message lines above a centered Close button.
+     *
+     * @param messageText
+     *            - The message shown above the reason lines
+     * @param reasonText1
+     *            - The first reason line
+     * @param reasonText2
+     *            - The second reason line
+     */
+    private void showDialog(String messageText, String reasonText1, String reasonText2) {
         final JDialog dialog = new JDialog((JFrame) null, "Display Hot Keys", true);
         dialog.setResizable(false);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setLayout(new GridBagLayout());
 
-        JLabel message = new JLabel(MESSAGE_TEXT, SwingConstants.CENTER);
-        JLabel reasonLine1 = new JLabel(runOnStartup ? ENABLE_REASON_LINE_1 : DISABLE_REASON_LINE_1,
-                SwingConstants.CENTER);
-        JLabel reasonLine2 = new JLabel(runOnStartup ? ENABLE_REASON_LINE_2 : DISABLE_REASON_LINE_2,
-                SwingConstants.CENTER);
+        JLabel message = new JLabel(messageText, SwingConstants.CENTER);
+        JLabel reasonLine1 = new JLabel(reasonText1, SwingConstants.CENTER);
+        JLabel reasonLine2 = new JLabel(reasonText2, SwingConstants.CENTER);
         JButton closeButton = new JButton("Close");
 
         // Suppress the focus ring

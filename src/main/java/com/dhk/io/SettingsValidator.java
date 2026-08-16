@@ -49,7 +49,6 @@ public class SettingsValidator {
     private Map<String, DisplayMode[]> landscapeDisplayModesMap;
     private Map<String, DisplayMode[]> portraitDisplayModesMap;
     private List<Integer> validkeyCodes;
-    private RunOnStartupManager runOnStartupManager;
 
     private static final int UNSET_KEY_CODE = 0;
     private static final String[] VALID_SCALING_MODES = {"0", "1", "2"};
@@ -69,7 +68,6 @@ public class SettingsValidator {
         landscapeDisplayModesMap = settingsMgr.getLandscapeDisplayModesMap();
         portraitDisplayModesMap = settingsMgr.getPortraitDisplayModesMap();
         validkeyCodes = buildValidKeyCodes();
-        runOnStartupManager = new RunOnStartupManager();
     }
 
     /**
@@ -190,9 +188,9 @@ public class SettingsValidator {
     private void validateRunOnStartup() {
         String runOnStartup = ini.get("Application", "runOnStartup");
 
+        // Only repair the stored value here; the repaired state reaches the system through applySavedRunOnStartup
         if (runOnStartup == null || !(runOnStartup.equals("false") || runOnStartup.equals("true"))) {
             settingsMgr.saveIniRunOnStartup(false);
-            runOnStartupManager.removeFromStartup();
         }
     }
 

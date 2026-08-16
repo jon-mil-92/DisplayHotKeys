@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 $inputDir = Join-Path $distDir 'input'
 $outDir = Join-Path $distDir 'jpackage-out'
 $appImage = Join-Path $outDir 'DisplayHotKeys'
-$launcher = Join-Path $appImage 'DisplayHotKeys.exe'
+$appExe = Join-Path $appImage 'DisplayHotKeys.exe'
 $manifest = Join-Path $distDir 'DisplayHotKeys.manifest'
 $icon = Join-Path $distDir 'dhk.ico'
 $resourceDir = Join-Path $distDir 'jpackage-resources'
@@ -107,7 +107,10 @@ try {
     }
 
     # Verify the remaining packaging inputs exist before building
-    foreach ($required in @($icon, $manifest, $launcherProperties, $startLauncher, $uninstallScript) + $docFiles + ($dllNames | ForEach-Object { Join-Path $distDir $_ })) {
+    $dllFiles = $dllNames | ForEach-Object { Join-Path $distDir $_ }
+    $requiredInputs = @($icon, $manifest, $launcherProperties, $startLauncher, $uninstallScript) + $docFiles + $dllFiles
+
+    foreach ($required in $requiredInputs) {
         if (-not (Test-Path $required)) {
             throw "Required build input not found: $required"
         }
@@ -179,13 +182,13 @@ try {
         throw 'jpackage failed'
     }
 
-    # jpackage marks the launcher read-only, which blocks the resource rewrite; clear it first
-    Set-ItemProperty -Path $launcher -Name IsReadOnly -Value $false
+    # jpackage marks the app executable read-only, which blocks the resource rewrite; clear it first
+    Set-ItemProperty -Path $appExe -Name IsReadOnly -Value $false
 
-    # Replace the first resource with the Display Hot Keys manifest
+    # Replace the first resource with the manifest that raises the app to the rights it needs
     Write-Host "Injecting manifest with $mt ..."
 
-    & $mt -nologo -manifest $manifest "-outputresource:$launcher;#1"
+    & $mt -nologo -manifest $manifest "-outputresource:$appExe;#1"
 
     if ($LASTEXITCODE -ne 0) {
         throw 'mt.exe manifest injection failed'
@@ -214,11 +217,18 @@ try {
     Write-Host ''
     Write-Host "Done. App image at: $appImage"
     Write-Host 'Next: Compile DisplayHotKeysInstaller.iss (Inno Setup) to build the installer.'
+
+    $buildExitCode = 0
 } catch {
     Write-Host ''
     Write-Host "BUILD FAILED: $($_.Exception.Message)" -ForegroundColor Red
+
+    # Report the failure through the exit code so a caller chaining this script can detect it
+    $buildExitCode = 1
 } finally {
     # Keep the window open when double-clicked so the build output stays readable
     Write-Host ''
     Read-Host 'Press Enter to close this window'
+
+    exit $buildExitCode
 }

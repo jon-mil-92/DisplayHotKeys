@@ -59,22 +59,33 @@ public class RunOnStartupManager {
     }
 
     /**
-     * Applies the saved run on startup state on launch, unless only the startup folder file can carry it.
+     * Applies the saved run on startup state on launch, unless the startup folder file of this copy is already the only
+     * thing carrying it, and reports what will really start the application.
      *
      * @param runOnStartup
      *            - The saved run on startup state
+     *
+     * @return True if the application will start upon login, whether or not that is the saved state
      */
-    public void applySavedRunOnStartup(boolean runOnStartup) {
+    public boolean applySavedRunOnStartup(boolean runOnStartup) {
         /*
-         * An account that cannot register the task leaves the startup folder file carrying the state, and retrying
-         * costs two processes every launch only to fail again. The file already holds the wanted state, so reconcile
-         * only when there is a task to hand that state back to
+         * The startup folder file only survives on an account that could not write the task, where retrying costs two
+         * processes every launch to fail the same way. Skipping is only safe while that file is the sole thing starting
+         * the application, since a task that also starts it must be reconciled to stop the two stacking
          */
-        if (runOnStartupFile.exists() && !LaunchTaskUtility.isTaskRegistered()) {
-            return;
+        if (startupFileStartsThisCopy() && runOnStartup && !LaunchTaskUtility.isStartOnLogonEnabled()) {
+            return true;
         }
 
-        setRunOnStartup(runOnStartup);
+        if (setRunOnStartup(runOnStartup)) {
+            return runOnStartup;
+        }
+
+        /*
+         * The wanted state could not be written, so what starts the application is whatever the account could not
+         * change. A task left enabled still starts it, which the button has to report rather than the saved state
+         */
+        return LaunchTaskUtility.isStartOnLogonEnabled() || startupFileStartsThisCopy();
     }
 
     /**
@@ -120,10 +131,11 @@ public class RunOnStartupManager {
         }
 
         /*
-         * Nothing here could write the wanted state. Turning it off still succeeds when no task starts the application
-         * anyway, but a task an administrator registered earlier keeps doing so until it can be rewritten
+         * Nothing here could write the wanted state, so report what the system will actually do rather than what was
+         * asked for. A task registered against stricter rights than this account holds keeps its own trigger state,
+         * which already matches whenever the wanted state is off and no task starts the application
          */
-        return !runOnStartup && !LaunchTaskUtility.isTaskRegistered();
+        return LaunchTaskUtility.isStartOnLogonEnabled() == runOnStartup;
     }
 
     /**
@@ -152,6 +164,28 @@ public class RunOnStartupManager {
         }
 
         return true;
+    }
+
+    /**
+     * Determines whether the startup folder file starts this copy of the application. A portable copy that moved leaves
+     * one naming a path that no longer holds the application, which must be rewritten rather than trusted.
+     *
+     * @return True if the file exists and names this copy's executable, false otherwise
+     */
+    private boolean startupFileStartsThisCopy() {
+        String appExePath = LaunchTaskUtility.getAppExePath();
+
+        if (appExePath == null || !runOnStartupFile.exists()) {
+            return false;
+        }
+
+        try {
+            return Files.readString(runOnStartupFile.toPath()).contains(appExePath);
+        } catch (IOException e) {
+            e.printStackTrace();
+
+            return false;
+        }
     }
 
     /**
