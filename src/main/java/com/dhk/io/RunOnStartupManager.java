@@ -35,73 +35,119 @@ import com.dhk.utility.LaunchTaskUtility;
  */
 public class RunOnStartupManager {
 
-    private String startupPath;
-    private String runOnStartupFileName;
-    private String runOnStartupFilePath;
+    /**
+     * The startup folder batch file that starts the application upon login.
+     */
     private File runOnStartupFile;
+
+    /**
+     * Path of the startup folder, relative to the user's home folder, that Windows runs the contents of upon login.
+     */
+    private static final String STARTUP_PATH = "\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs"
+            + "\\Startup\\";
+
+    /**
+     * Name of the batch file that starts the application upon login while the task cannot be registered.
+     */
+    private static final String RUN_ON_STARTUP_FILE_NAME = "StartDisplayHotKeys.bat";
 
     /**
      * Constructor for the {@link RunOnStartupManager} class.
      */
     public RunOnStartupManager() {
-        startupPath = System.getProperty("user.home")
-                + "\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\";
+        runOnStartupFile = new File(System.getProperty("user.home") + STARTUP_PATH + RUN_ON_STARTUP_FILE_NAME);
+    }
 
-        runOnStartupFileName = "StartDisplayHotKeys.bat";
-        runOnStartupFilePath = startupPath + runOnStartupFileName;
-        runOnStartupFile = new File(runOnStartupFilePath);
+    /**
+     * Applies the saved run on startup state on launch, unless the startup folder file of this copy is already the only
+     * thing carrying it, and reports what will really start the application.
+     *
+     * @param runOnStartup
+     *            - The saved run on startup state
+     *
+     * @return True if the application will start upon login, whether or not that is the saved state
+     */
+    public boolean applySavedRunOnStartup(boolean runOnStartup) {
+        /*
+         * The startup folder file only survives on an account that could not write the task, where retrying costs two
+         * processes every launch to fail the same way. Skipping is only safe while that file is the sole thing starting
+         * the application, since a task that also starts it must be reconciled to stop the two stacking
+         */
+        if (startupFileStartsThisCopy() && runOnStartup && !LaunchTaskUtility.isStartOnLogonEnabled()) {
+            return true;
+        }
+
+        if (setRunOnStartup(runOnStartup)) {
+            return runOnStartup;
+        }
+
+        /*
+         * The wanted state could not be written, so what starts the application is whatever the account could not
+         * change. A task left enabled still starts it, which the button has to report rather than the saved state
+         */
+        return LaunchTaskUtility.isStartOnLogonEnabled() || startupFileStartsThisCopy();
     }
 
     /**
      * Enables the logon trigger of the task so the application starts upon login.
+     *
+     * @return True if the application will start upon login, false if neither mechanism could be enabled
      */
-    public void addToStartup() {
-        setRunOnStartup(true);
+    public boolean addToStartup() {
+        return setRunOnStartup(true);
     }
 
     /**
      * Disables the logon trigger of the task so it no longer starts the application on login. The task itself stays
      * registered so the launcher can start the application elevated without a consent prompt after the first launch.
+     *
+     * @return True if the application will no longer start upon login, false if the task could not be rewritten
      */
-    public void removeFromStartup() {
-        setRunOnStartup(false);
+    public boolean removeFromStartup() {
+        return setRunOnStartup(false);
     }
 
     /**
-     * Applies the wanted run on startup state through the task's logon trigger, falling back to the startup folder when
-     * the task cannot be registered.
+     * Applies the wanted run on startup state through the task's logon trigger, falling back to the startup folder only
+     * while the task cannot be registered. Exactly one of the two ever survives a call, since both would start the
+     * application twice upon login.
      *
      * @param runOnStartup
      *            - Whether the application should start upon login
+     *
+     * @return True if the wanted state was applied, false if it could not be
      */
-    private void setRunOnStartup(boolean runOnStartup) {
-        if (LaunchTaskUtility.registerTask(runOnStartup)) {
-            removeStartupFile();
+    private boolean setRunOnStartup(boolean runOnStartup) {
+        // The task carries the state whenever it can, so the fallback it replaces must not survive beside it
+        boolean taskCarriesState = LaunchTaskUtility.registerTask(runOnStartup);
+        boolean fallbackCarriesState = !taskCarriesState && runOnStartup && addStartupFile();
 
-            return;
+        if (!fallbackCarriesState) {
+            removeStartupFile();
+        }
+
+        if (taskCarriesState || fallbackCarriesState) {
+            return true;
         }
 
         /*
-         * Registering the task needs administrator rights, which a standard account never has. Fall back to the startup
-         * folder batch file so the setting still works there, at the cost of the login console flash
+         * Nothing here could write the wanted state, so report what the system will actually do rather than what was
+         * asked for. A task registered against stricter rights than this account holds keeps its own trigger state,
+         * which already matches whenever the wanted state is off and no task starts the application
          */
-        if (runOnStartup) {
-            addStartupFile();
-
-            return;
-        }
-
-        removeStartupFile();
+        return LaunchTaskUtility.isStartOnLogonEnabled() == runOnStartup;
     }
 
     /**
      * Adds a batch file to the user's startup folder that will execute this application upon login.
+     *
+     * @return True if the batch file was written, false otherwise
      */
-    private void addStartupFile() {
+    private boolean addStartupFile() {
         String appExePath = LaunchTaskUtility.getAppExePath();
 
         if (appExePath == null) {
-            return;
+            return false;
         }
 
         try {
@@ -113,6 +159,32 @@ public class RunOnStartupManager {
             startupFileWriter.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Determines whether the startup folder file starts this copy of the application. A portable copy that moved leaves
+     * one naming a path that no longer holds the application, which must be rewritten rather than trusted.
+     *
+     * @return True if the file exists and names this copy's executable, false otherwise
+     */
+    private boolean startupFileStartsThisCopy() {
+        String appExePath = LaunchTaskUtility.getAppExePath();
+
+        if (appExePath == null || !runOnStartupFile.exists()) {
+            return false;
+        }
+
+        try {
+            return Files.readString(runOnStartupFile.toPath()).contains(appExePath);
+        } catch (IOException e) {
+            e.printStackTrace();
+
+            return false;
         }
     }
 

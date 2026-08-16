@@ -35,7 +35,7 @@ echo.
 echo Display Hot Keys - Portable Uninstall
 echo.
 
-rem Close the running app first, since it re-registers the task on exit and holds the settings file open
+rem Close the running app first, since it holds the settings file open and would rewrite it on exit
 tasklist /fi "imagename eq %APP_EXE%" 2>nul | findstr /i /c:"%APP_EXE%" >nul
 
 if errorlevel 1 goto :queryTask
@@ -46,15 +46,15 @@ echo Closed the running application.
 
 :queryTask
 
-rem The query reports a missing task on stderr yet still exits zero, so detect it by the absence of stdout instead
-schtasks /Query /TN "%APP_NAME%" 2>nul | findstr /b /l /i "TaskName" >nul
+rem The query reports a missing task on stderr and exits non-zero, which is enough to tell the two cases apart
+schtasks /Query /TN "%APP_NAME%" >nul 2>&1
 
 if errorlevel 1 goto :taskMissing
 
 schtasks /Delete /TN "%APP_NAME%" /F >nul 2>&1
 
-rem The delete also exits zero when it fails, so confirm removal by querying for the task again
-schtasks /Query /TN "%APP_NAME%" 2>nul | findstr /b /l /i "TaskName" >nul
+rem A delete this account lacks the rights for still leaves the task behind, so confirm it is really gone
+schtasks /Query /TN "%APP_NAME%" >nul 2>&1
 
 if not errorlevel 1 goto :taskFailed
 

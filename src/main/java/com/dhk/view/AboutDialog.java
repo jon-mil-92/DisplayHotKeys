@@ -86,8 +86,8 @@ public class AboutDialog implements IView {
     private Component darkeningGlassPane;
 
     private static final String GITHUB_DOMAIN = "https://github.com";
-    private static final String REALEASES_PATH = "/jon-mil-92/DisplayHotKeys/releases";
-    private static final String RELEASES_LINK = GITHUB_DOMAIN + REALEASES_PATH;
+    private static final String RELEASES_PATH = "/jon-mil-92/DisplayHotKeys/releases";
+    private static final String RELEASES_LINK = GITHUB_DOMAIN + RELEASES_PATH;
     private static final float HEADER_FONT_SCALE = 1.6f;
 
     /**

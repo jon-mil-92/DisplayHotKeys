@@ -202,10 +202,13 @@ public class DhkModel {
     }
 
     /**
-     * Toggles the "run on startup" state.
+     * Sets the "run on startup" state.
+     *
+     * @param runOnStartup
+     *            - The "run on startup" state to set
      */
-    public void toggleRunOnStartup() {
-        runOnStartup = !runOnStartup;
+    public void setRunOnStartup(boolean runOnStartup) {
+        this.runOnStartup = runOnStartup;
     }
 
     /**

@@ -19,12 +19,13 @@
  */
 package com.dhk.utility;
 
-import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Registers the task that runs this application with the highest available privileges, so the launcher can start the
@@ -41,6 +42,11 @@ public class LaunchTaskUtility {
     private static final String TASK_NAME = "Display Hot Keys";
 
     /**
+     * Command line utility that reads and writes tasks.
+     */
+    private static final String TASK_COMMAND = "schtasks";
+
+    /**
      * Exit code returned by the task command line utility when a command succeeds.
      */
     private static final int TASK_COMMAND_SUCCESS = 0;
@@ -52,14 +58,29 @@ public class LaunchTaskUtility {
     private static final String MULTIPLE_INSTANCES_POLICY = "Parallel";
 
     /**
+     * Opening element of the block holding the task's triggers.
+     */
+    private static final String TRIGGERS_OPEN_ELEMENT = "<Triggers>";
+
+    /**
+     * Closing element of the block holding the task's triggers.
+     */
+    private static final String TRIGGERS_CLOSE_ELEMENT = "</Triggers>";
+
+    /**
+     * Opening tag of the logon trigger, matched without its closing bracket so it also finds the self-closing form.
+     */
+    private static final String LOGON_TRIGGER_ELEMENT = "<LogonTrigger";
+
+    /**
+     * Element marking the enclosing trigger as disabled.
+     */
+    private static final String DISABLED_ELEMENT = "<Enabled>false</Enabled>";
+
+    /**
      * Little endian UTF-16 byte order mark that must precede a task definition.
      */
     private static final byte[] BYTE_ORDER_MARK = {(byte) 0xFF, (byte) 0xFE};
-
-    /**
-     * File extension that a derived path must carry to be a runnable task command.
-     */
-    private static final String EXE_EXTENSION = ".exe";
 
     /**
      * Path of the executable the task runs, resolved once because it cannot change while the application runs.
@@ -82,6 +103,7 @@ public class LaunchTaskUtility {
      * @return True if the task is registered and current, false otherwise
      */
     public static boolean registerTask(boolean runOnStartup) {
+        // Everything below builds the definition around this path, so nothing past here has to null check it again
         if (APP_EXE_PATH == null) {
             return false;
         }
@@ -101,6 +123,18 @@ public class LaunchTaskUtility {
      */
     public static String getAppExePath() {
         return APP_EXE_PATH;
+    }
+
+    /**
+     * Reads the logon trigger state the registered task currently carries, which is the state the system will actually
+     * act on rather than the one that was last requested.
+     *
+     * @return True if a task is registered and its logon trigger is enabled, false otherwise
+     */
+    public static boolean isStartOnLogonEnabled() {
+        String taskXml = queryTaskXml();
+
+        return taskXml != null && isTriggerEnabled(taskXml);
     }
 
     /**
@@ -129,14 +163,40 @@ public class LaunchTaskUtility {
             return false;
         }
 
+        return isTriggerEnabled(taskXml) == runOnStartup;
+    }
+
+    /**
+     * Reads the logon trigger state out of a task definition.
+     *
+     * @param taskXml
+     *            - The task definition XML to read
+     *
+     * @return True if the logon trigger is enabled, false otherwise
+     */
+    private static boolean isTriggerEnabled(String taskXml) {
+        int triggersStart = taskXml.indexOf(TRIGGERS_OPEN_ELEMENT);
+        int triggersEnd = taskXml.indexOf(TRIGGERS_CLOSE_ELEMENT, triggersStart);
+
+        // A definition carrying no trigger block cannot start the application upon login
+        if (triggersStart == -1 || triggersEnd == -1) {
+            return false;
+        }
+
+        String triggers = taskXml.substring(triggersStart + TRIGGERS_OPEN_ELEMENT.length(), triggersEnd);
+
+        // Neither can one whose trigger block is empty, which is what a definition stripped of its trigger leaves
+        if (triggers.indexOf(LOGON_TRIGGER_ELEMENT) == -1) {
+            return false;
+        }
+
         /*
          * The scheduler rewrites the definition it stores, collapsing an enabled trigger to a self-closing element that
          * omits the default, so detect the disabled state and infer the enabled one rather than matching what was
-         * written
+         * written. The search stays inside the trigger block because the settings block carries its own enabled element
+         * that reflects the whole task rather than the trigger
          */
-        boolean triggerDisabled = taskXml.contains("<Enabled>false</Enabled>");
-
-        return triggerDisabled != runOnStartup;
+        return !triggers.contains(DISABLED_ELEMENT);
     }
 
     /**
@@ -145,7 +205,7 @@ public class LaunchTaskUtility {
      * @return The task definition XML, or null when the task is not registered
      */
     private static String queryTaskXml() {
-        ProcessBuilder taskQueryBuilder = new ProcessBuilder("schtasks", "/Query", "/TN", TASK_NAME, "/XML");
+        ProcessBuilder taskQueryBuilder = new ProcessBuilder(TASK_COMMAND, "/Query", "/TN", TASK_NAME, "/XML");
         taskQueryBuilder.redirectErrorStream(true);
 
         try {
@@ -215,12 +275,9 @@ public class LaunchTaskUtility {
      * @return True if the command succeeded, false otherwise
      */
     private static boolean runTaskCommand(String... taskArguments) {
-        String[] taskCommand = new String[taskArguments.length + 1];
-        taskCommand[0] = "schtasks";
-
-        for (int argumentIndex = 0; argumentIndex < taskArguments.length; argumentIndex++) {
-            taskCommand[argumentIndex + 1] = taskArguments[argumentIndex];
-        }
+        List<String> taskCommand = new ArrayList<String>();
+        taskCommand.add(TASK_COMMAND);
+        taskCommand.addAll(Arrays.asList(taskArguments));
 
         ProcessBuilder taskCommandBuilder = new ProcessBuilder(taskCommand);
         taskCommandBuilder.redirectErrorStream(true);
@@ -334,50 +391,15 @@ public class LaunchTaskUtility {
     /**
      * Resolves the path of the executable that the task runs.
      *
-     * @return The application executable path, or null if it does not resolve to an executable
+     * @return The application executable path, or null when the application is not running from its own executable
      */
     private static String resolveAppExePath() {
-        // The jpackage launcher exposes its own executable path here; fall back to the code source when unpackaged
-        String appExePath = System.getProperty("jpackage.app-path");
-
-        if (appExePath != null) {
-            return appExePath;
-        }
-
-        return deriveExePathFromCodeSource();
-    }
-
-    /**
-     * Derives the executable path from the running code source for unpackaged runs.
-     *
-     * @return The derived executable path, or null if the code source does not resolve to an executable
-     */
-    private static String deriveExePathFromCodeSource() {
-        File jarFile = null;
-
-        try {
-            jarFile = new File(
-                    LaunchTaskUtility.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath());
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        }
-
-        if (jarFile == null) {
-            return null;
-        }
-
-        String derivedPath = jarFile.getPath().replaceAll(".jar", ".exe");
-
         /*
-         * Running from a development environment resolves the code source to a class output directory, which leaves
-         * nothing to replace. The task command line utility accepts a directory without complaint, so registering that
-         * path would yield a task that can never start the application
+         * Only the packaged launcher sets this, and it is the executable both the installed and portable packages run.
+         * A development run has no executable of its own, and registering a task that starts a class output directory
+         * would only yield one that can never start the application
          */
-        if (!derivedPath.toLowerCase().endsWith(EXE_EXTENSION)) {
-            return null;
-        }
-
-        return derivedPath;
+        return System.getProperty("jpackage.app-path");
     }
 
 }

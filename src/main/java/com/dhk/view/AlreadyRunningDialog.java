@@ -38,6 +38,9 @@ import javax.swing.SwingConstants;
  */
 public class AlreadyRunningDialog {
 
+    /**
+     * Message reporting that another instance already holds the single instance lock.
+     */
     private static final String MESSAGE_TEXT = "Display Hot Keys is already running!";
 
     /**
@@ -47,7 +50,7 @@ public class AlreadyRunningDialog {
     }
 
     /**
-     * Shows the modal "already running" dialog with a centered message and a bottom-right Close button.
+     * Shows the modal "already running" dialog with a centered message above a centered Close button.
      */
     public void showAlreadyRunningDialog() {
         final JDialog dialog = new JDialog((JFrame) null, "Display Hot Keys", true);

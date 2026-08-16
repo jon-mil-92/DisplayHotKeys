@@ -27,7 +27,6 @@ import com.dhk.io.SettingsManager;
 import com.dhk.io.SingleInstanceLock;
 import com.dhk.model.DhkModel;
 import com.dhk.theme.ThemeUpdater;
-import com.dhk.utility.LaunchTaskUtility;
 import com.dhk.view.AlreadyRunningDialog;
 import com.dhk.view.DhkView;
 
@@ -72,21 +71,6 @@ public class DhkDriver {
 
         SettingsManager settingsMgr = new SettingsManager();
         settingsMgr.initSettingsManager();
-
-        /*
-         * Register the task that runs this application elevated, whether or not it should start on login, so the
-         * launcher can start it without a consent prompt after the first launch. Registration shells out to the task
-         * command line utility, which costs seconds, so it runs off the startup path where nothing waits on it
-         */
-        Thread taskRegistration = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                LaunchTaskUtility.registerTask(settingsMgr.getIniRunOnStartup());
-            }
-        });
-
-        taskRegistration.setDaemon(true);
-        taskRegistration.start();
 
         SwingUtilities.invokeLater(new Runnable() {
             @Override
