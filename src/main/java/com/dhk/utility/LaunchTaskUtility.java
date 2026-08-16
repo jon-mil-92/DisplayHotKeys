@@ -19,9 +19,7 @@
  */
 package com.dhk.utility;
 
-import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,11 +53,6 @@ public class LaunchTaskUtility {
      * Little endian UTF-16 byte order mark that must precede a task definition.
      */
     private static final byte[] BYTE_ORDER_MARK = {(byte) 0xFF, (byte) 0xFE};
-
-    /**
-     * File extension that a derived path must carry to be a runnable task command.
-     */
-    private static final String EXE_EXTENSION = ".exe";
 
     /**
      * Path of the executable the task runs, resolved once because it cannot change while the application runs.
@@ -104,6 +97,16 @@ public class LaunchTaskUtility {
     }
 
     /**
+     * Determines whether the task is registered, which decides both whether registering it again is worth the process
+     * it costs and whether a task that could not be rewritten still starts the application upon login.
+     *
+     * @return True if the task is registered, false otherwise
+     */
+    public static boolean isTaskRegistered() {
+        return queryTaskXml() != null;
+    }
+
+    /**
      * Determines whether the task is registered and already matches the running executable, the wanted logon trigger
      * state, and the wanted instance policy. A portable copy can move between launches, which leaves a stale task that
      * would silently fail to start.
@@ -129,14 +132,24 @@ public class LaunchTaskUtility {
             return false;
         }
 
+        return isTriggerEnabled(taskXml) == runOnStartup;
+    }
+
+    /**
+     * Reads the logon trigger state out of a task definition.
+     *
+     * @param taskXml
+     *            - The task definition XML to read
+     *
+     * @return True if the logon trigger is enabled, false otherwise
+     */
+    private static boolean isTriggerEnabled(String taskXml) {
         /*
          * The scheduler rewrites the definition it stores, collapsing an enabled trigger to a self-closing element that
          * omits the default, so detect the disabled state and infer the enabled one rather than matching what was
          * written
          */
-        boolean triggerDisabled = taskXml.contains("<Enabled>false</Enabled>");
-
-        return triggerDisabled != runOnStartup;
+        return !taskXml.contains("<Enabled>false</Enabled>");
     }
 
     /**
@@ -334,50 +347,15 @@ public class LaunchTaskUtility {
     /**
      * Resolves the path of the executable that the task runs.
      *
-     * @return The application executable path, or null if it does not resolve to an executable
+     * @return The application executable path, or null when the application is not running from its own executable
      */
     private static String resolveAppExePath() {
-        // The jpackage launcher exposes its own executable path here; fall back to the code source when unpackaged
-        String appExePath = System.getProperty("jpackage.app-path");
-
-        if (appExePath != null) {
-            return appExePath;
-        }
-
-        return deriveExePathFromCodeSource();
-    }
-
-    /**
-     * Derives the executable path from the running code source for unpackaged runs.
-     *
-     * @return The derived executable path, or null if the code source does not resolve to an executable
-     */
-    private static String deriveExePathFromCodeSource() {
-        File jarFile = null;
-
-        try {
-            jarFile = new File(
-                    LaunchTaskUtility.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath());
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        }
-
-        if (jarFile == null) {
-            return null;
-        }
-
-        String derivedPath = jarFile.getPath().replaceAll(".jar", ".exe");
-
         /*
-         * Running from a development environment resolves the code source to a class output directory, which leaves
-         * nothing to replace. The task command line utility accepts a directory without complaint, so registering that
-         * path would yield a task that can never start the application
+         * Only the packaged launcher sets this, and it is the executable both the installed and portable packages run.
+         * A development run has no executable of its own, and registering a task that starts a class output directory
+         * would only yield one that can never start the application
          */
-        if (!derivedPath.toLowerCase().endsWith(EXE_EXTENSION)) {
-            return null;
-        }
-
-        return derivedPath;
+        return System.getProperty("jpackage.app-path");
     }
 
 }

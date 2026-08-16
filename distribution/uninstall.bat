@@ -35,7 +35,7 @@ echo.
 echo Display Hot Keys - Portable Uninstall
 echo.
 
-rem Close the running app first, since it re-registers the task on exit and holds the settings file open
+rem Close the running app first, since it holds the settings file open and would rewrite it on exit
 tasklist /fi "imagename eq %APP_EXE%" 2>nul | findstr /i /c:"%APP_EXE%" >nul
 
 if errorlevel 1 goto :queryTask

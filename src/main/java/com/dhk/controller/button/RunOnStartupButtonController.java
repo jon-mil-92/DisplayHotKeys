@@ -24,6 +24,7 @@ import com.dhk.io.RunOnStartupManager;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
 import com.dhk.view.DhkView;
+import com.dhk.view.RunOnStartupFailedDialog;
 
 /**
  * Controls the Run On Startup button. Listeners are added to the corresponding view component so that when the Run On
@@ -71,20 +72,38 @@ public class RunOnStartupButtonController extends AbstractButtonController imple
     }
 
     /**
-     * Toggles the "run on startup" state, adds or removes a batch file to the startup folder, and then saves the new
-     * "run on startup" state.
+     * Applies the toggled "run on startup" state and then saves it, so the button never shows a state the system does
+     * not have.
      */
     private void runOnStartupButtonAction() {
-        model.toggleRunOnStartup();
-        view.getRunOnStartupButton().setOn(model.isRunOnStartup());
+        boolean runOnStartup = !model.isRunOnStartup();
 
-        if (model.isRunOnStartup()) {
-            runOnStartupManager.addToStartup();
-        } else {
-            runOnStartupManager.removeFromStartup();
+        if (!applyRunOnStartup(runOnStartup)) {
+            new RunOnStartupFailedDialog().showRunOnStartupFailedDialog(runOnStartup);
+
+            return;
         }
 
-        settingsMgr.saveIniRunOnStartup(model.isRunOnStartup());
+        model.setRunOnStartup(runOnStartup);
+        view.getRunOnStartupButton().setOn(runOnStartup);
+
+        settingsMgr.saveIniRunOnStartup(runOnStartup);
+    }
+
+    /**
+     * Applies the wanted "run on startup" state through the startup manager.
+     *
+     * @param runOnStartup
+     *            - Whether the application should start upon login
+     *
+     * @return True if the wanted state was applied, false if it could not be
+     */
+    private boolean applyRunOnStartup(boolean runOnStartup) {
+        if (runOnStartup) {
+            return runOnStartupManager.addToStartup();
+        }
+
+        return runOnStartupManager.removeFromStartup();
     }
 
 }

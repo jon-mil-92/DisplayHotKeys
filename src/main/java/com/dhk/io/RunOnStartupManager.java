@@ -35,73 +35,107 @@ import com.dhk.utility.LaunchTaskUtility;
  */
 public class RunOnStartupManager {
 
-    private String startupPath;
-    private String runOnStartupFileName;
-    private String runOnStartupFilePath;
+    /**
+     * The startup folder batch file that starts the application upon login.
+     */
     private File runOnStartupFile;
+
+    /**
+     * Path of the startup folder, relative to the user's home folder, that Windows runs the contents of upon login.
+     */
+    private static final String STARTUP_PATH = "\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs"
+            + "\\Startup\\";
+
+    /**
+     * Name of the batch file that starts the application upon login while the task cannot be registered.
+     */
+    private static final String RUN_ON_STARTUP_FILE_NAME = "StartDisplayHotKeys.bat";
 
     /**
      * Constructor for the {@link RunOnStartupManager} class.
      */
     public RunOnStartupManager() {
-        startupPath = System.getProperty("user.home")
-                + "\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\";
+        runOnStartupFile = new File(System.getProperty("user.home") + STARTUP_PATH + RUN_ON_STARTUP_FILE_NAME);
+    }
 
-        runOnStartupFileName = "StartDisplayHotKeys.bat";
-        runOnStartupFilePath = startupPath + runOnStartupFileName;
-        runOnStartupFile = new File(runOnStartupFilePath);
+    /**
+     * Applies the saved run on startup state on launch, unless only the startup folder file can carry it.
+     *
+     * @param runOnStartup
+     *            - The saved run on startup state
+     */
+    public void applySavedRunOnStartup(boolean runOnStartup) {
+        /*
+         * An account that cannot register the task leaves the startup folder file carrying the state, and retrying
+         * costs two processes every launch only to fail again. The file already holds the wanted state, so reconcile
+         * only when there is a task to hand that state back to
+         */
+        if (runOnStartupFile.exists() && !LaunchTaskUtility.isTaskRegistered()) {
+            return;
+        }
+
+        setRunOnStartup(runOnStartup);
     }
 
     /**
      * Enables the logon trigger of the task so the application starts upon login.
+     *
+     * @return True if the application will start upon login, false if neither mechanism could be enabled
      */
-    public void addToStartup() {
-        setRunOnStartup(true);
+    public boolean addToStartup() {
+        return setRunOnStartup(true);
     }
 
     /**
      * Disables the logon trigger of the task so it no longer starts the application on login. The task itself stays
      * registered so the launcher can start the application elevated without a consent prompt after the first launch.
+     *
+     * @return True if the application will no longer start upon login, false if the task could not be rewritten
      */
-    public void removeFromStartup() {
-        setRunOnStartup(false);
+    public boolean removeFromStartup() {
+        return setRunOnStartup(false);
     }
 
     /**
-     * Applies the wanted run on startup state through the task's logon trigger, falling back to the startup folder when
-     * the task cannot be registered.
+     * Applies the wanted run on startup state through the task's logon trigger, falling back to the startup folder only
+     * while the task cannot be registered. Exactly one of the two ever survives a call, since both would start the
+     * application twice upon login.
      *
      * @param runOnStartup
      *            - Whether the application should start upon login
+     *
+     * @return True if the wanted state was applied, false if it could not be
      */
-    private void setRunOnStartup(boolean runOnStartup) {
-        if (LaunchTaskUtility.registerTask(runOnStartup)) {
-            removeStartupFile();
+    private boolean setRunOnStartup(boolean runOnStartup) {
+        // The task carries the state whenever it can, so the fallback it replaces must not survive beside it
+        boolean taskCarriesState = LaunchTaskUtility.registerTask(runOnStartup);
+        boolean fallbackCarriesState = !taskCarriesState && runOnStartup && addStartupFile();
 
-            return;
+        if (!fallbackCarriesState) {
+            removeStartupFile();
+        }
+
+        if (taskCarriesState || fallbackCarriesState) {
+            return true;
         }
 
         /*
-         * Registering the task needs administrator rights, which a standard account never has. Fall back to the startup
-         * folder batch file so the setting still works there, at the cost of the login console flash
+         * Nothing here could write the wanted state. Turning it off still succeeds when no task starts the application
+         * anyway, but a task an administrator registered earlier keeps doing so until it can be rewritten
          */
-        if (runOnStartup) {
-            addStartupFile();
-
-            return;
-        }
-
-        removeStartupFile();
+        return !runOnStartup && !LaunchTaskUtility.isTaskRegistered();
     }
 
     /**
      * Adds a batch file to the user's startup folder that will execute this application upon login.
+     *
+     * @return True if the batch file was written, false otherwise
      */
-    private void addStartupFile() {
+    private boolean addStartupFile() {
         String appExePath = LaunchTaskUtility.getAppExePath();
 
         if (appExePath == null) {
-            return;
+            return false;
         }
 
         try {
@@ -113,7 +147,11 @@ public class RunOnStartupManager {
             startupFileWriter.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
+
+            return false;
         }
+
+        return true;
     }
 
     /**

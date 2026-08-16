@@ -4,7 +4,7 @@
 #define MyLockFileName "DisplayHotKeys.lock"
 #define MyStartupFilePath "AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\StartDisplayHotKeys.bat"
 #define ProfileListKey "SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList"
-#define MyAppVersion "4.0.5"
+#define MyAppVersion "4.0.6"
 #define MyAppCopyright "Copyright (C) 2026 Jonathan R. Miller"
 #define MyAppPublisher "Jonathan R. Miller"
 #define MyAppURL "https://github.com/jon-mil-92/DisplayHotKeys"
