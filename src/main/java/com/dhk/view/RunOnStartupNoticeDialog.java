@@ -70,26 +70,17 @@ public class RunOnStartupNoticeDialog {
     private static final String ENABLE_REASON_LINE_2 = "and the startup folder could not be written to.";
 
     /**
-     * First reason line shown when the setting was turned on because the task that starts the app could not be turned
-     * off.
+     * First reason line shown when the setting was corrected on launch, which both corrections open with.
      */
-    private static final String CHANGED_ON_REASON_LINE_1 = "The task that starts the app upon login could not be";
+    private static final String CHANGED_REASON_LINE_1 = "The task that starts the app upon login could not be";
 
     /**
-     * Second reason line shown when the setting was turned on because the task that starts the app could not be turned
-     * off.
+     * Second reason line shown when the setting was turned on because that task could not be turned off.
      */
     private static final String CHANGED_ON_REASON_LINE_2 = "turned off without administrator rights.";
 
     /**
-     * First reason line shown when the setting was turned off because the task that starts the app could not be
-     * created.
-     */
-    private static final String CHANGED_OFF_REASON_LINE_1 = "The task that starts the app upon login could not be";
-
-    /**
-     * Second reason line shown when the setting was turned off because the task that starts the app could not be
-     * created.
+     * Second reason line shown when the setting was turned off because that task could not be created.
      */
     private static final String CHANGED_OFF_REASON_LINE_2 = "created without administrator rights.";
 
@@ -118,7 +109,7 @@ public class RunOnStartupNoticeDialog {
      *            - The state the setting was corrected to, which decides the reason shown
      */
     public void showChangedNotice(boolean startsOnLogon) {
-        showDialog(CHANGED_MESSAGE_TEXT, startsOnLogon ? CHANGED_ON_REASON_LINE_1 : CHANGED_OFF_REASON_LINE_1,
+        showDialog(CHANGED_MESSAGE_TEXT, CHANGED_REASON_LINE_1,
                 startsOnLogon ? CHANGED_ON_REASON_LINE_2 : CHANGED_OFF_REASON_LINE_2);
     }
 
