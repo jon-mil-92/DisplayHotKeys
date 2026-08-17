@@ -53,7 +53,7 @@ dll:
 	$(WINDRES) $(RCFLAGS) jni/DisplayEventNotifier.rc DisplayEventNotifier.res.o
 	$(CXX) $(CXXSTD) $(OPT) jni/com_dhk_io_DisplayEventNotifier.cpp jni/DisplayConfig.cpp DisplayEventNotifier.res.o $(COMMON_DEFS) $(INCLUDES) $(TOOLCHAIN_FLAGS) $(LDFLAGS) -o DisplayEventNotifier.dll
 	$(WINDRES) $(RCFLAGS) jni/SystemTrayIcon.rc SystemTrayIcon.res.o
-	$(CXX) $(CXXSTD) $(OPT) jni/com_dhk_io_SystemTrayIcon.cpp SystemTrayIcon.res.o $(COMMON_DEFS) $(INCLUDES) $(TOOLCHAIN_FLAGS) $(LDFLAGS) -lshell32 -lgdi32 -o SystemTrayIcon.dll
+	$(CXX) $(CXXSTD) $(OPT) jni/com_dhk_io_SystemTrayIcon.cpp SystemTrayIcon.res.o $(COMMON_DEFS) $(INCLUDES) $(TOOLCHAIN_FLAGS) $(LDFLAGS) -lshell32 -lgdi32 -lshcore -o SystemTrayIcon.dll
 
 	# The resources are linked in by now, so drop the intermediates instead of leaving them in the project root
 	rm -f GetDisplay.res.o SetDisplay.res.o DisplayEventNotifier.res.o SystemTrayIcon.res.o

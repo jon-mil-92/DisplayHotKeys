@@ -27,6 +27,7 @@
 #include <jni.h>
 #include <mutex>
 #include <shellapi.h>
+#include <shellscalingapi.h>
 #include <string>
 #include <thread>
 #include <vector>
@@ -34,6 +35,7 @@
 
 using namespace std;
 
+static UINT getNotificationAreaDpi();
 static void runMessageLoopThread();
 LRESULT CALLBACK handleTrayEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData);
 static void addTrayIcon();
@@ -443,7 +445,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetVisibl
 }
 
 /**
- * Gets the notification area icon size for the current display scale.
+ * Gets the notification area icon size for the scale of the display hosting the notification area.
  *
  * @param env
  *            - The JNI environment pointer
@@ -456,11 +458,11 @@ extern "C" JNIEXPORT jintArray JNICALL Java_com_dhk_io_SystemTrayIcon_nativeGetI
     (void) obj;
 
     int iconSize[2];
-    UINT systemDpi = GetDpiForSystem();
+    UINT notificationAreaDpi = getNotificationAreaDpi();
 
-    if (systemDpi != 0) {
-        iconSize[0] = GetSystemMetricsForDpi(SM_CXSMICON, systemDpi);
-        iconSize[1] = GetSystemMetricsForDpi(SM_CYSMICON, systemDpi);
+    if (notificationAreaDpi != 0) {
+        iconSize[0] = GetSystemMetricsForDpi(SM_CXSMICON, notificationAreaDpi);
+        iconSize[1] = GetSystemMetricsForDpi(SM_CYSMICON, notificationAreaDpi);
     } else {
         iconSize[0] = GetSystemMetrics(SM_CXSMICON);
         iconSize[1] = GetSystemMetrics(SM_CYSMICON);
@@ -517,6 +519,36 @@ extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
     onIconActivatedMethodId = nullptr;
     onMenuDismissRequestedMethodId = nullptr;
     jvm = nullptr;
+}
+
+/**
+ * Gets the DPI of the display hosting the notification area, which is not necessarily the primary display. Sizing the
+ * icon from the system DPI would leave it scaled for the wrong display whenever the taskbar sits on another one.
+ *
+ * @return The DPI of the display hosting the notification area, or 0 when it is unavailable
+ */
+static UINT getNotificationAreaDpi() {
+    APPBARDATA appBarData = {};
+    appBarData.cbSize = sizeof(appBarData);
+
+    if (SHAppBarMessage(ABM_GETTASKBARPOS, &appBarData) == 0) {
+        return 0;
+    }
+
+    HMONITOR taskbarMonitor = MonitorFromRect(&appBarData.rc, MONITOR_DEFAULTTONEAREST);
+
+    if (!taskbarMonitor) {
+        return 0;
+    }
+
+    UINT dpiX = 0;
+    UINT dpiY = 0;
+
+    if (GetDpiForMonitor(taskbarMonitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY) != S_OK) {
+        return 0;
+    }
+
+    return dpiX;
 }
 
 /**
