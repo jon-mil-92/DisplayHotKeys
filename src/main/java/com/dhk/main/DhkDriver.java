@@ -23,10 +23,12 @@ import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 
 import com.dhk.controller.DhkController;
+import com.dhk.controller.GlobalHookInstaller;
 import com.dhk.io.SettingsManager;
 import com.dhk.io.SingleInstanceLock;
 import com.dhk.model.DhkModel;
 import com.dhk.theme.ThemeUpdater;
+import com.dhk.utility.TimingLog;
 import com.dhk.view.AlreadyRunningDialog;
 import com.dhk.view.DhkView;
 
@@ -58,24 +60,43 @@ public class DhkDriver {
         System.setProperty("sun.java2d.noddraw", "true");
         ToolTipManager.sharedInstance().setEnabled(false);
 
-        // Apply the saved theme before the single-instance check so the already-running dialog matches the app
+        TimingLog.log("main entered");
+
+        // Check the lock before any slow setup so only the winning instance installs the global hooks
+        long lockStart = TimingLog.start();
+        boolean lockAcquired = new SingleInstanceLock().tryLock();
+        TimingLog.end("single-instance lock", lockStart);
+
+        // Start the hook install now so its potentially slow native setup overlaps the theme and settings setup
+        GlobalHookInstaller hookInstaller = new GlobalHookInstaller();
+
+        if (lockAcquired) {
+            hookInstaller.startInstall();
+        }
+
+        // Apply the saved theme before any window can show so the already-running dialog matches the app
+        long themeStart = TimingLog.start();
         ThemeUpdater themeUpdater = new ThemeUpdater();
         themeUpdater.useDarkMode(SettingsManager.getSavedDarkMode());
+        TimingLog.end("launch theme setup", themeStart);
 
         // Exit after theming when another instance already holds the lock so only one instance ever runs
-        if (!new SingleInstanceLock().tryLock()) {
+        if (!lockAcquired) {
             new AlreadyRunningDialog().showAlreadyRunningDialog();
 
             return;
         }
 
         SettingsManager settingsMgr = new SettingsManager();
+
+        long settingsStart = TimingLog.start();
         settingsMgr.initSettingsManager();
+        TimingLog.end("launch initSettingsManager", settingsStart);
 
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                initDhk(settingsMgr);
+                initDhk(settingsMgr, hookInstaller);
             }
         });
     }
@@ -85,14 +106,31 @@ public class DhkDriver {
      *
      * @param settingsMgr
      *            - The settings file manager that retrieves the saved configuration for this application
+     * @param hookInstaller
+     *            - The installer whose background global hook install began at launch
      */
-    private static void initDhk(SettingsManager settingsMgr) {
-        DhkModel model = new DhkModel();
-        DhkView view = new DhkView(model);
-        DhkController controller = new DhkController(model, view, settingsMgr);
+    private static void initDhk(SettingsManager settingsMgr, GlobalHookInstaller hookInstaller) {
+        TimingLog.log("initDhk entered on the EDT");
 
+        DhkModel model = new DhkModel();
+
+        long viewStart = TimingLog.start();
+        DhkView view = new DhkView(model);
+        TimingLog.end("new DhkView", viewStart);
+
+        long controllerStart = TimingLog.start();
+        DhkController controller = new DhkController(model, view, settingsMgr, hookInstaller);
+        TimingLog.end("new DhkController (initModel, initView, hook wait)", controllerStart);
+
+        long initStart = TimingLog.start();
         controller.initController();
+        TimingLog.end("controller.initController", initStart);
+
+        long listenersStart = TimingLog.start();
         controller.initListeners();
+        TimingLog.end("controller.initListeners", listenersStart);
+
+        TimingLog.log("initDhk finished");
     }
 
 }

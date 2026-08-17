@@ -1,0 +1,17 @@
+*Instantly apply display resolution, refresh rate, scaling mode, DPI scale percentage, and orientation with user-defined hot keys!*
+
+This patch release refines the "Run On Startup" behavior, so the button always reflects whether the app will really start upon login.
+
+## Improvements
+
+- The **Run On Startup** button now explains itself when it cannot be changed, telling a user whose account could not create the task from one whose account could not turn it off.
+- The app no longer retries a startup registration that cannot succeed on every launch, so an account without administrator rights starts up without the wasted work.
+
+## Bug Fixes
+
+- Fixed the **Run On Startup** button so it now shows whether the app will really start upon login, instead of the last setting that was saved.
+- Fixed **Run On Startup** clicks being ignored when clicked repeatedly. Every click now changes the button, and the setting ends up where the last click left it.
+- Fixed the app being started twice upon login, which could happen when both a scheduled task and a startup folder entry were left in place.
+- Fixed **Run On Startup** turning itself off when the saved setting was invalid.
+- Fixed a portable copy that was moved to a new folder failing to start upon login, since the entry left behind still pointed at the old folder.
+- Fixed the uninstaller reporting that the scheduled task was removed when it could not be, and warning about a task that was never there.

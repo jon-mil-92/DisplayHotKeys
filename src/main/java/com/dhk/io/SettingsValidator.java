@@ -19,7 +19,6 @@
  */
 package com.dhk.io;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -30,13 +29,14 @@ import java.util.Map;
 import org.ini4j.Wini;
 
 import com.dhk.model.DisplayMode;
+import com.dhk.utility.TimingLog;
 
 import lc.kra.system.keyboard.event.GlobalKeyEvent;
 
 /**
  * Validates all of the property values in the settings file. It makes sure that each property value is either a
  * positive integer or a boolean, and that it is in the correct range of valid values. If a property value fails
- * validation, then it is reset to the default value.
+ * validation, then it is reset to the default value in the in-memory settings file object.
  *
  * @author Jonathan R. Miller
  */
@@ -49,6 +49,11 @@ public class SettingsValidator {
     private Map<String, DisplayMode[]> landscapeDisplayModesMap;
     private Map<String, DisplayMode[]> portraitDisplayModesMap;
     private List<Integer> validkeyCodes;
+
+    /**
+     * Whether any property was repaired during validation, so the caller knows to persist the settings file.
+     */
+    private boolean repairedProperty;
 
     private static final int UNSET_KEY_CODE = 0;
     private static final String[] VALID_SCALING_MODES = {"0", "1", "2"};
@@ -72,18 +77,48 @@ public class SettingsValidator {
 
     /**
      * Validates all properties in the settings file. If the value for any property fails validation, then the
-     * corresponding default value is written to the settings file.
+     * corresponding default value is repaired in the in-memory settings file object; the caller persists the repairs.
+     *
+     * @return Whether or not any property was repaired
      */
-    public void validateAllProperties() {
+    public boolean validateAllProperties() {
+        long darkModeStart = TimingLog.start();
         validateDarkMode();
+        TimingLog.end("validateDarkMode", darkModeStart);
+
+        long minimizeToTrayStart = TimingLog.start();
         validateMinimizeToTray();
+        TimingLog.end("validateMinimizeToTray", minimizeToTrayStart);
+
+        long runOnStartupStart = TimingLog.start();
         validateRunOnStartup();
+        TimingLog.end("validateRunOnStartup", runOnStartupStart);
+
+        long numOfSlotsStart = TimingLog.start();
         validateNumOfSlots();
+        TimingLog.end("validateNumOfSlots", numOfSlotsStart);
+
+        long orientationModesStart = TimingLog.start();
         validateOrientationModes();
+        TimingLog.end("validateOrientationModes", orientationModesStart);
+
+        long displayModesStart = TimingLog.start();
         validateDisplayModes();
+        TimingLog.end("validateDisplayModes", displayModesStart);
+
+        long scalingModesStart = TimingLog.start();
         validateScalingModes();
+        TimingLog.end("validateScalingModes", scalingModesStart);
+
+        long dpiScalePercentagesStart = TimingLog.start();
         validateDpiScalePercentages();
+        TimingLog.end("validateDpiScalePercentages", dpiScalePercentagesStart);
+
+        long hotKeysStart = TimingLog.start();
         validateHotKeys();
+        TimingLog.end("validateHotKeys", hotKeysStart);
+
+        return repairedProperty;
     }
 
     /**
@@ -112,14 +147,22 @@ public class SettingsValidator {
     }
 
     /**
-     * Wraps the Wini store call in a try/catch block.
+     * Repairs a property by writing the given value to the in-memory settings file object, and remembers that a repair
+     * was made so the caller knows to persist the settings file.
+     *
+     * @param section
+     *            - The settings file section that holds the property
+     * @param key
+     *            - The name of the property to repair
+     * @param value
+     *            - The value to write for the property
      */
-    private void updateSettingsFile() {
-        try {
-            ini.store();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    private void repairProperty(String section, String key, Object value) {
+        TimingLog.log("repaired " + section + "." + key + " -> " + value);
+
+        ini.put(section, key, value);
+
+        repairedProperty = true;
     }
 
     /**
@@ -165,7 +208,7 @@ public class SettingsValidator {
         String darkMode = ini.get("Application", "darkMode");
 
         if (darkMode == null || !(darkMode.equals("false") || darkMode.equals("true"))) {
-            settingsMgr.saveIniDarkMode(false);
+            repairProperty("Application", "darkMode", false);
         }
     }
 
@@ -177,7 +220,7 @@ public class SettingsValidator {
         String minimizeToTray = ini.get("Application", "minimizeToTray");
 
         if (minimizeToTray == null || !(minimizeToTray.equals("false") || minimizeToTray.equals("true"))) {
-            settingsMgr.saveIniMinimizeToTray(false);
+            repairProperty("Application", "minimizeToTray", false);
         }
     }
 
@@ -190,7 +233,7 @@ public class SettingsValidator {
 
         // Only repair the stored value here; the repaired state reaches the system through applySavedRunOnStartup
         if (runOnStartup == null || !(runOnStartup.equals("false") || runOnStartup.equals("true"))) {
-            settingsMgr.saveIniRunOnStartup(false);
+            repairProperty("Application", "runOnStartup", false);
         }
     }
 
@@ -206,7 +249,7 @@ public class SettingsValidator {
 
             if (numOfSlots == null || !isPositiveInt(numOfSlots) || Integer.valueOf(numOfSlots) < 1
                     || Integer.valueOf(numOfSlots) > settingsMgr.getMaxNumOfSlots()) {
-                settingsMgr.saveIniNumOfSlotsForDisplay(displayId, 4);
+                repairProperty("Application", iniProperty, 4);
             }
         }
     }
@@ -225,7 +268,7 @@ public class SettingsValidator {
 
                 if (orientationMode == null || !isPositiveInt(orientationMode)
                         || Integer.valueOf(orientationMode) > 3) {
-                    settingsMgr.saveIniSlotOrientationMode(displayId, slotId, 0);
+                    repairProperty(iniSection, "orientationMode", 0);
                 }
             }
         }
@@ -296,7 +339,12 @@ public class SettingsValidator {
             defaultDisplayMode = portraitDisplayModes[0];
         }
 
-        settingsMgr.saveIniSlotDisplayMode(displayId, slotId, defaultDisplayMode);
+        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+
+        repairProperty(iniSection, "displayModeWidth", defaultDisplayMode.getWidth());
+        repairProperty(iniSection, "displayModeHeight", defaultDisplayMode.getHeight());
+        repairProperty(iniSection, "displayModeRefreshNumerator", defaultDisplayMode.getRefreshNumerator());
+        repairProperty(iniSection, "displayModeRefreshDenominator", defaultDisplayMode.getRefreshDenominator());
     }
 
     /**
@@ -313,7 +361,7 @@ public class SettingsValidator {
 
                 if (scalingMode == null || !isPositiveInt(scalingMode)
                         || !Arrays.asList(VALID_SCALING_MODES).contains(scalingMode)) {
-                    settingsMgr.saveIniSlotScalingMode(displayId, slotId, 0);
+                    repairProperty(iniSection, "scalingMode", 0);
                 }
             }
         }
@@ -336,7 +384,7 @@ public class SettingsValidator {
 
                 if (dpiScalePercentage == null || !isPositiveInt(dpiScalePercentage)
                         || !isSupportedDpiScalePercentage(iniSection, dpiScalePercentage)) {
-                    settingsMgr.saveIniSlotDpiScalePercentage(displayId, slotId, 100);
+                    repairProperty(iniSection, "dpiScalePercentage", 100);
                 }
             }
         }
@@ -386,9 +434,7 @@ public class SettingsValidator {
 
                 if (hotKeySize == null || !isPositiveInt(hotKeySize) || Integer.valueOf(hotKeySize) < 0
                         || Integer.valueOf(hotKeySize) > 3) {
-                    ini.put(iniSection, "hotKeySize", 0);
-
-                    updateSettingsFile();
+                    repairProperty(iniSection, "hotKeySize", 0);
                 }
 
                 int validatedHotKeySize = ini.get(iniSection, "hotKeySize", int.class);
@@ -402,24 +448,20 @@ public class SettingsValidator {
                     }
 
                     if (numOfSetKeys > validatedHotKeySize) {
-                        ini.put(iniSection, "key" + keyId, UNSET_KEY_CODE);
-
-                        updateSettingsFile();
+                        repairProperty(iniSection, "key" + keyId, UNSET_KEY_CODE);
                     }
                 }
 
                 if (validatedHotKeySize > numOfSetKeys) {
-                    ini.put(iniSection, "hotKeySize", numOfSetKeys);
-
-                    updateSettingsFile();
+                    repairProperty(iniSection, "hotKeySize", numOfSetKeys);
                 }
             }
         }
     }
 
     /**
-     * Validates the value for each key property from the settings file. If the value is not a valid value, then it
-     * writes the default value for the key property.
+     * Validates the value for each key property from the settings file. A key value is valid when it is the unset key
+     * code or a supported key code; otherwise the default unset value is written for the key property.
      */
     private void validateKeys() {
         for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
@@ -430,10 +472,10 @@ public class SettingsValidator {
                     String iniSection = displayId + "--Slot" + Integer.toString(slotId);
                     String key = ini.get(iniSection, "key" + keyId);
 
-                    if (key == null || !isPositiveInt(key) || !validkeyCodes.contains(Integer.valueOf(key))) {
-                        ini.put(iniSection, "key" + keyId, UNSET_KEY_CODE);
-
-                        updateSettingsFile();
+                    // An unset key persists as UNSET_KEY_CODE, so that value must pass validation without a repair
+                    if (key == null || !isPositiveInt(key) || !(Integer.valueOf(key) == UNSET_KEY_CODE
+                            || validkeyCodes.contains(Integer.valueOf(key)))) {
+                        repairProperty(iniSection, "key" + keyId, UNSET_KEY_CODE);
                     }
                 }
             }

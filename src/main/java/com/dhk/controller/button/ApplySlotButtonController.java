@@ -49,6 +49,7 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
     private DisplayConfig displayConfig;
     private SetDisplay setDisplay;
     private AppRefresher appRefresher;
+    private Timer reInitTimer;
 
     /**
      * Constructor for the {@link ApplySlotButtonController} class.
@@ -96,6 +97,11 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
 
     @Override
     public void cleanUp() {
+        // A refresh is tearing this controller down, so a still-pending refresh it scheduled would be a duplicate
+        if (reInitTimer != null) {
+            reInitTimer.stop();
+            reInitTimer = null;
+        }
     }
 
     /**
@@ -131,11 +137,16 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
 
             /*
              * Re-initialize the app to prevent window corruption, but defer briefly so the display reconfiguration
-             * settles first; otherwise the rebuilt frame is placed against stale display bounds. The Timer fires once
-             * on the EDT, and the placement captured above is reproduced since the OS will have moved the existing
-             * frame
+             * settles first; otherwise the rebuilt frame is placed against stale display bounds. Rapid successive
+             * applies coalesce into one refresh that reproduces the placement captured before the first apply
              */
-            Timer reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp(placement));
+            if (reInitTimer != null && reInitTimer.isRunning()) {
+                reInitTimer.restart();
+
+                return;
+            }
+
+            reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp(placement));
             reInitTimer.setRepeats(false);
             reInitTimer.start();
         }

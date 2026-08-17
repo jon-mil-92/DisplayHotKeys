@@ -24,6 +24,7 @@ import com.dhk.io.DisplayConfig;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
 import com.dhk.model.FramePlacement;
+import com.dhk.utility.TimingLog;
 import com.dhk.view.DhkView;
 import com.formdev.flatlaf.FlatDarculaLaf;
 import com.formdev.flatlaf.FlatIntelliJLaf;
@@ -83,19 +84,41 @@ public class AppRefresher {
      *            existing frame as part of the change, making a live capture during re-initialization unreliable
      */
     public void reInitApp(FramePlacement capturedPlacement) {
+        TimingLog.log("reInitApp entered");
+
+        long updateStart = TimingLog.start();
         displayConfig.updateConnectedDisplays();
+        TimingLog.end("reInit updateConnectedDisplays", updateStart);
 
         if (displayConfig.getNumOfConnectedDisplays() == 0) {
+            TimingLog.log("reInitApp aborted: no connected displays");
+
             return;
         }
 
         int previousFrameState = view.getFrame().getExtendedState();
 
+        long cleanUpStart = TimingLog.start();
         controller.cleanUp();
+        TimingLog.end("controller.cleanUp", cleanUpStart);
+
+        long settingsStart = TimingLog.start();
         settingsMgr.initSettingsManager();
+        TimingLog.end("reInit initSettingsManager", settingsStart);
+
+        long modelStart = TimingLog.start();
         model.initModel(settingsMgr);
+        TimingLog.end("model.initModel", modelStart);
+
+        long viewStart = TimingLog.start();
         view.reInitView(capturedPlacement);
+        TimingLog.end("view.reInitView", viewStart);
+
+        long controllerStart = TimingLog.start();
         controller.reInitController(previousFrameState);
+        TimingLog.end("controller.reInitController", controllerStart);
+
+        long lafStart = TimingLog.start();
 
         if (model.isDarkMode()) {
             FlatDarculaLaf.setup();
@@ -104,6 +127,9 @@ public class AppRefresher {
         }
 
         FlatLaf.updateUI();
+        TimingLog.end("look-and-feel setup", lafStart);
+
+        TimingLog.log("reInitApp finished");
     }
 
 }
