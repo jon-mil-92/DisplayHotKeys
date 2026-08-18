@@ -139,8 +139,8 @@ public class MinimizeToTray {
     }
 
     /**
-     * Rescales the tray icon once the display configuration has settled, since its size follows the display hosting the
-     * task bar. Kept off the refresh path, which cannot afford the wait for the shell to answer for the task bar.
+     * Rescales the tray icon after a re-initialization absorbs a display configuration change, since its size follows
+     * the scale of the display hosting the task bar.
      */
     public void displayConfigurationSettled() {
         if (systemTrayIcon == null) {

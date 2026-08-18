@@ -56,7 +56,7 @@ public class DisplayConfigUpdater implements DisplayChangeListener {
         this.controller = controller;
 
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
-        reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> reInitAndSettleTray());
+        reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp());
         reInitTimer.setRepeats(false);
     }
 
@@ -74,15 +74,6 @@ public class DisplayConfigUpdater implements DisplayChangeListener {
         controller.getMinimizeToTray().displayConfigurationChanged();
 
         reInitTimer.restart();
-    }
-
-    /**
-     * Re-initializes the application and then rescales the tray icon. The rescale trails the re-initialization because
-     * it asks the shell for the task bar, which answers slowly while the shell is still rebuilding it.
-     */
-    private void reInitAndSettleTray() {
-        appRefresher.reInitApp();
-        controller.getMinimizeToTray().displayConfigurationSettled();
     }
 
     /**

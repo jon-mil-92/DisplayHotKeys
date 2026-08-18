@@ -631,8 +631,8 @@ public class HotKeysController implements IController, GlobalKeyListener {
 
     /**
      * Schedules a single, deferred re-initialization of the app after display settings are applied. The refresh is
-     * delayed so the asynchronous display reconfiguration settles first, and rapid successive applies coalesce into
-     * one refresh that reproduces the placement captured before the first apply.
+     * delayed so the asynchronous display reconfiguration settles first, and rapid successive applies coalesce into one
+     * refresh that reproduces the placement captured before the first apply.
      *
      * @param placement
      *            - The frame placement captured before applying the display settings, reproduced after
