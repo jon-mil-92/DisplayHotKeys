@@ -1,11 +1,11 @@
 # Builds the Display Hot Keys jpackage app-image and injects the UAC/DPI manifest into the launcher
 
+$ErrorActionPreference = 'Stop'
 $distDir = $PSScriptRoot
 $projectDir = Split-Path $distDir -Parent
-$version = '4.0.6'
+$version = '4.1.0'
 $jarName = "DisplayHotKeys-$version.jar"
 $copyright = "Copyright $([char]0x00A9) 2026 Jonathan R. Miller"
-$ErrorActionPreference = 'Stop'
 $inputDir = Join-Path $distDir 'input'
 $outDir = Join-Path $distDir 'jpackage-out'
 $appImage = Join-Path $outDir 'DisplayHotKeys'
@@ -14,7 +14,7 @@ $manifest = Join-Path $distDir 'DisplayHotKeys.manifest'
 $icon = Join-Path $distDir 'dhk.ico'
 $resourceDir = Join-Path $distDir 'jpackage-resources'
 $launcherProperties = Join-Path $resourceDir 'DisplayHotKeys.properties'
-$dllNames = @('SetDisplay.dll', 'GetDisplay.dll', 'DisplayEventNotifier.dll')
+$dllNames = @('SetDisplay.dll', 'GetDisplay.dll', 'DisplayEventNotifier.dll', 'SystemTrayIcon.dll')
 $startLauncherName = 'DisplayHotKeysLauncher.exe'
 $startLauncher = Join-Path $distDir $startLauncherName
 $uninstallScript = Join-Path $distDir 'uninstall.bat'
@@ -57,7 +57,8 @@ try {
     $mt = @("${env:ProgramFiles(x86)}\Windows Kits\10\bin", "$env:ProgramFiles\Windows Kits\10\bin") |
         Where-Object { Test-Path $_ } |
         ForEach-Object { Get-ChildItem (Join-Path $_ '*\x64\mt.exe') -ErrorAction SilentlyContinue } |
-        Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+        Sort-Object FullName -Descending |
+        Select-Object -First 1 -ExpandProperty FullName
 
     if (-not $mt) {
         throw 'mt.exe not found (install the Windows 10/11 SDK)'

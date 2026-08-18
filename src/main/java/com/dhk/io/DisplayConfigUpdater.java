@@ -36,7 +36,9 @@ import com.dhk.view.DhkView;
 public class DisplayConfigUpdater implements DisplayChangeListener {
 
     private final AppRefresher appRefresher;
+    private final DhkController controller;
     private final Timer reInitTimer;
+    private boolean cleanedUp;
 
     /**
      * Constructor for the {@link DisplayConfigUpdater} class.
@@ -51,6 +53,8 @@ public class DisplayConfigUpdater implements DisplayChangeListener {
      *            - The settings manager for the application
      */
     public DisplayConfigUpdater(DhkModel model, DhkView view, DhkController controller, SettingsManager settingsMgr) {
+        this.controller = controller;
+
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
         reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp());
         reInitTimer.setRepeats(false);
@@ -58,14 +62,27 @@ public class DisplayConfigUpdater implements DisplayChangeListener {
 
     @Override
     public void displayConfigurationChanged() {
+        /*
+         * A callback queued on the EDT before the notifier stopped can arrive after teardown; restarting the timer then
+         * would duplicate the re-initialization that already absorbed the change, so swallow it
+         */
+        if (cleanedUp) {
+            return;
+        }
+
+        // Covers changes made outside the app, which reach the tray through no other path
+        controller.getMinimizeToTray().displayConfigurationChanged();
+
         reInitTimer.restart();
     }
 
     /**
-     * Stops any pending deferred re-initialization. Called when the owning controller is torn down (on app re-init or
-     * shutdown) so the Timer cannot fire against a disposed view and is released for garbage collection.
+     * Stops any pending deferred re-initialization and permanently retires this updater. Called when the owning
+     * controller is torn down (on app re-init or shutdown) so the Timer cannot fire against a disposed view and a late
+     * notification callback cannot re-arm it.
      */
     public void cleanUp() {
+        cleanedUp = true;
         reInitTimer.stop();
     }
 

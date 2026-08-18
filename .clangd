@@ -8,6 +8,8 @@ CompileFlags:
     - -DUNICODE
     - -D_UNICODE
     - -DWIN32_LEAN_AND_MEAN
+    - -D_WIN32_WINNT=0x0A00
+    - -DWINVER=0x0A00
     - -D__MINGW64__
     - -D__x86_64__
     - -IC:/jdk21/include

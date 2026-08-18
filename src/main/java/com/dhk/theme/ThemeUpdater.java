@@ -34,9 +34,22 @@ import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 public class ThemeUpdater {
 
     /**
+     * Whether the global theme setup (font install, preferred font family, and custom defaults source) has already run
+     * in this JVM, since re-running the expensive font install on every construction is redundant.
+     */
+    private static boolean globalThemeSetupDone;
+
+    /**
      * Constructor for the {@link ThemeUpdater} class.
      */
     public ThemeUpdater() {
+        // The font install and defaults-source registration are global and idempotent, so only run them once per JVM
+        if (globalThemeSetupDone) {
+            return;
+        }
+
+        globalThemeSetupDone = true;
+
         // Set the Roboto font style
         FlatRobotoFont.install();
         FlatLaf.setPreferredFontFamily(FlatRobotoFont.FAMILY);

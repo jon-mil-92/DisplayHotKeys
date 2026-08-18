@@ -498,7 +498,12 @@ public class SettingsManager {
         }
 
         SettingsValidator validator = new SettingsValidator(this);
-        validator.validateAllProperties();
+        boolean repaired = validator.validateAllProperties();
+
+        // Repairs only edit the in-memory settings file object, so persist them here in a single write
+        if (repaired) {
+            updateSettingsFile();
+        }
     }
 
     /**

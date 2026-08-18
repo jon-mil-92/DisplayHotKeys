@@ -125,6 +125,7 @@ public class DisplayConfig {
     private void updateDisplayModes() {
         landscapeDisplayModesMap = new HashMap<String, DisplayMode[]>(numOfConnectedDisplays);
         portraitDisplayModesMap = new HashMap<String, DisplayMode[]>(numOfConnectedDisplays);
+
         int[] orientations = getDisplay.getDisplayOrientations();
 
         for (int displayIndex = 0; displayIndex < numOfConnectedDisplays; displayIndex++) {

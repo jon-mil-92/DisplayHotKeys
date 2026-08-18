@@ -19,32 +19,37 @@
  */
 package com.dhk.view;
 
-import java.awt.Image;
-import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
+import com.dhk.io.SystemTrayIcon;
 import com.dhk.model.DhkModel;
 import com.dhk.utility.FrameUtil;
-
-import dorkbox.systemTray.MenuItem;
-import dorkbox.systemTray.SystemTray;
+import com.formdev.flatlaf.extras.FlatSVGIcon;
+import com.formdev.flatlaf.util.UIScale;
 
 /**
- * Enables the application to be minimized to the system tray and restored from the system tray.
+ * Enables the application to be minimized to the system tray and restored from the system tray. A single instance lives
+ * for the whole application lifetime so re-initializations reuse the live tray instead of rebuilding it.
  *
  * @author Jonathan R. Miller
  */
 public class MinimizeToTray {
 
+    private DhkModel model;
     private DhkView view;
-    private JFrame frame;
-    private SystemTray systemTray;
-    private AboutDialog aboutDialog;
-    private Image minimizedToTrayIcon;
+    private SystemTrayIcon systemTrayIcon;
+    private TrayMenu trayMenu;
+    private FlatSVGIcon trayIcon;
+
+    /**
+     * Tooltip text shown for the tray icon.
+     */
+    private static final String TRAY_NAME = "Display Hot Keys";
 
     /**
      * Constructor for the {@link MinimizeToTray} class.
@@ -57,83 +62,92 @@ public class MinimizeToTray {
      *            - The icon resource path for the tray icon
      */
     public MinimizeToTray(DhkModel model, DhkView view, String iconResourcePath) {
+        this.model = model;
         this.view = view;
 
-        frame = view.getFrame();
-        aboutDialog = new AboutDialog(model, view);
-
-        // Get the minimized-to-tray icon image
-        minimizedToTrayIcon = Toolkit.getDefaultToolkit().getImage(getClass().getResource(iconResourcePath));
+        // Kept as a vector, so every icon size is rasterized from it rather than resampled from one fixed size
+        trayIcon = new FlatSVGIcon(getClass().getResource(iconResourcePath));
     }
 
     /**
      * Minimizes the application to the system tray.
      */
     public void execute() {
-        // Hide the taskbar icon
-        frame.setVisible(false);
+        // Hide the taskbar icon; the frame is resolved lazily since every re-initialization replaces it
+        view.getFrame().setVisible(false);
 
-        if (systemTray == null) {
+        if (systemTrayIcon == null) {
             startSystemTray();
-            addMenuItems();
         } else {
-            systemTray.setEnabled(true);
+            systemTrayIcon.setVisible(true);
         }
     }
 
     /**
-     * Starts the system tray.
+     * Starts the system tray icon and wires its menu.
      */
     private void startSystemTray() {
-        systemTray = SystemTray.get("Display Hot Keys");
-        systemTray.setTooltip("Display Hot Keys");
-        systemTray.setImage(minimizedToTrayIcon);
+        trayMenu = new TrayMenu(this::restoreAction, this::aboutAction, this::exitAction);
+        systemTrayIcon = new SystemTrayIcon();
+
+        systemTrayIcon.registerTrayIconListener(
+                (anchorX, anchorY, iconBounds) -> trayMenu.show(anchorX, anchorY, iconBounds));
+
+        systemTrayIcon.start(TRAY_NAME, this::renderTrayIconPixels);
     }
 
     /**
-     * Adds the menu items to the system tray pop-up menu.
-     */
-    private void addMenuItems() {
-        // Create options for the system tray pop-up menu
-        MenuItem restoreMenuItem = new MenuItem("Restore");
-        MenuItem aboutMenuItem = new MenuItem("About");
-        MenuItem exitMenuItem = new MenuItem("Exit");
-
-        restoreMenuItem.setCallback(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                restoreAction();
-            }
-        });
-
-        systemTray.getMenu().add(restoreMenuItem);
-
-        aboutMenuItem.setCallback(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                aboutAction();
-            }
-        });
-
-        systemTray.getMenu().add(aboutMenuItem);
-
-        exitMenuItem.setCallback(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                exitAction();
-            }
-        });
-
-        systemTray.getMenu().add(exitMenuItem);
-    }
-
-    /**
-     * Gets the system tray.
+     * Renders the tray icon at the given size. Rendering from the vector at the exact size keeps the icon sharp at
+     * every scale, since nothing is resampled from another size.
      *
-     * @return The system tray
+     * @param iconWidth
+     *            - The icon width in pixels
+     * @param iconHeight
+     *            - The icon height in pixels
+     *
+     * @return The rendered icon pixels in packed ARGB order
      */
-    public SystemTray getSystemTray() {
-        return systemTray;
+    private int[] renderTrayIconPixels(int iconWidth, int iconHeight) {
+        // Pre-multiplied, which is the form the notification area composites an icon in
+        BufferedImage iconImage = new BufferedImage(iconWidth, iconHeight, BufferedImage.TYPE_INT_ARGB_PRE);
+        Graphics2D graphics = iconImage.createGraphics();
+
+        /*
+         * The icon sizes and paints itself in scaled user interface units, which overshoots the notification area size
+         * asked for here and clips the artwork. Undo that factor so the icon renders at exactly the requested pixels
+         */
+        float userScale = UIScale.getUserScaleFactor();
+
+        graphics.scale(1 / (double) userScale, 1 / (double) userScale);
+
+        trayIcon.derive(iconWidth, iconHeight).paintIcon(null, graphics, 0, 0);
+        graphics.dispose();
+
+        return ((DataBufferInt) iconImage.getRaster().getDataBuffer()).getData();
+    }
+
+    /**
+     * Dismisses a showing tray menu when the display configuration has changed, since the menu was placed against the
+     * old geometry. Only the dismissal happens here, as it is the sole part that cannot wait.
+     */
+    public void displayConfigurationChanged() {
+        if (systemTrayIcon == null) {
+            return;
+        }
+
+        trayMenu.dismiss();
+    }
+
+    /**
+     * Rescales the tray icon after a re-initialization absorbs a display configuration change, since its size follows
+     * the scale of the display hosting the task bar.
+     */
+    public void displayConfigurationSettled() {
+        if (systemTrayIcon == null) {
+            return;
+        }
+
+        systemTrayIcon.refreshIconSize();
     }
 
     /**
@@ -143,6 +157,7 @@ public class MinimizeToTray {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
+                JFrame frame = view.getFrame();
                 frame.setExtendedState(JFrame.NORMAL);
                 frame.setVisible(true);
                 view.getDefaultFocusComponent().requestFocusInWindow();
@@ -153,7 +168,7 @@ public class MinimizeToTray {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                FrameUtil.refreshFrame(frame);
+                FrameUtil.refreshFrame(view.getFrame());
             }
         });
 
@@ -165,7 +180,9 @@ public class MinimizeToTray {
      */
     private void aboutAction() {
         hideSystemTray();
-        aboutDialog.showAboutDialog(systemTray);
+
+        // Build the dialog per show so it binds to the current frame, since every re-initialization replaces it
+        new AboutDialog(model, view).showAboutDialog(this::showSystemTray);
     }
 
     /**
@@ -177,22 +194,36 @@ public class MinimizeToTray {
     }
 
     /**
-     * Hides the system tray, keeping it alive so dialogs can re-enable the same instance on close.
+     * Hides the tray icon, keeping it alive so dialogs can show the same instance again on close.
      */
     private void hideSystemTray() {
-        if (systemTray != null) {
-            systemTray.setEnabled(false);
+        if (systemTrayIcon != null) {
+            systemTrayIcon.setVisible(false);
         }
     }
 
     /**
-     * Shuts down the system tray and clears it so the next minimize rebuilds it with the correct theme.
+     * Shows the tray icon again after a dialog opened from its menu closes.
      */
-    private void shutDownSystemTray() {
-        if (systemTray != null) {
-            systemTray.setEnabled(false);
-            systemTray.shutdown();
-            systemTray = null;
+    private void showSystemTray() {
+        if (systemTrayIcon != null) {
+            systemTrayIcon.setVisible(true);
+        }
+    }
+
+    /**
+     * Shuts down the tray icon and clears it so the next minimize starts it again.
+     */
+    public void shutDownSystemTray() {
+        if (systemTrayIcon != null) {
+            trayMenu.dismiss();
+
+            systemTrayIcon.setVisible(false);
+            systemTrayIcon.stop();
+
+            // Cleared together, so the tray and its menu never disagree about whether the tray is live
+            systemTrayIcon = null;
+            trayMenu = null;
         }
     }
 

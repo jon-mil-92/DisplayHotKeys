@@ -68,6 +68,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
     private HotKey hotKeyBackup;
     private Timer idleTimer;
     private Timer releaseMessageTimer;
+    private Timer reInitTimer;
     private AppRefresher appRefresher;
     private int currentKeyCount;
     private int maxNumOfSlots;
@@ -152,6 +153,12 @@ public class HotKeysController implements IController, GlobalKeyListener {
             releaseMessageTimer.stop();
             releaseMessageTimer = null;
         }
+
+        // A refresh is tearing this controller down, so a still-pending refresh it scheduled would be a duplicate
+        if (reInitTimer != null) {
+            reInitTimer.stop();
+            reInitTimer = null;
+        }
     }
 
     @Override
@@ -220,6 +227,9 @@ public class HotKeysController implements IController, GlobalKeyListener {
                 boolean displaySettingsApplied = false;
 
                 if (!displayToSlotMap.isEmpty()) {
+                    // Dismiss a showing tray menu before the mode change, since it was placed against the old geometry
+                    controller.getMinimizeToTray().displayConfigurationChanged();
+
                     String[] arrangementSnapshot = displayConfig.captureArrangement();
 
                     for (Entry<Integer, Integer> displayToSlot : displayToSlotMap.entrySet()) {
@@ -620,17 +630,22 @@ public class HotKeysController implements IController, GlobalKeyListener {
     }
 
     /**
-     * Schedules a single, deferred re-initialization of the app to prevent window corruption after a display mode is
-     * applied. Applying a display mode reconfigures the display asynchronously, so the app refresh is delayed briefly
-     * to let the new geometry settle; otherwise the rebuilt frame is placed against stale display bounds and jumps up
-     * and to the left. The Timer fires once on the EDT.
+     * Schedules a single, deferred re-initialization of the app after display settings are applied. The refresh is
+     * delayed so the asynchronous display reconfiguration settles first, and rapid successive applies coalesce into one
+     * refresh that reproduces the placement captured before the first apply.
      *
      * @param placement
      *            - The frame placement captured before applying the display settings, reproduced after
      *            re-initialization because the OS will have moved the existing frame during the reconfiguration
      */
     private void scheduleReInit(FramePlacement placement) {
-        Timer reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp(placement));
+        // Restarting extends the settle delay past the latest apply; the pending timer keeps the earlier placement
+        if (reInitTimer != null && reInitTimer.isRunning()) {
+            reInitTimer.restart();
+            return;
+        }
+
+        reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp(placement));
         reInitTimer.setRepeats(false);
         reInitTimer.start();
     }

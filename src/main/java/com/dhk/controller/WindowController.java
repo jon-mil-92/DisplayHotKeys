@@ -30,8 +30,8 @@ import com.dhk.view.DhkView;
 import com.dhk.view.MinimizeToTray;
 
 /**
- * Controls the application's window. The window listener is initialized with this class, and it initializes the object
- * that allows the application to be minimized to the system tray and restored from the system tray.
+ * Controls the application's window. The window listener is initialized with this class, and it brings up the shared
+ * minimize-to-tray object when the frame starts hidden for the tray.
  *
  * @author Jonathan R. Miller
  */
@@ -48,16 +48,17 @@ public class WindowController implements IController, WindowListener {
      *            - The model for the application
      * @param view
      *            - The view for the application
+     * @param minimizeToTray
+     *            - The application-lifetime minimize-to-tray object shared across re-initializations
      */
-    public WindowController(DhkModel model, DhkView view) {
+    public WindowController(DhkModel model, DhkView view, MinimizeToTray minimizeToTray) {
         this.model = model;
         this.view = view;
+        this.minimizeToTray = minimizeToTray;
     }
 
     @Override
     public void initController() {
-        minimizeToTray = new MinimizeToTray(model, view, "/tray_icon.png");
-
         /*
          * A frame held back for the tray is never shown, so it raises no iconified event to hand it off. Bring the tray
          * up here instead, since the tray menu wires its own callbacks and needs nothing from the window listener
@@ -74,7 +75,7 @@ public class WindowController implements IController, WindowListener {
 
     @Override
     public void cleanUp() {
-        shutDownSystemTray();
+        // The tray deliberately survives re-initialization; it only shuts down on restore or application exit
     }
 
     @Override
@@ -96,7 +97,7 @@ public class WindowController implements IController, WindowListener {
 
     @Override
     public void windowClosing(WindowEvent e) {
-        shutDownSystemTray();
+        minimizeToTray.shutDownSystemTray();
         System.exit(0);
     }
 
@@ -110,16 +111,6 @@ public class WindowController implements IController, WindowListener {
 
     @Override
     public void windowDeactivated(WindowEvent e) {
-    }
-
-    /**
-     * Shuts down the system tray.
-     */
-    private void shutDownSystemTray() {
-        if (minimizeToTray.getSystemTray() != null) {
-            minimizeToTray.getSystemTray().setEnabled(false);
-            minimizeToTray.getSystemTray().shutdown();
-        }
     }
 
 }

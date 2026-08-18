@@ -35,6 +35,7 @@ import com.dhk.io.SettingsManager;
 import com.dhk.io.ShellRestartHandler;
 import com.dhk.model.DhkModel;
 import com.dhk.view.DhkView;
+import com.dhk.view.MinimizeToTray;
 
 import lc.kra.system.keyboard.GlobalKeyboardHook;
 import lc.kra.system.mouse.GlobalMouseHook;
@@ -58,6 +59,7 @@ public class DhkController implements IController {
     private DisplayConfigUpdater displayConfigUpdater;
     private DisplayEventNotifier displayNotifications;
     private ShellRestartHandler shellRestartHandler;
+    private MinimizeToTray minimizeToTray;
 
     /**
      * Constructor for the {@link DhkController} class.
@@ -68,11 +70,14 @@ public class DhkController implements IController {
      *            - The view for the application
      * @param settingsMgr
      *            - The settings manager for the application
+     * @param hookInstaller
+     *            - The installer whose background global hook install began at launch
      */
-    public DhkController(DhkModel model, DhkView view, SettingsManager settingsMgr) {
+    public DhkController(DhkModel model, DhkView view, SettingsManager settingsMgr, GlobalHookInstaller hookInstaller) {
         this.model = model;
         this.view = view;
         this.settingsMgr = settingsMgr;
+
         model.initModel(settingsMgr);
         view.initView(null, 0);
 
@@ -82,13 +87,15 @@ public class DhkController implements IController {
             frameState = JFrame.NORMAL;
         }
 
-        // Create the keyboard hook and its permanent held-key tracker once; both live for the whole app lifetime
-        keyboardHook = new GlobalKeyboardHook(true);
-        heldKeyTracker = new HeldKeyTracker();
-        keyboardHook.addKeyListener(heldKeyTracker);
+        // Adopt the JVM-lifetime hooks and permanent held-key tracker, waiting out any install time still remaining
+        hookInstaller.awaitInstall();
 
-        // Create the global mouse hook once so app refreshes reuse it instead of re-installing it every time
-        mouseHook = createGlobalMouseHook();
+        keyboardHook = hookInstaller.getKeyboardHook();
+        heldKeyTracker = hookInstaller.getHeldKeyTracker();
+        mouseHook = hookInstaller.getMouseHook();
+
+        // Create the minimize-to-tray object once so app refreshes reuse the live tray instead of rebuilding it
+        minimizeToTray = new MinimizeToTray(model, view, "/tray_icon.svg");
     }
 
     @Override
@@ -97,7 +104,7 @@ public class DhkController implements IController {
 
         // Recreate the mouse hook only if it never existed; normally it stays alive across re-inits
         if (mouseHook == null) {
-            mouseHook = createGlobalMouseHook();
+            mouseHook = GlobalHookInstaller.createMouseHook();
         }
 
         // Create the hot keys controller early so other controllers can notify it
@@ -116,7 +123,7 @@ public class DhkController implements IController {
         controllers.add(new OrientationController(model, view, this, settingsMgr));
         controllers.add(new ScalingModeController(model, view, settingsMgr));
         controllers.add(new SelectedDisplayController(model, view));
-        controllers.add(new WindowController(model, view));
+        controllers.add(new WindowController(model, view, minimizeToTray));
 
         // Initialize all sub-controllers
         for (IController controller : controllers) {
@@ -241,19 +248,12 @@ public class DhkController implements IController {
     }
 
     /**
-     * Creates the global mouse hook shared by the frame drag controller, returning null if the native hook cannot be
-     * established so a failure never prevents the rest of the application from starting.
+     * Gets the application-lifetime minimize-to-tray object.
      *
-     * @return The global mouse hook, or null if it could not be created
+     * @return The minimize-to-tray object
      */
-    private GlobalMouseHook createGlobalMouseHook() {
-        try {
-            return new GlobalMouseHook();
-        } catch (UnsatisfiedLinkError | RuntimeException e) {
-            e.printStackTrace();
-
-            return null;
-        }
+    public MinimizeToTray getMinimizeToTray() {
+        return minimizeToTray;
     }
 
 }

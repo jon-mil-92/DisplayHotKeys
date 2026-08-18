@@ -13,7 +13,7 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "FileDescription", "Apply settings for displays"
+            VALUE "FileDescription", "Applies settings for displays"
             VALUE "FileVersion", "2.1.0.0"
             VALUE "ProductName", "SetDisplay"
             VALUE "ProductVersion", "2.1.0.0"

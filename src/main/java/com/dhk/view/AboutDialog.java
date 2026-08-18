@@ -52,8 +52,6 @@ import com.dhk.model.button.ThemeableButton;
 import com.dhk.utility.FrameUtil;
 import com.dhk.utility.VersionRetriever;
 
-import dorkbox.systemTray.SystemTray;
-
 /**
  * Shows an "About Display Hot Keys" dialog on the AWT event dispatching thread. Creates a semi-transparent darkening
  * panel to overlay the parent frame.
@@ -117,10 +115,10 @@ public class AboutDialog implements IView {
     /**
      * Shows an "About Display Hot Keys" dialog on the AWT event dispatching thread.
      *
-     * @param systemTray
-     *            - The system tray (not required)
+     * @param onCloseAction
+     *            - The action to run when the dialog closes (not required)
      */
-    public void showAboutDialog(SystemTray systemTray) {
+    public void showAboutDialog(Runnable onCloseAction) {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -129,8 +127,8 @@ public class AboutDialog implements IView {
                 aboutDialog.setResizable(false);
 
                 initAboutPanels(aboutDialog);
-                initAboutComponents(aboutDialog, systemTray);
-                initAboutComponentListeners(aboutDialog, systemTray);
+                initAboutComponents(aboutDialog);
+                initAboutComponentListeners(aboutDialog, onCloseAction);
                 addAboutComponents(aboutDialog);
 
                 // Update UI and show darkening glass pane on parent
@@ -264,10 +262,8 @@ public class AboutDialog implements IView {
      *
      * @param aboutDialog
      *            - The about dialog to initialize components for
-     * @param systemTray
-     *            - The system tray (not required)
      */
-    private void initAboutComponents(JDialog aboutDialog, SystemTray systemTray) {
+    private void initAboutComponents(JDialog aboutDialog) {
         headerLabel = new JLabel("About Display Hot Keys");
         headerLabel.setHorizontalAlignment(SwingConstants.CENTER);
         headerLabel.putClientProperty("FlatLaf.style", "font: bold " + Math.round(HEADER_FONT_SCALE * 100) + "%");
@@ -301,15 +297,15 @@ public class AboutDialog implements IView {
      *
      * @param aboutDialog
      *            - The about dialog to initialize listeners for
-     * @param systemTray
-     *            - The system tray (not required)
+     * @param onCloseAction
+     *            - The action to run when the dialog closes (not required)
      */
-    private void initAboutComponentListeners(final JDialog aboutDialog, final SystemTray systemTray) {
+    private void initAboutComponentListeners(final JDialog aboutDialog, final Runnable onCloseAction) {
         paypalButtonController.initListeners();
 
         licenseButton.addActionListener(createLicenseActionListener(aboutDialog));
         releasesButton.addActionListener(createReleasesActionListener());
-        closeButton.addActionListener(createCloseActionListener(aboutDialog, systemTray));
+        closeButton.addActionListener(createCloseActionListener(aboutDialog, onCloseAction));
 
         // Prevent default close and handle the title-bar close ourselves
         aboutDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
@@ -317,7 +313,7 @@ public class AboutDialog implements IView {
             @Override
             public void windowClosing(WindowEvent e) {
                 // Call the same method used by the Close button
-                closeButtonAction(aboutDialog, systemTray);
+                closeButtonAction(aboutDialog, onCloseAction);
             }
         });
 
@@ -423,16 +419,16 @@ public class AboutDialog implements IView {
      *
      * @param aboutDialog
      *            - The about dialog to close
-     * @param systemTray
-     *            - The system tray to re-enable (not required)
+     * @param onCloseAction
+     *            - The action to run when the dialog closes (not required)
      *
      * @return An action listener that closes an about dialog
      */
-    private ActionListener createCloseActionListener(JDialog aboutDialog, SystemTray systemTray) {
+    private ActionListener createCloseActionListener(JDialog aboutDialog, Runnable onCloseAction) {
         return new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                closeButtonAction(aboutDialog, systemTray);
+                closeButtonAction(aboutDialog, onCloseAction);
             }
         };
     }
@@ -458,14 +454,14 @@ public class AboutDialog implements IView {
      *
      * @param aboutDialog
      *            - The about dialog to close
-     * @param systemTray
-     *            - The system tray to re-enable (not required)
+     * @param onCloseAction
+     *            - The action to run when the dialog closes (not required)
      */
-    private void closeButtonAction(JDialog aboutDialog, SystemTray systemTray) {
+    private void closeButtonAction(JDialog aboutDialog, Runnable onCloseAction) {
         getDefaultFocusComponent().requestFocusInWindow();
 
-        if (systemTray != null) {
-            systemTray.setEnabled(true);
+        if (onCloseAction != null) {
+            onCloseAction.run();
         }
 
         darkeningGlassPane.setVisible(false);

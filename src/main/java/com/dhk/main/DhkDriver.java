@@ -23,6 +23,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 
 import com.dhk.controller.DhkController;
+import com.dhk.controller.GlobalHookInstaller;
 import com.dhk.io.SettingsManager;
 import com.dhk.io.SingleInstanceLock;
 import com.dhk.model.DhkModel;
@@ -58,12 +59,22 @@ public class DhkDriver {
         System.setProperty("sun.java2d.noddraw", "true");
         ToolTipManager.sharedInstance().setEnabled(false);
 
-        // Apply the saved theme before the single-instance check so the already-running dialog matches the app
+        // Check the lock before any slow setup so only the winning instance installs the global hooks
+        boolean lockAcquired = new SingleInstanceLock().tryLock();
+
+        // Start the hook install now so its potentially slow native setup overlaps the theme and settings setup
+        GlobalHookInstaller hookInstaller = new GlobalHookInstaller();
+
+        if (lockAcquired) {
+            hookInstaller.startInstall();
+        }
+
+        // Apply the saved theme before any window can show so the already-running dialog matches the app
         ThemeUpdater themeUpdater = new ThemeUpdater();
         themeUpdater.useDarkMode(SettingsManager.getSavedDarkMode());
 
         // Exit after theming when another instance already holds the lock so only one instance ever runs
-        if (!new SingleInstanceLock().tryLock()) {
+        if (!lockAcquired) {
             new AlreadyRunningDialog().showAlreadyRunningDialog();
 
             return;
@@ -75,7 +86,7 @@ public class DhkDriver {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                initDhk(settingsMgr);
+                initDhk(settingsMgr, hookInstaller);
             }
         });
     }
@@ -85,11 +96,13 @@ public class DhkDriver {
      *
      * @param settingsMgr
      *            - The settings file manager that retrieves the saved configuration for this application
+     * @param hookInstaller
+     *            - The installer whose background global hook install began at launch
      */
-    private static void initDhk(SettingsManager settingsMgr) {
+    private static void initDhk(SettingsManager settingsMgr, GlobalHookInstaller hookInstaller) {
         DhkModel model = new DhkModel();
         DhkView view = new DhkView(model);
-        DhkController controller = new DhkController(model, view, settingsMgr);
+        DhkController controller = new DhkController(model, view, settingsMgr, hookInstaller);
 
         controller.initController();
         controller.initListeners();

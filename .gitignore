@@ -15,3 +15,4 @@ distribution/DisplayHotKeysInstaller.exe
 GetDisplay.dll
 SetDisplay.dll
 DisplayEventNotifier.dll
+SystemTrayIcon.dll
