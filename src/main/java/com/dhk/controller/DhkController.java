@@ -34,7 +34,6 @@ import com.dhk.io.DisplayEventNotifier;
 import com.dhk.io.SettingsManager;
 import com.dhk.io.ShellRestartHandler;
 import com.dhk.model.DhkModel;
-import com.dhk.utility.TimingLog;
 import com.dhk.view.DhkView;
 import com.dhk.view.MinimizeToTray;
 
@@ -74,19 +73,13 @@ public class DhkController implements IController {
      * @param hookInstaller
      *            - The installer whose background global hook install began at launch
      */
-    public DhkController(DhkModel model, DhkView view, SettingsManager settingsMgr,
-            GlobalHookInstaller hookInstaller) {
+    public DhkController(DhkModel model, DhkView view, SettingsManager settingsMgr, GlobalHookInstaller hookInstaller) {
         this.model = model;
         this.view = view;
         this.settingsMgr = settingsMgr;
 
-        long modelInitStart = TimingLog.start();
         model.initModel(settingsMgr);
-        TimingLog.end("ctor model.initModel", modelInitStart);
-
-        long viewInitStart = TimingLog.start();
         view.initView(null, 0);
-        TimingLog.end("ctor view.initView", viewInitStart);
 
         if (settingsMgr.getIniMinimizeToTray()) {
             frameState = JFrame.ICONIFIED;
@@ -95,16 +88,14 @@ public class DhkController implements IController {
         }
 
         // Adopt the JVM-lifetime hooks and permanent held-key tracker, waiting out any install time still remaining
-        long hookWaitStart = TimingLog.start();
         hookInstaller.awaitInstall();
-        TimingLog.end("ctor hook install wait", hookWaitStart);
 
         keyboardHook = hookInstaller.getKeyboardHook();
         heldKeyTracker = hookInstaller.getHeldKeyTracker();
         mouseHook = hookInstaller.getMouseHook();
 
         // Create the minimize-to-tray object once so app refreshes reuse the live tray instead of rebuilding it
-        minimizeToTray = new MinimizeToTray(model, view, "/tray_icon.png");
+        minimizeToTray = new MinimizeToTray(model, view, "/tray_icon.svg");
     }
 
     @Override
@@ -136,9 +127,7 @@ public class DhkController implements IController {
 
         // Initialize all sub-controllers
         for (IController controller : controllers) {
-            long initStart = TimingLog.start();
             controller.initController();
-            TimingLog.end(controller.getClass().getSimpleName() + ".initController", initStart);
         }
 
         // Start event-driven display notifications
@@ -147,10 +136,7 @@ public class DhkController implements IController {
         displayNotifications = new DisplayEventNotifier();
         displayNotifications.registerDisplayChangeListener(displayConfigUpdater);
         displayNotifications.registerShellRestartListener(shellRestartHandler);
-
-        long notifierStart = TimingLog.start();
         displayNotifications.start();
-        TimingLog.end("displayNotifications.start", notifierStart);
 
         // Recreate the hook only if it never existed; normally it stays alive across re-inits with the tracker attached
         if (keyboardHook == null) {
@@ -191,29 +177,21 @@ public class DhkController implements IController {
 
         // Ensure EDT tasks that may access controllers have been processed before we clean up references
         if (!SwingUtilities.isEventDispatchThread()) {
-            long edtDrainStart = TimingLog.start();
-
             try {
                 SwingUtilities.invokeAndWait(() -> {
                 });
             } catch (Exception e) {
                 e.printStackTrace();
             }
-
-            TimingLog.end("EDT drain before cleanUp", edtDrainStart);
         }
 
         if (controllers != null) {
             for (IController controller : controllers) {
-                long cleanUpStart = TimingLog.start();
-
                 try {
                     controller.cleanUp();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-
-                TimingLog.end(controller.getClass().getSimpleName() + ".cleanUp", cleanUpStart);
             }
 
             // Remove references to allow GC
@@ -223,8 +201,6 @@ public class DhkController implements IController {
 
         // Stop native display notifications
         if (displayNotifications != null) {
-            long notifierStopStart = TimingLog.start();
-
             try {
                 displayNotifications.stop();
             } catch (Exception e) {
@@ -232,8 +208,6 @@ public class DhkController implements IController {
             } finally {
                 displayNotifications = null;
             }
-
-            TimingLog.end("displayNotifications.stop", notifierStopStart);
         }
 
         // Stop any pending deferred re-initialization so the Timer cannot fire against a disposed view

@@ -33,7 +33,6 @@ import org.ini4j.Wini;
 import com.dhk.model.DisplayMode;
 import com.dhk.model.HotKey;
 import com.dhk.model.Key;
-import com.dhk.utility.TimingLog;
 
 /**
  * Saves the application settings to an ini file. It enables the saving of the active number of slots, the orientation
@@ -67,13 +66,8 @@ public class SettingsManager {
      * Initializes the displays and settings file for the settings manager.
      */
     public void initSettingsManager() {
-        long displaysStart = TimingLog.start();
         initDisplays();
-        TimingLog.end("initDisplays", displaysStart);
-
-        long fileStart = TimingLog.start();
         initSettingsFile();
-        TimingLog.end("initSettingsFile (validation)", fileStart);
     }
 
     /**
@@ -491,35 +485,24 @@ public class SettingsManager {
      * Initializes the settings file.
      */
     private void initSettingsFile() {
-        long versionCheckStart = TimingLog.start();
         checkSettingsFileVersion();
-        TimingLog.end("checkSettingsFileVersion", versionCheckStart);
 
         try {
-            long parseStart = TimingLog.start();
             settingsFile = new File(getSettingsFilePath());
             settingsFile.getParentFile().mkdirs();
             settingsFile.createNewFile();
 
             ini = new Wini(settingsFile);
-            TimingLog.end("settings file create and Wini parse", parseStart);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        long validatorStart = TimingLog.start();
         SettingsValidator validator = new SettingsValidator(this);
-        TimingLog.end("new SettingsValidator", validatorStart);
-
-        long validateStart = TimingLog.start();
         boolean repaired = validator.validateAllProperties();
-        TimingLog.end("validateAllProperties", validateStart);
 
         // Repairs only edit the in-memory settings file object, so persist them here in a single write
         if (repaired) {
-            long storeStart = TimingLog.start();
             updateSettingsFile();
-            TimingLog.end("repair store (ini.store)", storeStart);
         }
     }
 

@@ -29,7 +29,6 @@ import java.util.Map;
 import org.ini4j.Wini;
 
 import com.dhk.model.DisplayMode;
-import com.dhk.utility.TimingLog;
 
 import lc.kra.system.keyboard.event.GlobalKeyEvent;
 
@@ -82,41 +81,15 @@ public class SettingsValidator {
      * @return Whether or not any property was repaired
      */
     public boolean validateAllProperties() {
-        long darkModeStart = TimingLog.start();
         validateDarkMode();
-        TimingLog.end("validateDarkMode", darkModeStart);
-
-        long minimizeToTrayStart = TimingLog.start();
         validateMinimizeToTray();
-        TimingLog.end("validateMinimizeToTray", minimizeToTrayStart);
-
-        long runOnStartupStart = TimingLog.start();
         validateRunOnStartup();
-        TimingLog.end("validateRunOnStartup", runOnStartupStart);
-
-        long numOfSlotsStart = TimingLog.start();
         validateNumOfSlots();
-        TimingLog.end("validateNumOfSlots", numOfSlotsStart);
-
-        long orientationModesStart = TimingLog.start();
         validateOrientationModes();
-        TimingLog.end("validateOrientationModes", orientationModesStart);
-
-        long displayModesStart = TimingLog.start();
         validateDisplayModes();
-        TimingLog.end("validateDisplayModes", displayModesStart);
-
-        long scalingModesStart = TimingLog.start();
         validateScalingModes();
-        TimingLog.end("validateScalingModes", scalingModesStart);
-
-        long dpiScalePercentagesStart = TimingLog.start();
         validateDpiScalePercentages();
-        TimingLog.end("validateDpiScalePercentages", dpiScalePercentagesStart);
-
-        long hotKeysStart = TimingLog.start();
         validateHotKeys();
-        TimingLog.end("validateHotKeys", hotKeysStart);
 
         return repairedProperty;
     }
@@ -158,8 +131,6 @@ public class SettingsValidator {
      *            - The value to write for the property
      */
     private void repairProperty(String section, String key, Object value) {
-        TimingLog.log("repaired " + section + "." + key + " -> " + value);
-
         ini.put(section, key, value);
 
         repairedProperty = true;

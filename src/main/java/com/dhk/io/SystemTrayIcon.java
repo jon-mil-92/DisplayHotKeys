@@ -19,25 +19,20 @@
  */
 package com.dhk.io;
 
-import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.Rectangle;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferInt;
 
 import javax.swing.SwingUtilities;
 
 /**
- * Manages the notification area icon through the native library. The native layer owns the icon and reports clicks,
- * and this class forwards them to the registered listener on the EDT so the menu is only ever shown from the EDT.
+ * Manages the notification area icon through the native library. The native layer owns the icon and reports clicks, and
+ * this class forwards them to the registered listener on the EDT so the menu is only ever shown from the EDT.
  *
  * @author Jonathan R. Miller
  */
 public class SystemTrayIcon {
 
     private TrayIconListener trayIconListener;
-    private BufferedImage sourceImage;
+    private TrayIconRenderer trayIconRenderer;
     private int appliedIconWidth;
     private int appliedIconHeight;
 
@@ -104,14 +99,6 @@ public class SystemTrayIcon {
     private native void nativeSetIcon(int[] iconPixels, int iconWidth, int iconHeight);
 
     /**
-     * Defines a JNI function to set the tooltip text shown for the icon.
-     *
-     * @param tooltip
-     *            - The tooltip text to show for the icon
-     */
-    private native void nativeSetTooltip(String tooltip);
-
-    /**
      * Defines a JNI function to show or hide the icon without releasing the native resources backing it.
      *
      * @param visible
@@ -127,21 +114,21 @@ public class SystemTrayIcon {
     private native int[] nativeGetIconSize();
 
     /**
-     * Starts the notification area icon with the given tooltip and source image. Must be called after registering a
+     * Starts the notification area icon with the given tooltip and renderer. Must be called after registering a
      * listener, since the native layer resolves the callbacks when it starts.
      *
      * @param tooltip
      *            - The tooltip text to show for the icon
-     * @param image
-     *            - The source image to scale down for the icon
+     * @param renderer
+     *            - The renderer that draws the icon at the size the notification area asks for
      *
      * @return Whether the icon was registered
      */
-    public boolean start(String tooltip, BufferedImage image) {
-        sourceImage = image;
+    public boolean start(String tooltip, TrayIconRenderer renderer) {
+        trayIconRenderer = renderer;
 
         Rectangle iconSize = resolveIconSize();
-        int[] iconPixels = scaleIconPixels(iconSize.width, iconSize.height);
+        int[] iconPixels = trayIconRenderer.renderIconPixels(iconSize.width, iconSize.height);
 
         appliedIconWidth = iconSize.width;
         appliedIconHeight = iconSize.height;
@@ -159,16 +146,6 @@ public class SystemTrayIcon {
     }
 
     /**
-     * Sets the tooltip text shown for the icon.
-     *
-     * @param tooltip
-     *            - The tooltip text to show for the icon
-     */
-    public void setTooltip(String tooltip) {
-        nativeSetTooltip(tooltip);
-    }
-
-    /**
      * Shows or hides the icon, keeping the native resources alive so it can be shown again cheaply.
      *
      * @param visible
@@ -180,10 +157,10 @@ public class SystemTrayIcon {
 
     /**
      * Rescales the icon when the notification area icon size has changed, which happens when the display hosting the
-     * taskbar changes scale. Rescaling only on a real size change keeps this off the cost of an ordinary refresh.
+     * task bar changes scale. Rescaling only on a real size change keeps this off the cost of an ordinary refresh.
      */
     public void refreshIconSize() {
-        if (sourceImage == null) {
+        if (trayIconRenderer == null) {
             return;
         }
 
@@ -196,7 +173,9 @@ public class SystemTrayIcon {
         appliedIconWidth = iconSize.width;
         appliedIconHeight = iconSize.height;
 
-        nativeSetIcon(scaleIconPixels(iconSize.width, iconSize.height), iconSize.width, iconSize.height);
+        int[] iconPixels = trayIconRenderer.renderIconPixels(iconSize.width, iconSize.height);
+
+        nativeSetIcon(iconPixels, iconSize.width, iconSize.height);
     }
 
     /**
@@ -213,76 +192,6 @@ public class SystemTrayIcon {
         }
 
         return new Rectangle(0, 0, nativeSize[0], nativeSize[1]);
-    }
-
-    /**
-     * Scales the source image down to the given icon size and returns its pixels in packed ARGB order.
-     *
-     * @param iconWidth
-     *            - The icon width in pixels
-     * @param iconHeight
-     *            - The icon height in pixels
-     *
-     * @return The scaled icon pixels in packed ARGB order
-     */
-    private int[] scaleIconPixels(int iconWidth, int iconHeight) {
-        BufferedImage scaledImage = scaleImage(sourceImage, iconWidth, iconHeight);
-
-        return ((DataBufferInt) scaledImage.getRaster().getDataBuffer()).getData();
-    }
-
-    /**
-     * Scales an image down to the given size by halving repeatedly before the final draw. A single large downscale
-     * samples too few source pixels per destination pixel and leaves the icon aliased.
-     *
-     * @param image
-     *            - The image to scale down
-     * @param targetWidth
-     *            - The width to scale to
-     * @param targetHeight
-     *            - The height to scale to
-     *
-     * @return The scaled image
-     */
-    private BufferedImage scaleImage(Image image, int targetWidth, int targetHeight) {
-        BufferedImage currentImage = toArgbImage(image, image.getWidth(null), image.getHeight(null));
-        int currentWidth = currentImage.getWidth();
-        int currentHeight = currentImage.getHeight();
-
-        // Halve while more than one halving away from the target, so the final draw never spans a large ratio
-        while (currentWidth / 2 > targetWidth && currentHeight / 2 > targetHeight) {
-            currentWidth = Math.max(currentWidth / 2, targetWidth);
-            currentHeight = Math.max(currentHeight / 2, targetHeight);
-
-            currentImage = toArgbImage(currentImage, currentWidth, currentHeight);
-        }
-
-        return toArgbImage(currentImage, targetWidth, targetHeight);
-    }
-
-    /**
-     * Draws an image into a new ARGB image of the given size with quality hints applied.
-     *
-     * @param image
-     *            - The image to draw
-     * @param width
-     *            - The width of the new image
-     * @param height
-     *            - The height of the new image
-     *
-     * @return The new ARGB image
-     */
-    private BufferedImage toArgbImage(Image image, int width, int height) {
-        BufferedImage argbImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D graphics = argbImage.createGraphics();
-
-        graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        graphics.drawImage(image, 0, 0, width, height, null);
-        graphics.dispose();
-
-        return argbImage;
     }
 
     /**
@@ -309,31 +218,6 @@ public class SystemTrayIcon {
 
             // Forward to the EDT so the menu is only ever shown from the EDT
             SwingUtilities.invokeLater(() -> listener.menuRequested(anchorX, anchorY, iconBounds));
-        }
-    }
-
-    /**
-     * Called from native code when the notification area icon is activated with a left click.
-     */
-    private void onIconActivated() {
-        final TrayIconListener listener = this.trayIconListener;
-
-        if (listener != null) {
-            // Forward to the EDT to run UI updates safely
-            SwingUtilities.invokeLater(() -> listener.iconActivated());
-        }
-    }
-
-    /**
-     * Called from native code when a showing menu should be dismissed, such as when the icon's window loses the
-     * foreground.
-     */
-    private void onMenuDismissRequested() {
-        final TrayIconListener listener = this.trayIconListener;
-
-        if (listener != null) {
-            // Forward to the EDT to run UI updates safely
-            SwingUtilities.invokeLater(() -> listener.menuDismissRequested());
         }
     }
 

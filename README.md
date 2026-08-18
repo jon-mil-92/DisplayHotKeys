@@ -231,8 +231,6 @@ Jonathan R. Miller - jonRock1992@gmail.com
 
 * [PayPal Donate Button] <b>·</b> [AGPL License 3.0]
 
-* [SystemTray] <b>·</b> [Apache License 2.0]
-
 * [Ini4j] <b>·</b> [Apache License 2.0]
 
 * [Apache Maven Assembly Plugin] <b>·</b> [Apache License 2.0]
@@ -306,7 +304,6 @@ If Windows Defender quarantines the app, you can restore it and add an exclusion
 [FlatLaf - Flat Look and Feel]: https://github.com/JFormDesigner/FlatLaf
 [Material Design Icons]: https://github.com/marella/material-design-icons
 [PayPal Donate Button]: https://github.com/stefan-niedermann/paypal-donate-button
-[SystemTray]: https://github.com/dorkbox/SystemTray
 [Ini4j]: https://ini4j.sourceforge.net/
 [Apache Maven Assembly Plugin]: https://maven.apache.org/plugins/maven-assembly-plugin/index.html
 [Maven Compiler Plugin]: https://maven.apache.org/plugins/maven-compiler-plugin/index.html

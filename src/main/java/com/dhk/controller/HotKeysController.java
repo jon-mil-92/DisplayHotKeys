@@ -45,7 +45,6 @@ import com.dhk.model.HotKey;
 import com.dhk.model.Key;
 import com.dhk.model.button.Button;
 import com.dhk.utility.FrameUtil;
-import com.dhk.utility.TimingLog;
 import com.dhk.view.DhkView;
 
 import lc.kra.system.keyboard.event.GlobalKeyEvent;
@@ -172,8 +171,6 @@ public class HotKeysController implements IController, GlobalKeyListener {
             return;
         }
 
-        TimingLog.log("relevant key press received on the hook thread");
-
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -222,7 +219,6 @@ public class HotKeysController implements IController, GlobalKeyListener {
                 }
 
                 // Capture the frame placement before any display reconfiguration relocates the window
-                long placementStart = TimingLog.start();
                 FramePlacement placement = displayToSlotMap.isEmpty()
                         ? null
                         : FrameUtil.capturePlacement(view.getFrame());
@@ -231,25 +227,18 @@ public class HotKeysController implements IController, GlobalKeyListener {
                 boolean displaySettingsApplied = false;
 
                 if (!displayToSlotMap.isEmpty()) {
-                    TimingLog.log("hot key apply dispatch started for " + displayToSlotMap.size() + " display(s)");
-                    TimingLog.end("FrameUtil.capturePlacement", placementStart);
-
-                    // Retire the tray menu windows before the mode change so an open menu never lingers corrupted
-                    controller.getMinimizeToTray().disposeStaleTrayMenuWindows();
+                    // Dismiss a showing tray menu before the mode change, since it was placed against the old geometry
+                    controller.getMinimizeToTray().displayConfigurationChanged();
 
                     String[] arrangementSnapshot = displayConfig.captureArrangement();
 
                     for (Entry<Integer, Integer> displayToSlot : displayToSlotMap.entrySet()) {
-                        long applyStart = TimingLog.start();
                         displaySettingsApplied |= setDisplaySettings(displayToSlot.getKey(), displayToSlot.getValue());
-                        TimingLog.end("setDisplaySettings for display index " + displayToSlot.getKey(), applyStart);
                     }
 
                     // Reflow once, after every targeted display has been resized, so their arrangement is preserved
                     if (displaySettingsApplied) {
-                        long preserveStart = TimingLog.start();
                         setDisplay.preserveArrangement(arrangementSnapshot);
-                        TimingLog.end("native preserveArrangement", preserveStart);
                     }
                 }
 
@@ -652,14 +641,9 @@ public class HotKeysController implements IController, GlobalKeyListener {
     private void scheduleReInit(FramePlacement placement) {
         // Restarting extends the settle delay past the latest apply; the pending timer keeps the earlier placement
         if (reInitTimer != null && reInitTimer.isRunning()) {
-            TimingLog.log("reInitApp coalesced into the pending refresh; timer restarted");
-
             reInitTimer.restart();
-
             return;
         }
-
-        TimingLog.log("reInitApp scheduled to fire in " + FrameUtil.REFRESH_DELAY_MS + " ms");
 
         reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp(placement));
         reInitTimer.setRepeats(false);

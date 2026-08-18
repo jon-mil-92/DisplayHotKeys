@@ -25,7 +25,6 @@ import com.dhk.controller.DhkController;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
 import com.dhk.utility.FrameUtil;
-import com.dhk.utility.TimingLog;
 import com.dhk.view.DhkView;
 
 /**
@@ -37,6 +36,7 @@ import com.dhk.view.DhkView;
 public class DisplayConfigUpdater implements DisplayChangeListener {
 
     private final AppRefresher appRefresher;
+    private final DhkController controller;
     private final Timer reInitTimer;
     private boolean cleanedUp;
 
@@ -53,32 +53,42 @@ public class DisplayConfigUpdater implements DisplayChangeListener {
      *            - The settings manager for the application
      */
     public DisplayConfigUpdater(DhkModel model, DhkView view, DhkController controller, SettingsManager settingsMgr) {
+        this.controller = controller;
+
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
-        reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp());
+        reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> reInitAndSettleTray());
         reInitTimer.setRepeats(false);
     }
 
     @Override
     public void displayConfigurationChanged() {
         /*
-         * A callback queued on the EDT before the notifier stopped can arrive after teardown; restarting the timer
-         * then would duplicate the re-initialization that already absorbed the change, so swallow it
+         * A callback queued on the EDT before the notifier stopped can arrive after teardown; restarting the timer then
+         * would duplicate the re-initialization that already absorbed the change, so swallow it
          */
         if (cleanedUp) {
-            TimingLog.log("display change notification swallowed after teardown");
-
             return;
         }
 
-        TimingLog.log("display change notification received; reInit timer restarted");
+        // Covers changes made outside the app, which reach the tray through no other path
+        controller.getMinimizeToTray().displayConfigurationChanged();
 
         reInitTimer.restart();
     }
 
     /**
+     * Re-initializes the application and then rescales the tray icon. The rescale trails the re-initialization because
+     * it asks the shell for the task bar, which answers slowly while the shell is still rebuilding it.
+     */
+    private void reInitAndSettleTray() {
+        appRefresher.reInitApp();
+        controller.getMinimizeToTray().displayConfigurationSettled();
+    }
+
+    /**
      * Stops any pending deferred re-initialization and permanently retires this updater. Called when the owning
-     * controller is torn down (on app re-init or shutdown) so the Timer cannot fire against a disposed view and a
-     * late notification callback cannot re-arm it.
+     * controller is torn down (on app re-init or shutdown) so the Timer cannot fire against a disposed view and a late
+     * notification callback cannot re-arm it.
      */
     public void cleanUp() {
         cleanedUp = true;

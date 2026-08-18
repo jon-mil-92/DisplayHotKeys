@@ -19,8 +19,6 @@
  */
 package com.dhk.controller;
 
-import com.dhk.utility.TimingLog;
-
 import lc.kra.system.keyboard.GlobalKeyboardHook;
 import lc.kra.system.mouse.GlobalMouseHook;
 
@@ -120,8 +118,6 @@ public class GlobalHookInstaller {
         // Create the tracker even if the hook install fails so the hot keys controller always receives one
         heldKeyTracker = new HeldKeyTracker();
 
-        long keyboardHookStart = TimingLog.start();
-
         try {
             keyboardHook = new GlobalKeyboardHook(true);
             keyboardHook.addKeyListener(heldKeyTracker);
@@ -129,11 +125,7 @@ public class GlobalHookInstaller {
             e.printStackTrace();
         }
 
-        TimingLog.end("background keyboard hook install", keyboardHookStart);
-
-        long mouseHookStart = TimingLog.start();
         mouseHook = createMouseHook();
-        TimingLog.end("background mouse hook install", mouseHookStart);
     }
 
     /**

@@ -41,11 +41,9 @@ LRESULT CALLBACK handleTrayEvents(HWND windowHandle, UINT message, WPARAM eventT
 static void addTrayIcon();
 static void removeTrayIcon();
 static void applyPendingIcon();
-static void applyPendingTooltip();
 static void reportMenuRequested();
 static HICON createIconFromPixels(const vector<jint> &pixels, int width, int height);
 static void invokeMenuRequestedCallback(int anchorX, int anchorY, const RECT &iconBounds);
-static void invokeJavaCallback(jmethodID methodId);
 
 /**
  * Global JavaVM pointer used to attach native threads when invoking callbacks.
@@ -63,16 +61,6 @@ static jobject systemTrayIconGlobalRef = nullptr;
 static jmethodID onMenuRequestedMethodId = nullptr;
 
 /**
- * Cached method ID for the onIconActivated() callback.
- */
-static jmethodID onIconActivatedMethodId = nullptr;
-
-/**
- * Cached method ID for the onMenuDismissRequested() callback; null when the method is unavailable.
- */
-static jmethodID onMenuDismissRequestedMethodId = nullptr;
-
-/**
  * Thread that runs the Windows message loop owning the icon.
  */
 static thread messageLoopThread;
@@ -83,14 +71,20 @@ static thread messageLoopThread;
 static atomic_bool isRunning(false);
 
 /**
- * Hidden message window that owns the icon and receives its callback message.
+ * Hidden message window that owns the icon and receives its callback message. Read from the calling thread while the
+ * thread owning it may be tearing it down, so it is atomic and cleared before the window is destroyed.
  */
-static HWND messageWindow = NULL;
+static atomic<HWND> messageWindow{NULL};
 
 /**
  * Registered window class name for the hidden message window.
  */
 static const wchar_t CLASS_NAME[] = L"DHK_SystemTrayIcon_MessageWindow";
+
+/**
+ * Window class name of the task bar, used to read its position without waiting on the shell to answer for it.
+ */
+static const wchar_t TASKBAR_CLASS_NAME[] = L"Shell_TrayWnd";
 
 /**
  * Whether the window class was registered, so it can be unregistered at shutdown.
@@ -173,14 +167,9 @@ static constexpr UINT WM_TRAY_ICON_NOTIFY = WM_APP + 1;
 static constexpr UINT WM_TRAY_APPLY_ICON = WM_APP + 2;
 
 /**
- * Private message asking the message loop thread to apply the staged tooltip.
- */
-static constexpr UINT WM_TRAY_APPLY_TOOLTIP = WM_APP + 3;
-
-/**
  * Private message asking the message loop thread to show or hide the icon.
  */
-static constexpr UINT WM_TRAY_SET_VISIBLE = WM_APP + 4;
+static constexpr UINT WM_TRAY_SET_VISIBLE = WM_APP + 3;
 
 /**
  * Called when the native library is loaded. Caches the JavaVM pointer for attaching native threads to invoke callbacks.
@@ -200,7 +189,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 }
 
 /**
- * Starts the notification area icon. Stores a global reference to the registered instance, resolves the callbacks,
+ * Starts the notification area icon. Stores a global reference to the registered instance, resolves the callback,
  * stages the initial tooltip and icon, and launches the message loop thread that owns the icon.
  *
  * @param env
@@ -241,22 +230,10 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStart
     jmethodID menuRequestedMethodId = env->GetMethodID(trayIconClass, "onMenuRequested", "(IIIIII)V");
 
     if (!menuRequestedMethodId) {
-        env->DeleteGlobalRef(globalRef);
-        return JNI_FALSE;
-    }
-
-    jmethodID iconActivatedMethodId = env->GetMethodID(trayIconClass, "onIconActivated", "()V");
-
-    if (!iconActivatedMethodId) {
-        env->DeleteGlobalRef(globalRef);
-        return JNI_FALSE;
-    }
-
-    // The dismiss callback is optional; a null id simply skips it while the other callbacks still fire
-    jmethodID menuDismissRequestedMethodId = env->GetMethodID(trayIconClass, "onMenuDismissRequested", "()V");
-
-    if (!menuDismissRequestedMethodId) {
         env->ExceptionClear();
+        env->DeleteGlobalRef(globalRef);
+
+        return JNI_FALSE;
     }
 
     {
@@ -292,8 +269,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStart
     // All JNI setup succeeded; commit to globals and start thread
     systemTrayIconGlobalRef = globalRef;
     onMenuRequestedMethodId = menuRequestedMethodId;
-    onIconActivatedMethodId = iconActivatedMethodId;
-    onMenuDismissRequestedMethodId = menuDismissRequestedMethodId;
 
     {
         lock_guard<mutex> startupLock(startupMutex);
@@ -305,10 +280,20 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStart
     messageLoopThread = thread(runMessageLoopThread);
 
     // Wait for the icon to be registered so the return value reflects the real outcome
-    unique_lock<mutex> startupLock(startupMutex);
-    startupSignal.wait(startupLock, [] { return startupComplete; });
+    bool started = false;
 
-    return startupSucceeded ? JNI_TRUE : JNI_FALSE;
+    {
+        unique_lock<mutex> startupLock(startupMutex);
+        startupSignal.wait(startupLock, [] { return startupComplete; });
+        started = startupSucceeded;
+    }
+
+    // Reap a failed start, so a later attempt is not assigning over a joinable thread
+    if (!started && messageLoopThread.joinable()) {
+        messageLoopThread.join();
+    }
+
+    return started ? JNI_TRUE : JNI_FALSE;
 }
 
 /**
@@ -328,8 +313,10 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStop(JNIE
 
     isRunning.store(false);
 
-    if (messageWindow) {
-        PostMessage(messageWindow, WM_QUIT, 0, 0);
+    HWND targetWindow = messageWindow.load();
+
+    if (targetWindow) {
+        PostMessage(targetWindow, WM_QUIT, 0, 0);
     }
 
     if (messageLoopThread.joinable()) {
@@ -342,8 +329,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStop(JNIE
     }
 
     onMenuRequestedMethodId = nullptr;
-    onIconActivatedMethodId = nullptr;
-    onMenuDismissRequestedMethodId = nullptr;
 }
 
 /**
@@ -366,7 +351,9 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetIcon(J
                                                                               jint iconHeight) {
     (void) obj;
 
-    if (!messageWindow || !iconPixels || iconWidth <= 0 || iconHeight <= 0) {
+    HWND targetWindow = messageWindow.load();
+
+    if (!targetWindow || !iconPixels || iconWidth <= 0 || iconHeight <= 0) {
         return;
     }
 
@@ -385,41 +372,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetIcon(J
         pendingIconHeight = iconHeight;
     }
 
-    PostMessage(messageWindow, WM_TRAY_APPLY_ICON, 0, 0);
-}
-
-/**
- * Sets the tooltip text shown for the icon. The text is staged here and applied on the thread that owns the icon.
- *
- * @param env
- *            - The JNI environment pointer
- * @param obj
- *            - The calling object instance
- * @param tooltip
- *            - The tooltip text to show for the icon
- */
-extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetTooltip(JNIEnv *env, jobject obj,
-                                                                                 jstring tooltip) {
-    (void) obj;
-
-    if (!messageWindow || !tooltip) {
-        return;
-    }
-
-    const jchar *tooltipChars = env->GetStringChars(tooltip, nullptr);
-
-    if (!tooltipChars) {
-        return;
-    }
-
-    {
-        lock_guard<mutex> payloadLock(pendingPayloadMutex);
-        pendingTooltip.assign((const wchar_t *) tooltipChars, env->GetStringLength(tooltip));
-    }
-
-    env->ReleaseStringChars(tooltip, tooltipChars);
-
-    PostMessage(messageWindow, WM_TRAY_APPLY_TOOLTIP, 0, 0);
+    PostMessage(targetWindow, WM_TRAY_APPLY_ICON, 0, 0);
 }
 
 /**
@@ -437,11 +390,13 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetVisibl
     (void) env;
     (void) obj;
 
-    if (!messageWindow) {
+    HWND targetWindow = messageWindow.load();
+
+    if (!targetWindow) {
         return;
     }
 
-    PostMessage(messageWindow, WM_TRAY_SET_VISIBLE, visible == JNI_TRUE ? 1 : 0, 0);
+    PostMessage(targetWindow, WM_TRAY_SET_VISIBLE, visible == JNI_TRUE ? 1 : 0, 0);
 }
 
 /**
@@ -497,8 +452,10 @@ extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
 
     isRunning.store(false);
 
-    if (messageWindow) {
-        PostMessage(messageWindow, WM_QUIT, 0, 0);
+    HWND unloadWindow = messageWindow.load();
+
+    if (unloadWindow) {
+        PostMessage(unloadWindow, WM_QUIT, 0, 0);
     }
 
     if (messageLoopThread.joinable()) {
@@ -516,8 +473,6 @@ extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
     }
 
     onMenuRequestedMethodId = nullptr;
-    onIconActivatedMethodId = nullptr;
-    onMenuDismissRequestedMethodId = nullptr;
     jvm = nullptr;
 }
 
@@ -528,14 +483,24 @@ extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
  * @return The DPI of the display hosting the notification area, or 0 when it is unavailable
  */
 static UINT getNotificationAreaDpi() {
-    APPBARDATA appBarData = {};
-    appBarData.cbSize = sizeof(appBarData);
+    HWND taskbarWindow = FindWindowW(TASKBAR_CLASS_NAME, NULL);
 
-    if (SHAppBarMessage(ABM_GETTASKBARPOS, &appBarData) == 0) {
+    if (!taskbarWindow) {
         return 0;
     }
 
-    HMONITOR taskbarMonitor = MonitorFromRect(&appBarData.rc, MONITOR_DEFAULTTONEAREST);
+    /*
+     * Read the task bar's rectangle from the window itself rather than through the shell's app bar interface. That
+     * interface answers on the shell's own thread, which blocks for as long as the shell takes to finish rebuilding
+     * the task bar after a display change - exactly when this is asked
+     */
+    RECT taskbarRect = {};
+
+    if (!GetWindowRect(taskbarWindow, &taskbarRect)) {
+        return 0;
+    }
+
+    HMONITOR taskbarMonitor = MonitorFromRect(&taskbarRect, MONITOR_DEFAULTTONEAREST);
 
     if (!taskbarMonitor) {
         return 0;
@@ -565,13 +530,16 @@ static void runMessageLoopThread() {
         classRegistered.store(true);
     }
 
-    messageWindow = CreateWindowExW(0, CLASS_NAME, L"", 0, 0, 0, 0, 0, NULL, NULL, GetModuleHandleW(NULL), NULL);
+    HWND createdWindow = CreateWindowExW(0, CLASS_NAME, L"", 0, 0, 0, 0, 0, NULL, NULL, GetModuleHandleW(NULL), NULL);
+    messageWindow.store(createdWindow);
 
-    if (!messageWindow) {
+    if (!createdWindow) {
         if (classRegistered.load()) {
             UnregisterClassW(CLASS_NAME, GetModuleHandleW(NULL));
             classRegistered.store(false);
         }
+
+        isRunning.store(false);
 
         {
             lock_guard<mutex> startupLock(startupMutex);
@@ -592,7 +560,7 @@ static void runMessageLoopThread() {
      * specific message through the per-window filter so the restart is still delivered
      */
     if (taskbarCreatedMessage != 0) {
-        ChangeWindowMessageFilterEx(messageWindow, taskbarCreatedMessage, MSGFLT_ALLOW, NULL);
+        ChangeWindowMessageFilterEx(createdWindow, taskbarCreatedMessage, MSGFLT_ALLOW, NULL);
     }
 
     applyPendingIcon();
@@ -625,9 +593,11 @@ static void runMessageLoopThread() {
         trayIcon = NULL;
     }
 
-    if (messageWindow) {
-        DestroyWindow(messageWindow);
-        messageWindow = NULL;
+    HWND windowToDestroy = messageWindow.exchange(NULL);
+
+    // Cleared before the window is destroyed, so a caller can never post to a destroyed or recycled handle
+    if (windowToDestroy) {
+        DestroyWindow(windowToDestroy);
     }
 
     if (classRegistered.load()) {
@@ -665,9 +635,8 @@ LRESULT CALLBACK handleTrayEvents(HWND windowHandle, UINT message, WPARAM eventT
     case WM_TRAY_ICON_NOTIFY: {
         UINT iconEvent = LOWORD(eventData);
 
-        if (iconEvent == WM_LBUTTONUP) {
-            invokeJavaCallback(onIconActivatedMethodId);
-        } else if (iconEvent == WM_CONTEXTMENU) {
+        // Either button opens the menu, so restoring always goes through the menu's own item
+        if (iconEvent == WM_LBUTTONUP || iconEvent == WM_CONTEXTMENU) {
             reportMenuRequested();
         }
 
@@ -676,10 +645,6 @@ LRESULT CALLBACK handleTrayEvents(HWND windowHandle, UINT message, WPARAM eventT
 
     case WM_TRAY_APPLY_ICON:
         applyPendingIcon();
-        return 0;
-
-    case WM_TRAY_APPLY_TOOLTIP:
-        applyPendingTooltip();
         return 0;
 
     case WM_TRAY_SET_VISIBLE: {
@@ -714,7 +679,7 @@ LRESULT CALLBACK handleTrayEvents(HWND windowHandle, UINT message, WPARAM eventT
 static void addTrayIcon() {
     NOTIFYICONDATAW iconData = {};
     iconData.cbSize = sizeof(iconData);
-    iconData.hWnd = messageWindow;
+    iconData.hWnd = messageWindow.load();
     iconData.uID = TRAY_ICON_ID;
     iconData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_SHOWTIP;
     iconData.uCallbackMessage = WM_TRAY_ICON_NOTIFY;
@@ -737,7 +702,7 @@ static void addTrayIcon() {
 static void removeTrayIcon() {
     NOTIFYICONDATAW iconData = {};
     iconData.cbSize = sizeof(iconData);
-    iconData.hWnd = messageWindow;
+    iconData.hWnd = messageWindow.load();
     iconData.uID = TRAY_ICON_ID;
 
     Shell_NotifyIconW(NIM_DELETE, &iconData);
@@ -776,7 +741,7 @@ static void applyPendingIcon() {
     if (iconVisible.load()) {
         NOTIFYICONDATAW iconData = {};
         iconData.cbSize = sizeof(iconData);
-        iconData.hWnd = messageWindow;
+        iconData.hWnd = messageWindow.load();
         iconData.uID = TRAY_ICON_ID;
         iconData.uFlags = NIF_ICON;
         iconData.hIcon = trayIcon;
@@ -787,28 +752,6 @@ static void applyPendingIcon() {
     if (previousIcon) {
         DestroyIcon(previousIcon);
     }
-}
-
-/**
- * Applies the staged tooltip text to the icon.
- */
-static void applyPendingTooltip() {
-    if (!iconVisible.load()) {
-        return;
-    }
-
-    NOTIFYICONDATAW iconData = {};
-    iconData.cbSize = sizeof(iconData);
-    iconData.hWnd = messageWindow;
-    iconData.uID = TRAY_ICON_ID;
-    iconData.uFlags = NIF_TIP | NIF_SHOWTIP;
-
-    {
-        lock_guard<mutex> payloadLock(pendingPayloadMutex);
-        wcsncpy_s(iconData.szTip, pendingTooltip.c_str(), _TRUNCATE);
-    }
-
-    Shell_NotifyIconW(NIM_MODIFY, &iconData);
 }
 
 /**
@@ -825,7 +768,7 @@ static void reportMenuRequested() {
 
     NOTIFYICONIDENTIFIER iconIdentifier = {};
     iconIdentifier.cbSize = sizeof(iconIdentifier);
-    iconIdentifier.hWnd = messageWindow;
+    iconIdentifier.hWnd = messageWindow.load();
     iconIdentifier.uID = TRAY_ICON_ID;
 
     RECT iconBounds = {};
@@ -838,12 +781,19 @@ static void reportMenuRequested() {
         iconBounds.bottom = cursorPosition.y;
     }
 
+    /*
+     * Claim the foreground while the click still grants the right to take it. A menu shown by a process that does not
+     * own the foreground never receives the click that should dismiss it, so it would linger until one of its items is
+     * chosen
+     */
+    SetForegroundWindow(messageWindow.load());
+
     invokeMenuRequestedCallback(cursorPosition.x, cursorPosition.y, iconBounds);
 }
 
 /**
- * Creates an icon from pixels in packed ARGB order. The pixel layout matches a bottom-up-free top-down bitmap with an
- * alpha channel, so the pixels are copied straight into the bitmap bits without conversion.
+ * Creates an icon from pixels in packed ARGB order. The pixels are copied straight into a top-down 32-bit bitmap
+ * carrying alpha, so no row flip or channel conversion is needed.
  *
  * @param pixels
  *            - The icon pixels in packed ARGB order, row by row from the top
@@ -955,53 +905,6 @@ static void invokeMenuRequestedCallback(int anchorX, int anchorY, const RECT &ic
     env->CallVoidMethod(systemTrayIconGlobalRef, onMenuRequestedMethodId, (jint) anchorX, (jint) anchorY,
                         (jint) iconBounds.left, (jint) iconBounds.top, (jint) iconBounds.right,
                         (jint) iconBounds.bottom);
-
-    if (env->ExceptionCheck()) {
-        env->ExceptionDescribe();
-        env->ExceptionClear();
-    }
-
-    if (attachedToJvm) {
-        jvm->DetachCurrentThread();
-    }
-}
-
-/**
- * Invokes a cached no-argument callback on the registered instance, attaching the current thread to the JVM if
- * necessary and detaching it when done. A null method id is ignored so an unavailable callback is safe.
- *
- * @param methodId
- *            - The cached method id to invoke, or null to do nothing
- */
-static void invokeJavaCallback(jmethodID methodId) {
-    if (!jvm || !systemTrayIconGlobalRef || !methodId) {
-        return;
-    }
-
-    JNIEnv *env = nullptr;
-    bool attachedToJvm = false;
-    jint getEnvResult = jvm->GetEnv((void **) &env, JNI_VERSION_1_6);
-
-    if (getEnvResult == JNI_EDETACHED) {
-        if (jvm->AttachCurrentThread((void **) &env, nullptr) != 0) {
-            return;
-        }
-
-        attachedToJvm = true;
-    } else if (getEnvResult != JNI_OK) {
-        return;
-    }
-
-    // Re-check the global ref after attaching
-    if (!systemTrayIconGlobalRef) {
-        if (attachedToJvm) {
-            jvm->DetachCurrentThread();
-        }
-
-        return;
-    }
-
-    env->CallVoidMethod(systemTrayIconGlobalRef, methodId);
 
     if (env->ExceptionCheck()) {
         env->ExceptionDescribe();

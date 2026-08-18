@@ -136,9 +136,10 @@ static vector<string> lastVisibleSignatures;
 static vector<string> lastNormalizedSignatures;
 
 /**
- * Last normalized set actually notified, preventing repeated notifications for the same stable config.
+ * Whether a detected signature change still awaits notification, so a configuration that settles back on the
+ * last-notified state (a round trip) still notifies once instead of being suppressed as a repeat.
  */
-static vector<string> lastNotifiedNormalizedSignatures;
+static bool notificationPending = false;
 
 /**
  * Windows-universal monitor device interface class GUID (GUID_DEVINTERFACE_MONITOR), identical on every machine and
@@ -344,7 +345,7 @@ static void runMessageLoopThread() {
 
     // Cache normalized initial state and avoid notifying on startup
     lastNormalizedSignatures = normalizeSignatures(lastVisibleSignatures);
-    lastNotifiedNormalizedSignatures = lastNormalizedSignatures;
+    notificationPending = false;
 
     lastStateChangeTime = chrono::steady_clock::now();
 
@@ -471,6 +472,9 @@ static bool processPotentialDisplayChange() {
         lastNormalizedSignatures = std::move(normalizedCurrent);
         lastStateChangeTime = now;
 
+        // Mark the change so the settle notifies even when the configuration lands back on the last-notified state
+        notificationPending = true;
+
         return false;
     }
 
@@ -488,11 +492,8 @@ static bool processPotentialDisplayChange() {
         return false;
     }
 
-    /*
-     * Suppress notification if the normalized set equals the last-notified set. This prevents re-notifying the same
-     * stable configuration repeatedly and matches the user's preference to only care about current state
-     */
-    if (!lastNotifiedNormalizedSignatures.empty() && normalizedCurrent == lastNotifiedNormalizedSignatures) {
+    // Suppress re-notifying a stable configuration the callback already reported
+    if (!notificationPending) {
         return false;
     }
 
@@ -503,8 +504,7 @@ static bool processPotentialDisplayChange() {
     lastNotifyTime = now;
     invokeJavaCallback(onNativeNotifyMethodId);
 
-    // Record what we notified; normalizedCurrent is not read again, so move it
-    lastNotifiedNormalizedSignatures = std::move(normalizedCurrent);
+    notificationPending = false;
 
     return true;
 }

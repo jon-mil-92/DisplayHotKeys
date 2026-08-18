@@ -35,14 +35,6 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetIcon
 
 /*
  * Class:     com_dhk_io_SystemTrayIcon
- * Method:    nativeSetTooltip
- * Signature: (Ljava/lang/String;)V
- */
-JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetTooltip
-  (JNIEnv *, jobject, jstring);
-
-/*
- * Class:     com_dhk_io_SystemTrayIcon
  * Method:    nativeSetVisible
  * Signature: (Z)V
  */

@@ -19,25 +19,24 @@
  */
 package com.dhk.io;
 
-import java.awt.Rectangle;
-
 /**
- * Listener for notification area icon interactions delivered from native code, always called on the EDT.
+ * Renders the notification area icon at whatever size is asked for. The icon is drawn on demand rather than handed over
+ * once, so each size comes from the artwork itself instead of being resampled from another size.
  *
  * @author Jonathan R. Miller
  */
-public interface TrayIconListener {
+public interface TrayIconRenderer {
 
     /**
-     * Called when the tray icon is asked to show its menu.
+     * Renders the icon at the given size.
      *
-     * @param anchorX
-     *            - The x coordinate to anchor the menu to, in physical screen pixels
-     * @param anchorY
-     *            - The y coordinate to anchor the menu to, in physical screen pixels
-     * @param iconBounds
-     *            - The bounds of the tray icon, in physical screen pixels
+     * @param iconWidth
+     *            - The icon width in pixels
+     * @param iconHeight
+     *            - The icon height in pixels
+     *
+     * @return The rendered icon pixels in packed ARGB order, row by row from the top
      */
-    void menuRequested(int anchorX, int anchorY, Rectangle iconBounds);
+    int[] renderIconPixels(int iconWidth, int iconHeight);
 
 }

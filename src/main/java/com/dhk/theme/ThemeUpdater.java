@@ -25,8 +25,6 @@ import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.extras.FlatAnimatedLafChange;
 import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 
-import com.dhk.utility.TimingLog;
-
 /**
  * Sets the theme for the application. It allows the theme of the application to be switched between Light and Dark
  * themes.
@@ -53,16 +51,11 @@ public class ThemeUpdater {
         globalThemeSetupDone = true;
 
         // Set the Roboto font style
-        long fontInstallStart = TimingLog.start();
         FlatRobotoFont.install();
-        TimingLog.end("FlatRobotoFont.install", fontInstallStart);
-
         FlatLaf.setPreferredFontFamily(FlatRobotoFont.FAMILY);
 
         // Set the package for theme properties
-        long defaultsSourceStart = TimingLog.start();
         FlatLaf.registerCustomDefaultsSource("com.dhk.theme");
-        TimingLog.end("FlatLaf.registerCustomDefaultsSource", defaultsSourceStart);
     }
 
     /**

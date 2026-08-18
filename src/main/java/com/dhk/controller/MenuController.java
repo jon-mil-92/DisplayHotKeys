@@ -28,7 +28,6 @@ import com.dhk.controller.button.RunOnStartupButtonController;
 import com.dhk.controller.button.ThemeButtonController;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
-import com.dhk.utility.TimingLog;
 import com.dhk.view.DhkView;
 
 /**
@@ -69,9 +68,7 @@ public class MenuController implements IController {
         menuButtonControllers.add(new ThemeButtonController(model, view, settingsMgr));
 
         for (IController menuButtonController : menuButtonControllers) {
-            long initStart = TimingLog.start();
             menuButtonController.initController();
-            TimingLog.end(menuButtonController.getClass().getSimpleName() + ".initController", initStart);
         }
     }
 

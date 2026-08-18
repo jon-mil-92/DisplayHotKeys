@@ -26,7 +26,6 @@ import java.util.Map;
 
 import com.dhk.model.DisplayMode;
 import com.dhk.utility.DisplayModeInverter;
-import com.dhk.utility.TimingLog;
 
 /**
  * Gets the current information for the connected displays, including display IDs, supported display modes, and
@@ -91,9 +90,7 @@ public class DisplayConfig {
      * Updates the current array of unique visible display IDs and stores the number of connected (visible) displays.
      */
     public void updateConnectedDisplays() {
-        long visibleIdsStart = TimingLog.start();
         String[] rawDisplayIds = getDisplay.getVisibleDisplayIds();
-        TimingLog.end("native getVisibleDisplayIds", visibleIdsStart);
         int count = 0;
 
         for (String displayId : rawDisplayIds) {
@@ -119,9 +116,7 @@ public class DisplayConfig {
      * Updates each connected display's Windows Display Settings number, aligned index-for-index with the display IDs.
      */
     private void updateDisplayNumbers() {
-        long displayNumbersStart = TimingLog.start();
         displayNumbers = getDisplay.getVisibleDisplayNumbers(displayIds);
-        TimingLog.end("native getVisibleDisplayNumbers", displayNumbersStart);
     }
 
     /**
@@ -131,9 +126,7 @@ public class DisplayConfig {
         landscapeDisplayModesMap = new HashMap<String, DisplayMode[]>(numOfConnectedDisplays);
         portraitDisplayModesMap = new HashMap<String, DisplayMode[]>(numOfConnectedDisplays);
 
-        long orientationsStart = TimingLog.start();
         int[] orientations = getDisplay.getDisplayOrientations();
-        TimingLog.end("native getDisplayOrientations", orientationsStart);
 
         for (int displayIndex = 0; displayIndex < numOfConnectedDisplays; displayIndex++) {
             String displayId = displayIds[displayIndex];
@@ -162,8 +155,6 @@ public class DisplayConfig {
      * @return The flat mode records for the display, empty only if it never became ready within the retry budget
      */
     private int[] enumerateDisplayModeRecords(String displayId) {
-        long enumStart = TimingLog.start();
-        int calls = 1;
         int[] displayModeRecords = getDisplay.getDisplayModeRecords(displayId);
 
         for (int attempt = 0; (displayModeRecords == null || displayModeRecords.length == 0)
@@ -175,13 +166,8 @@ public class DisplayConfig {
                 break;
             }
 
-            calls++;
             displayModeRecords = getDisplay.getDisplayModeRecords(displayId);
         }
-
-        int modeCount = displayModeRecords != null ? displayModeRecords.length / FIELDS_PER_MODE : 0;
-        TimingLog.end("native mode enumeration for " + displayId + " (" + modeCount + " modes, " + calls + " calls)",
-                enumStart);
 
         return displayModeRecords != null ? displayModeRecords : new int[0];
     }
@@ -280,10 +266,7 @@ public class DisplayConfig {
             return cachedPercentages.clone();
         }
 
-        long dpiStart = TimingLog.start();
         Integer[] supportedPercentages = getDisplay.getDpiScalePercentages(width, height);
-        TimingLog.end("native getDpiScalePercentages for " + width + "x" + height, dpiStart);
-
         supportedDpiScalePercentages.put(cacheKey, supportedPercentages);
 
         return supportedPercentages.clone();
@@ -296,11 +279,7 @@ public class DisplayConfig {
      * @return The captured arrangement, one encoded rectangle per active display
      */
     public String[] captureArrangement() {
-        long captureStart = TimingLog.start();
-        String[] arrangement = getDisplay.captureArrangement();
-        TimingLog.end("native captureArrangement", captureStart);
-
-        return arrangement;
+        return getDisplay.captureArrangement();
     }
 
 }
