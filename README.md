@@ -210,6 +210,7 @@ Opens a web page in the default browser to display the releases for Display Hot 
 - [x] &thinsp; Add exact refresh rate support.
 - [x] &thinsp; Split display mode into resolution and refresh rate.
 - [x] &thinsp; Add a latest version check in the "About" view.
+- [x] &thinsp; Create a custom system tray implementation.
 
 See [open issues] for a full list of proposed features (and known issues).
 
