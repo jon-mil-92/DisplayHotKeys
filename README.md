@@ -248,13 +248,13 @@ Distribution made possible with the following tools:
 
 ## Antivirus Notice
 
-Some antivirus engines may flag Display Hot Keys as malicious (`Trojan:Win32/Wacatac.B!ml`). **This is a false positive.** Display Hot Keys contains no malware.
+An antivirus engine may flag Display Hot Keys as malicious. **This is a false positive.** Display Hot Keys contains no malware.
 
-The `!ml` suffix indicates the file was flagged by a **machine-learning heuristic**, not by a signature matching known malware. These heuristics tend to distrust small, independent utilities that legitimately need low-level system access — which is exactly what Display Hot Keys requires.
+These detections come from **machine-learning heuristics** rather than signatures matching known malware. Such heuristics tend to distrust small, independent utilities that legitimately need low-level system access — which is exactly what Display Hot Keys requires.
 
 ### Why it gets flagged
 
-* **The executable is not yet code-signed** — An unsigned binary with no established reputation is the single strongest trigger for these heuristics.
+* **The executable is not yet code-signed** — An unsigned binary is the single strongest trigger for these heuristics.
 
 * **Low reputation / low prevalence** — Newly released or freshly built binaries have no download history, so reputation-based scanners treat them as unknown.
 
@@ -262,7 +262,7 @@ The `!ml` suffix indicates the file was flagged by a **machine-learning heuristi
 
 * **It requests administrator elevation** — Elevation is needed so hot keys work over full-screen games and other elevated applications.
 
-* **It registers to optionally run at startup** — Virus scanners weigh as persistence behavior.
+* **It registers to optionally run at startup** — The app supports optionally launching at startup, but scanners weigh any startup entry as persistence.
 
 * **It's a packaged Java application bundling native libraries** — Native launchers that load a runtime and native DLLs pattern-match to "packed" software.
 
@@ -270,13 +270,13 @@ None of these are malicious — they are simply what Display Hot Keys must do to
 
 ### How to Verify for Yourself
 
-* Check the [VirusTotal] report: typically only one or two machine-learning engines flag the file while the rest report it clean — the classic false-positive signature.
+* Check the [VirusTotal] report: only an isolated engine or two flags the file while the rest of the field reports it clean. That is the classic false-positive signature — genuine malware is caught by many engines in agreement, not by a lone heuristic.
 
 * The full source code is available in this repository for inspection.
 
 ### Resolving the Warning
 
-If Windows Defender quarantines the app, you can restore it and add an exclusion, or report it as a false positive to Microsoft at the [Microsoft Security Intelligence submission portal].
+If your antivirus quarantines the app, you can restore it and add an exclusion. You can also report the detection as a false positive to the vendor — for Windows Defender, use the [Microsoft Security Intelligence submission portal].
 
 **Note:** Code signing is planned for a future release, which should resolve the majority of these warnings.
 
