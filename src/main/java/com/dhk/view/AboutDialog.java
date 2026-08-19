@@ -177,7 +177,7 @@ public class AboutDialog implements IView {
 
                         // Emphasize the label when a newer release is available than the current version
                         if (isNewerVersion(latestVersion, VersionRetriever.getVersion())) {
-                            latestVersionLabel.putClientProperty("FlatLaf.style", "font: bold; foreground: #00c853");
+                            latestVersionLabel.putClientProperty("FlatLaf.style", "font: bold; foreground: #00993f");
                         }
                     }
                 });

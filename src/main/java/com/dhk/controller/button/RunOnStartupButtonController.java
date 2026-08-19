@@ -163,6 +163,9 @@ public class RunOnStartupButtonController extends AbstractButtonController imple
         repaintRunOnStartupButton();
         settingsMgr.saveIniRunOnStartup(startsOnLogon);
 
+        // Prevent the icon from flashing the hover state
+        view.getDefaultFocusComponent().requestFocusInWindow();
+
         new RunOnStartupNoticeDialog().showChangedNotice(startsOnLogon);
     }
 
@@ -225,6 +228,9 @@ public class RunOnStartupButtonController extends AbstractButtonController imple
 
             // The saved value follows the button, so store the state left in place rather than the one asked for
             settingsMgr.saveIniRunOnStartup(!runOnStartup);
+
+            // Prevent the icon from flashing the hover state
+            view.getDefaultFocusComponent().requestFocusInWindow();
 
             new RunOnStartupNoticeDialog().showFailedNotice(runOnStartup);
 
