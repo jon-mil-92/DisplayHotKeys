@@ -30,7 +30,6 @@ import com.dhk.io.SystemTrayIcon;
 import com.dhk.model.DhkModel;
 import com.dhk.utility.FrameUtil;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
-import com.formdev.flatlaf.util.UIScale;
 
 /**
  * Enables the application to be minimized to the system tray and restored from the system tray. A single instance lives
@@ -97,7 +96,8 @@ public class MinimizeToTray {
     }
 
     /**
-     * Renders the tray icon at the given size. Rendering from the vector at the exact size keeps the icon sharp at
+     * Renders the tray icon at the given size, undoing the user interface scale the icon applies to itself so the
+     * artwork lands on exactly the requested pixels. Rendering from the vector at that size keeps the icon sharp at
      * every scale, since nothing is resampled from another size.
      *
      * @param iconWidth
@@ -111,16 +111,14 @@ public class MinimizeToTray {
         // Pre-multiplied, which is the form the notification area composites an icon in
         BufferedImage iconImage = new BufferedImage(iconWidth, iconHeight, BufferedImage.TYPE_INT_ARGB_PRE);
         Graphics2D graphics = iconImage.createGraphics();
+        FlatSVGIcon sizedIcon = trayIcon.derive(iconWidth, iconHeight);
 
-        /*
-         * The icon sizes and paints itself in scaled user interface units, which overshoots the notification area size
-         * asked for here and clips the artwork. Undo that factor so the icon renders at exactly the requested pixels
-         */
-        float userScale = UIScale.getUserScaleFactor();
+        // Dividing by the size it reports cancels its own scaling, whatever that factor happens to be
+        double horizontalScale = (double) iconWidth / sizedIcon.getIconWidth();
+        double verticalScale = (double) iconHeight / sizedIcon.getIconHeight();
 
-        graphics.scale(1 / (double) userScale, 1 / (double) userScale);
-
-        trayIcon.derive(iconWidth, iconHeight).paintIcon(null, graphics, 0, 0);
+        graphics.scale(horizontalScale, verticalScale);
+        sizedIcon.paintIcon(null, graphics, 0, 0);
         graphics.dispose();
 
         return ((DataBufferInt) iconImage.getRaster().getDataBuffer()).getData();

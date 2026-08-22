@@ -208,8 +208,8 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
  * @return Whether the icon was registered
  */
 extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStart(JNIEnv *env, jobject obj,
-                                                                                jstring tooltip, jintArray iconPixels,
-                                                                                jint iconWidth, jint iconHeight) {
+                                                                                 jstring tooltip, jintArray iconPixels,
+                                                                                 jint iconWidth, jint iconHeight) {
     if (isRunning.load()) {
         return JNI_TRUE;
     }
@@ -333,7 +333,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStop(JNIE
 
 /**
  * Replaces the icon shown in the notification area. The pixels are staged here and applied on the thread that owns the
- * icon, since the shell interface is only safe to call from that thread.
+ * icon, since the shell interface is only safe to call from that thread, so success means the work was handed over
+ * rather than finished.
  *
  * @param env
  *            - The JNI environment pointer
@@ -345,22 +346,24 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStop(JNIE
  *            - The icon width in pixels
  * @param iconHeight
  *            - The icon height in pixels
+ *
+ * @return Whether the replacement was handed over to the thread that owns the icon
  */
-extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetIcon(JNIEnv *env, jobject obj,
-                                                                              jintArray iconPixels, jint iconWidth,
-                                                                              jint iconHeight) {
+extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetIcon(JNIEnv *env, jobject obj,
+                                                                                   jintArray iconPixels, jint iconWidth,
+                                                                                   jint iconHeight) {
     (void) obj;
 
     HWND targetWindow = messageWindow.load();
 
     if (!targetWindow || !iconPixels || iconWidth <= 0 || iconHeight <= 0) {
-        return;
+        return JNI_FALSE;
     }
 
     jsize pixelCount = env->GetArrayLength(iconPixels);
 
     if (pixelCount < (jsize) (iconWidth * iconHeight)) {
-        return;
+        return JNI_FALSE;
     }
 
     {
@@ -372,7 +375,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetIcon(J
         pendingIconHeight = iconHeight;
     }
 
-    PostMessage(targetWindow, WM_TRAY_APPLY_ICON, 0, 0);
+    return PostMessage(targetWindow, WM_TRAY_APPLY_ICON, 0, 0) ? JNI_TRUE : JNI_FALSE;
 }
 
 /**
@@ -386,7 +389,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetIcon(J
  *            - Whether the icon should be shown
  */
 extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetVisible(JNIEnv *env, jobject obj,
-                                                                                 jboolean visible) {
+                                                                                  jboolean visible) {
     (void) env;
     (void) obj;
 
@@ -585,8 +588,8 @@ static void runMessageLoopThread() {
     }
 
     isRunning.store(false);
-
     removeTrayIcon();
+    iconVisible.store(false);
 
     if (trayIcon) {
         DestroyIcon(trayIcon);
@@ -709,11 +712,13 @@ static void removeTrayIcon() {
 }
 
 /**
- * Builds an icon from the staged pixels and shows it, destroying the previous icon only after the replacement is in
- * place so the shell never renders from a freed handle.
+ * Shows an icon built from the staged pixels, restating the tooltip alongside it because an update only carries the
+ * fields it declares. The previous icon is destroyed after the replacement lands, so the shell never renders from a
+ * freed handle.
  */
 static void applyPendingIcon() {
     vector<jint> pixels;
+    wstring tooltip;
     int width = 0;
     int height = 0;
 
@@ -725,6 +730,7 @@ static void applyPendingIcon() {
         }
 
         pixels = pendingIconPixels;
+        tooltip = pendingTooltip;
         width = pendingIconWidth;
         height = pendingIconHeight;
     }
@@ -743,8 +749,9 @@ static void applyPendingIcon() {
         iconData.cbSize = sizeof(iconData);
         iconData.hWnd = messageWindow.load();
         iconData.uID = TRAY_ICON_ID;
-        iconData.uFlags = NIF_ICON;
+        iconData.uFlags = NIF_ICON | NIF_TIP | NIF_SHOWTIP;
         iconData.hIcon = trayIcon;
+        wcsncpy_s(iconData.szTip, tooltip.c_str(), _TRUNCATE);
 
         Shell_NotifyIconW(NIM_MODIFY, &iconData);
     }
@@ -826,8 +833,8 @@ static HICON createIconFromPixels(const vector<jint> &pixels, int width, int hei
     }
 
     void *bitmapBits = nullptr;
-    HBITMAP colorBitmap = CreateDIBSection(screenDeviceContext, (BITMAPINFO *) &bitmapHeader, DIB_RGB_COLORS,
-                                           &bitmapBits, NULL, 0);
+    HBITMAP colorBitmap =
+        CreateDIBSection(screenDeviceContext, (BITMAPINFO *) &bitmapHeader, DIB_RGB_COLORS, &bitmapBits, NULL, 0);
 
     ReleaseDC(NULL, screenDeviceContext);
 
@@ -841,8 +848,10 @@ static HICON createIconFromPixels(const vector<jint> &pixels, int width, int hei
 
     memcpy(bitmapBits, pixels.data(), (size_t) width * (size_t) height * sizeof(jint));
 
-    // The mask is unused for a 32-bit bitmap carrying alpha, but the icon still requires one
-    HBITMAP maskBitmap = CreateBitmap(width, height, 1, 1, NULL);
+    size_t maskBytesPerRow = (((size_t) width + 15) / 16) * sizeof(WORD);
+    vector<BYTE> maskBits(maskBytesPerRow * (size_t) height, 0);
+
+    HBITMAP maskBitmap = CreateBitmap(width, height, 1, 1, maskBits.data());
 
     if (!maskBitmap) {
         DeleteObject(colorBitmap);

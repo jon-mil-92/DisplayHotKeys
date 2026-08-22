@@ -28,9 +28,9 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStop
 /*
  * Class:     com_dhk_io_SystemTrayIcon
  * Method:    nativeSetIcon
- * Signature: ([III)V
+ * Signature: ([III)Z
  */
-JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetIcon
+JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetIcon
   (JNIEnv *, jobject, jintArray, jint, jint);
 
 /*

@@ -87,7 +87,8 @@ public class SystemTrayIcon {
     private native void nativeStop();
 
     /**
-     * Defines a JNI function to replace the icon shown in the notification area.
+     * Defines a JNI function to replace the icon shown in the notification area. The replacement is applied on the
+     * native thread that owns the icon, so success means the work was handed over rather than finished.
      *
      * @param iconPixels
      *            - The icon pixels in packed ARGB order, row by row from the top
@@ -95,8 +96,10 @@ public class SystemTrayIcon {
      *            - The icon width in pixels
      * @param iconHeight
      *            - The icon height in pixels
+     *
+     * @return Whether the replacement was handed over to the thread that owns the icon
      */
-    private native void nativeSetIcon(int[] iconPixels, int iconWidth, int iconHeight);
+    private native boolean nativeSetIcon(int[] iconPixels, int iconWidth, int iconHeight);
 
     /**
      * Defines a JNI function to show or hide the icon without releasing the native resources backing it.
@@ -157,7 +160,8 @@ public class SystemTrayIcon {
 
     /**
      * Rescales the icon when the notification area icon size has changed, which happens when the display hosting the
-     * task bar changes scale. Rescaling only on a real size change keeps this off the cost of an ordinary refresh.
+     * task bar changes scale. Rescaling only on a real size change keeps this off the cost of an ordinary refresh, and
+     * the new size counts as applied only once the native layer accepts it.
      */
     public void refreshIconSize() {
         if (trayIconRenderer == null) {
@@ -170,12 +174,15 @@ public class SystemTrayIcon {
             return;
         }
 
-        appliedIconWidth = iconSize.width;
-        appliedIconHeight = iconSize.height;
-
         int[] iconPixels = trayIconRenderer.renderIconPixels(iconSize.width, iconSize.height);
 
-        nativeSetIcon(iconPixels, iconSize.width, iconSize.height);
+        // Leaving the applied size untouched on failure lets the next refresh retry instead of skipping the rescale
+        if (!nativeSetIcon(iconPixels, iconSize.width, iconSize.height)) {
+            return;
+        }
+
+        appliedIconWidth = iconSize.width;
+        appliedIconHeight = iconSize.height;
     }
 
     /**
