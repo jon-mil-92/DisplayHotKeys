@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.dhk.controller.button.AboutButtonController;
+import com.dhk.controller.button.GlobalSettingsButtonController;
 import com.dhk.controller.button.MinimizeToTrayButtonController;
 import com.dhk.controller.button.RunOnStartupButtonController;
 import com.dhk.controller.button.ThemeButtonController;
@@ -62,6 +63,7 @@ public class MenuController implements IController {
     @Override
     public void initController() {
         menuButtonControllers = new ArrayList<IController>();
+        menuButtonControllers.add(new GlobalSettingsButtonController(model, view));
         menuButtonControllers.add(new AboutButtonController(model, view));
         menuButtonControllers.add(new MinimizeToTrayButtonController(model, view, settingsMgr));
         menuButtonControllers.add(new RunOnStartupButtonController(model, view, settingsMgr));
