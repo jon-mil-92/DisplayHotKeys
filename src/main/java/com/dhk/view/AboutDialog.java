@@ -49,7 +49,6 @@ import com.dhk.controller.button.PaypalDonateButtonController;
 import com.dhk.model.DhkModel;
 import com.dhk.model.button.ButtonProperties;
 import com.dhk.model.button.ThemeableButton;
-import com.dhk.utility.FrameUtil;
 import com.dhk.utility.VersionRetriever;
 
 /**
@@ -82,6 +81,7 @@ public class AboutDialog implements IView {
     private JFrame parentFrame;
     private Component originalGlassPane;
     private Component darkeningGlassPane;
+    private boolean dialogClosed;
 
     private static final String GITHUB_DOMAIN = "https://github.com";
     private static final String RELEASES_PATH = "/jon-mil-92/DisplayHotKeys/releases";
@@ -131,8 +131,6 @@ public class AboutDialog implements IView {
                 initAboutComponentListeners(aboutDialog, onCloseAction);
                 addAboutComponents(aboutDialog);
 
-                // Update UI and show darkening glass pane on parent
-                FrameUtil.refreshFrame(parentFrame);
                 view.getDefaultFocusComponent().requestFocusInWindow();
                 parentFrame.setGlassPane(darkeningGlassPane);
                 darkeningGlassPane.setVisible(true);
@@ -173,6 +171,11 @@ public class AboutDialog implements IView {
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
                     public void run() {
+                        // The fetch outlives the dialog, which a close or re-initialization may already have released
+                        if (latestVersionLabel == null || !latestVersionLabel.isDisplayable()) {
+                            return;
+                        }
+
                         latestVersionLabel.setText("Latest Version: " + latestVersion);
 
                         // Emphasize the label when a newer release is available than the current version
@@ -313,6 +316,12 @@ public class AboutDialog implements IView {
             @Override
             public void windowClosing(WindowEvent e) {
                 // Call the same method used by the Close button
+                closeButtonAction(aboutDialog, onCloseAction);
+            }
+
+            // A re-initialization disposes the parent frame, destroying this dialog without any close request
+            @Override
+            public void windowClosed(WindowEvent e) {
                 closeButtonAction(aboutDialog, onCloseAction);
             }
         });
@@ -458,6 +467,13 @@ public class AboutDialog implements IView {
      *            - The action to run when the dialog closes (not required)
      */
     private void closeButtonAction(JDialog aboutDialog, Runnable onCloseAction) {
+        // Disposing fires the close path again, and the title-bar close can land after it has already run
+        if (dialogClosed) {
+            return;
+        }
+
+        dialogClosed = true;
+
         getDefaultFocusComponent().requestFocusInWindow();
 
         if (onCloseAction != null) {

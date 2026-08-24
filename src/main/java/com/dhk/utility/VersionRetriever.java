@@ -19,7 +19,6 @@
  */
 package com.dhk.utility;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -49,9 +48,31 @@ public class VersionRetriever {
             .create("https://api.github.com/repos/jon-mil-92/DisplayHotKeys/releases/latest");
 
     /**
-     * Timeout applied to both establishing the connection and completing the request.
+     * Timeout applied to both establishing the connection and completing the request. The connect and request timeouts
+     * compose, so this is kept short enough that an unreachable endpoint still resolves the label quickly.
      */
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+
+    /**
+     * Client reused across lookups, since building one per call orphans its selector thread and connection pool.
+     */
+    private static HttpClient httpClient;
+
+    /**
+     * Lifetime of a cached version. Unauthenticated GitHub API requests are limited to 60 per hour per address, so
+     * repeat lookups are served from the cache rather than spending that budget.
+     */
+    private static final long CACHE_TTL_NANOS = Duration.ofMinutes(5).toNanos();
+
+    /**
+     * Last successfully resolved version, or null when nothing has resolved yet.
+     */
+    private static volatile String cachedLatestVersion;
+
+    /**
+     * Monotonic timestamp of the cached version, immune to the wall clock jumping under a time zone or NTP change.
+     */
+    private static volatile long cachedAtNanos;
 
     /**
      * Extracts the untrusted tag_name value from the release JSON, bounded to a safe length.
@@ -85,21 +106,24 @@ public class VersionRetriever {
             props.load(in);
 
             return props.getProperty("app.version", UNKNOWN_VERSION);
-        } catch (IOException ex) {
+        } catch (Throwable t) {
             return UNKNOWN_VERSION;
         }
     }
 
     /**
-     * Gets the latest released version from the GitHub API. The response is validated and sanitized against a strict
-     * allow-list, so a malformed or hostile payload yields the unknown sentinel rather than untrusted text. This
-     * performs a blocking network request and must not run on the AWT event dispatching thread.
+     * Gets the latest released version from the GitHub API, reusing a recently resolved result. Every failure resolves
+     * to the unknown sentinel rather than throwing, so a caller never needs to guard the call. A lookup that reaches
+     * the network blocks, so this must not run on the AWT event dispatching thread.
      *
      * @return The latest released version, or the unknown sentinel if it cannot be resolved
      */
     public static String getLatestVersion() {
-        HttpClient client = HttpClient.newBuilder().connectTimeout(REQUEST_TIMEOUT)
-                .followRedirects(HttpClient.Redirect.NORMAL).build();
+        String cachedVersion = cachedLatestVersion;
+
+        if (cachedVersion != null && System.nanoTime() - cachedAtNanos < CACHE_TTL_NANOS) {
+            return cachedVersion;
+        }
 
         // GitHub requires a User-Agent; the versioned Accept header pins a stable response shape
         HttpRequest request = HttpRequest.newBuilder(LATEST_RELEASE_URI).timeout(REQUEST_TIMEOUT)
@@ -107,20 +131,43 @@ public class VersionRetriever {
                 .header("User-Agent", "DisplayHotKeys").GET().build();
 
         try {
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
                 return UNKNOWN_VERSION;
             }
 
-            return sanitizeVersion(extractTagName(response.body()));
-        } catch (IOException ex) {
-            return UNKNOWN_VERSION;
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
+            String latestVersion = sanitizeVersion(extractTagName(response.body()));
+
+            // Only a resolved version is cached, so a transient failure is retried on the next lookup
+            if (!UNKNOWN_VERSION.equals(latestVersion)) {
+                cachedAtNanos = System.nanoTime();
+                cachedLatestVersion = latestVersion;
+            }
+
+            return latestVersion;
+        } catch (Throwable t) {
+            // Sending clears the interrupt flag when it throws, so restore it rather than swallowing the interrupt
+            if (t instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
 
             return UNKNOWN_VERSION;
         }
+    }
+
+    /**
+     * Gets the shared client, creating it on first use so no connection resources are established until a lookup runs.
+     *
+     * @return The client used for every version lookup
+     */
+    private static synchronized HttpClient httpClient() {
+        if (httpClient == null) {
+            httpClient = HttpClient.newBuilder().connectTimeout(REQUEST_TIMEOUT)
+                    .followRedirects(HttpClient.Redirect.NORMAL).build();
+        }
+
+        return httpClient;
     }
 
     /**

@@ -75,7 +75,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
     private boolean showReleaseMessage;
     private boolean anyHotKeySubset;
     private volatile boolean anyHotKeyChanging;
-    private Set<Integer> activeKeyCodes;
+    private volatile Set<Integer> activeKeyCodes;
     private HeldKeyTracker heldKeyTracker;
 
     private static final String CHANGE_HOT_KEY_TEXT = "Change Hot Key";
@@ -119,7 +119,6 @@ public class HotKeysController implements IController, GlobalKeyListener {
         showReleaseMessage = false;
         anyHotKeySubset = false;
         anyHotKeyChanging = false;
-        activeKeyCodes = new HashSet<>();
         rebuildActiveKeyCodes();
         seedHeldKeyStates();
         displayConfig = settingsMgr.getDisplayConfig();
@@ -297,29 +296,34 @@ public class HotKeysController implements IController, GlobalKeyListener {
             return true;
         }
 
+        // Read the published set once, since a rebuild on another thread can swap it in partway through this check
+        Set<Integer> keyCodes = activeKeyCodes;
+
         // Otherwise, use a cached set for O(1) membership checks
-        return activeKeyCodes != null && activeKeyCodes.contains(eventKeyCode);
+        return keyCodes != null && keyCodes.contains(eventKeyCode);
     }
 
     /**
      * Rebuild the cached set of active key codes from the model. Call this whenever hot keys change.
      */
     public void rebuildActiveKeyCodes() {
-        if (activeKeyCodes == null) {
-            activeKeyCodes = new HashSet<>();
-        }
-
-        activeKeyCodes.clear();
+        /*
+         * The global key thread reads this set without locking, so it is rebuilt into a new instance and published in a
+         * single assignment. Mutating the live set in place could resize it mid-read and hang that thread
+         */
+        Set<Integer> rebuiltKeyCodes = new HashSet<>();
 
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             for (int slotIndex = 0; slotIndex < maxNumOfSlots; slotIndex++) {
                 List<Key> keys = model.getSlot(displayIndex, slotIndex).getHotKey().getKeys();
 
                 for (int k = 0; k < keys.size(); k++) {
-                    activeKeyCodes.add(keys.get(k).getKey());
+                    rebuiltKeyCodes.add(keys.get(k).getKey());
                 }
             }
         }
+
+        activeKeyCodes = rebuiltKeyCodes;
     }
 
     /**
@@ -472,12 +476,14 @@ public class HotKeysController implements IController, GlobalKeyListener {
                         .setText(model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().getHotKeyString());
                 FrameUtil.refreshFrame(view.getFrame());
 
-                // Update cached active key codes
-                if (activeKeyCodes == null) {
-                    activeKeyCodes = new HashSet<>();
-                }
+                // Update cached active key codes, republishing a copy so the global key thread never reads a live edit
+                Set<Integer> updatedKeyCodes = (activeKeyCodes == null)
+                        ? new HashSet<>()
+                        : new HashSet<>(activeKeyCodes);
 
-                activeKeyCodes.add(pressedKey.getKey());
+                updatedKeyCodes.add(pressedKey.getKey());
+
+                activeKeyCodes = updatedKeyCodes;
 
                 currentKeyCount += 1;
             }
