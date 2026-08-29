@@ -16,3 +16,4 @@ GetDisplay.dll
 SetDisplay.dll
 DisplayEventNotifier.dll
 SystemTrayIcon.dll
+NativeInputHook.dll

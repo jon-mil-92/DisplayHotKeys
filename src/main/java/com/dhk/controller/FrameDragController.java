@@ -30,12 +30,10 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
+import com.dhk.io.NativeInputHook;
+import com.dhk.io.NativeMouseListener;
 import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
-
-import lc.kra.system.mouse.GlobalMouseHook;
-import lc.kra.system.mouse.event.GlobalMouseAdapter;
-import lc.kra.system.mouse.event.GlobalMouseEvent;
 
 /**
  * Controls frame drag synchronization so a cross-display drag refreshes and re-fits the frame only after the drag has
@@ -51,8 +49,8 @@ public class FrameDragController implements IController {
     private JFrame observedFrame;
     private GraphicsConfiguration cachedConfiguration;
     private Timer displaySyncTimer;
-    private GlobalMouseHook globalMouseHook;
-    private GlobalMouseAdapter globalMouseListener;
+    private NativeInputHook nativeInputHook;
+    private NativeMouseListener nativeMouseListener;
     private PropertyChangeListener graphicsConfigurationListener;
     private ComponentAdapter frameMoveListener;
     private WindowAdapter frameCloseListener;
@@ -64,12 +62,12 @@ public class FrameDragController implements IController {
      *
      * @param view
      *            - The view for the application
-     * @param globalMouseHook
-     *            - The shared global mouse hook, owned by {@link DhkController} and kept alive across app refreshes
+     * @param nativeInputHook
+     *            - The shared native input hook, owned by {@link DhkController} and kept alive across app refreshes
      */
-    public FrameDragController(DhkView view, GlobalMouseHook globalMouseHook) {
+    public FrameDragController(DhkView view, NativeInputHook nativeInputHook) {
         this.view = view;
-        this.globalMouseHook = globalMouseHook;
+        this.nativeInputHook = nativeInputHook;
     }
 
     @Override
@@ -94,7 +92,7 @@ public class FrameDragController implements IController {
         displayTransitionPending = false;
         leftMouseButtonDown = false;
 
-        installGlobalMouseListener();
+        installNativeMouseListener();
         installFrameListeners(frame);
     }
 
@@ -106,7 +104,7 @@ public class FrameDragController implements IController {
         displayTransitionPending = false;
 
         // Detach only this controller's listener; the shared hook persists across app refreshes
-        removeGlobalMouseListener();
+        removeNativeMouseListener();
 
         leftMouseButtonDown = false;
         observedFrame = null;
@@ -217,39 +215,33 @@ public class FrameDragController implements IController {
     }
 
     /**
-     * Attaches this controller's listener to the shared mouse hook so native title-bar drags report the real
-     * left-button press/release. Adding to the hook is cheap, so no background thread is needed.
+     * Attaches this controller's listener to the shared input hook so native title-bar drags report the real
+     * left-button press/release. Adding the listener is cheap, so no background thread is needed.
      */
-    private void installGlobalMouseListener() {
-        if (globalMouseHook == null || globalMouseListener != null) {
+    private void installNativeMouseListener() {
+        if (nativeInputHook == null || nativeMouseListener != null) {
             return;
         }
 
-        globalMouseListener = createGlobalMouseListener();
-        globalMouseHook.addMouseListener(globalMouseListener);
+        nativeMouseListener = createNativeMouseListener();
+        nativeInputHook.addMouseListener(nativeMouseListener);
     }
 
     /**
      * Creates the global mouse listener used for native title-bar drags that Swing cannot observe.
      */
-    private GlobalMouseAdapter createGlobalMouseListener() {
-        return new GlobalMouseAdapter() {
+    private NativeMouseListener createNativeMouseListener() {
+        return new NativeMouseListener() {
             @Override
-            public void mousePressed(GlobalMouseEvent mouseEvent) {
-                if (mouseEvent.getButton() == GlobalMouseEvent.BUTTON_LEFT) {
-                    SwingUtilities.invokeLater(() -> {
-                        leftMouseButtonDown = true;
-                        stopTimer(displaySyncTimer);
-                    });
-                }
+            public void mousePressed() {
+                SwingUtilities.invokeLater(() -> {
+                    leftMouseButtonDown = true;
+                    stopTimer(displaySyncTimer);
+                });
             }
 
             @Override
-            public void mouseReleased(GlobalMouseEvent mouseEvent) {
-                if (mouseEvent.getButton() != GlobalMouseEvent.BUTTON_LEFT) {
-                    return;
-                }
-
+            public void mouseReleased() {
                 SwingUtilities.invokeLater(() -> {
                     leftMouseButtonDown = false;
 
@@ -262,20 +254,20 @@ public class FrameDragController implements IController {
     }
 
     /**
-     * Detaches this controller's listener from the shared mouse hook, leaving the hook alive for later refreshes.
+     * Detaches this controller's listener from the shared input hook, leaving it alive for later refreshes.
      */
-    private void removeGlobalMouseListener() {
-        if (globalMouseHook == null || globalMouseListener == null) {
+    private void removeNativeMouseListener() {
+        if (nativeInputHook == null || nativeMouseListener == null) {
             return;
         }
 
         try {
-            globalMouseHook.removeMouseListener(globalMouseListener);
+            nativeInputHook.removeMouseListener(nativeMouseListener);
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        globalMouseListener = null;
+        nativeMouseListener = null;
     }
 
     /**

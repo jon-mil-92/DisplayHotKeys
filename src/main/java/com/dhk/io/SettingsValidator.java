@@ -30,8 +30,6 @@ import org.ini4j.Wini;
 
 import com.dhk.model.DisplayMode;
 
-import lc.kra.system.keyboard.event.GlobalKeyEvent;
-
 /**
  * Validates all of the property values in the settings file. It makes sure that each property value is either a
  * positive integer or a boolean, and that it is in the correct range of valid values. If a property value fails
@@ -95,10 +93,14 @@ public class SettingsValidator {
     }
 
     /**
-     * Builds a list of valid key codes from the GlobalKeyEvent class.
+     * Builds a list of valid key codes from the NativeKeyEvent class.
      */
     private List<Integer> buildValidKeyCodes() {
-        Field[] keyEventFields = GlobalKeyEvent.class.getDeclaredFields();
+        /*
+         * Every public constant on the event type is taken as a key code, so that type must hold nothing but the key
+         * code constants. Anything else added there would silently become a hot key value the settings file accepts
+         */
+        Field[] keyEventFields = NativeKeyEvent.class.getDeclaredFields();
         List<Integer> keyCodeList = new ArrayList<Integer>();
 
         for (Field f : keyEventFields) {
@@ -439,8 +441,9 @@ public class SettingsValidator {
             String displayId = displayIds[displayIndex];
 
             for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
+                String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+
                 for (int keyId = 1; keyId <= 3; keyId++) {
-                    String iniSection = displayId + "--Slot" + Integer.toString(slotId);
                     String key = ini.get(iniSection, "key" + keyId);
 
                     // An unset key persists as UNSET_KEY_CODE, so that value must pass validation without a repair

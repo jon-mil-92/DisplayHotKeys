@@ -224,8 +224,6 @@ Jonathan R. Miller - jonRock1992@gmail.com
 
 ## Dependencies
 
-* [Java (low-level) System Hook] <b>·</b> [MIT License]
-
 * [FlatLaf - Flat Look and Feel] <b>·</b> [Apache License 2.0]
 
 * [Material Design Icons] <b>·</b> [Apache License 2.0]
@@ -301,7 +299,6 @@ If your antivirus quarantines the app, you can restore it and add an exclusion. 
 [VirusTotal]: https://www.virustotal.com/
 [Microsoft Security Intelligence submission portal]: https://www.microsoft.com/en-us/wdsi/filesubmission
 [open issues]: https://github.com/jon-mil-92/DisplayHotKeys/issues
-[Java (low-level) System Hook]: https://github.com/kristian/system-hook
 [FlatLaf - Flat Look and Feel]: https://github.com/JFormDesigner/FlatLaf
 [Material Design Icons]: https://github.com/marella/material-design-icons
 [PayPal Donate Button]: https://github.com/stefan-niedermann/paypal-donate-button

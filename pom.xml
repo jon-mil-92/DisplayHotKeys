@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>DisplayHotKeys</groupId>
     <artifactId>DisplayHotKeys</artifactId>
-    <version>4.1.2</version>
+    <version>4.2.0</version>
     <name>DisplayHotKeys</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -73,11 +73,6 @@
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf-fonts-roboto</artifactId>
             <version>2.137</version>
-        </dependency>
-        <dependency>
-            <groupId>lc.kra.system</groupId>
-            <artifactId>system-hook</artifactId>
-            <version>3.8</version>
         </dependency>
         <dependency>
             <groupId>org.ini4j</groupId>

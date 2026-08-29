@@ -23,7 +23,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 
 import com.dhk.controller.DhkController;
-import com.dhk.controller.GlobalHookInstaller;
+import com.dhk.controller.NativeHookInstaller;
 import com.dhk.io.SettingsManager;
 import com.dhk.io.SingleInstanceLock;
 import com.dhk.model.DhkModel;
@@ -59,11 +59,11 @@ public class DhkDriver {
         System.setProperty("sun.java2d.noddraw", "true");
         ToolTipManager.sharedInstance().setEnabled(false);
 
-        // Check the lock before any slow setup so only the winning instance installs the global hooks
+        // Check the lock before any slow setup so only the winning instance installs the native hooks
         boolean lockAcquired = new SingleInstanceLock().tryLock();
 
         // Start the hook install now so its potentially slow native setup overlaps the theme and settings setup
-        GlobalHookInstaller hookInstaller = new GlobalHookInstaller();
+        NativeHookInstaller hookInstaller = new NativeHookInstaller();
 
         if (lockAcquired) {
             hookInstaller.startInstall();
@@ -97,9 +97,9 @@ public class DhkDriver {
      * @param settingsMgr
      *            - The settings file manager that retrieves the saved configuration for this application
      * @param hookInstaller
-     *            - The installer whose background global hook install began at launch
+     *            - The installer whose background native hook install began at launch
      */
-    private static void initDhk(SettingsManager settingsMgr, GlobalHookInstaller hookInstaller) {
+    private static void initDhk(SettingsManager settingsMgr, NativeHookInstaller hookInstaller) {
         DhkModel model = new DhkModel();
         DhkView view = new DhkView(model);
         DhkController controller = new DhkController(model, view, settingsMgr, hookInstaller);
