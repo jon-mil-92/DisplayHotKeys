@@ -36,6 +36,8 @@ import javax.swing.Timer;
 
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.KeyText;
+import com.dhk.io.NativeKeyEvent;
+import com.dhk.io.NativeKeyListener;
 import com.dhk.io.SetDisplay;
 import com.dhk.io.SettingsManager;
 import com.dhk.main.AppRefresher;
@@ -47,9 +49,6 @@ import com.dhk.model.button.Button;
 import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
 
-import lc.kra.system.keyboard.event.GlobalKeyEvent;
-import lc.kra.system.keyboard.event.GlobalKeyListener;
-
 /**
  * Controls the hot keys for the application. Listeners are added to the Change Hot Key buttons to enable the
  * functionality of changing hot keys. This class is also responsible for triggering hot key events once a hot key press
@@ -57,7 +56,7 @@ import lc.kra.system.keyboard.event.GlobalKeyListener;
  *
  * @author Jonathan R. Miller
  */
-public class HotKeysController implements IController, GlobalKeyListener {
+public class HotKeysController implements IController, NativeKeyListener {
 
     private DhkView view;
     private DhkModel model;
@@ -161,7 +160,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
     }
 
     @Override
-    public void keyPressed(GlobalKeyEvent keyEvent) {
+    public void keyPressed(NativeKeyEvent keyEvent) {
         /*
          * If this key event is not relevant to any hot key and no hot key is currently being changed, skip scheduling
          * work on the EDT entirely
@@ -250,7 +249,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
     }
 
     @Override
-    public void keyReleased(GlobalKeyEvent keyEvent) {
+    public void keyReleased(NativeKeyEvent keyEvent) {
         /*
          * If this key event is not relevant to any hot key and no hot key is currently being changed, skip scheduling
          * work on the EDT entirely
@@ -288,7 +287,8 @@ public class HotKeysController implements IController, GlobalKeyListener {
      *
      * @param eventKeyCode
      *            - The key code for the key event that we are checking
-     * @return
+     *
+     * @return Whether the key event can affect a hot key
      */
     private boolean isKeyEventRelevant(int eventKeyCode) {
         // If any hot key is in the process of being changed we must handle all key events
@@ -308,8 +308,8 @@ public class HotKeysController implements IController, GlobalKeyListener {
      */
     public void rebuildActiveKeyCodes() {
         /*
-         * The global key thread reads this set without locking, so it is rebuilt into a new instance and published in a
-         * single assignment. Mutating the live set in place could resize it mid-read and hang that thread
+         * The native reporting thread reads this set without locking, so it is rebuilt into a new instance and published
+         * in a single assignment. Mutating the live set in place could resize it mid-read and hang that thread
          */
         Set<Integer> rebuiltKeyCodes = new HashSet<>();
 
@@ -386,7 +386,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
      * @param keys
      *            - The array list of keys for a hot key
      */
-    private void setPressedKeys(GlobalKeyEvent keyEvent, List<Key> keys) {
+    private void setPressedKeys(NativeKeyEvent keyEvent, List<Key> keys) {
         for (int keyIndex = 0; keyIndex < keys.size(); keyIndex++) {
             if (keyEvent.getVirtualKeyCode() == keys.get(keyIndex).getKey()) {
                 keys.get(keyIndex).setKeyPressed(true);
@@ -402,7 +402,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
      * @param keys
      *            - The array list of keys for a hot key
      */
-    private void setReleasedKeys(GlobalKeyEvent keyEvent, List<Key> keys) {
+    private void setReleasedKeys(NativeKeyEvent keyEvent, List<Key> keys) {
         for (int keyIndex = 0; keyIndex < keys.size(); keyIndex++) {
             if (keyEvent.getVirtualKeyCode() == keys.get(keyIndex).getKey()) {
                 keys.get(keyIndex).setKeyPressed(false);
@@ -457,7 +457,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
      * @param slotIndex
      *            - The index of the slot to build the hot key for
      */
-    private void buildHotKey(GlobalKeyEvent keyEvent, HotKey hotKey, int slotIndex) {
+    private void buildHotKey(NativeKeyEvent keyEvent, HotKey hotKey, int slotIndex) {
         idleTimer.stop();
 
         Key pressedKey;
@@ -468,15 +468,15 @@ public class HotKeysController implements IController, GlobalKeyListener {
         if (currentKeyCount < MAX_KEY_COUNT) {
             pressedKey = new Key(keyCode, keyCodeText, true);
 
-            // Only allow unique keys to form the hot key, and ignore key code 255 due to a bug in System Hook
-            if (!hotKey.getKeys().contains(pressedKey) && !(pressedKey.getKey() == 255)) {
+            // Only allow unique keys to form the hot key
+            if (!hotKey.getKeys().contains(pressedKey)) {
                 hotKey.getKeys().add(pressedKey);
 
                 view.getSlot(selectedDisplayIndex, slotIndex).getHotKey()
                         .setText(model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().getHotKeyString());
                 FrameUtil.refreshFrame(view.getFrame());
 
-                // Update cached active key codes, republishing a copy so the global key thread never reads a live edit
+                // Update cached active key codes, republishing a copy so the reporting thread never reads a live edit
                 Set<Integer> updatedKeyCodes = (activeKeyCodes == null)
                         ? new HashSet<>()
                         : new HashSet<>(activeKeyCodes);
@@ -573,7 +573,7 @@ public class HotKeysController implements IController, GlobalKeyListener {
                              * Allow hot keys to be the same between displays so the user can change display settings
                              * for multiple displays with one hot key
                              */
-                            if (!keysToCheck.equals(currentKeys)) {
+                            if (!isSameHotKey(keysToCheck, currentKeys)) {
                                 if (currentKeys.containsAll(keysToCheck) || keysToCheck.containsAll(currentKeys)) {
                                     return true;
                                 }
@@ -585,6 +585,21 @@ public class HotKeysController implements IController, GlobalKeyListener {
         }
 
         return false;
+    }
+
+    /**
+     * Checks whether two hot keys hold the same keys, regardless of the order they were recorded in, since the same
+     * combination is the same hot key however it was pressed.
+     *
+     * @param keys
+     *            - The keys of the first hot key
+     * @param otherKeys
+     *            - The keys of the second hot key
+     *
+     * @return Whether both hot keys hold the same keys
+     */
+    private boolean isSameHotKey(List<Key> keys, List<Key> otherKeys) {
+        return keys.size() == otherKeys.size() && keys.containsAll(otherKeys);
     }
 
     /**

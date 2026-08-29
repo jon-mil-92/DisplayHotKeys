@@ -211,6 +211,7 @@ Opens a web page in the default browser to display the releases for Display Hot 
 - [x] &thinsp; Split display mode into resolution and refresh rate.
 - [x] &thinsp; Add a latest version check in the "About" view.
 - [x] &thinsp; Create a custom system tray implementation.
+- [x] &thinsp; Create a custom input hook implementation.
 
 See [open issues] for a full list of proposed features (and known issues).
 
@@ -223,8 +224,6 @@ Distributed under the [MIT License]. See LICENSE.txt for more information.
 Jonathan R. Miller - jonRock1992@gmail.com
 
 ## Dependencies
-
-* [Java (low-level) System Hook] <b>·</b> [MIT License]
 
 * [FlatLaf - Flat Look and Feel] <b>·</b> [Apache License 2.0]
 
@@ -301,7 +300,6 @@ If your antivirus quarantines the app, you can restore it and add an exclusion. 
 [VirusTotal]: https://www.virustotal.com/
 [Microsoft Security Intelligence submission portal]: https://www.microsoft.com/en-us/wdsi/filesubmission
 [open issues]: https://github.com/jon-mil-92/DisplayHotKeys/issues
-[Java (low-level) System Hook]: https://github.com/kristian/system-hook
 [FlatLaf - Flat Look and Feel]: https://github.com/JFormDesigner/FlatLaf
 [Material Design Icons]: https://github.com/marella/material-design-icons
 [PayPal Donate Button]: https://github.com/stefan-niedermann/paypal-donate-button

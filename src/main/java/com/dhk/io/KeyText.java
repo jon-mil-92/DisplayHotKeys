@@ -45,7 +45,7 @@ public class KeyText {
     public static String getKeyCodeText(int keyCode) {
         String keyCodeText = "";
 
-        // Fix text representation for the following keys due to a mismatch in key codes between System Hook and AWT
+        // Fix text representation for the following keys due to a mismatch in key codes between the input hook and AWT
         switch (keyCode) {
             case 222 :
                 keyCodeText = "Apostrophe";

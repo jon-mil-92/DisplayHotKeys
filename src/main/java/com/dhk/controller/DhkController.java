@@ -31,14 +31,12 @@ import com.dhk.controller.button.ClearHotKeyButtonController;
 import com.dhk.controller.button.ClearSlotButtonController;
 import com.dhk.io.DisplayConfigUpdater;
 import com.dhk.io.DisplayEventNotifier;
+import com.dhk.io.NativeInputHook;
 import com.dhk.io.SettingsManager;
 import com.dhk.io.ShellRestartHandler;
 import com.dhk.model.DhkModel;
 import com.dhk.view.DhkView;
 import com.dhk.view.MinimizeToTray;
-
-import lc.kra.system.keyboard.GlobalKeyboardHook;
-import lc.kra.system.mouse.GlobalMouseHook;
 
 /**
  * The main controller for Display Hot Keys. Creates all of the controllers for the application.
@@ -50,8 +48,8 @@ public class DhkController implements IController {
     private DhkModel model;
     private DhkView view;
     private SettingsManager settingsMgr;
-    private GlobalKeyboardHook keyboardHook;
-    private GlobalMouseHook mouseHook;
+    private NativeInputHook inputHook;
+    private boolean inputHookRecoveryAttempted;
     private HeldKeyTracker heldKeyTracker;
     private HotKeysController hotKeysController;
     private List<IController> controllers;
@@ -73,7 +71,7 @@ public class DhkController implements IController {
      * @param hookInstaller
      *            - The installer whose background global hook install began at launch
      */
-    public DhkController(DhkModel model, DhkView view, SettingsManager settingsMgr, GlobalHookInstaller hookInstaller) {
+    public DhkController(DhkModel model, DhkView view, SettingsManager settingsMgr, NativeHookInstaller hookInstaller) {
         this.model = model;
         this.view = view;
         this.settingsMgr = settingsMgr;
@@ -90,9 +88,8 @@ public class DhkController implements IController {
         // Adopt the JVM-lifetime hooks and permanent held-key tracker, waiting out any install time still remaining
         hookInstaller.awaitInstall();
 
-        keyboardHook = hookInstaller.getKeyboardHook();
+        inputHook = hookInstaller.getInputHook();
         heldKeyTracker = hookInstaller.getHeldKeyTracker();
-        mouseHook = hookInstaller.getMouseHook();
 
         // Create the minimize-to-tray object once so app refreshes reuse the live tray instead of rebuilding it
         minimizeToTray = new MinimizeToTray(model, view, "/tray_icon.svg");
@@ -102,9 +99,17 @@ public class DhkController implements IController {
     public void initController() {
         controllers = new ArrayList<IController>();
 
-        // Recreate the mouse hook only if it never existed; normally it stays alive across re-inits
-        if (mouseHook == null) {
-            mouseHook = GlobalHookInstaller.createMouseHook();
+        /*
+         * Recover the hook only once, since it normally stays alive across re-inits with the tracker attached. Retrying
+         * on every refresh would reinstall a system-wide hook on every display change for as long as it kept failing
+         */
+        if (inputHook == null && !inputHookRecoveryAttempted) {
+            inputHookRecoveryAttempted = true;
+            inputHook = NativeHookInstaller.createInputHook();
+
+            if (inputHook != null) {
+                inputHook.addKeyListener(heldKeyTracker);
+            }
         }
 
         // Create the hot keys controller early so other controllers can notify it
@@ -117,7 +122,7 @@ public class DhkController implements IController {
         controllers.add(new ClearSlotButtonController(model, view, this, settingsMgr));
         controllers.add(new DisplayModeController(model, view, settingsMgr));
         controllers.add(new DpiScaleController(model, view, settingsMgr));
-        controllers.add(new FrameDragController(view, mouseHook));
+        controllers.add(new FrameDragController(view, inputHook));
         controllers.add(new MenuController(model, view, settingsMgr));
         controllers.add(new NumberOfSlotsController(model, view, settingsMgr));
         controllers.add(new OrientationController(model, view, this, settingsMgr));
@@ -138,14 +143,10 @@ public class DhkController implements IController {
         displayNotifications.registerShellRestartListener(shellRestartHandler);
         displayNotifications.start();
 
-        // Recreate the hook only if it never existed; normally it stays alive across re-inits with the tracker attached
-        if (keyboardHook == null) {
-            keyboardHook = new GlobalKeyboardHook(true);
-            keyboardHook.addKeyListener(heldKeyTracker);
-        }
-
         // Attach the new dispatch listener; the persistent held-key tracker remains attached across re-inits
-        keyboardHook.addKeyListener(hotKeysController);
+        if (inputHook != null) {
+            inputHook.addKeyListener(hotKeysController);
+        }
 
         // A frame held back for the tray is handed off by the window controller, so leave its state alone
         if (!view.isStartMinimizedToTray()) {
@@ -167,9 +168,9 @@ public class DhkController implements IController {
          * and its held-key tracker stay alive so keys held across app refreshes are never missed, and the process exit
          * reclaims the native hook
          */
-        if (keyboardHook != null) {
+        if (inputHook != null) {
             try {
-                keyboardHook.removeKeyListener(hotKeysController);
+                inputHook.removeKeyListener(hotKeysController);
             } catch (Exception e) {
                 e.printStackTrace();
             }

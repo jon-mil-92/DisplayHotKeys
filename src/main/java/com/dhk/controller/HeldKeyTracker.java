@@ -23,17 +23,17 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import lc.kra.system.keyboard.event.GlobalKeyEvent;
-import lc.kra.system.keyboard.event.GlobalKeyListener;
+import com.dhk.io.NativeKeyEvent;
+import com.dhk.io.NativeKeyListener;
 
 /**
- * Tracks which virtual key codes are currently held down on the global keyboard hook. This listener stays attached
+ * Tracks which keys are currently held down, recording the side a modifier was pressed on. This listener stays attached
  * across app refreshes and holds no model, view, or controller references, so held keys survive an app refresh that
  * follows applying a hot key and it can never leak the old object graph.
  *
  * @author Jonathan R. Miller
  */
-public class HeldKeyTracker implements GlobalKeyListener {
+public class HeldKeyTracker implements NativeKeyListener {
 
     private final Set<Integer> heldKeyCodes;
 
@@ -41,19 +41,19 @@ public class HeldKeyTracker implements GlobalKeyListener {
      * Default constructor for the {@link HeldKeyTracker} class.
      */
     public HeldKeyTracker() {
-        // Synchronized because the hook delivers events on its native thread while seeding reads on the EDT
+        // Synchronized because events are delivered on the native reporting thread while seeding reads on the EDT
         heldKeyCodes = Collections.synchronizedSet(new HashSet<Integer>());
     }
 
     @Override
-    public void keyPressed(GlobalKeyEvent keyEvent) {
+    public void keyPressed(NativeKeyEvent keyEvent) {
         if (keyEvent != null) {
             heldKeyCodes.add(keyEvent.getVirtualKeyCode());
         }
     }
 
     @Override
-    public void keyReleased(GlobalKeyEvent keyEvent) {
+    public void keyReleased(NativeKeyEvent keyEvent) {
         if (keyEvent != null) {
             heldKeyCodes.remove(keyEvent.getVirtualKeyCode());
         }

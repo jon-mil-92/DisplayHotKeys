@@ -35,12 +35,14 @@ clean:
 	rm -f jni/com_dhk_io_SetDisplay.h
 	rm -f jni/com_dhk_io_DisplayEventNotifier.h
 	rm -f jni/com_dhk_io_SystemTrayIcon.h
+	rm -f jni/com_dhk_io_NativeInputHook.h
 	rm -f *.res.o
 	rm -f *.dll
 	rm -f distribution/GetDisplay.dll
 	rm -f distribution/SetDisplay.dll
 	rm -f distribution/DisplayEventNotifier.dll
 	rm -f distribution/SystemTrayIcon.dll
+	rm -f distribution/NativeInputHook.dll
 	rm -f distribution/DisplayHotKeysLauncher.exe
 
 # Generate the JNI headers. javac -h runs with no classpath, so each library's types compile together standalone,
@@ -65,6 +67,13 @@ header:
 	rm -f $(IO_DIR)/TrayIconRenderer.class
 	rm -f $(IO_DIR)/SystemTrayIcon.class
 
+	$(JAVAC) -h jni $(IO_DIR)/NativeKeyEvent.java $(IO_DIR)/NativeKeyListener.java \
+		$(IO_DIR)/NativeMouseListener.java $(IO_DIR)/NativeInputHook.java
+	rm -f $(IO_DIR)/NativeKeyEvent.class
+	rm -f $(IO_DIR)/NativeKeyListener.class
+	rm -f $(IO_DIR)/NativeMouseListener.class
+	rm -f $(IO_DIR)/NativeInputHook.class
+
 # Build the JNI libraries. Each version-info resource is compiled first so its DLL carries the Details-tab metadata
 dll:
 	$(WINDRES) $(RCFLAGS) jni/GetDisplay.rc GetDisplay.res.o
@@ -83,11 +92,15 @@ dll:
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) jni/com_dhk_io_SystemTrayIcon.cpp SystemTrayIcon.res.o \
 		-lshell32 -lgdi32 -lshcore -o SystemTrayIcon.dll
 
+	$(WINDRES) $(RCFLAGS) jni/NativeInputHook.rc NativeInputHook.res.o
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) jni/com_dhk_io_NativeInputHook.cpp NativeInputHook.res.o \
+		-luser32 -o NativeInputHook.dll
+
 	# The resources are linked in by now, so drop the intermediates instead of leaving them in the project root
-	rm -f GetDisplay.res.o SetDisplay.res.o DisplayEventNotifier.res.o SystemTrayIcon.res.o
+	rm -f GetDisplay.res.o SetDisplay.res.o DisplayEventNotifier.res.o SystemTrayIcon.res.o NativeInputHook.res.o
 
 	mkdir -p distribution
-	cp -f GetDisplay.dll SetDisplay.dll DisplayEventNotifier.dll SystemTrayIcon.dll distribution/
+	cp -f GetDisplay.dll SetDisplay.dll DisplayEventNotifier.dll SystemTrayIcon.dll NativeInputHook.dll distribution/
 
 # Build the unelevated launcher that starts the elevated app through its scheduled task. The resource script embeds
 # the asInvoker manifest, so the launcher itself never triggers elevation

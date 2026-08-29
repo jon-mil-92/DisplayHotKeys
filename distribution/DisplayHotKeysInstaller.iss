@@ -71,6 +71,7 @@ Type: filesandordirs; Name: {app}\SetDisplay.dll;
 Type: filesandordirs; Name: {app}\GetDisplay.dll;
 Type: filesandordirs; Name: {app}\DisplayEventNotifier.dll;
 Type: filesandordirs; Name: {app}\SystemTrayIcon.dll;
+Type: filesandordirs; Name: {app}\NativeInputHook.dll;
 
 [Code]
 const
