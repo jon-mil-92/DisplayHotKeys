@@ -208,23 +208,13 @@ public class SystemTrayIcon {
      *            - The x coordinate to anchor the menu to, in physical screen pixels
      * @param anchorY
      *            - The y coordinate to anchor the menu to, in physical screen pixels
-     * @param iconLeft
-     *            - The left edge of the icon, in physical screen pixels
-     * @param iconTop
-     *            - The top edge of the icon, in physical screen pixels
-     * @param iconRight
-     *            - The right edge of the icon, in physical screen pixels
-     * @param iconBottom
-     *            - The bottom edge of the icon, in physical screen pixels
      */
-    private void onMenuRequested(int anchorX, int anchorY, int iconLeft, int iconTop, int iconRight, int iconBottom) {
+    private void onMenuRequested(int anchorX, int anchorY) {
         final TrayIconListener listener = this.trayIconListener;
 
         if (listener != null) {
-            Rectangle iconBounds = new Rectangle(iconLeft, iconTop, iconRight - iconLeft, iconBottom - iconTop);
-
             // Forward to the EDT so the menu is only ever shown from the EDT
-            SwingUtilities.invokeLater(() -> listener.menuRequested(anchorX, anchorY, iconBounds));
+            SwingUtilities.invokeLater(() -> listener.menuRequested(anchorX, anchorY));
         }
     }
 

@@ -89,8 +89,7 @@ public class MinimizeToTray {
         trayMenu = new TrayMenu(this::restoreAction, this::aboutAction, this::exitAction);
         systemTrayIcon = new SystemTrayIcon();
 
-        systemTrayIcon.registerTrayIconListener(
-                (anchorX, anchorY, iconBounds) -> trayMenu.show(anchorX, anchorY, iconBounds));
+        systemTrayIcon.registerTrayIconListener((anchorX, anchorY) -> trayMenu.show(anchorX, anchorY));
 
         systemTrayIcon.start(TRAY_NAME, this::renderTrayIconPixels);
     }

@@ -41,9 +41,9 @@ LRESULT CALLBACK handleTrayEvents(HWND windowHandle, UINT message, WPARAM eventT
 static void addTrayIcon();
 static void removeTrayIcon();
 static void applyPendingIcon();
-static void reportMenuRequested();
+static void reportMenuRequested(WPARAM anchorPosition);
 static HICON createIconFromPixels(const vector<jint> &pixels, int width, int height);
-static void invokeMenuRequestedCallback(int anchorX, int anchorY, const RECT &iconBounds);
+static void invokeMenuRequestedCallback(int anchorX, int anchorY);
 
 /**
  * Global JavaVM pointer used to attach native threads when invoking callbacks.
@@ -56,7 +56,7 @@ static JavaVM *jvm = nullptr;
 static jobject systemTrayIconGlobalRef = nullptr;
 
 /**
- * Cached method ID for the onMenuRequested(int, int, int, int, int, int) callback.
+ * Cached method ID for the onMenuRequested(int, int) callback.
  */
 static jmethodID onMenuRequestedMethodId = nullptr;
 
@@ -227,7 +227,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStart
         return JNI_FALSE;
     }
 
-    jmethodID menuRequestedMethodId = env->GetMethodID(trayIconClass, "onMenuRequested", "(IIIIII)V");
+    jmethodID menuRequestedMethodId = env->GetMethodID(trayIconClass, "onMenuRequested", "(II)V");
 
     if (!menuRequestedMethodId) {
         env->ExceptionClear();
@@ -640,7 +640,7 @@ LRESULT CALLBACK handleTrayEvents(HWND windowHandle, UINT message, WPARAM eventT
 
         // Either button opens the menu, so restoring always goes through the menu's own item
         if (iconEvent == WM_LBUTTONUP || iconEvent == WM_CONTEXTMENU) {
-            reportMenuRequested();
+            reportMenuRequested(eventType);
         }
 
         return 0;
@@ -762,40 +762,22 @@ static void applyPendingIcon() {
 }
 
 /**
- * Reports a menu request with the cursor position and the icon's bounds, so the caller can anchor to the icon itself
- * rather than to the cursor, which can sit away from the icon when it is in the overflow area.
+ * Reports a menu request anchored at the position the shell delivered with the event. Nothing here waits on the
+ * shell, so the request reaches the caller as promptly as a native menu would open.
+ *
+ * @param anchorPosition
+ *            - The WPARAM of the event, packing the anchor's x and y in physical screen pixels
  */
-static void reportMenuRequested() {
-    POINT cursorPosition = {};
-
-    if (!GetCursorPos(&cursorPosition)) {
-        cursorPosition.x = 0;
-        cursorPosition.y = 0;
-    }
-
-    NOTIFYICONIDENTIFIER iconIdentifier = {};
-    iconIdentifier.cbSize = sizeof(iconIdentifier);
-    iconIdentifier.hWnd = messageWindow.load();
-    iconIdentifier.uID = TRAY_ICON_ID;
-
-    RECT iconBounds = {};
-
-    // Fall back to the cursor position so the caller still has a usable anchor when the bounds are unavailable
-    if (Shell_NotifyIconGetRect(&iconIdentifier, &iconBounds) != S_OK) {
-        iconBounds.left = cursorPosition.x;
-        iconBounds.top = cursorPosition.y;
-        iconBounds.right = cursorPosition.x;
-        iconBounds.bottom = cursorPosition.y;
-    }
-
+static void reportMenuRequested(WPARAM anchorPosition) {
     /*
-     * Claim the foreground while the click still grants the right to take it. A menu shown by a process that does not
-     * own the foreground never receives the click that should dismiss it, so it would linger until one of its items is
-     * chosen
+     * Claim the foreground before anything else, while the click's grant of the right to take it is fresh. A menu shown
+     * by a process that does not own the foreground never receives the click that should dismiss it, so it would
+     * linger until one of its items is chosen
      */
     SetForegroundWindow(messageWindow.load());
 
-    invokeMenuRequestedCallback(cursorPosition.x, cursorPosition.y, iconBounds);
+    // The modern callback packs the click position, or the icon's corner for the keyboard menu key, into the WPARAM
+    invokeMenuRequestedCallback(GET_X_LPARAM(anchorPosition), GET_Y_LPARAM(anchorPosition));
 }
 
 /**
@@ -880,10 +862,8 @@ static HICON createIconFromPixels(const vector<jint> &pixels, int width, int hei
  *            - The x coordinate to anchor the menu to, in physical screen pixels
  * @param anchorY
  *            - The y coordinate to anchor the menu to, in physical screen pixels
- * @param iconBounds
- *            - The bounds of the icon, in physical screen pixels
  */
-static void invokeMenuRequestedCallback(int anchorX, int anchorY, const RECT &iconBounds) {
+static void invokeMenuRequestedCallback(int anchorX, int anchorY) {
     if (!jvm || !systemTrayIconGlobalRef || !onMenuRequestedMethodId) {
         return;
     }
@@ -911,9 +891,7 @@ static void invokeMenuRequestedCallback(int anchorX, int anchorY, const RECT &ic
         return;
     }
 
-    env->CallVoidMethod(systemTrayIconGlobalRef, onMenuRequestedMethodId, (jint) anchorX, (jint) anchorY,
-                        (jint) iconBounds.left, (jint) iconBounds.top, (jint) iconBounds.right,
-                        (jint) iconBounds.bottom);
+    env->CallVoidMethod(systemTrayIconGlobalRef, onMenuRequestedMethodId, (jint) anchorX, (jint) anchorY);
 
     if (env->ExceptionCheck()) {
         env->ExceptionDescribe();
