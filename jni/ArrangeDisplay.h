@@ -23,8 +23,6 @@
 #include <string>
 #include <windows.h>
 
-using namespace std;
-
 /**
  * A display's stable ID paired with its captured desktop rectangle (source-mode position and size), used to preserve
  * the multi-display arrangement across a resolution or orientation change that resizes one display.
@@ -33,7 +31,7 @@ struct DisplayRect {
     /**
      * The stable display ID the rectangle belongs to.
      */
-    string stableId;
+    std::string stableId;
 
     /**
      * The desktop position (top-left virtual-desktop coordinate) of the display's source mode.
@@ -59,7 +57,7 @@ struct ReflowRect {
     /**
      * The stable display ID this geometry belongs to.
      */
-    string stableId;
+    std::string stableId;
 
     /**
      * The captured left (x) position before the change.

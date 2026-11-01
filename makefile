@@ -90,7 +90,7 @@ dll:
 
 	$(WINDRES) $(RCFLAGS) jni/SystemTrayIcon.rc SystemTrayIcon.res.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) jni/com_dhk_io_SystemTrayIcon.cpp SystemTrayIcon.res.o \
-		-lshell32 -lgdi32 -lshcore -o SystemTrayIcon.dll
+		-lshell32 -lgdi32 -lshcore -ldwmapi -o SystemTrayIcon.dll
 
 	$(WINDRES) $(RCFLAGS) jni/NativeInputHook.rc NativeInputHook.res.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) jni/com_dhk_io_NativeInputHook.cpp NativeInputHook.res.o \

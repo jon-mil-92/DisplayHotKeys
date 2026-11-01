@@ -18,32 +18,58 @@
  * IN THE SOFTWARE.
  */
 #include "com_dhk_io_SystemTrayIcon.h"
-
-// Windows must be included before the shell and control headers, which depend on its types and macros
-#include <windows.h>
+#include "DisplayConfig.h"
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
+#include <dwmapi.h>
 #include <jni.h>
+#include <memory>
 #include <mutex>
 #include <shellapi.h>
 #include <shellscalingapi.h>
 #include <string>
 #include <thread>
 #include <vector>
+#include <windows.h>
 #include <windowsx.h>
 
 using namespace std;
 
+static wstring readWideString(JNIEnv *env, jstring javaString);
+static bool stageIconPixels(JNIEnv *env, jintArray iconPixels, jint iconWidth, jint iconHeight);
+static void releaseCallbackTarget(JNIEnv *env);
+static void stopMessageLoopThread();
+static void dismissTrayMenu();
 static UINT getNotificationAreaDpi();
-static void runMessageLoopThread();
+static COLORREF colorFromArgb(jint argb);
+static void runMessageLoopThread(unsigned long long session);
+static void finishMessageLoopThread(unsigned long long session);
 LRESULT CALLBACK handleTrayEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData);
 static void addTrayIcon();
-static void removeTrayIcon();
+static void notifyShell(DWORD command, UINT flags);
 static void applyPendingIcon();
-static void reportMenuRequested(WPARAM anchorPosition);
 static HICON createIconFromPixels(const vector<jint> &pixels, int width, int height);
-static void invokeMenuRequestedCallback(int anchorX, int anchorY);
+static void openTrayMenu(WPARAM anchorPosition);
+static void showTrayMenu(int anchorX, int anchorY);
+static int trackTrayMenu(const TrayMenuDefinition &definition, int anchorX, int anchorY);
+static void applyMenuAppMode(COLORREF backgroundColor);
+static LRESULT CALLBACK styleMenuWindow(int hookCode, WPARAM messageSource, LPARAM messageData);
+static UINT trayMenuAlignment(HMONITOR anchorMonitor);
+LRESULT CALLBACK handleMenuEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData);
+static void drawMenuItem(const DRAWITEMSTRUCT &drawItem);
+static void invokeMenuItemSelectedCallback(int itemIndex);
+
+/**
+ * Signature of the undocumented uxtheme export that sets whether the process draws its menus dark.
+ */
+typedef int(WINAPI *SetPreferredAppModeFunction)(int appMode);
+
+/**
+ * Signature of the undocumented uxtheme export that makes menus pick up a changed app mode.
+ */
+typedef void(WINAPI *FlushMenuThemesFunction)();
 
 /**
  * Global JavaVM pointer used to attach native threads when invoking callbacks.
@@ -56,9 +82,15 @@ static JavaVM *jvm = nullptr;
 static jobject systemTrayIconGlobalRef = nullptr;
 
 /**
- * Cached method ID for the onMenuRequested(int, int) callback.
+ * Cached method ID for the onMenuItemSelected(int) callback.
  */
-static jmethodID onMenuRequestedMethodId = nullptr;
+static jmethodID onMenuItemSelectedMethodId = nullptr;
+
+/**
+ * Guards the callback reference and method ID, since a chosen item is reported from a detached thread that a stop
+ * neither waits for nor joins, so the reference must never be deleted while that thread is calling through it.
+ */
+static mutex callbackMutex;
 
 /**
  * Thread that runs the Windows message loop owning the icon.
@@ -66,7 +98,8 @@ static jmethodID onMenuRequestedMethodId = nullptr;
 static thread messageLoopThread;
 
 /**
- * Atomic flag indicating whether the message loop thread is running.
+ * Whether the icon is started. A starting thread checks it before publishing its window, so a thread that a stop
+ * already gave up on ends at once instead of running with nothing left to stop it.
  */
 static atomic_bool isRunning(false);
 
@@ -82,14 +115,14 @@ static atomic<HWND> messageWindow{NULL};
 static const wchar_t CLASS_NAME[] = L"DHK_SystemTrayIcon_MessageWindow";
 
 /**
+ * Registered window class name for the hidden window that owns an open menu.
+ */
+static const wchar_t MENU_CLASS_NAME[] = L"DHK_SystemTrayIcon_MenuWindow";
+
+/**
  * Window class name of the task bar, used to read its position without waiting on the shell to answer for it.
  */
 static const wchar_t TASKBAR_CLASS_NAME[] = L"Shell_TrayWnd";
-
-/**
- * Whether the window class was registered, so it can be unregistered at shutdown.
- */
-static atomic_bool classRegistered(false);
 
 /**
  * Registered id of the "TaskbarCreated" broadcast the shell sends.
@@ -97,14 +130,28 @@ static atomic_bool classRegistered(false);
 static UINT taskbarCreatedMessage = 0;
 
 /**
- * Icon currently shown in the notification area, owned by the message loop thread.
+ * Icon the current message loop thread shows. Each thread owns its own, so a thread that a stop gave up on can never
+ * destroy the icon of the start that replaced it.
  */
-static HICON trayIcon = NULL;
+static thread_local HICON trayIcon = NULL;
 
 /**
- * Whether the icon should currently be registered with the shell, so a shell restart only re-adds a shown icon.
+ * Whether the current message loop thread's icon should be registered with the shell, so a shell restart only re-adds
+ * a shown icon.
  */
-static atomic_bool iconVisible(false);
+static thread_local bool iconVisible = false;
+
+/**
+ * Hidden message window the current message loop thread created, which identifies its icon to the shell, so a thread
+ * that a stop gave up on only ever removes its own icon.
+ */
+static thread_local HWND iconOwnerWindow = NULL;
+
+/**
+ * Number of the latest start, guarded by the startup lock, so a message loop thread that a stop gave up on can tell a
+ * newer start has replaced it and leave the shared state to that start.
+ */
+static unsigned long long currentSession = 0;
 
 /**
  * Guards the staged tooltip and icon payloads handed over from the calling thread.
@@ -112,24 +159,25 @@ static atomic_bool iconVisible(false);
 static mutex pendingPayloadMutex;
 
 /**
- * Signals the calling thread that the message loop thread finished its startup attempt.
+ * Signals a waiting start or stop that the message loop thread started or finished.
  */
 static condition_variable startupSignal;
 
 /**
- * Guards the startup completion state.
+ * Guards the session number, the running flag, the published window, and the startup and finish states.
  */
 static mutex startupMutex;
-
-/**
- * Whether the message loop thread finished its startup attempt, whether or not it succeeded.
- */
-static bool startupComplete = false;
 
 /**
  * Whether the icon was registered with the shell during startup.
  */
 static bool startupSucceeded = false;
+
+/**
+ * Whether the thread owning the icon has finished, so a stop can tell a thread that returned from one still parked in
+ * a call that synchronizes with an unresponsive process.
+ */
+static bool messageLoopFinished = false;
 
 /**
  * Tooltip text staged for the message loop thread to apply.
@@ -152,9 +200,65 @@ static int pendingIconWidth = 0;
 static int pendingIconHeight = 0;
 
 /**
+ * Menu shown for the icon. Each menu thread takes its own reference, so replacing it never frees one still showing.
+ */
+static shared_ptr<const TrayMenuDefinition> menuDefinition;
+
+/**
+ * Guards the menu definition and the private font backing it.
+ */
+static mutex menuDefinitionMutex;
+
+/**
+ * Font file registered privately for this process so the menu can draw in a family that is not installed.
+ */
+static HANDLE privateFontResource = NULL;
+
+/**
+ * Whether a menu is open or opening, so a click arriving meanwhile never opens a second one.
+ */
+static atomic_bool menuShowing(false);
+
+/**
+ * Hidden window owning the open menu, published so a dismissal from another thread can reach it.
+ */
+static atomic<HWND> menuWindow{NULL};
+
+/**
+ * App mode last applied to the process's menus, or -1 before any, so the theme is only flushed when it changes.
+ */
+static atomic_int appliedAppMode(-1);
+
+/**
+ * Definition of the menu the current thread is showing, read by the window procedure while the menu is open.
+ */
+static thread_local const TrayMenuDefinition *activeMenuDefinition = nullptr;
+
+/**
+ * Font the current thread draws its open menu's items in.
+ */
+static thread_local HFONT activeMenuFont = NULL;
+
+/**
+ * DPI of the display the current thread's open menu is shown on.
+ */
+static thread_local UINT activeMenuDpi = USER_DEFAULT_SCREEN_DPI;
+
+/**
  * Identifier distinguishing the icon within the owning window.
  */
 static constexpr UINT TRAY_ICON_ID = 1;
+
+/**
+ * How long (ms) a start or stop waits on the thread owning the icon before answering without it, bounding the caller's
+ * wait on a thread parked in a call to a busy or unresponsive process.
+ */
+static constexpr int THREAD_TIMEOUT_MS = 2000;
+
+/**
+ * Atom of the window class the system draws menus in, known by the class name "#32768".
+ */
+static constexpr WORD MENU_WINDOW_CLASS_ATOM = 0x8000;
 
 /**
  * Private message the shell posts to the owning window for icon events.
@@ -170,6 +274,92 @@ static constexpr UINT WM_TRAY_APPLY_ICON = WM_APP + 2;
  * Private message asking the message loop thread to show or hide the icon.
  */
 static constexpr UINT WM_TRAY_SET_VISIBLE = WM_APP + 3;
+
+/**
+ * Private message asking the thread showing the menu to close it.
+ */
+static constexpr UINT WM_TRAY_CLOSE_MENU = WM_APP + 4;
+
+/**
+ * Index of the menu background color in the colors the caller supplies, taken from the generated header so the two
+ * sides of the boundary can never disagree.
+ */
+static constexpr int MENU_COLOR_BACKGROUND = com_dhk_io_SystemTrayIcon_MENU_COLOR_BACKGROUND;
+
+/**
+ * Index of the item text color in the colors the caller supplies.
+ */
+static constexpr int MENU_COLOR_FOREGROUND = com_dhk_io_SystemTrayIcon_MENU_COLOR_FOREGROUND;
+
+/**
+ * Index of the highlighted item's fill color in the colors the caller supplies.
+ */
+static constexpr int MENU_COLOR_SELECTION_BACKGROUND = com_dhk_io_SystemTrayIcon_MENU_COLOR_SELECTION_BACKGROUND;
+
+/**
+ * Index of the highlighted item's text color in the colors the caller supplies.
+ */
+static constexpr int MENU_COLOR_SELECTION_FOREGROUND = com_dhk_io_SystemTrayIcon_MENU_COLOR_SELECTION_FOREGROUND;
+
+/**
+ * Index of the menu border color in the colors the caller supplies.
+ */
+static constexpr int MENU_COLOR_BORDER = com_dhk_io_SystemTrayIcon_MENU_COLOR_BORDER;
+
+/**
+ * Number of colors the caller supplies.
+ */
+static constexpr int MENU_COLOR_COUNT = com_dhk_io_SystemTrayIcon_MENU_COLOR_COUNT;
+
+/**
+ * Index of the item width in the metrics the caller supplies.
+ */
+static constexpr int MENU_METRIC_ITEM_WIDTH = com_dhk_io_SystemTrayIcon_MENU_METRIC_ITEM_WIDTH;
+
+/**
+ * Index of the item height in the metrics the caller supplies.
+ */
+static constexpr int MENU_METRIC_ITEM_HEIGHT = com_dhk_io_SystemTrayIcon_MENU_METRIC_ITEM_HEIGHT;
+
+/**
+ * Index of the text inset in the metrics the caller supplies.
+ */
+static constexpr int MENU_METRIC_TEXT_INSET = com_dhk_io_SystemTrayIcon_MENU_METRIC_TEXT_INSET;
+
+/**
+ * Index of the font size in the metrics the caller supplies.
+ */
+static constexpr int MENU_METRIC_FONT_SIZE = com_dhk_io_SystemTrayIcon_MENU_METRIC_FONT_SIZE;
+
+/**
+ * Number of metrics the caller supplies.
+ */
+static constexpr int MENU_METRIC_COUNT = com_dhk_io_SystemTrayIcon_MENU_METRIC_COUNT;
+
+/**
+ * Ordinal of the undocumented uxtheme export that sets the process's preferred app mode.
+ */
+static constexpr WORD SET_PREFERRED_APP_MODE_ORDINAL = 135;
+
+/**
+ * Ordinal of the undocumented uxtheme export that refreshes menus after the app mode changes.
+ */
+static constexpr WORD FLUSH_MENU_THEMES_ORDINAL = 136;
+
+/**
+ * App mode that draws the process's menus dark whatever the system setting.
+ */
+static constexpr int APP_MODE_FORCE_DARK = 2;
+
+/**
+ * App mode that draws the process's menus light whatever the system setting.
+ */
+static constexpr int APP_MODE_FORCE_LIGHT = 3;
+
+/**
+ * Perceived brightness, out of 255, below which a menu background counts as dark.
+ */
+static constexpr int DARK_LUMINANCE_THRESHOLD = 128;
 
 /**
  * Called when the native library is loaded. Caches the JavaVM pointer for attaching native threads to invoke callbacks.
@@ -189,8 +379,8 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 }
 
 /**
- * Starts the notification area icon. Stores a global reference to the registered instance, resolves the callback,
- * stages the initial tooltip and icon, and launches the message loop thread that owns the icon.
+ * Starts the notification area icon on a message loop thread of its own, waiting only a bounded time for the shell to
+ * register it. The calling object instance is kept as the target of the menu's callback until the icon stops.
  *
  * @param env
  *            - The JNI environment pointer
@@ -205,7 +395,7 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
  * @param iconHeight
  *            - The icon height in pixels
  *
- * @return Whether the icon was registered
+ * @return Whether the icon started, which includes a start still waiting on a busy shell
  */
 extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStart(JNIEnv *env, jobject obj,
                                                                                  jstring tooltip, jintArray iconPixels,
@@ -214,90 +404,75 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStart
         return JNI_TRUE;
     }
 
-    jobject globalRef = env->NewGlobalRef(obj);
+    // Join a thread that already ended on its own, since starting a new one over it would end the process
+    if (messageLoopThread.joinable()) {
+        messageLoopThread.join();
+    }
+
+    jmethodID menuItemSelectedMethodId = env->GetMethodID(env->GetObjectClass(obj), "onMenuItemSelected", "(I)V");
+    jobject globalRef = menuItemSelectedMethodId ? env->NewGlobalRef(obj) : nullptr;
 
     if (!globalRef) {
-        return JNI_FALSE;
-    }
-
-    jclass trayIconClass = env->GetObjectClass(obj);
-
-    if (!trayIconClass) {
-        env->DeleteGlobalRef(globalRef);
-        return JNI_FALSE;
-    }
-
-    jmethodID menuRequestedMethodId = env->GetMethodID(trayIconClass, "onMenuRequested", "(II)V");
-
-    if (!menuRequestedMethodId) {
         env->ExceptionClear();
-        env->DeleteGlobalRef(globalRef);
-
         return JNI_FALSE;
     }
 
     {
         lock_guard<mutex> payloadLock(pendingPayloadMutex);
-
-        pendingTooltip.clear();
-
-        if (tooltip) {
-            const jchar *tooltipChars = env->GetStringChars(tooltip, nullptr);
-
-            if (tooltipChars) {
-                pendingTooltip.assign((const wchar_t *) tooltipChars, env->GetStringLength(tooltip));
-                env->ReleaseStringChars(tooltip, tooltipChars);
-            }
-        }
-
-        pendingIconPixels.clear();
-        pendingIconWidth = 0;
-        pendingIconHeight = 0;
-
-        if (iconPixels && iconWidth > 0 && iconHeight > 0) {
-            jsize pixelCount = env->GetArrayLength(iconPixels);
-
-            if (pixelCount >= (jsize) (iconWidth * iconHeight)) {
-                pendingIconPixels.resize(iconWidth * iconHeight);
-                env->GetIntArrayRegion(iconPixels, 0, iconWidth * iconHeight, pendingIconPixels.data());
-                pendingIconWidth = iconWidth;
-                pendingIconHeight = iconHeight;
-            }
-        }
+        pendingTooltip = readWideString(env, tooltip);
     }
 
-    // All JNI setup succeeded; commit to globals and start thread
-    systemTrayIconGlobalRef = globalRef;
-    onMenuRequestedMethodId = menuRequestedMethodId;
+    stageIconPixels(env, iconPixels, iconWidth, iconHeight);
+
+    {
+        lock_guard<mutex> callbackLock(callbackMutex);
+        systemTrayIconGlobalRef = globalRef;
+        onMenuItemSelectedMethodId = menuItemSelectedMethodId;
+    }
+
+    unsigned long long session = 0;
 
     {
         lock_guard<mutex> startupLock(startupMutex);
-        startupComplete = false;
+        session = ++currentSession;
         startupSucceeded = false;
+        messageLoopFinished = false;
+        isRunning.store(true);
     }
 
-    isRunning.store(true);
-    messageLoopThread = thread(runMessageLoopThread);
+    // Creating a thread throws when the system is out of resources, and an exception escaping here ends the process
+    try {
+        messageLoopThread = thread(runMessageLoopThread, session);
+    } catch (const system_error &) {
+        stopMessageLoopThread();
+        releaseCallbackTarget(env);
 
-    // Wait for the icon to be registered so the return value reflects the real outcome
-    bool started = false;
-
-    {
-        unique_lock<mutex> startupLock(startupMutex);
-        startupSignal.wait(startupLock, [] { return startupComplete; });
-        started = startupSucceeded;
+        return JNI_FALSE;
     }
 
-    // Reap a failed start, so a later attempt is not assigning over a joinable thread
-    if (!started && messageLoopThread.joinable()) {
+    // Wait only a bounded time, since registering the icon round-trips to a shell that answers slowly while busy
+    unique_lock<mutex> startupLock(startupMutex);
+
+    startupSignal.wait_for(startupLock, chrono::milliseconds(THREAD_TIMEOUT_MS),
+                           [] { return startupSucceeded || messageLoopFinished; });
+
+    // A start still waiting on a busy shell is not a failure, since its icon appears as soon as the shell answers
+    bool failed = !startupSucceeded && messageLoopFinished;
+
+    startupLock.unlock();
+
+    // A failed thread has already finished, so it is joined at once and the reference it would have used is released
+    if (failed) {
         messageLoopThread.join();
+        releaseCallbackTarget(env);
     }
 
-    return started ? JNI_TRUE : JNI_FALSE;
+    return failed ? JNI_FALSE : JNI_TRUE;
 }
 
 /**
- * Stops the notification area icon, shuts down the message loop thread, and releases the global reference.
+ * Stops the notification area icon and closes any open menu, then releases the calling object instance so nothing
+ * native keeps it reachable.
  *
  * @param env
  *            - The JNI environment pointer
@@ -307,34 +482,14 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStart
 extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeStop(JNIEnv *env, jobject obj) {
     (void) obj;
 
-    if (!isRunning.load()) {
-        return;
-    }
-
-    isRunning.store(false);
-
-    HWND targetWindow = messageWindow.load();
-
-    if (targetWindow) {
-        PostMessage(targetWindow, WM_QUIT, 0, 0);
-    }
-
-    if (messageLoopThread.joinable()) {
-        messageLoopThread.join();
-    }
-
-    if (systemTrayIconGlobalRef) {
-        env->DeleteGlobalRef(systemTrayIconGlobalRef);
-        systemTrayIconGlobalRef = NULL;
-    }
-
-    onMenuRequestedMethodId = nullptr;
+    // Runs even when the thread already ended on its own, so the reference is always released
+    stopMessageLoopThread();
+    releaseCallbackTarget(env);
 }
 
 /**
- * Replaces the icon shown in the notification area. The pixels are staged here and applied on the thread that owns the
- * icon, since the shell interface is only safe to call from that thread, so success means the work was handed over
- * rather than finished.
+ * Replaces the icon shown in the notification area. Only the thread that owns the icon may hand it to the shell, so
+ * the replacement is passed to that thread and success means it was handed over rather than finished.
  *
  * @param env
  *            - The JNI environment pointer
@@ -356,23 +511,8 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetIc
 
     HWND targetWindow = messageWindow.load();
 
-    if (!targetWindow || !iconPixels || iconWidth <= 0 || iconHeight <= 0) {
+    if (!targetWindow || !stageIconPixels(env, iconPixels, iconWidth, iconHeight)) {
         return JNI_FALSE;
-    }
-
-    jsize pixelCount = env->GetArrayLength(iconPixels);
-
-    if (pixelCount < (jsize) (iconWidth * iconHeight)) {
-        return JNI_FALSE;
-    }
-
-    {
-        lock_guard<mutex> payloadLock(pendingPayloadMutex);
-
-        pendingIconPixels.resize(iconWidth * iconHeight);
-        env->GetIntArrayRegion(iconPixels, 0, iconWidth * iconHeight, pendingIconPixels.data());
-        pendingIconWidth = iconWidth;
-        pendingIconHeight = iconHeight;
     }
 
     return PostMessage(targetWindow, WM_TRAY_APPLY_ICON, 0, 0) ? JNI_TRUE : JNI_FALSE;
@@ -395,11 +535,9 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetVisibl
 
     HWND targetWindow = messageWindow.load();
 
-    if (!targetWindow) {
-        return;
+    if (targetWindow) {
+        PostMessage(targetWindow, WM_TRAY_SET_VISIBLE, visible == JNI_TRUE ? 1 : 0, 0);
     }
-
-    PostMessage(targetWindow, WM_TRAY_SET_VISIBLE, visible == JNI_TRUE ? 1 : 0, 0);
 }
 
 /**
@@ -415,16 +553,9 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetVisibl
 extern "C" JNIEXPORT jintArray JNICALL Java_com_dhk_io_SystemTrayIcon_nativeGetIconSize(JNIEnv *env, jobject obj) {
     (void) obj;
 
-    int iconSize[2];
     UINT notificationAreaDpi = getNotificationAreaDpi();
-
-    if (notificationAreaDpi != 0) {
-        iconSize[0] = GetSystemMetricsForDpi(SM_CXSMICON, notificationAreaDpi);
-        iconSize[1] = GetSystemMetricsForDpi(SM_CYSMICON, notificationAreaDpi);
-    } else {
-        iconSize[0] = GetSystemMetrics(SM_CXSMICON);
-        iconSize[1] = GetSystemMetrics(SM_CYSMICON);
-    }
+    jint iconSize[2] = {GetSystemMetricsForDpi(SM_CXSMICON, notificationAreaDpi),
+                        GetSystemMetricsForDpi(SM_CYSMICON, notificationAreaDpi)};
 
     if (iconSize[0] <= 0 || iconSize[1] <= 0) {
         return nullptr;
@@ -432,17 +563,113 @@ extern "C" JNIEXPORT jintArray JNICALL Java_com_dhk_io_SystemTrayIcon_nativeGetI
 
     jintArray iconSizeArray = env->NewIntArray(2);
 
-    if (!iconSizeArray) {
-        return nullptr;
+    if (iconSizeArray) {
+        env->SetIntArrayRegion(iconSizeArray, 0, 2, iconSize);
     }
-
-    env->SetIntArrayRegion(iconSizeArray, 0, 2, iconSize);
 
     return iconSizeArray;
 }
 
 /**
- * Called when the native library is unloaded. Releases global references and clears the JVM pointer to avoid leaks.
+ * Sets the items and style of the menu shown for the icon. Everything is copied here, so opening the menu never calls
+ * back for any of it and stays fast however busy the caller is.
+ *
+ * @param env
+ *            - The JNI environment pointer
+ * @param obj
+ *            - The calling object instance
+ * @param itemTexts
+ *            - The text of each item, in the order the items are shown and reported
+ * @param menuColors
+ *            - The menu colors in packed ARGB order, indexed by the MENU_COLOR constants
+ * @param menuMetrics
+ *            - The menu metrics in unscaled pixels, indexed by the MENU_METRIC constants
+ * @param fontFamily
+ *            - The family of the font the items are drawn in
+ * @param fontData
+ *            - The font file to register privately for the family, or null when the family is installed or the font
+ *            was already registered, which lasts for the life of the process
+ *
+ * @return Whether the menu was accepted and any supplied font is registered
+ */
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_dhk_io_SystemTrayIcon_nativeSetMenu(JNIEnv *env, jobject obj, jobjectArray itemTexts, jintArray menuColors,
+                                             jintArray menuMetrics, jstring fontFamily, jbyteArray fontData) {
+    (void) obj;
+
+    if (!itemTexts || !menuColors || !menuMetrics || env->GetArrayLength(menuColors) < MENU_COLOR_COUNT ||
+        env->GetArrayLength(menuMetrics) < MENU_METRIC_COUNT) {
+        return JNI_FALSE;
+    }
+
+    jint colors[MENU_COLOR_COUNT];
+    jint metrics[MENU_METRIC_COUNT];
+
+    env->GetIntArrayRegion(menuColors, 0, MENU_COLOR_COUNT, colors);
+    env->GetIntArrayRegion(menuMetrics, 0, MENU_METRIC_COUNT, metrics);
+
+    shared_ptr<TrayMenuDefinition> definition = make_shared<TrayMenuDefinition>();
+    jsize itemCount = env->GetArrayLength(itemTexts);
+
+    for (jsize itemIndex = 0; itemIndex < itemCount; itemIndex++) {
+        jstring itemText = (jstring) env->GetObjectArrayElement(itemTexts, itemIndex);
+
+        definition->itemTexts.push_back(readWideString(env, itemText));
+
+        if (itemText) {
+            env->DeleteLocalRef(itemText);
+        }
+    }
+
+    definition->backgroundColor = colorFromArgb(colors[MENU_COLOR_BACKGROUND]);
+    definition->foregroundColor = colorFromArgb(colors[MENU_COLOR_FOREGROUND]);
+    definition->selectionBackgroundColor = colorFromArgb(colors[MENU_COLOR_SELECTION_BACKGROUND]);
+    definition->selectionForegroundColor = colorFromArgb(colors[MENU_COLOR_SELECTION_FOREGROUND]);
+    definition->borderColor = colorFromArgb(colors[MENU_COLOR_BORDER]);
+    definition->fontFamily = readWideString(env, fontFamily);
+    definition->fontSize = metrics[MENU_METRIC_FONT_SIZE];
+    definition->itemWidth = metrics[MENU_METRIC_ITEM_WIDTH];
+    definition->itemHeight = metrics[MENU_METRIC_ITEM_HEIGHT];
+    definition->textInset = metrics[MENU_METRIC_TEXT_INSET];
+
+    lock_guard<mutex> definitionLock(menuDefinitionMutex);
+
+    // Registered once and before the definition is published, so no menu is ever drawn before its font exists
+    if (fontData && !privateFontResource) {
+        vector<jbyte> fontBytes(env->GetArrayLength(fontData));
+        DWORD registeredFontCount = 0;
+
+        env->GetByteArrayRegion(fontData, 0, (jsize) fontBytes.size(), fontBytes.data());
+
+        // The system keeps its own copy of the font, so the buffer can go as soon as this returns
+        privateFontResource =
+            AddFontMemResourceEx(fontBytes.data(), (DWORD) fontBytes.size(), nullptr, &registeredFontCount);
+    }
+
+    menuDefinition = definition;
+
+    // A failed registration reports false, so the caller supplies the font again with its next menu
+    return !fontData || privateFontResource ? JNI_TRUE : JNI_FALSE;
+}
+
+/**
+ * Closes the menu when one is open, without waiting for it to finish closing.
+ *
+ * @param env
+ *            - The JNI environment pointer
+ * @param obj
+ *            - The calling object instance
+ */
+extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeDismissMenu(JNIEnv *env, jobject obj) {
+    (void) env;
+    (void) obj;
+
+    dismissTrayMenu();
+}
+
+/**
+ * Called when the native library is unloaded. Stops the icon and releases everything this library still holds, which
+ * is the menu, the private font, and the reference to the registered instance.
  *
  * @param vm
  *            - The JavaVM pointer
@@ -450,131 +677,257 @@ extern "C" JNIEXPORT jintArray JNICALL Java_com_dhk_io_SystemTrayIcon_nativeGetI
  *            - Reserved for future use
  */
 extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
-    (void) vm;
     (void) reserved;
 
-    isRunning.store(false);
+    stopMessageLoopThread();
 
-    HWND unloadWindow = messageWindow.load();
+    {
+        lock_guard<mutex> definitionLock(menuDefinitionMutex);
 
-    if (unloadWindow) {
-        PostMessage(unloadWindow, WM_QUIT, 0, 0);
-    }
+        menuDefinition.reset();
 
-    if (messageLoopThread.joinable()) {
-        messageLoopThread.join();
-    }
-
-    if (systemTrayIconGlobalRef && jvm) {
-        JNIEnv *env = nullptr;
-
-        if (jvm->GetEnv((void **) &env, JNI_VERSION_1_6) == JNI_OK && env) {
-            env->DeleteGlobalRef(systemTrayIconGlobalRef);
+        if (privateFontResource) {
+            RemoveFontMemResourceEx(privateFontResource);
+            privateFontResource = NULL;
         }
-
-        systemTrayIconGlobalRef = NULL;
     }
 
-    onMenuRequestedMethodId = nullptr;
+    JNIEnv *env = nullptr;
+
+    // With no environment the reference is only forgotten, which is safe since the virtual machine is shutting down
+    vm->GetEnv((void **) &env, JNI_VERSION_1_6);
+    releaseCallbackTarget(env);
     jvm = nullptr;
 }
 
 /**
- * Gets the DPI of the display hosting the notification area, which is not necessarily the primary display. Sizing the
- * icon from the system DPI would leave it scaled for the wrong display whenever the taskbar sits on another one.
+ * Copies a string from the virtual machine into a wide string.
  *
- * @return The DPI of the display hosting the notification area, or 0 when it is unavailable
+ * @param env
+ *            - The JNI environment pointer
+ * @param javaString
+ *            - The string to copy, which may be null
+ *
+ * @return The copied string, or an empty string when there is nothing to copy
+ */
+static wstring readWideString(JNIEnv *env, jstring javaString) {
+    const jchar *stringChars = javaString ? env->GetStringChars(javaString, nullptr) : nullptr;
+
+    if (!stringChars) {
+        return wstring();
+    }
+
+    wstring wideString((const wchar_t *) stringChars, env->GetStringLength(javaString));
+
+    env->ReleaseStringChars(javaString, stringChars);
+
+    return wideString;
+}
+
+/**
+ * Stages icon pixels for the message loop thread to apply, rejecting pixels that do not fill the given size.
+ *
+ * @param env
+ *            - The JNI environment pointer
+ * @param iconPixels
+ *            - The icon pixels in packed ARGB order, row by row from the top
+ * @param iconWidth
+ *            - The icon width in pixels
+ * @param iconHeight
+ *            - The icon height in pixels
+ *
+ * @return Whether the pixels were staged
+ */
+static bool stageIconPixels(JNIEnv *env, jintArray iconPixels, jint iconWidth, jint iconHeight) {
+    if (!iconPixels || iconWidth <= 0 || iconHeight <= 0 || env->GetArrayLength(iconPixels) < iconWidth * iconHeight) {
+        return false;
+    }
+
+    lock_guard<mutex> payloadLock(pendingPayloadMutex);
+
+    pendingIconPixels.resize(iconWidth * iconHeight);
+    env->GetIntArrayRegion(iconPixels, 0, iconWidth * iconHeight, pendingIconPixels.data());
+    pendingIconWidth = iconWidth;
+    pendingIconHeight = iconHeight;
+
+    return true;
+}
+
+/**
+ * Deletes the global reference to the registered instance and forgets its callback, so nothing native keeps the
+ * instance reachable once the icon is gone.
+ *
+ * @param env
+ *            - The JNI environment pointer, or null when none is available and the reference can only be forgotten
+ */
+static void releaseCallbackTarget(JNIEnv *env) {
+    // Taken so a menu thread still reporting a choice finishes its call before the reference goes away
+    lock_guard<mutex> callbackLock(callbackMutex);
+
+    if (systemTrayIconGlobalRef && env) {
+        env->DeleteGlobalRef(systemTrayIconGlobalRef);
+    }
+
+    systemTrayIconGlobalRef = nullptr;
+    onMenuItemSelectedMethodId = nullptr;
+}
+
+/**
+ * Stops the thread owning the icon after closing an open menu. A thread that does not stop promptly is abandoned rather
+ * than waited on, since it can be parked in a call that synchronizes with an unresponsive process.
+ */
+static void stopMessageLoopThread() {
+    HWND targetWindow = NULL;
+
+    {
+        /*
+         * Locked against a starting thread publishing its window. Either this stop finds the window and quits it, or
+         * the thread sees the stop and never publishes, so a thread can never be left running unseen
+         */
+        lock_guard<mutex> startupLock(startupMutex);
+
+        isRunning.store(false);
+        targetWindow = messageWindow.load();
+    }
+
+    dismissTrayMenu();
+
+    if (targetWindow) {
+        PostMessage(targetWindow, WM_QUIT, 0, 0);
+    }
+
+    if (!messageLoopThread.joinable()) {
+        return;
+    }
+
+    unique_lock<mutex> startupLock(startupMutex);
+    bool finished = startupSignal.wait_for(startupLock, chrono::milliseconds(THREAD_TIMEOUT_MS),
+                                           [] { return messageLoopFinished; });
+
+    startupLock.unlock();
+
+    if (finished) {
+        messageLoopThread.join();
+    } else {
+        messageLoopThread.detach();
+    }
+}
+
+/**
+ * Asks the thread showing the menu to close it. The request is posted rather than sent, so the caller never waits on
+ * a menu thread that is still claiming the foreground.
+ */
+static void dismissTrayMenu() {
+    HWND openMenuWindow = menuWindow.load();
+
+    if (openMenuWindow) {
+        PostMessage(openMenuWindow, WM_TRAY_CLOSE_MENU, 0, 0);
+    }
+}
+
+/**
+ * Gets the DPI of the display hosting the notification area, which is not necessarily the primary display. Sizing the
+ * icon from the system DPI would leave it scaled for the wrong display whenever the task bar sits on another one.
+ *
+ * @return The DPI of the display hosting the notification area, or the system DPI when it is unavailable
  */
 static UINT getNotificationAreaDpi() {
     HWND taskbarWindow = FindWindowW(TASKBAR_CLASS_NAME, NULL);
-
-    if (!taskbarWindow) {
-        return 0;
-    }
+    RECT taskbarRect = {};
+    UINT dpiX = 0;
+    UINT dpiY = 0;
 
     /*
      * Read the task bar's rectangle from the window itself rather than through the shell's app bar interface. That
      * interface answers on the shell's own thread, which blocks for as long as the shell takes to finish rebuilding
      * the task bar after a display change - exactly when this is asked
      */
-    RECT taskbarRect = {};
-
-    if (!GetWindowRect(taskbarWindow, &taskbarRect)) {
-        return 0;
-    }
-
-    HMONITOR taskbarMonitor = MonitorFromRect(&taskbarRect, MONITOR_DEFAULTTONEAREST);
-
-    if (!taskbarMonitor) {
-        return 0;
-    }
-
-    UINT dpiX = 0;
-    UINT dpiY = 0;
-
-    if (GetDpiForMonitor(taskbarMonitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY) != S_OK) {
-        return 0;
+    if (!taskbarWindow || !GetWindowRect(taskbarWindow, &taskbarRect) ||
+        GetDpiForMonitor(MonitorFromRect(&taskbarRect, MONITOR_DEFAULTTONEAREST), MDT_EFFECTIVE_DPI, &dpiX, &dpiY) !=
+            S_OK) {
+        return GetDpiForSystem();
     }
 
     return dpiX;
 }
 
 /**
- * Message loop runner executed on a dedicated thread. Creates a hidden window that owns the icon, registers the icon
- * with the shell, and pumps messages until asked to stop. This thread exclusively owns the icon and its handle.
+ * Converts a color in packed ARGB order to a GDI color, dropping the alpha that GDI has no use for.
+ *
+ * @param argb
+ *            - The color in packed ARGB order
+ *
+ * @return The GDI color
  */
-static void runMessageLoopThread() {
+static COLORREF colorFromArgb(jint argb) {
+    return RGB((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF);
+}
+
+/**
+ * Runs the icon on a dedicated thread, which owns its hidden window and icon outright and pumps their messages until
+ * it is stopped. A thread that a stop or a newer start already gave up on ends without touching the shared state.
+ *
+ * @param session
+ *            - The number of the start that launched this thread
+ */
+static void runMessageLoopThread(unsigned long long session) {
     WNDCLASSW windowClass = {};
     windowClass.lpfnWndProc = handleTrayEvents;
     windowClass.hInstance = GetModuleHandleW(NULL);
     windowClass.lpszClassName = CLASS_NAME;
 
-    if (RegisterClassW(&windowClass) != 0) {
-        classRegistered.store(true);
-    }
+    // Fails harmlessly when an earlier stop could not unregister the class, since the existing class is identical
+    RegisterClassW(&windowClass);
+
+    // The menu owner's class is registered here rather than per menu, so opening a menu never waits on registering it
+    windowClass.lpfnWndProc = handleMenuEvents;
+    windowClass.lpszClassName = MENU_CLASS_NAME;
+    RegisterClassW(&windowClass);
 
     HWND createdWindow = CreateWindowExW(0, CLASS_NAME, L"", 0, 0, 0, 0, 0, NULL, NULL, GetModuleHandleW(NULL), NULL);
-    messageWindow.store(createdWindow);
+    bool published = false;
 
-    if (!createdWindow) {
-        if (classRegistered.load()) {
-            UnregisterClassW(CLASS_NAME, GetModuleHandleW(NULL));
-            classRegistered.store(false);
+    {
+        lock_guard<mutex> startupLock(startupMutex);
+
+        /*
+         * Publish only while this is still the current, running start. A stop or newer start that has already given
+         * up on this thread will never post it a quit message, so it must end here instead of entering the loop
+         */
+        published = createdWindow && session == currentSession && isRunning.load();
+
+        if (published) {
+            messageWindow.store(createdWindow);
         }
+    }
 
-        isRunning.store(false);
-
-        {
-            lock_guard<mutex> startupLock(startupMutex);
-            startupComplete = true;
-            startupSucceeded = false;
-        }
-
-        startupSignal.notify_all();
+    if (!published) {
+        DestroyWindow(createdWindow);
+        finishMessageLoopThread(session);
 
         return;
     }
 
-    // The shell broadcasts this registered message to top-level windows when it is recreated (explorer.exe restart)
-    taskbarCreatedMessage = RegisterWindowMessageW(L"TaskbarCreated");
+    iconOwnerWindow = createdWindow;
 
     /*
-     * The app runs elevated, so UIPI would drop this broadcast from the lower-integrity shell by default. Allow the
-     * specific message through the per-window filter so the restart is still delivered
+     * The shell broadcasts this registered message to top-level windows when it is recreated (explorer.exe restart).
+     * The app runs elevated, so UIPI would drop it from the lower-integrity shell unless this window lets it through
      */
-    if (taskbarCreatedMessage != 0) {
-        ChangeWindowMessageFilterEx(createdWindow, taskbarCreatedMessage, MSGFLT_ALLOW, NULL);
-    }
+    taskbarCreatedMessage = RegisterWindowMessageW(L"TaskbarCreated");
+    ChangeWindowMessageFilterEx(createdWindow, taskbarCreatedMessage, MSGFLT_ALLOW, NULL);
 
     applyPendingIcon();
-
-    iconVisible.store(true);
+    iconVisible = true;
     addTrayIcon();
 
     {
         lock_guard<mutex> startupLock(startupMutex);
-        startupComplete = true;
-        startupSucceeded = true;
+
+        // A thread a newer start replaced stays silent, so it never reports success on that start's behalf
+        if (session == currentSession) {
+            startupSucceeded = true;
+        }
     }
 
     startupSignal.notify_all();
@@ -582,36 +935,60 @@ static void runMessageLoopThread() {
     MSG message;
 
     // Blocking pump, since every action is message-driven and there is nothing to poll
-    while (GetMessage(&message, NULL, 0, 0) > 0) {
+    while (GetMessageW(&message, NULL, 0, 0) > 0) {
         TranslateMessage(&message);
-        DispatchMessage(&message);
+        DispatchMessageW(&message);
     }
 
-    isRunning.store(false);
-    removeTrayIcon();
-    iconVisible.store(false);
+    notifyShell(NIM_DELETE, 0);
 
     if (trayIcon) {
         DestroyIcon(trayIcon);
-        trayIcon = NULL;
     }
 
-    HWND windowToDestroy = messageWindow.exchange(NULL);
+    HWND publishedWindow = createdWindow;
 
-    // Cleared before the window is destroyed, so a caller can never post to a destroyed or recycled handle
-    if (windowToDestroy) {
-        DestroyWindow(windowToDestroy);
-    }
+    /*
+     * Unpublished before the window is destroyed, so no caller posts to a dead handle, and only while it is still this
+     * thread's window, so the window of a newer start is never cleared
+     */
+    messageWindow.compare_exchange_strong(publishedWindow, NULL);
+    DestroyWindow(createdWindow);
 
-    if (classRegistered.load()) {
-        UnregisterClassW(CLASS_NAME, GetModuleHandleW(NULL));
-        classRegistered.store(false);
-    }
+    finishMessageLoopThread(session);
 }
 
 /**
- * Window procedure for the hidden message window. Handles the icon's callback message, the private messages that hand
- * work over from the calling thread, and re-adds the icon when the shell is recreated.
+ * Reports the message loop thread as finished and unregisters its window classes, unless a newer start has replaced
+ * it, in which case the shared state and the classes belong to that start and are left alone.
+ *
+ * @param session
+ *            - The number of the start that launched the finishing thread
+ */
+static void finishMessageLoopThread(unsigned long long session) {
+    {
+        lock_guard<mutex> startupLock(startupMutex);
+
+        if (session != currentSession) {
+            return;
+        }
+
+        isRunning.store(false);
+
+        // A class whose window a closing menu still holds cannot be unregistered yet, so the next stop retries it
+        UnregisterClassW(CLASS_NAME, GetModuleHandleW(NULL));
+        UnregisterClassW(MENU_CLASS_NAME, GetModuleHandleW(NULL));
+
+        // Announced last, so a waiting start or stop only joins this thread once there is nothing left for it to run
+        messageLoopFinished = true;
+    }
+
+    startupSignal.notify_all();
+}
+
+/**
+ * Handles the messages of the hidden window that owns the icon. These are the icon's own events, the work the calling
+ * thread hands over, and the broadcast that re-adds the icon after the shell restarts.
  *
  * @param windowHandle
  *            - The handle to the hidden message window
@@ -626,8 +1003,8 @@ static void runMessageLoopThread() {
  */
 LRESULT CALLBACK handleTrayEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData) {
     // The registered TaskbarCreated id is resolved at runtime, so it cannot be a switch case
-    if (taskbarCreatedMessage != 0 && message == taskbarCreatedMessage) {
-        if (iconVisible.load()) {
+    if (message == taskbarCreatedMessage && taskbarCreatedMessage != 0) {
+        if (iconVisible) {
             addTrayIcon();
         }
 
@@ -635,39 +1012,30 @@ LRESULT CALLBACK handleTrayEvents(HWND windowHandle, UINT message, WPARAM eventT
     }
 
     switch (message) {
-    case WM_TRAY_ICON_NOTIFY: {
-        UINT iconEvent = LOWORD(eventData);
+    case WM_TRAY_SET_VISIBLE:
+        // Only a change reaches the shell, so a repeated request never adds the icon twice
+        if ((eventType != 0) != iconVisible) {
+            iconVisible = eventType != 0;
 
-        // Either button opens the menu, so restoring always goes through the menu's own item
-        if (iconEvent == WM_LBUTTONUP || iconEvent == WM_CONTEXTMENU) {
-            reportMenuRequested(eventType);
+            if (iconVisible) {
+                addTrayIcon();
+            } else {
+                notifyShell(NIM_DELETE, 0);
+            }
         }
 
         return 0;
-    }
 
     case WM_TRAY_APPLY_ICON:
         applyPendingIcon();
         return 0;
 
-    case WM_TRAY_SET_VISIBLE: {
-        bool shouldShow = eventType != 0;
-
-        if (shouldShow != iconVisible.load()) {
-            iconVisible.store(shouldShow);
-
-            if (shouldShow) {
-                addTrayIcon();
-            } else {
-                removeTrayIcon();
-            }
+    case WM_TRAY_ICON_NOTIFY:
+        // Either button opens the menu, so restoring always goes through the menu's own item
+        if (LOWORD(eventData) == WM_LBUTTONUP || LOWORD(eventData) == WM_CONTEXTMENU) {
+            openTrayMenu(eventType);
         }
 
-        return 0;
-    }
-
-    case WM_DESTROY:
-        PostQuitMessage(0);
         return 0;
 
     default:
@@ -680,62 +1048,51 @@ LRESULT CALLBACK handleTrayEvents(HWND windowHandle, UINT message, WPARAM eventT
  * delivers a context menu request for both right clicks and the keyboard menu key.
  */
 static void addTrayIcon() {
+    notifyShell(NIM_ADD, NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_SHOWTIP);
+    notifyShell(NIM_SETVERSION, 0);
+}
+
+/**
+ * Sends the shell a command about the current thread's icon. Every field the commands use is filled in, so each
+ * command simply takes the ones its flags name.
+ *
+ * @param command
+ *            - The NIM command to send
+ * @param flags
+ *            - The NIF flags naming the fields the command carries
+ */
+static void notifyShell(DWORD command, UINT flags) {
     NOTIFYICONDATAW iconData = {};
     iconData.cbSize = sizeof(iconData);
-    iconData.hWnd = messageWindow.load();
+    iconData.hWnd = iconOwnerWindow;
     iconData.uID = TRAY_ICON_ID;
-    iconData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_SHOWTIP;
+    iconData.uFlags = flags;
     iconData.uCallbackMessage = WM_TRAY_ICON_NOTIFY;
     iconData.hIcon = trayIcon;
+    iconData.uVersion = NOTIFYICON_VERSION_4;
 
     {
         lock_guard<mutex> payloadLock(pendingPayloadMutex);
         wcsncpy_s(iconData.szTip, pendingTooltip.c_str(), _TRUNCATE);
     }
 
-    Shell_NotifyIconW(NIM_ADD, &iconData);
-
-    iconData.uVersion = NOTIFYICON_VERSION_4;
-    Shell_NotifyIconW(NIM_SETVERSION, &iconData);
+    Shell_NotifyIconW(command, &iconData);
 }
 
 /**
- * Removes the icon from the notification area, leaving the icon handle intact so it can be shown again.
- */
-static void removeTrayIcon() {
-    NOTIFYICONDATAW iconData = {};
-    iconData.cbSize = sizeof(iconData);
-    iconData.hWnd = messageWindow.load();
-    iconData.uID = TRAY_ICON_ID;
-
-    Shell_NotifyIconW(NIM_DELETE, &iconData);
-}
-
-/**
- * Shows an icon built from the staged pixels, restating the tooltip alongside it because an update only carries the
- * fields it declares. The previous icon is destroyed after the replacement lands, so the shell never renders from a
- * freed handle.
+ * Shows an icon built from the staged pixels. The previous icon is destroyed after the replacement lands, so the shell
+ * never renders from a freed handle.
  */
 static void applyPendingIcon() {
-    vector<jint> pixels;
-    wstring tooltip;
-    int width = 0;
-    int height = 0;
+    HICON newIcon = NULL;
 
     {
         lock_guard<mutex> payloadLock(pendingPayloadMutex);
 
-        if (pendingIconPixels.empty() || pendingIconWidth <= 0 || pendingIconHeight <= 0) {
-            return;
+        if (!pendingIconPixels.empty()) {
+            newIcon = createIconFromPixels(pendingIconPixels, pendingIconWidth, pendingIconHeight);
         }
-
-        pixels = pendingIconPixels;
-        tooltip = pendingTooltip;
-        width = pendingIconWidth;
-        height = pendingIconHeight;
     }
-
-    HICON newIcon = createIconFromPixels(pixels, width, height);
 
     if (!newIcon) {
         return;
@@ -744,40 +1101,14 @@ static void applyPendingIcon() {
     HICON previousIcon = trayIcon;
     trayIcon = newIcon;
 
-    if (iconVisible.load()) {
-        NOTIFYICONDATAW iconData = {};
-        iconData.cbSize = sizeof(iconData);
-        iconData.hWnd = messageWindow.load();
-        iconData.uID = TRAY_ICON_ID;
-        iconData.uFlags = NIF_ICON | NIF_TIP | NIF_SHOWTIP;
-        iconData.hIcon = trayIcon;
-        wcsncpy_s(iconData.szTip, tooltip.c_str(), _TRUNCATE);
-
-        Shell_NotifyIconW(NIM_MODIFY, &iconData);
+    // The tooltip is restated alongside the icon, since an update only carries the fields it declares
+    if (iconVisible) {
+        notifyShell(NIM_MODIFY, NIF_ICON | NIF_TIP | NIF_SHOWTIP);
     }
 
     if (previousIcon) {
         DestroyIcon(previousIcon);
     }
-}
-
-/**
- * Reports a menu request anchored at the position the shell delivered with the event. Nothing here waits on the
- * shell, so the request reaches the caller as promptly as a native menu would open.
- *
- * @param anchorPosition
- *            - The WPARAM of the event, packing the anchor's x and y in physical screen pixels
- */
-static void reportMenuRequested(WPARAM anchorPosition) {
-    /*
-     * Claim the foreground before anything else, while the click's grant of the right to take it is fresh. A menu shown
-     * by a process that does not own the foreground never receives the click that should dismiss it, so it would
-     * linger until one of its items is chosen
-     */
-    SetForegroundWindow(messageWindow.load());
-
-    // The modern callback packs the click position, or the icon's corner for the keyboard menu key, into the WPARAM
-    invokeMenuRequestedCallback(GET_X_LPARAM(anchorPosition), GET_Y_LPARAM(anchorPosition));
 }
 
 /**
@@ -808,46 +1139,20 @@ static HICON createIconFromPixels(const vector<jint> &pixels, int width, int hei
     bitmapHeader.bV5BlueMask = 0x000000FF;
     bitmapHeader.bV5AlphaMask = 0xFF000000;
 
-    HDC screenDeviceContext = GetDC(NULL);
-
-    if (!screenDeviceContext) {
-        return NULL;
-    }
-
     void *bitmapBits = nullptr;
-    HBITMAP colorBitmap =
-        CreateDIBSection(screenDeviceContext, (BITMAPINFO *) &bitmapHeader, DIB_RGB_COLORS, &bitmapBits, NULL, 0);
+    HBITMAP colorBitmap = CreateDIBSection(NULL, (BITMAPINFO *) &bitmapHeader, DIB_RGB_COLORS, &bitmapBits, NULL, 0);
 
-    ReleaseDC(NULL, screenDeviceContext);
-
-    if (!colorBitmap || !bitmapBits) {
-        if (colorBitmap) {
-            DeleteObject(colorBitmap);
-        }
-
-        return NULL;
+    if (bitmapBits) {
+        memcpy(bitmapBits, pixels.data(), pixels.size() * sizeof(jint));
     }
 
-    memcpy(bitmapBits, pixels.data(), (size_t) width * (size_t) height * sizeof(jint));
-
-    size_t maskBytesPerRow = (((size_t) width + 15) / 16) * sizeof(WORD);
-    vector<BYTE> maskBits(maskBytesPerRow * (size_t) height, 0);
-
+    // Monochrome rows are padded to whole 16-bit words, and an all-zero mask leaves the shape to the alpha channel
+    vector<BYTE> maskBits((size_t) ((width + 15) / 16) * 2 * height, 0);
     HBITMAP maskBitmap = CreateBitmap(width, height, 1, 1, maskBits.data());
+    ICONINFO iconInfo = {TRUE, 0, 0, maskBitmap, colorBitmap};
+    HICON icon = bitmapBits && maskBitmap ? CreateIconIndirect(&iconInfo) : NULL;
 
-    if (!maskBitmap) {
-        DeleteObject(colorBitmap);
-        return NULL;
-    }
-
-    ICONINFO iconInfo = {};
-    iconInfo.fIcon = TRUE;
-    iconInfo.hbmColor = colorBitmap;
-    iconInfo.hbmMask = maskBitmap;
-
-    HICON icon = CreateIconIndirect(&iconInfo);
-
-    // The bitmaps are copied into the icon, so they are released immediately either way
+    // The bitmaps are copied into the icon, so they are released either way
     DeleteObject(colorBitmap);
     DeleteObject(maskBitmap);
 
@@ -855,50 +1160,321 @@ static HICON createIconFromPixels(const vector<jint> &pixels, int width, int hei
 }
 
 /**
- * Invokes the menu request callback on the registered instance, attaching the current thread to the JVM if necessary
- * and detaching it when done.
+ * Opens the menu where the icon event happened, on a thread of its own. The icon's thread keeps pumping its messages,
+ * so the icon stays responsive however long the menu waits for the foreground or for a choice.
+ *
+ * @param anchorPosition
+ *            - The WPARAM of the event, packing the anchor's x and y in physical screen pixels
+ */
+static void openTrayMenu(WPARAM anchorPosition) {
+    // Only one menu is open at a time, so a request arriving while one is showing is dropped
+    if (menuShowing.exchange(true)) {
+        return;
+    }
+
+    // Detached rather than joined, since the thread lives for as long as the menu stays open
+    try {
+        thread(showTrayMenu, GET_X_LPARAM(anchorPosition), GET_Y_LPARAM(anchorPosition)).detach();
+    } catch (const system_error &) {
+        menuShowing.store(false);
+    }
+}
+
+/**
+ * Shows the menu on the calling thread and reports the chosen item once the menu has closed. The report comes last so
+ * the menu is fully torn down before the chosen action runs.
  *
  * @param anchorX
  *            - The x coordinate to anchor the menu to, in physical screen pixels
  * @param anchorY
  *            - The y coordinate to anchor the menu to, in physical screen pixels
  */
-static void invokeMenuRequestedCallback(int anchorX, int anchorY) {
-    if (!jvm || !systemTrayIconGlobalRef || !onMenuRequestedMethodId) {
+static void showTrayMenu(int anchorX, int anchorY) {
+    shared_ptr<const TrayMenuDefinition> definition;
+
+    {
+        lock_guard<mutex> definitionLock(menuDefinitionMutex);
+        definition = menuDefinition;
+    }
+
+    int selectedItem = definition ? trackTrayMenu(*definition, anchorX, anchorY) : -1;
+
+    menuShowing.store(false);
+
+    if (selectedItem >= 0) {
+        invokeMenuItemSelectedCallback(selectedItem);
+    }
+}
+
+/**
+ * Shows the menu at the anchor and waits for it to close. The system runs the menu, so it opens, tracks the pointer,
+ * and closes on an outside click or the escape key without involving any other thread.
+ *
+ * @param definition
+ *            - The menu to show
+ * @param anchorX
+ *            - The x coordinate to anchor the menu to, in physical screen pixels
+ * @param anchorY
+ *            - The y coordinate to anchor the menu to, in physical screen pixels
+ *
+ * @return The index of the chosen item, or -1 when the menu closed without a choice
+ */
+static int trackTrayMenu(const TrayMenuDefinition &definition, int anchorX, int anchorY) {
+    HWND ownerWindow = CreateWindowExW(WS_EX_TOOLWINDOW, MENU_CLASS_NAME, L"", WS_POPUP, 0, 0, 0, 0, NULL, NULL,
+                                       GetModuleHandleW(NULL), NULL);
+
+    if (!ownerWindow) {
+        return -1;
+    }
+
+    // Published before the menu opens, so a dismissal requested in the meantime waits in the queue and closes it
+    menuWindow.store(ownerWindow);
+
+    POINT anchor = {anchorX, anchorY};
+    HMONITOR anchorMonitor = MonitorFromPoint(anchor, MONITOR_DEFAULTTONEAREST);
+    UINT dpiY = 0;
+
+    // Sized for the display it opens on, which can differ in scale from every other display
+    if (GetDpiForMonitor(anchorMonitor, MDT_EFFECTIVE_DPI, &activeMenuDpi, &dpiY) != S_OK) {
+        activeMenuDpi = USER_DEFAULT_SCREEN_DPI;
+    }
+
+    LOGFONTW logFont = {};
+
+    // A negative height requests the font size itself rather than the taller line height, matching the size supplied
+    logFont.lfHeight = -MulDiv(definition.fontSize, activeMenuDpi, USER_DEFAULT_SCREEN_DPI);
+    logFont.lfWeight = FW_NORMAL;
+    logFont.lfCharSet = DEFAULT_CHARSET;
+    logFont.lfQuality = CLEARTYPE_QUALITY;
+    wcsncpy_s(logFont.lfFaceName, definition.fontFamily.c_str(), _TRUNCATE);
+
+    HMENU menu = CreatePopupMenu();
+    HBRUSH backgroundBrush = CreateSolidBrush(definition.backgroundColor);
+    MENUINFO menuInfo = {};
+    menuInfo.cbSize = sizeof(menuInfo);
+    menuInfo.fMask = MIM_BACKGROUND;
+    menuInfo.hbrBack = backgroundBrush;
+    SetMenuInfo(menu, &menuInfo);
+
+    // Commands are numbered from one, because the menu reports zero when it closes without a choice
+    for (size_t itemIndex = 0; itemIndex < definition.itemTexts.size(); itemIndex++) {
+        AppendMenuW(menu, MF_OWNERDRAW, itemIndex + 1, nullptr);
+    }
+
+    activeMenuDefinition = &definition;
+    activeMenuFont = CreateFontIndirectW(&logFont);
+    applyMenuAppMode(definition.backgroundColor);
+
+    // Scoped to this thread, so it only ever sees the menu window this thread is about to create
+    HHOOK menuStyleHook = SetWindowsHookExW(WH_CALLWNDPROC, styleMenuWindow, NULL, GetCurrentThreadId());
+
+    /*
+     * The menu only closes on an outside click while its owner is the foreground window. Claiming it here rather
+     * than on the thread owning the icon means a foreground window slow to let go only delays the menu
+     */
+    SetForegroundWindow(ownerWindow);
+
+    UINT command = (UINT) TrackPopupMenuEx(menu, trayMenuAlignment(anchorMonitor) | TPM_RIGHTBUTTON | TPM_RETURNCMD,
+                                           anchorX, anchorY, ownerWindow, NULL);
+
+    UnhookWindowsHookEx(menuStyleHook);
+    DestroyMenu(menu);
+
+    // Cleared before the window is destroyed, so a dismissal can never post to a destroyed or recycled handle
+    menuWindow.store(NULL);
+    DestroyWindow(ownerWindow);
+    DeleteObject(backgroundBrush);
+    DeleteObject(activeMenuFont);
+
+    return (int) command - 1;
+}
+
+/**
+ * Draws the process's menus dark or light to match the menu background, so the frame the system draws around the
+ * items matches them. The exports are undocumented, so a system without them simply keeps its own frame.
+ *
+ * @param backgroundColor
+ *            - The menu background color
+ */
+static void applyMenuAppMode(COLORREF backgroundColor) {
+    // Weighted by how bright each channel appears, so a saturated blue does not read as light
+    int luminance =
+        (GetRValue(backgroundColor) * 299 + GetGValue(backgroundColor) * 587 + GetBValue(backgroundColor) * 114) / 1000;
+    int appMode = luminance < DARK_LUMINANCE_THRESHOLD ? APP_MODE_FORCE_DARK : APP_MODE_FORCE_LIGHT;
+
+    if (appliedAppMode.exchange(appMode) == appMode) {
         return;
     }
 
+    // Loaded once and kept for the life of the process, so repeated theme changes never stack up module references
+    static const HMODULE uxThemeModule = LoadLibraryExW(L"uxtheme.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
+
+    if (!uxThemeModule) {
+        return;
+    }
+
+    // Cast through a plain pointer, since the exports' real signatures differ from the generic procedure type
+    static const SetPreferredAppModeFunction setPreferredAppMode =
+        (SetPreferredAppModeFunction) (void *) GetProcAddress(uxThemeModule,
+                                                              MAKEINTRESOURCEA(SET_PREFERRED_APP_MODE_ORDINAL));
+    static const FlushMenuThemesFunction flushMenuThemes =
+        (FlushMenuThemesFunction) (void *) GetProcAddress(uxThemeModule, MAKEINTRESOURCEA(FLUSH_MENU_THEMES_ORDINAL));
+
+    if (setPreferredAppMode && flushMenuThemes) {
+        setPreferredAppMode(appMode);
+        flushMenuThemes();
+    }
+}
+
+/**
+ * Colors the border of the menu window and rounds its corners as the system creates it, before it is ever shown.
+ * Windows 10 rejects both requests, so its menus keep their own square border.
+ *
+ * @param hookCode
+ *            - Whether the hook should process the message
+ * @param messageSource
+ *            - Whether the message was sent by the current thread
+ * @param messageData
+ *            - The message being delivered
+ *
+ * @return The result of the next hook in the chain
+ */
+static LRESULT CALLBACK styleMenuWindow(int hookCode, WPARAM messageSource, LPARAM messageData) {
+    const CWPSTRUCT *message = (const CWPSTRUCT *) messageData;
+
+    if (hookCode == HC_ACTION && message->message == WM_CREATE &&
+        GetClassWord(message->hwnd, GCW_ATOM) == MENU_WINDOW_CLASS_ATOM) {
+        COLORREF borderColor = activeMenuDefinition->borderColor;
+
+        // Requested explicitly, since Windows 11 leaves an owner drawn menu square unless asked to round it
+        DWM_WINDOW_CORNER_PREFERENCE cornerPreference = DWMWCP_ROUNDSMALL;
+
+        DwmSetWindowAttribute(message->hwnd, DWMWA_BORDER_COLOR, &borderColor, sizeof(borderColor));
+        DwmSetWindowAttribute(message->hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference,
+                              sizeof(cornerPreference));
+    }
+
+    return CallNextHookEx(NULL, hookCode, messageSource, messageData);
+}
+
+/**
+ * Picks the alignment that grows the menu away from the task bar on the given display, the way the system aligns its
+ * own tray menus. The system still turns the menu back on whichever side it would not fit.
+ *
+ * @param anchorMonitor
+ *            - The display the menu opens on
+ *
+ * @return The horizontal and vertical alignment flags for the menu
+ */
+static UINT trayMenuAlignment(HMONITOR anchorMonitor) {
+    MONITORINFO monitorInfo = {};
+    monitorInfo.cbSize = sizeof(monitorInfo);
+
+    if (!GetMonitorInfoW(anchorMonitor, &monitorInfo)) {
+        return TPM_LEFTALIGN | TPM_BOTTOMALIGN;
+    }
+
+    // The task bar sits on the edge where the work area falls short of the display
+    UINT horizontalAlignment = monitorInfo.rcWork.right < monitorInfo.rcMonitor.right ? TPM_RIGHTALIGN : TPM_LEFTALIGN;
+    UINT verticalAlignment = monitorInfo.rcWork.bottom < monitorInfo.rcMonitor.bottom ? TPM_BOTTOMALIGN : TPM_TOPALIGN;
+
+    return horizontalAlignment | verticalAlignment;
+}
+
+/**
+ * Handles the messages of the hidden window that owns an open menu, sizing and painting its owner drawn items and
+ * closing the menu when another thread asks.
+ *
+ * @param windowHandle
+ *            - The handle to the hidden menu owner window
+ * @param message
+ *            - The message identifier
+ * @param eventType
+ *            - The WPARAM event type
+ * @param eventData
+ *            - The LPARAM event data
+ *
+ * @return The result of message processing
+ */
+LRESULT CALLBACK handleMenuEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData) {
+    switch (message) {
+    case WM_MEASUREITEM: {
+        MEASUREITEMSTRUCT *measureItem = (MEASUREITEMSTRUCT *) eventData;
+        const TrayMenuDefinition &definition = *activeMenuDefinition;
+        int itemWidth = MulDiv(definition.itemWidth, activeMenuDpi, USER_DEFAULT_SCREEN_DPI);
+
+        // The system pads the width of every owner drawn item by about a check mark, so that much is taken back here
+        int measuredWidth = itemWidth - GetSystemMetricsForDpi(SM_CXMENUCHECK, activeMenuDpi) + 1;
+
+        measureItem->itemWidth = (UINT) (measuredWidth > 0 ? measuredWidth : itemWidth);
+        measureItem->itemHeight = (UINT) MulDiv(definition.itemHeight, activeMenuDpi, USER_DEFAULT_SCREEN_DPI);
+
+        return TRUE;
+    }
+
+    case WM_DRAWITEM:
+        drawMenuItem(*(const DRAWITEMSTRUCT *) eventData);
+        return TRUE;
+
+    case WM_TRAY_CLOSE_MENU:
+        EndMenu();
+        return 0;
+
+    default:
+        return DefWindowProcW(windowHandle, message, eventType, eventData);
+    }
+}
+
+/**
+ * Paints an item in the supplied colors and font, highlighted while the pointer or keyboard has it selected.
+ *
+ * @param drawItem
+ *            - The paint request for the item
+ */
+static void drawMenuItem(const DRAWITEMSTRUCT &drawItem) {
+    const TrayMenuDefinition &definition = *activeMenuDefinition;
+    const wstring &itemText = definition.itemTexts[drawItem.itemID - 1];
+    bool selected = (drawItem.itemState & ODS_SELECTED) != 0;
+    HDC deviceContext = drawItem.hDC;
+    RECT textRect = drawItem.rcItem;
+
+    textRect.left += MulDiv(definition.textInset, activeMenuDpi, USER_DEFAULT_SCREEN_DPI);
+
+    // The device context belongs to the menu, so everything changed on it is put back afterward
+    int savedState = SaveDC(deviceContext);
+
+    SetDCBrushColor(deviceContext, selected ? definition.selectionBackgroundColor : definition.backgroundColor);
+    FillRect(deviceContext, &drawItem.rcItem, (HBRUSH) GetStockObject(DC_BRUSH));
+    SelectObject(deviceContext, activeMenuFont);
+    SetBkMode(deviceContext, TRANSPARENT);
+    SetTextColor(deviceContext, selected ? definition.selectionForegroundColor : definition.foregroundColor);
+    DrawTextW(deviceContext, itemText.c_str(), (int) itemText.size(), &textRect,
+              DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+
+    RestoreDC(deviceContext, savedState);
+}
+
+/**
+ * Invokes the item selection callback on the registered instance from the menu's own thread, which is attached to the
+ * JVM only for the call. The callback reference is held under its lock throughout, so a stop cannot delete it.
+ *
+ * @param itemIndex
+ *            - The index of the chosen item
+ */
+static void invokeMenuItemSelectedCallback(int itemIndex) {
+    lock_guard<mutex> callbackLock(callbackMutex);
     JNIEnv *env = nullptr;
-    bool attachedToJvm = false;
-    jint getEnvResult = jvm->GetEnv((void **) &env, JNI_VERSION_1_6);
 
-    if (getEnvResult == JNI_EDETACHED) {
-        if (jvm->AttachCurrentThread((void **) &env, nullptr) != 0) {
-            return;
-        }
-
-        attachedToJvm = true;
-    } else if (getEnvResult != JNI_OK) {
+    if (!jvm || !systemTrayIconGlobalRef || jvm->AttachCurrentThread((void **) &env, nullptr) != JNI_OK) {
         return;
     }
 
-    // Re-check the global ref after attaching
-    if (!systemTrayIconGlobalRef) {
-        if (attachedToJvm) {
-            jvm->DetachCurrentThread();
-        }
-
-        return;
-    }
-
-    env->CallVoidMethod(systemTrayIconGlobalRef, onMenuRequestedMethodId, (jint) anchorX, (jint) anchorY);
+    env->CallVoidMethod(systemTrayIconGlobalRef, onMenuItemSelectedMethodId, (jint) itemIndex);
 
     if (env->ExceptionCheck()) {
         env->ExceptionDescribe();
         env->ExceptionClear();
     }
 
-    if (attachedToJvm) {
-        jvm->DetachCurrentThread();
-    }
+    jvm->DetachCurrentThread();
 }

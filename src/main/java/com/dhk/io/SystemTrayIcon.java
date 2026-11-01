@@ -24,8 +24,9 @@ import java.awt.Rectangle;
 import javax.swing.SwingUtilities;
 
 /**
- * Manages the notification area icon through the native library. The native layer owns the icon and reports clicks, and
- * this class forwards them to the registered listener on the EDT so the menu is only ever shown from the EDT.
+ * Manages the notification area icon and its menu through the native library. The native layer owns the icon and shows
+ * the menu itself, so neither waits on the virtual machine, and this class forwards each chosen item to the registered
+ * listener on the EDT.
  *
  * @author Jonathan R. Miller
  */
@@ -40,6 +41,61 @@ public class SystemTrayIcon {
      * Fallback icon edge (px) used when the native small-icon size is unavailable, matching the Windows default.
      */
     private static final int DEFAULT_ICON_SIZE = 16;
+
+    /**
+     * Index of the menu background color in the colors handed to {@link #setMenu}.
+     */
+    public static final int MENU_COLOR_BACKGROUND = 0;
+
+    /**
+     * Index of the item text color in the colors handed to {@link #setMenu}.
+     */
+    public static final int MENU_COLOR_FOREGROUND = 1;
+
+    /**
+     * Index of the highlighted item's fill color in the colors handed to {@link #setMenu}.
+     */
+    public static final int MENU_COLOR_SELECTION_BACKGROUND = 2;
+
+    /**
+     * Index of the highlighted item's text color in the colors handed to {@link #setMenu}.
+     */
+    public static final int MENU_COLOR_SELECTION_FOREGROUND = 3;
+
+    /**
+     * Index of the menu border color in the colors handed to {@link #setMenu}.
+     */
+    public static final int MENU_COLOR_BORDER = 4;
+
+    /**
+     * Number of colors handed to {@link #setMenu}.
+     */
+    public static final int MENU_COLOR_COUNT = 5;
+
+    /**
+     * Index of the item width in the metrics handed to {@link #setMenu}.
+     */
+    public static final int MENU_METRIC_ITEM_WIDTH = 0;
+
+    /**
+     * Index of the item height in the metrics handed to {@link #setMenu}.
+     */
+    public static final int MENU_METRIC_ITEM_HEIGHT = 1;
+
+    /**
+     * Index of the distance from an item's leading edge to its text in the metrics handed to {@link #setMenu}.
+     */
+    public static final int MENU_METRIC_TEXT_INSET = 2;
+
+    /**
+     * Index of the item font size in the metrics handed to {@link #setMenu}.
+     */
+    public static final int MENU_METRIC_FONT_SIZE = 3;
+
+    /**
+     * Number of metrics handed to {@link #setMenu}.
+     */
+    public static final int MENU_METRIC_COUNT = 4;
 
     /**
      * Default constructor for the {@link SystemTrayIcon} class.
@@ -77,7 +133,7 @@ public class SystemTrayIcon {
      * @param iconHeight
      *            - The icon height in pixels
      *
-     * @return Whether the icon was registered
+     * @return Whether the icon started, which includes a start still waiting on a busy shell
      */
     private native boolean nativeStart(String tooltip, int[] iconPixels, int iconWidth, int iconHeight);
 
@@ -117,6 +173,31 @@ public class SystemTrayIcon {
     private native int[] nativeGetIconSize();
 
     /**
+     * Defines a JNI function to set the items and style of the menu the native layer shows for the icon.
+     *
+     * @param itemTexts
+     *            - The text of each item, in the order the items are shown and reported
+     * @param menuColors
+     *            - The menu colors in packed ARGB order, indexed by the MENU_COLOR constants
+     * @param menuMetrics
+     *            - The menu metrics in unscaled pixels, indexed by the MENU_METRIC constants
+     * @param fontFamily
+     *            - The family of the font the items are drawn in
+     * @param fontData
+     *            - The font file to register privately for the family, or null when the family is installed or the font
+     *            was already registered, which lasts for the life of the process
+     *
+     * @return Whether the menu was accepted and any supplied font is registered
+     */
+    private native boolean nativeSetMenu(String[] itemTexts, int[] menuColors, int[] menuMetrics, String fontFamily,
+            byte[] fontData);
+
+    /**
+     * Defines a JNI function to close the menu when one is open.
+     */
+    private native void nativeDismissMenu();
+
+    /**
      * Starts the notification area icon with the given tooltip and renderer. Must be called after registering a
      * listener, since the native layer resolves the callbacks when it starts.
      *
@@ -125,7 +206,7 @@ public class SystemTrayIcon {
      * @param renderer
      *            - The renderer that draws the icon at the size the notification area asks for
      *
-     * @return Whether the icon was registered
+     * @return Whether the icon started, which includes a start still waiting on a busy shell
      */
     public boolean start(String tooltip, TrayIconRenderer renderer) {
         trayIconRenderer = renderer;
@@ -156,6 +237,36 @@ public class SystemTrayIcon {
      */
     public void setVisible(boolean visible) {
         nativeSetVisible(visible);
+    }
+
+    /**
+     * Sets the items and style of the menu shown for the icon. The native layer copies everything, so showing the menu
+     * never calls back here, and scales every metric for the display each menu opens on.
+     *
+     * @param itemTexts
+     *            - The text of each item, in the order the items are shown and reported
+     * @param menuColors
+     *            - The menu colors in packed ARGB order, indexed by the MENU_COLOR constants
+     * @param menuMetrics
+     *            - The menu metrics in unscaled pixels, indexed by the MENU_METRIC constants
+     * @param fontFamily
+     *            - The family of the font the items are drawn in
+     * @param fontData
+     *            - The font file to register privately for the family, or null when the family is installed or the font
+     *            was already registered, which lasts for the life of the process
+     *
+     * @return Whether the menu was accepted and any supplied font is registered
+     */
+    public boolean setMenu(String[] itemTexts, int[] menuColors, int[] menuMetrics, String fontFamily,
+            byte[] fontData) {
+        return nativeSetMenu(itemTexts, menuColors, menuMetrics, fontFamily, fontData);
+    }
+
+    /**
+     * Closes the menu when one is open, without waiting for it to finish closing.
+     */
+    public void dismissMenu() {
+        nativeDismissMenu();
     }
 
     /**
@@ -202,19 +313,17 @@ public class SystemTrayIcon {
     }
 
     /**
-     * Called from native code when the notification area icon is asked to show its menu.
+     * Called from native code once the menu has closed on a chosen item.
      *
-     * @param anchorX
-     *            - The x coordinate to anchor the menu to, in physical screen pixels
-     * @param anchorY
-     *            - The y coordinate to anchor the menu to, in physical screen pixels
+     * @param itemIndex
+     *            - The index of the chosen item, in the order the items were supplied
      */
-    private void onMenuRequested(int anchorX, int anchorY) {
+    private void onMenuItemSelected(int itemIndex) {
         final TrayIconListener listener = this.trayIconListener;
 
         if (listener != null) {
-            // Forward to the EDT so the menu is only ever shown from the EDT
-            SwingUtilities.invokeLater(() -> listener.menuRequested(anchorX, anchorY));
+            // Forward to the EDT so every item action runs on the EDT
+            SwingUtilities.invokeLater(() -> listener.menuItemSelected(itemIndex));
         }
     }
 
