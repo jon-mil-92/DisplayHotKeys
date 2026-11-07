@@ -248,26 +248,15 @@ public class SettingsValidator {
     }
 
     /**
-     * Validates the display mode for each slot in the settings file. A slot whose stored exact display mode is not a
-     * currently-supported mode for its orientation is reset to the default. A pre-fractional slot lacks the
-     * numerator/denominator pair, so it is treated as invalid and reset.
+     * Validates the display mode for each slot in the settings file, resetting a missing or malformed mode (such as a
+     * pre-fractional one without the numerator/denominator pair) to the default. A well-formed mode is kept even when
+     * the display does not currently offer it, since a display that is off or still waking reports only some modes.
      */
     private void validateDisplayModes() {
         for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
             String displayId = displayIds[displayIndex];
 
             for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
-                int slotOrientationMode = settingsMgr.getIniSlotOrientationMode(displayId, slotId);
-                boolean landscapeOrientation = slotOrientationMode == 0 || slotOrientationMode == 2;
-                DisplayMode[] supportedModes = landscapeOrientation
-                        ? landscapeDisplayModesMap.get(displayId)
-                        : portraitDisplayModesMap.get(displayId);
-
-                // Skip repair when a connected display has no enumerated modes yet; it is still restoring after sleep
-                if (supportedModes == null || supportedModes.length == 0) {
-                    continue;
-                }
-
                 String iniSection = displayId + "--Slot" + Integer.toString(slotId);
                 String width = ini.get(iniSection, "displayModeWidth");
                 String height = ini.get(iniSection, "displayModeHeight");
@@ -277,16 +266,13 @@ public class SettingsValidator {
                 if (width != null && isPositiveInt(width) && height != null && isPositiveInt(height)
                         && refreshNumerator != null && isPositiveInt(refreshNumerator) && refreshDenominator != null
                         && isPositiveInt(refreshDenominator)) {
-                    DisplayMode displayMode = new DisplayMode(Integer.valueOf(width), Integer.valueOf(height),
-                            Integer.valueOf(refreshNumerator), Integer.valueOf(refreshDenominator));
-
-                    // Repair with a default matching the slot's own orientation when the stored mode is not supported
-                    if (!Arrays.asList(supportedModes).contains(displayMode)) {
-                        writeDefaultDisplayMode(landscapeOrientation, displayId, slotId);
-                    }
-                } else {
-                    writeDefaultDisplayMode(landscapeOrientation, displayId, slotId);
+                    continue;
                 }
+
+                // Repair with a default matching the slot's own orientation
+                int slotOrientationMode = settingsMgr.getIniSlotOrientationMode(displayId, slotId);
+                boolean landscapeOrientation = slotOrientationMode == 0 || slotOrientationMode == 2;
+                writeDefaultDisplayMode(landscapeOrientation, displayId, slotId);
             }
         }
     }
