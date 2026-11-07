@@ -313,6 +313,12 @@ public class AboutDialog implements IView {
         // Prevent default close and handle the title-bar close ourselves
         aboutDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         aboutDialog.addWindowListener(new WindowAdapter() {
+            // Ensure the dialog takes the foreground after opening from the tray
+            @Override
+            public void windowOpened(WindowEvent e) {
+                aboutDialog.toFront();
+            }
+
             @Override
             public void windowClosing(WindowEvent e) {
                 // Call the same method used by the Close button

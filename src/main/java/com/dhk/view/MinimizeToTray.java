@@ -42,7 +42,6 @@ public class MinimizeToTray {
     private DhkModel model;
     private DhkView view;
     private SystemTrayIcon systemTrayIcon;
-    private TrayMenu trayMenu;
     private FlatSVGIcon trayIcon;
 
     /**
@@ -72,7 +71,7 @@ public class MinimizeToTray {
      * Minimizes the application to the system tray.
      */
     public void execute() {
-        // Hide the taskbar icon; the frame is resolved lazily since every re-initialization replaces it
+        // Hide the taskbar icon, resolving the frame lazily since every re-initialization replaces it
         view.getFrame().setVisible(false);
 
         if (systemTrayIcon == null) {
@@ -83,16 +82,18 @@ public class MinimizeToTray {
     }
 
     /**
-     * Starts the system tray icon and wires its menu.
+     * Starts the system tray icon and wires its menu, restoring the application instead when the icon cannot start,
+     * since the hidden frame would otherwise be left with no way back.
      */
     private void startSystemTray() {
-        trayMenu = new TrayMenu(this::restoreAction, this::aboutAction, this::exitAction);
         systemTrayIcon = new SystemTrayIcon();
 
-        systemTrayIcon.registerTrayIconListener(
-                (anchorX, anchorY, iconBounds) -> trayMenu.show(anchorX, anchorY, iconBounds));
+        // Installed before the icon starts, so the icon never shows without its menu
+        new TrayMenu(systemTrayIcon, this::restoreAction, this::aboutAction, this::exitAction).install();
 
-        systemTrayIcon.start(TRAY_NAME, this::renderTrayIconPixels);
+        if (!systemTrayIcon.start(TRAY_NAME, this::renderTrayIconPixels)) {
+            restoreAction();
+        }
     }
 
     /**
@@ -133,7 +134,7 @@ public class MinimizeToTray {
             return;
         }
 
-        trayMenu.dismiss();
+        systemTrayIcon.dismissMenu();
     }
 
     /**
@@ -158,6 +159,9 @@ public class MinimizeToTray {
                 JFrame frame = view.getFrame();
                 frame.setExtendedState(JFrame.NORMAL);
                 frame.setVisible(true);
+
+                // Showing alone cannot take the foreground from the tray menu's thread, so bring the frame forward
+                frame.toFront();
                 view.getDefaultFocusComponent().requestFocusInWindow();
             }
         });
@@ -214,14 +218,9 @@ public class MinimizeToTray {
      */
     public void shutDownSystemTray() {
         if (systemTrayIcon != null) {
-            trayMenu.dismiss();
-
             systemTrayIcon.setVisible(false);
             systemTrayIcon.stop();
-
-            // Cleared together, so the tray and its menu never disagree about whether the tray is live
             systemTrayIcon = null;
-            trayMenu = null;
         }
     }
 

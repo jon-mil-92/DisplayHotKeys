@@ -9,6 +9,28 @@ extern "C" {
 #endif
 #undef com_dhk_io_SystemTrayIcon_DEFAULT_ICON_SIZE
 #define com_dhk_io_SystemTrayIcon_DEFAULT_ICON_SIZE 16L
+#undef com_dhk_io_SystemTrayIcon_MENU_COLOR_BACKGROUND
+#define com_dhk_io_SystemTrayIcon_MENU_COLOR_BACKGROUND 0L
+#undef com_dhk_io_SystemTrayIcon_MENU_COLOR_FOREGROUND
+#define com_dhk_io_SystemTrayIcon_MENU_COLOR_FOREGROUND 1L
+#undef com_dhk_io_SystemTrayIcon_MENU_COLOR_SELECTION_BACKGROUND
+#define com_dhk_io_SystemTrayIcon_MENU_COLOR_SELECTION_BACKGROUND 2L
+#undef com_dhk_io_SystemTrayIcon_MENU_COLOR_SELECTION_FOREGROUND
+#define com_dhk_io_SystemTrayIcon_MENU_COLOR_SELECTION_FOREGROUND 3L
+#undef com_dhk_io_SystemTrayIcon_MENU_COLOR_BORDER
+#define com_dhk_io_SystemTrayIcon_MENU_COLOR_BORDER 4L
+#undef com_dhk_io_SystemTrayIcon_MENU_COLOR_COUNT
+#define com_dhk_io_SystemTrayIcon_MENU_COLOR_COUNT 5L
+#undef com_dhk_io_SystemTrayIcon_MENU_METRIC_ITEM_WIDTH
+#define com_dhk_io_SystemTrayIcon_MENU_METRIC_ITEM_WIDTH 0L
+#undef com_dhk_io_SystemTrayIcon_MENU_METRIC_ITEM_HEIGHT
+#define com_dhk_io_SystemTrayIcon_MENU_METRIC_ITEM_HEIGHT 1L
+#undef com_dhk_io_SystemTrayIcon_MENU_METRIC_TEXT_INSET
+#define com_dhk_io_SystemTrayIcon_MENU_METRIC_TEXT_INSET 2L
+#undef com_dhk_io_SystemTrayIcon_MENU_METRIC_FONT_SIZE
+#define com_dhk_io_SystemTrayIcon_MENU_METRIC_FONT_SIZE 3L
+#undef com_dhk_io_SystemTrayIcon_MENU_METRIC_COUNT
+#define com_dhk_io_SystemTrayIcon_MENU_METRIC_COUNT 4L
 /*
  * Class:     com_dhk_io_SystemTrayIcon
  * Method:    nativeStart
@@ -47,6 +69,22 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetVisible
  * Signature: ()[I
  */
 JNIEXPORT jintArray JNICALL Java_com_dhk_io_SystemTrayIcon_nativeGetIconSize
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_dhk_io_SystemTrayIcon
+ * Method:    nativeSetMenu
+ * Signature: ([Ljava/lang/String;[I[ILjava/lang/String;[B)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetMenu
+  (JNIEnv *, jobject, jobjectArray, jintArray, jintArray, jstring, jbyteArray);
+
+/*
+ * Class:     com_dhk_io_SystemTrayIcon
+ * Method:    nativeDismissMenu
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeDismissMenu
   (JNIEnv *, jobject);
 
 #ifdef __cplusplus

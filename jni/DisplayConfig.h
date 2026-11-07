@@ -24,12 +24,10 @@
 #include <string>
 #include <vector>
 
-using namespace std;
-
 /**
  * Supported DPI scale percentages, in ascending order, that Windows can apply.
  */
-static const vector<int32_t> DPI_SCALE_PERCENTAGES = {100, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500};
+static const std::vector<int32_t> DPI_SCALE_PERCENTAGES = {100, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500};
 
 /**
  * Number of entries in DPI_SCALE_PERCENTAGES.
@@ -145,7 +143,7 @@ struct VisibleDisplay {
     /**
      * The stable display ID, or the geometry signature when geometry is included.
      */
-    string descriptor;
+    std::string descriptor;
 
     /**
      * The display's rotation, emitted in lockstep with the descriptor when the caller requests rotations.
@@ -179,6 +177,67 @@ struct ModeInfo {
 };
 
 /**
+ * The items, colors, font, and layout of the notification area icon's menu, captured up front so showing the menu
+ * never has to call back for any of it. Every metric is in unscaled pixels and is scaled for the display it opens on.
+ */
+struct TrayMenuDefinition {
+    /**
+     * Text of each item, in the order the items are shown and reported.
+     */
+    std::vector<std::wstring> itemTexts;
+
+    /**
+     * Color filling the menu and every item that is not highlighted.
+     */
+    COLORREF backgroundColor;
+
+    /**
+     * Color of the text of an item that is not highlighted.
+     */
+    COLORREF foregroundColor;
+
+    /**
+     * Color filling the highlighted item.
+     */
+    COLORREF selectionBackgroundColor;
+
+    /**
+     * Color of the text of the highlighted item.
+     */
+    COLORREF selectionForegroundColor;
+
+    /**
+     * Color of the line drawn around the menu, where the system supports coloring it.
+     */
+    COLORREF borderColor;
+
+    /**
+     * Family of the font the items are drawn in.
+     */
+    std::wstring fontFamily;
+
+    /**
+     * Height of the item font's em square.
+     */
+    int fontSize;
+
+    /**
+     * Width of every item.
+     */
+    int itemWidth;
+
+    /**
+     * Height of every item.
+     */
+    int itemHeight;
+
+    /**
+     * Distance from an item's leading edge to the start of its text.
+     */
+    int textInset;
+};
+
+/**
  * Queries the full persisted display configuration (QDC_DATABASE_CURRENT), including inactive displays.
  *
  * @return The display paths and modes for the current configuration
@@ -190,14 +249,14 @@ DisplayConfig getDisplayConfig();
  *
  * @return Stable display IDs for devices attached to the desktop
  */
-vector<string> getEnumDisplayDevicesDisplayIds();
+std::vector<std::string> getEnumDisplayDevicesDisplayIds();
 
 /**
  * Gets stable display IDs for the persisted configuration via QueryDisplayConfig.
  *
  * @return Stable display IDs for the current persisted display configuration
  */
-vector<string> getQueryDisplayConfigDisplayIds();
+std::vector<std::string> getQueryDisplayConfigDisplayIds();
 
 /**
  * Gets stable IDs for currently visible displays (active path, non-zero source resolution, on-screen position),
@@ -205,7 +264,7 @@ vector<string> getQueryDisplayConfigDisplayIds();
  *
  * @return Stable display IDs for the currently visible displays
  */
-vector<string> getVisibleDisplayIds();
+std::vector<std::string> getVisibleDisplayIds();
 
 /**
  * Gets each visible display's orientation, aligned index-for-index with getVisibleDisplayIds so callers can map a
@@ -213,7 +272,7 @@ vector<string> getVisibleDisplayIds();
  *
  * @return The rotation of each visible display, in getVisibleDisplayIds order
  */
-vector<int> getVisibleDisplayOrientations();
+std::vector<int> getVisibleDisplayOrientations();
 
 /**
  * Gets the Windows Display Settings number of each given visible display. The number is the display's rank by ascending
@@ -225,7 +284,7 @@ vector<int> getVisibleDisplayOrientations();
  *
  * @return The Windows display number of each given visible display, index-for-index with visibleIds
  */
-vector<int> getVisibleDisplayNumbers(const vector<string> &visibleIds);
+std::vector<int> getVisibleDisplayNumbers(const std::vector<std::string> &visibleIds);
 
 /**
  * Gets a per-display signature (stable ID plus source resolution, position, rotation, DPI scale index, and Windows
@@ -234,7 +293,7 @@ vector<int> getVisibleDisplayNumbers(const vector<string> &visibleIds);
  *
  * @return Signatures for the currently visible displays
  */
-vector<string> getVisibleDisplaySignatures();
+std::vector<std::string> getVisibleDisplaySignatures();
 
 /**
  * Gets the index of the given stable ID in the EnumDisplayDevices ID list.
@@ -244,7 +303,7 @@ vector<string> getVisibleDisplaySignatures();
  *
  * @return The index, or 0 if not found
  */
-int getEnumDisplayDevicesDisplayIdIndex(const string &displayId);
+int getEnumDisplayDevicesDisplayIdIndex(const std::string &displayId);
 
 /**
  * Gets the index of the given stable ID in the QueryDisplayConfig ID list.
@@ -254,7 +313,7 @@ int getEnumDisplayDevicesDisplayIdIndex(const string &displayId);
  *
  * @return The index, or 0 if not found
  */
-int getQueryDisplayConfigDisplayIdIndex(const string &displayId);
+int getQueryDisplayConfigDisplayIdIndex(const std::string &displayId);
 
 /**
  * Builds a compact, stable display ID from a display's device path and its friendly name. Strips the constant
@@ -268,7 +327,7 @@ int getQueryDisplayConfigDisplayIdIndex(const string &displayId);
  *
  * @return A normalized, stable display ID
  */
-string buildStableDisplayId(const wstring &monitorDevicePath, const wstring &friendlyName = L"");
+std::string buildStableDisplayId(const std::wstring &monitorDevicePath, const std::wstring &friendlyName = L"");
 
 /**
  * Converts a UTF-16 wide string to UTF-8.
@@ -278,7 +337,7 @@ string buildStableDisplayId(const wstring &monitorDevicePath, const wstring &fri
  *
  * @return The UTF-8 string, or empty on failure
  */
-string wStrToStr(const wstring &wideString);
+std::string wStrToStr(const std::wstring &wideString);
 
 /**
  * Resolves a path target's device path to a stable display ID, centralizing the
@@ -289,7 +348,7 @@ string wStrToStr(const wstring &wideString);
  *
  * @return The stable display ID, or empty if it could not be resolved
  */
-string stableIdForTarget(const DISPLAYCONFIG_PATH_TARGET_INFO &targetInfo);
+std::string stableIdForTarget(const DISPLAYCONFIG_PATH_TARGET_INFO &targetInfo);
 
 /**
  * Resolves a path source to its GDI device name (e.g. \\.\DISPLAY1) for the legacy EnumDisplaySettings/
@@ -300,7 +359,7 @@ string stableIdForTarget(const DISPLAYCONFIG_PATH_TARGET_INFO &targetInfo);
  *
  * @return The GDI device name, or empty if it could not be resolved
  */
-wstring sourceGdiDeviceName(const DISPLAYCONFIG_PATH_SOURCE_INFO &sourceInfo);
+std::wstring sourceGdiDeviceName(const DISPLAYCONFIG_PATH_SOURCE_INFO &sourceInfo);
 
 /**
  * Shared CCD (Connecting and Configuring Displays) helpers that query the active configuration and submit a supplied
@@ -318,7 +377,7 @@ wstring sourceGdiDeviceName(const DISPLAYCONFIG_PATH_SOURCE_INFO &sourceInfo);
  *
  * @return Whether the query succeeded
  */
-bool queryActiveCcdConfig(vector<DISPLAYCONFIG_PATH_INFO> &paths, vector<DISPLAYCONFIG_MODE_INFO> &modes);
+bool queryActiveCcdConfig(std::vector<DISPLAYCONFIG_PATH_INFO> &paths, std::vector<DISPLAYCONFIG_MODE_INFO> &modes);
 
 /**
  * Finds the active path index that drives the display with the given stable ID.
@@ -330,7 +389,7 @@ bool queryActiveCcdConfig(vector<DISPLAYCONFIG_PATH_INFO> &paths, vector<DISPLAY
  *
  * @return The matching path index, or -1 if not found
  */
-int findActivePathForDisplay(const vector<DISPLAYCONFIG_PATH_INFO> &paths, const string &stableId);
+int findActivePathForDisplay(const std::vector<DISPLAYCONFIG_PATH_INFO> &paths, const std::string &stableId);
 
 /**
  * Sets the source resolution and target refresh rate on the chosen path of copies of the base arrays, then submits them
@@ -353,5 +412,5 @@ int findActivePathForDisplay(const vector<DISPLAYCONFIG_PATH_INFO> &paths, const
  *
  * @return The SetDisplayConfig result code
  */
-LONG submitCcdSourceMode(vector<DISPLAYCONFIG_PATH_INFO> paths, vector<DISPLAYCONFIG_MODE_INFO> modes, int pathIndex,
-                         UINT32 width, UINT32 height, DISPLAYCONFIG_RATIONAL refreshRate, UINT32 flags);
+LONG submitCcdSourceMode(std::vector<DISPLAYCONFIG_PATH_INFO> paths, std::vector<DISPLAYCONFIG_MODE_INFO> modes,
+                         int pathIndex, UINT32 width, UINT32 height, DISPLAYCONFIG_RATIONAL refreshRate, UINT32 flags);
