@@ -19,8 +19,6 @@
  */
 package com.dhk.io;
 
-import java.awt.Rectangle;
-
 /**
  * Listener for notification area icon interactions delivered from native code, always called on the EDT.
  *
@@ -29,15 +27,11 @@ import java.awt.Rectangle;
 public interface TrayIconListener {
 
     /**
-     * Called when the tray icon is asked to show its menu.
+     * Called when an item of the tray icon's menu is chosen.
      *
-     * @param anchorX
-     *            - The x coordinate to anchor the menu to, in physical screen pixels
-     * @param anchorY
-     *            - The y coordinate to anchor the menu to, in physical screen pixels
-     * @param iconBounds
-     *            - The bounds of the tray icon, in physical screen pixels
+     * @param itemIndex
+     *            - The index of the chosen item, in the order the items were supplied
      */
-    void menuRequested(int anchorX, int anchorY, Rectangle iconBounds);
+    void menuItemSelected(int itemIndex);
 
 }

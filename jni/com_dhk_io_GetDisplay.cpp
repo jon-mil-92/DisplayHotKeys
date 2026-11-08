@@ -17,24 +17,18 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-/*
- * The Windows and DXGI COM headers must precede the project headers here: DisplayConfig.h pulls in a
- * "using namespace std;", and the DXGI include chain (objbase -> oaidl) uses an unqualified "byte" that becomes
- * ambiguous with std::byte once that using-directive is in scope, so DXGI must be parsed before it
- */
-#include <dxgi.h>
-#include <windows.h>
-
+#include "com_dhk_io_GetDisplay.h"
 #include "ArrangeDisplay.h"
 #include "DisplayConfig.h"
-#include "com_dhk_io_GetDisplay.h"
 
 #include <cstdint>
+#include <dxgi.h>
 #include <jni.h>
 #include <map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <windows.h>
 
 using namespace std;
 
