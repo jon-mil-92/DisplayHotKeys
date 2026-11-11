@@ -42,6 +42,7 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
@@ -69,13 +70,17 @@ public class AboutDialog implements IView {
     private JPanel infoPanel;
     private GridBagLayout infoPanelLayout;
     private GridBagConstraints infoPanelConstraints;
-    private JLabel headerLabel;
+    private JLabel versionSectionLabel;
+    private JSeparator versionSeparator;
     private JLabel versionLabel;
     private JLabel latestVersionLabel;
+    private JLabel developerSectionLabel;
+    private JSeparator developerSeparator;
     private JLabel developedByLabel;
+    private JLabel donateSectionLabel;
+    private JSeparator donateSeparator;
     private JButton licenseButton;
     private JButton releasesButton;
-    private JButton closeButton;
     private ThemeableButton paypalDonateButton;
     private PaypalDonateButtonController paypalButtonController;
     private JFrame parentFrame;
@@ -83,10 +88,10 @@ public class AboutDialog implements IView {
     private Component darkeningGlassPane;
     private boolean dialogClosed;
 
+    private static final String DIALOG_TITLE = "About App";
     private static final String GITHUB_DOMAIN = "https://github.com";
     private static final String RELEASES_PATH = "/jon-mil-92/DisplayHotKeys/releases";
     private static final String RELEASES_LINK = GITHUB_DOMAIN + RELEASES_PATH;
-    private static final float HEADER_FONT_SCALE = 1.6f;
 
     /**
      * Constructor for the {@link AboutDialog} class.
@@ -123,7 +128,7 @@ public class AboutDialog implements IView {
             @Override
             public void run() {
                 // Create the dialog and initialize components
-                final JDialog aboutDialog = new JDialog(parentFrame, true);
+                final JDialog aboutDialog = new JDialog(parentFrame, DIALOG_TITLE, true);
                 aboutDialog.setResizable(false);
 
                 initAboutPanels(aboutDialog);
@@ -155,7 +160,7 @@ public class AboutDialog implements IView {
 
     @Override
     public Component getDefaultFocusComponent() {
-        return headerLabel;
+        return versionLabel;
     }
 
     /**
@@ -176,7 +181,7 @@ public class AboutDialog implements IView {
                             return;
                         }
 
-                        latestVersionLabel.setText("Latest Version: " + latestVersion);
+                        latestVersionLabel.setText("Latest: " + latestVersion);
 
                         // Emphasize the label when a newer release is available than the current version
                         if (isNewerVersion(latestVersion, VersionRetriever.getVersion())) {
@@ -254,10 +259,9 @@ public class AboutDialog implements IView {
         infoPanelLayout = new GridBagLayout();
         infoPanel.setLayout(infoPanelLayout);
 
+        // The single column takes the panel's full width, so each section's separator spans the dialog
         infoPanelConstraints = new GridBagConstraints();
-        infoPanelConstraints.insets = new Insets(4, 8, 4, 8);
-        infoPanelConstraints.anchor = GridBagConstraints.CENTER;
-        infoPanelConstraints.gridwidth = 1;
+        infoPanelConstraints.weightx = 1;
     }
 
     /**
@@ -267,19 +271,24 @@ public class AboutDialog implements IView {
      *            - The about dialog to initialize components for
      */
     private void initAboutComponents(JDialog aboutDialog) {
-        headerLabel = new JLabel("About Display Hot Keys");
-        headerLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        headerLabel.putClientProperty("FlatLaf.style", "font: bold " + Math.round(HEADER_FONT_SCALE * 100) + "%");
+        versionSectionLabel = new JLabel("Version", SwingConstants.CENTER);
+        versionSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
+        versionSeparator = new JSeparator();
 
-        versionLabel = new JLabel("Current Version: " + VersionRetriever.getVersion());
-        versionLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        versionLabel = new JLabel("Current: " + VersionRetriever.getVersion(), SwingConstants.CENTER);
 
         // Placeholder text is the widest state, so the async result never clips in the non-resizable dialog
-        latestVersionLabel = new JLabel("Latest Version: checking…");
-        latestVersionLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        latestVersionLabel = new JLabel("Latest: checking…", SwingConstants.CENTER);
 
-        developedByLabel = new JLabel("Developed by Jonathan R. Miller");
-        developedByLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        developerSectionLabel = new JLabel("Developer", SwingConstants.CENTER);
+        developerSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
+        developerSeparator = new JSeparator();
+
+        developedByLabel = new JLabel("Jonathan R. Miller", SwingConstants.CENTER);
+
+        donateSectionLabel = new JLabel("Donate", SwingConstants.CENTER);
+        donateSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
+        donateSeparator = new JSeparator();
 
         ButtonProperties paypalButtonProperties = new ButtonProperties(null, new Dimension(134, 46), 0.70f, 0.63f);
         paypalDonateButton = new ThemeableButton("/paypal_donate_light_idle.svg", "/paypal_donate_light_hover.svg",
@@ -291,8 +300,6 @@ public class AboutDialog implements IView {
         licenseButton.setFocusPainted(false);
         releasesButton = new JButton("Releases");
         releasesButton.setFocusPainted(false);
-        closeButton = new JButton("Close");
-        closeButton.setFocusPainted(false);
     }
 
     /**
@@ -308,7 +315,6 @@ public class AboutDialog implements IView {
 
         licenseButton.addActionListener(createLicenseActionListener(aboutDialog));
         releasesButton.addActionListener(createReleasesActionListener());
-        closeButton.addActionListener(createCloseActionListener(aboutDialog, onCloseAction));
 
         // Prevent default close and handle the title-bar close ourselves
         aboutDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
@@ -321,14 +327,13 @@ public class AboutDialog implements IView {
 
             @Override
             public void windowClosing(WindowEvent e) {
-                // Call the same method used by the Close button
-                closeButtonAction(aboutDialog, onCloseAction);
+                closeDialog(aboutDialog, onCloseAction);
             }
 
             // A re-initialization disposes the parent frame, destroying this dialog without any close request
             @Override
             public void windowClosed(WindowEvent e) {
-                closeButtonAction(aboutDialog, onCloseAction);
+                closeDialog(aboutDialog, onCloseAction);
             }
         });
 
@@ -355,37 +360,72 @@ public class AboutDialog implements IView {
         buttonPanelConstraints.gridy = 0;
         buttonPanel.add(releasesButton, buttonPanelConstraints);
 
-        buttonPanelConstraints.gridx = 2;
-        buttonPanelConstraints.gridy = 0;
-        buttonPanel.add(closeButton, buttonPanelConstraints);
+        addInfo(infoPanel, infoPanelConstraints, versionSectionLabel, 0, 0, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.NONE, new Insets(0, 8, 4, 8));
+        addInfo(infoPanel, infoPanelConstraints, versionSeparator, 0, 1, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.HORIZONTAL, new Insets(0, 8, 4, 8));
+        addInfo(infoPanel, infoPanelConstraints, versionLabel, 0, 2, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.NONE, new Insets(4, 8, 2, 8));
+        addInfo(infoPanel, infoPanelConstraints, latestVersionLabel, 0, 3, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.NONE, new Insets(2, 8, 4, 8));
 
-        infoPanelConstraints.gridx = 0;
-        infoPanelConstraints.gridy = 0;
-        infoPanel.add(headerLabel, infoPanelConstraints);
+        addInfo(infoPanel, infoPanelConstraints, developerSectionLabel, 0, 4, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.NONE, new Insets(16, 8, 4, 8));
+        addInfo(infoPanel, infoPanelConstraints, developerSeparator, 0, 5, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.HORIZONTAL, new Insets(0, 8, 4, 8));
+        addInfo(infoPanel, infoPanelConstraints, developedByLabel, 0, 6, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.NONE, new Insets(4, 8, 4, 8));
 
-        infoPanelConstraints.gridx = 0;
-        infoPanelConstraints.gridy = 1;
-        infoPanel.add(versionLabel, infoPanelConstraints);
-
-        infoPanelConstraints.gridx = 0;
-        infoPanelConstraints.gridy = 2;
-        infoPanel.add(latestVersionLabel, infoPanelConstraints);
-
-        infoPanelConstraints.gridx = 0;
-        infoPanelConstraints.gridy = 3;
-        infoPanel.add(developedByLabel, infoPanelConstraints);
+        addInfo(infoPanel, infoPanelConstraints, donateSectionLabel, 0, 7, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.NONE, new Insets(16, 8, 4, 8));
+        addInfo(infoPanel, infoPanelConstraints, donateSeparator, 0, 8, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.HORIZONTAL, new Insets(0, 8, 4, 8));
+        addInfo(infoPanel, infoPanelConstraints, paypalDonateButton, 0, 9, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.NONE, new Insets(4, 8, 4, 8));
 
         mainConstraints.gridx = 0;
         mainConstraints.gridy = 0;
+        mainConstraints.fill = GridBagConstraints.HORIZONTAL;
         aboutDialog.add(infoPanel, mainConstraints);
 
         mainConstraints.gridx = 0;
         mainConstraints.gridy = 1;
-        aboutDialog.add(paypalDonateButton, mainConstraints);
-
-        mainConstraints.gridx = 0;
-        mainConstraints.gridy = 2;
+        mainConstraints.fill = GridBagConstraints.NONE;
         aboutDialog.add(buttonPanel, mainConstraints);
+    }
+
+    /**
+     * Adds a component to the given panel at the given grid cell, with its own span, alignment, fill, and spacing.
+     *
+     * @param panel
+     *            - The panel to add the component to
+     * @param constraints
+     *            - The constraints to fill in for the component, which the panel copies when the component is added
+     * @param component
+     *            - The component to add
+     * @param gridx
+     *            - The column the component starts in
+     * @param gridy
+     *            - The row the component is in
+     * @param gridwidth
+     *            - The number of columns the component spans
+     * @param anchor
+     *            - Where the component sits within its cell
+     * @param fill
+     *            - How the component stretches to fill its cell
+     * @param insets
+     *            - The space around the component
+     */
+    private void addInfo(JPanel panel, GridBagConstraints constraints, Component component, int gridx, int gridy,
+            int gridwidth, int anchor, int fill, Insets insets) {
+        constraints.gridx = gridx;
+        constraints.gridy = gridy;
+        constraints.gridwidth = gridwidth;
+        constraints.anchor = anchor;
+        constraints.fill = fill;
+        constraints.insets = insets;
+
+        panel.add(component, constraints);
     }
 
     /**
@@ -430,25 +470,6 @@ public class AboutDialog implements IView {
     }
 
     /**
-     * Creates an action listener that closes an about dialog.
-     *
-     * @param aboutDialog
-     *            - The about dialog to close
-     * @param onCloseAction
-     *            - The action to run when the dialog closes (not required)
-     *
-     * @return An action listener that closes an about dialog
-     */
-    private ActionListener createCloseActionListener(JDialog aboutDialog, Runnable onCloseAction) {
-        return new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                closeButtonAction(aboutDialog, onCloseAction);
-            }
-        };
-    }
-
-    /**
      * Opens up a link in the user's default web browser.
      *
      * @param link
@@ -472,7 +493,7 @@ public class AboutDialog implements IView {
      * @param onCloseAction
      *            - The action to run when the dialog closes (not required)
      */
-    private void closeButtonAction(JDialog aboutDialog, Runnable onCloseAction) {
+    private void closeDialog(JDialog aboutDialog, Runnable onCloseAction) {
         // Disposing fires the close path again, and the title-bar close can land after it has already run
         if (dialogClosed) {
             return;

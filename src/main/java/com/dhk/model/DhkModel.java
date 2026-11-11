@@ -41,6 +41,8 @@ public class DhkModel {
     private boolean darkMode;
     private boolean minimizeToTray;
     private boolean runOnStartup;
+    private HotKey displayInfoHotKey;
+    private boolean autoShowInfoOverlay;
 
     /**
      * Default constructor for the {@link DhkModel} class.
@@ -58,6 +60,8 @@ public class DhkModel {
         darkMode = settingsMgr.getIniDarkMode();
         minimizeToTray = settingsMgr.getIniMinimizeToTray();
         runOnStartup = settingsMgr.getIniRunOnStartup();
+        displayInfoHotKey = settingsMgr.getIniDisplayInfoHotKey();
+        autoShowInfoOverlay = settingsMgr.getIniAutoShowInfoOverlay();
         displayConfig = settingsMgr.getDisplayConfig();
         maxNumOfSlots = settingsMgr.getMaxNumOfSlots();
         displayIds = settingsMgr.getDisplayIds();
@@ -71,12 +75,12 @@ public class DhkModel {
 
             for (int slotId = 1; slotId <= maxNumOfSlots; slotId++) {
                 DisplayMode displayMode = settingsMgr.getIniSlotDisplayMode(displayId, slotId);
-                int scalingMode = settingsMgr.getIniSlotScalingMode(displayId, slotId);
                 int dpiScalePercentage = settingsMgr.getIniSlotDpiScalePercentage(displayId, slotId);
+                int scalingMode = settingsMgr.getIniSlotScalingMode(displayId, slotId);
                 int orientationMode = settingsMgr.getIniSlotOrientationMode(displayId, slotId);
                 HotKey hotKey = settingsMgr.getIniSlotHotKey(displayId, slotId);
 
-                slots.add(new Slot(displayMode, scalingMode, dpiScalePercentage, orientationMode, false, hotKey));
+                slots.add(new Slot(displayMode, dpiScalePercentage, scalingMode, orientationMode, false, hotKey));
             }
 
             int numOfSlots = settingsMgr.getIniNumOfSlotsForDisplay(displayId);
@@ -218,6 +222,45 @@ public class DhkModel {
      */
     public boolean isRunOnStartup() {
         return runOnStartup;
+    }
+
+    /**
+     * Gets the global hot key that shows the applied settings of every connected display.
+     *
+     * @return The Display Info hot key
+     */
+    public HotKey getDisplayInfoHotKey() {
+        return displayInfoHotKey;
+    }
+
+    /**
+     * Sets the global hot key that shows the applied settings of every connected display.
+     *
+     * @param displayInfoHotKey
+     *            - The new Display Info hot key
+     */
+    public void setDisplayInfoHotKey(HotKey displayInfoHotKey) {
+        this.displayInfoHotKey = displayInfoHotKey;
+    }
+
+    /**
+     * Gets the "auto show info overlay" state, which shows the applied settings of every connected display whenever a
+     * slot is applied or the display configuration changes.
+     *
+     * @return The "auto show info overlay" state
+     */
+    public boolean isAutoShowInfoOverlay() {
+        return autoShowInfoOverlay;
+    }
+
+    /**
+     * Sets the "auto show info overlay" state.
+     *
+     * @param autoShowInfoOverlay
+     *            - The "auto show info overlay" state to set
+     */
+    public void setAutoShowInfoOverlay(boolean autoShowInfoOverlay) {
+        this.autoShowInfoOverlay = autoShowInfoOverlay;
     }
 
 }

@@ -70,8 +70,8 @@ public class DisplayConfigUpdater implements DisplayChangeListener {
             return;
         }
 
-        // Covers changes made outside the app, which reach the tray through no other path
-        controller.getMinimizeToTray().displayConfigurationChanged();
+        // Covers changes made outside the app, which reach the tray and the display info panels through no other path
+        controller.displayConfigurationChanged();
 
         reInitTimer.restart();
     }

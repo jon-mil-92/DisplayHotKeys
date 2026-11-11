@@ -82,11 +82,12 @@ public class SettingsValidator {
         validateDarkMode();
         validateMinimizeToTray();
         validateRunOnStartup();
+        validateAutoShowInfoOverlay();
         validateNumOfSlots();
         validateOrientationModes();
         validateDisplayModes();
-        validateScalingModes();
         validateDpiScalePercentages();
+        validateScalingModes();
         validateHotKeys();
 
         return repairedProperty;
@@ -211,6 +212,19 @@ public class SettingsValidator {
     }
 
     /**
+     * Validates the value for the autoShowInfoOverlay property from the settings file. If the value is not a string
+     * representation of a boolean, then it writes the default value for the autoShowInfoOverlay property.
+     */
+    private void validateAutoShowInfoOverlay() {
+        String autoShowInfoOverlay = ini.get("Application", "autoShowInfoOverlay");
+
+        if (autoShowInfoOverlay == null
+                || !(autoShowInfoOverlay.equals("false") || autoShowInfoOverlay.equals("true"))) {
+            repairProperty("Application", "autoShowInfoOverlay", false);
+        }
+    }
+
+    /**
      * Validates the value for the number of slots property from the settings file. If the value is not in the correct
      * range, then it writes the default value for the number of slots property.
      */
@@ -307,26 +321,6 @@ public class SettingsValidator {
     }
 
     /**
-     * Validates the value for each scalingMode property from the settings file. If the value is not a valid value, then
-     * it writes the default value for the scalingMode property.
-     */
-    private void validateScalingModes() {
-        for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
-            String displayId = displayIds[displayIndex];
-
-            for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
-                String iniSection = displayId + "--Slot" + Integer.toString(slotId);
-                String scalingMode = ini.get(iniSection, "scalingMode");
-
-                if (scalingMode == null || !isPositiveInt(scalingMode)
-                        || !Arrays.asList(VALID_SCALING_MODES).contains(scalingMode)) {
-                    repairProperty(iniSection, "scalingMode", 0);
-                }
-            }
-        }
-    }
-
-    /**
      * Validates the value for each dpiScalePercentage property from the settings file. The set of valid DPI scale
      * percentages depends on the slot's resolution, so each value is validated against the percentages Windows supports
      * for that slot's stored resolution. If the value is not a supported value, then it writes the default value for
@@ -376,68 +370,93 @@ public class SettingsValidator {
     }
 
     /**
-     * Calls the method to validate the keys for each hot key, and then it validates the value for each hotKeySize
-     * property from the settings file. If the value is not in the correct range, then it writes the default value for
-     * the hotKeySize property. If the hotKeySize property value does not match the number of set keys, then the
-     * hotKeySize property value is updated to the number of set keys.
+     * Validates the value for each scalingMode property from the settings file. If the value is not a valid value, then
+     * it writes the default value for the scalingMode property.
      */
-    private void validateHotKeys() {
-        validateKeys();
-
+    private void validateScalingModes() {
         for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
             String displayId = displayIds[displayIndex];
 
             for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
                 String iniSection = displayId + "--Slot" + Integer.toString(slotId);
-                String hotKeySize = ini.get(iniSection, "hotKeySize");
+                String scalingMode = ini.get(iniSection, "scalingMode");
 
-                if (hotKeySize == null || !isPositiveInt(hotKeySize) || Integer.valueOf(hotKeySize) < 0
-                        || Integer.valueOf(hotKeySize) > 3) {
-                    repairProperty(iniSection, "hotKeySize", 0);
-                }
-
-                int validatedHotKeySize = ini.get(iniSection, "hotKeySize", int.class);
-                int numOfSetKeys = 0;
-
-                for (int keyId = 1; keyId <= 3; keyId++) {
-                    int validatedKeyCode = ini.get(iniSection, "key" + keyId, int.class);
-
-                    if (validatedKeyCode != UNSET_KEY_CODE) {
-                        numOfSetKeys++;
-                    }
-
-                    if (numOfSetKeys > validatedHotKeySize) {
-                        repairProperty(iniSection, "key" + keyId, UNSET_KEY_CODE);
-                    }
-                }
-
-                if (validatedHotKeySize > numOfSetKeys) {
-                    repairProperty(iniSection, "hotKeySize", numOfSetKeys);
+                if (scalingMode == null || !isPositiveInt(scalingMode)
+                        || !Arrays.asList(VALID_SCALING_MODES).contains(scalingMode)) {
+                    repairProperty(iniSection, "scalingMode", 0);
                 }
             }
         }
     }
 
     /**
-     * Validates the value for each key property from the settings file. A key value is valid when it is the unset key
-     * code or a supported key code; otherwise the default unset value is written for the key property.
+     * Validates the hot key of every slot of every display, and then the Display Info hot key. Each hot key is held in
+     * its own section with the same property names, so all of them are validated the same way.
      */
-    private void validateKeys() {
+    private void validateHotKeys() {
         for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
             String displayId = displayIds[displayIndex];
 
             for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
-                String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+                validateHotKey(displayId + "--Slot" + Integer.toString(slotId));
+            }
+        }
 
-                for (int keyId = 1; keyId <= 3; keyId++) {
-                    String key = ini.get(iniSection, "key" + keyId);
+        validateHotKey(SettingsManager.DISPLAY_INFO_HOT_KEY_SECTION);
+    }
 
-                    // An unset key persists as UNSET_KEY_CODE, so that value must pass validation without a repair
-                    if (key == null || !isPositiveInt(key) || !(Integer.valueOf(key) == UNSET_KEY_CODE
-                            || validkeyCodes.contains(Integer.valueOf(key)))) {
-                        repairProperty(iniSection, "key" + keyId, UNSET_KEY_CODE);
-                    }
-                }
+    /**
+     * Validates the keys of the hot key in the given section, and then its hotKeySize property. A hotKeySize out of
+     * range is reset to its default, and a hotKeySize that does not match the number of set keys is corrected to it.
+     *
+     * @param iniSection
+     *            - The section of the settings file holding the hot key properties
+     */
+    private void validateHotKey(String iniSection) {
+        validateKeys(iniSection);
+
+        String hotKeySize = ini.get(iniSection, "hotKeySize");
+
+        if (hotKeySize == null || !isPositiveInt(hotKeySize) || Integer.valueOf(hotKeySize) < 0
+                || Integer.valueOf(hotKeySize) > 3) {
+            repairProperty(iniSection, "hotKeySize", 0);
+        }
+
+        int validatedHotKeySize = ini.get(iniSection, "hotKeySize", int.class);
+        int numOfSetKeys = 0;
+
+        for (int keyId = 1; keyId <= 3; keyId++) {
+            int validatedKeyCode = ini.get(iniSection, "key" + keyId, int.class);
+
+            if (validatedKeyCode != UNSET_KEY_CODE) {
+                numOfSetKeys++;
+            }
+
+            if (numOfSetKeys > validatedHotKeySize) {
+                repairProperty(iniSection, "key" + keyId, UNSET_KEY_CODE);
+            }
+        }
+
+        if (validatedHotKeySize > numOfSetKeys) {
+            repairProperty(iniSection, "hotKeySize", numOfSetKeys);
+        }
+    }
+
+    /**
+     * Validates the value for each key property of the hot key in the given section. A key value is valid when it is
+     * the unset key code or a supported key code; otherwise the default unset value is written for the key property.
+     *
+     * @param iniSection
+     *            - The section of the settings file holding the hot key properties
+     */
+    private void validateKeys(String iniSection) {
+        for (int keyId = 1; keyId <= 3; keyId++) {
+            String key = ini.get(iniSection, "key" + keyId);
+
+            // An unset key persists as UNSET_KEY_CODE, so that value must pass validation without a repair
+            if (key == null || !isPositiveInt(key)
+                    || !(Integer.valueOf(key) == UNSET_KEY_CODE || validkeyCodes.contains(Integer.valueOf(key)))) {
+                repairProperty(iniSection, "key" + keyId, UNSET_KEY_CODE);
             }
         }
     }

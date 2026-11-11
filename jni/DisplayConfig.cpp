@@ -185,7 +185,7 @@ static UINT32 gdiNumberForSource(const DISPLAYCONFIG_PATH_SOURCE_INFO &sourceInf
  * @param flags
  *            - The QueryDisplayConfig flags selecting which paths to enumerate
  * @param includeGeometry
- *            - Whether each entry also carries resolution, position, rotation, and DPI scale index
+ *            - Whether each entry also carries resolution, position, rotation, DPI scale index, and refresh rate
  * @param rotationsOut
  *            - When non-null, receives each visible display's rotation in lockstep with the returned IDs
  *
@@ -283,6 +283,10 @@ static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGe
             if (DisplayConfigGetDeviceInfo(&dpiIndices.header) == ERROR_SUCCESS) {
                 entry += "|d" + to_string(dpiIndices.relativeCurrentDpiScaleIndex);
             }
+
+            // Exact refresh rate rational so a refresh-rate-only change is reflected in the signature
+            DISPLAYCONFIG_RATIONAL refreshRate = pathRefreshRate(path, modeArray, queryMode);
+            entry += "|f" + to_string(refreshRate.Numerator) + "/" + to_string(refreshRate.Denominator);
         }
 
         entries.push_back({gdiNumberForSource(path.sourceInfo), entry, (int) path.targetInfo.rotation});
@@ -493,7 +497,7 @@ vector<int> getVisibleDisplayNumbers(const vector<string> &visibleIds) {
 }
 
 /**
- * Gets per-display geometry signatures for the visible displays, using the same active-then-database fallback as
+ * Gets per-display mode signatures for the visible displays, using the same active-then-database fallback as
  * getVisibleDisplayIds, then appends each display's Windows display number. Including the display number lets the
  * change notifier catch a numbering shift even when the active set is unchanged and a display is in the "Disconnect
  * this display" state.
@@ -716,6 +720,32 @@ wstring sourceGdiDeviceName(const DISPLAYCONFIG_PATH_SOURCE_INFO &sourceInfo) {
     }
 
     return wstring(sourceName.viewGdiDeviceName);
+}
+
+/**
+ * Reads the exact refresh rate a path drives its display at, so it is never derived from a truncated integer.
+ *
+ * @param path
+ *            - The path to read the refresh rate of
+ * @param modes
+ *            - The mode array the path indexes into
+ * @param numModes
+ *            - Number of elements in the mode array
+ *
+ * @return The path's refresh rate, or the target mode's vertical sync frequency when the path leaves it unspecified
+ */
+DISPLAYCONFIG_RATIONAL pathRefreshRate(const DISPLAYCONFIG_PATH_INFO &path, const DISPLAYCONFIG_MODE_INFO *modes,
+                                       UINT32 numModes) {
+    DISPLAYCONFIG_RATIONAL refreshRate = path.targetInfo.refreshRate;
+    UINT32 targetModeIndex = path.targetInfo.modeInfoIdx;
+
+    // Fall back to the target mode's vertical sync frequency when the path leaves its refresh rate unspecified
+    if (refreshRate.Denominator == 0 && targetModeIndex != DISPLAYCONFIG_PATH_MODE_IDX_INVALID &&
+        targetModeIndex < numModes && modes[targetModeIndex].infoType == DISPLAYCONFIG_MODE_INFO_TYPE_TARGET) {
+        refreshRate = modes[targetModeIndex].targetMode.targetVideoSignalInfo.vSyncFreq;
+    }
+
+    return refreshRate;
 }
 
 /**

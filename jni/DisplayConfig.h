@@ -287,9 +287,9 @@ std::vector<int> getVisibleDisplayOrientations();
 std::vector<int> getVisibleDisplayNumbers(const std::vector<std::string> &visibleIds);
 
 /**
- * Gets a per-display signature (stable ID plus source resolution, position, rotation, DPI scale index, and Windows
- * display number) for each visible display, so resolution/DPI/orientation/identifier changes are detectable even when
- * the visible set is unchanged.
+ * Gets a per-display signature (stable ID plus source resolution, position, rotation, DPI scale index, refresh rate,
+ * and Windows display number) for each visible display, so resolution, DPI, orientation, refresh rate, and identifier
+ * changes are detectable even when the visible set is unchanged.
  *
  * @return Signatures for the currently visible displays
  */
@@ -360,6 +360,21 @@ std::string stableIdForTarget(const DISPLAYCONFIG_PATH_TARGET_INFO &targetInfo);
  * @return The GDI device name, or empty if it could not be resolved
  */
 std::wstring sourceGdiDeviceName(const DISPLAYCONFIG_PATH_SOURCE_INFO &sourceInfo);
+
+/**
+ * Reads the exact refresh rate a path drives its display at, so it is never derived from a truncated integer.
+ *
+ * @param path
+ *            - The path to read the refresh rate of
+ * @param modes
+ *            - The mode array the path indexes into
+ * @param numModes
+ *            - Number of elements in the mode array
+ *
+ * @return The path's refresh rate, or the target mode's vertical sync frequency when the path leaves it unspecified
+ */
+DISPLAYCONFIG_RATIONAL pathRefreshRate(const DISPLAYCONFIG_PATH_INFO &path, const DISPLAYCONFIG_MODE_INFO *modes,
+                                       UINT32 numModes);
 
 /**
  * Shared CCD (Connecting and Configuring Displays) helpers that query the active configuration and submit a supplied

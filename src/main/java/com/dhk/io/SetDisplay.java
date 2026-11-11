@@ -20,7 +20,7 @@
 package com.dhk.io;
 
 /**
- * Utilizes the SetDisplay JNI library to immediately apply the given display mode, scaling mode, DPI scale percentage,
+ * Utilizes the SetDisplay JNI library to immediately apply the given display mode, DPI scale percentage, scaling mode,
  * and orientation mode for the given display.
  *
  * @author Jonathan R. Miller
@@ -54,13 +54,13 @@ public class SetDisplay {
      *            - The numerator of the new exact refresh rate (Hz = numerator / denominator)
      * @param refreshDenominator
      *            - The denominator of the new exact refresh rate (Hz = numerator / denominator)
-     * @param scalingMode
-     *            - The new scaling mode for the given display
      * @param dpiScalePercentage
      *            - The new DPI scale percentage for the given display
+     * @param scalingMode
+     *            - The new scaling mode for the given display
      */
     private native void setDisplay(String displayId, int resWidth, int resHeight, int refreshNumerator,
-            int refreshDenominator, int scalingMode, int dpiScalePercentage);
+            int refreshDenominator, int dpiScalePercentage, int scalingMode);
 
     /**
      * Defines a JNI function to immediately apply the given orientation mode for the given display.
@@ -94,15 +94,15 @@ public class SetDisplay {
      *            - The numerator of the new exact refresh rate (Hz = numerator / denominator)
      * @param refreshDenominator
      *            - The denominator of the new exact refresh rate (Hz = numerator / denominator)
-     * @param scalingMode
-     *            - The new scaling mode for the given display
      * @param dpiScalePercentage
      *            - The new DPI scale percentage for the given display
+     * @param scalingMode
+     *            - The new scaling mode for the given display
      */
     public void applyDisplaySettings(String displayId, int resWidth, int resHeight, int refreshNumerator,
-            int refreshDenominator, int scalingMode, int dpiScalePercentage) {
-        setDisplay(displayId, resWidth, resHeight, refreshNumerator, refreshDenominator, scalingMode,
-                dpiScalePercentage);
+            int refreshDenominator, int dpiScalePercentage, int scalingMode) {
+        setDisplay(displayId, resWidth, resHeight, refreshNumerator, refreshDenominator, dpiScalePercentage,
+                scalingMode);
     }
 
     /**

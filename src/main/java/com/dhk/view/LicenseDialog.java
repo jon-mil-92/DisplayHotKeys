@@ -23,13 +23,10 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Window;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
-import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JTextArea;
 
@@ -73,26 +70,11 @@ public class LicenseDialog {
         licenseTextArea.setFocusable(false);
         licenseTextArea.setMargin(new Insets(0, 0, 0, 0));
 
-        JButton licenseCloseButton = new JButton("Close");
-
-        // Suppress the focus ring so the initially-focused Close button matches the about dialog's ring-free buttons
-        licenseCloseButton.setFocusPainted(false);
-        licenseCloseButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                licenseDialog.dispose();
-            }
-        });
-
         GridBagConstraints licenseConstraints = new GridBagConstraints();
         licenseConstraints.gridx = 0;
         licenseConstraints.gridy = 0;
         licenseConstraints.insets = new Insets(28, 28, 28, 28);
         licenseDialog.add(licenseTextArea, licenseConstraints);
-
-        licenseConstraints.gridy = 1;
-        licenseConstraints.insets = new Insets(0, 0, 18, 0);
-        licenseDialog.add(licenseCloseButton, licenseConstraints);
 
         licenseDialog.pack();
         licenseDialog.setLocationRelativeTo(owner);

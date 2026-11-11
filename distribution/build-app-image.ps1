@@ -3,7 +3,7 @@
 $ErrorActionPreference = 'Stop'
 $distDir = $PSScriptRoot
 $projectDir = Split-Path $distDir -Parent
-$version = '4.2.1'
+$version = '4.3.0'
 $jarName = "DisplayHotKeys-$version.jar"
 $copyright = "Copyright $([char]0x00A9) 2026 Jonathan R. Miller"
 $inputDir = Join-Path $distDir 'input'
@@ -15,7 +15,7 @@ $icon = Join-Path $distDir 'dhk.ico'
 $resourceDir = Join-Path $distDir 'jpackage-resources'
 $launcherProperties = Join-Path $resourceDir 'DisplayHotKeys.properties'
 $dllNames = @('SetDisplay.dll', 'GetDisplay.dll', 'DisplayEventNotifier.dll', 'SystemTrayIcon.dll',
-    'NativeInputHook.dll')
+    'NativeInputHook.dll', 'DisplayInfoOverlay.dll')
 $startLauncherName = 'DisplayHotKeysLauncher.exe'
 $startLauncher = Join-Path $distDir $startLauncherName
 $uninstallScript = Join-Path $distDir 'uninstall.bat'

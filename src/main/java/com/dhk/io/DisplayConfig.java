@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.dhk.model.ActiveDisplaySettings;
 import com.dhk.model.DisplayMode;
 import com.dhk.utility.DisplayModeInverter;
 
@@ -49,6 +50,12 @@ public class DisplayConfig {
      * denominator.
      */
     private static final int FIELDS_PER_MODE = 4;
+
+    /**
+     * Number of int fields per display in a getActiveDisplaySettingsRecords result: width, height, refresh numerator,
+     * refresh denominator, DPI scale percentage, scaling mode, orientation, and the desktop x and y.
+     */
+    private static final int FIELDS_PER_ACTIVE_DISPLAY = 9;
 
     /**
      * Comparator for display mode sorting.
@@ -243,6 +250,53 @@ public class DisplayConfig {
      */
     public String[] captureArrangement() {
         return getDisplay.captureArrangement();
+    }
+
+    /**
+     * Gets the settings currently in effect on each given display, rebuilt from the flat records the native query
+     * returns. A display without a visible active path, or one the query could not read, gets a null entry.
+     *
+     * @param displayIds
+     *            - The IDs of the displays to read the active settings of
+     *
+     * @return The active settings of each given display, in the given order, with null for a display not shown
+     */
+    public ActiveDisplaySettings[] getActiveDisplaySettings(String[] displayIds) {
+        int[] records = getDisplay.getActiveDisplaySettingsRecords(displayIds);
+
+        return buildActiveDisplaySettings(records != null ? records : new int[0], displayIds.length);
+    }
+
+    /**
+     * Builds the active display settings from the flat record array returned by the native query, where each display is
+     * nine consecutive ints: width, height, refresh numerator, refresh denominator, DPI scale percentage, scaling mode,
+     * orientation, and the desktop x and y of its top-left corner.
+     *
+     * @param records
+     *            - The flat int array of active display settings records
+     * @param displayCount
+     *            - The number of displays the records were requested for
+     *
+     * @return The active settings rebuilt from the records, with null for a display without a record or a visible path
+     */
+    private ActiveDisplaySettings[] buildActiveDisplaySettings(int[] records, int displayCount) {
+        ActiveDisplaySettings[] activeDisplaySettings = new ActiveDisplaySettings[displayCount];
+
+        for (int i = 0; i < displayCount; i++) {
+            int offset = i * FIELDS_PER_ACTIVE_DISPLAY;
+
+            // A short result or a zero width marks a display that has nothing to report
+            if (offset + FIELDS_PER_ACTIVE_DISPLAY > records.length || records[offset] <= 0) {
+                continue;
+            }
+
+            DisplayMode displayMode = new DisplayMode(records[offset], records[offset + 1], records[offset + 2],
+                    records[offset + 3]);
+            activeDisplaySettings[i] = new ActiveDisplaySettings(displayMode, records[offset + 4], records[offset + 5],
+                    records[offset + 6], records[offset + 7], records[offset + 8]);
+        }
+
+        return activeDisplaySettings;
     }
 
 }

@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.dhk.controller.button.AboutButtonController;
-import com.dhk.controller.button.GlobalSettingsButtonController;
+import com.dhk.controller.button.AdditionalSettingsButtonController;
 import com.dhk.controller.button.MinimizeToTrayButtonController;
 import com.dhk.controller.button.RunOnStartupButtonController;
 import com.dhk.controller.button.ThemeButtonController;
@@ -42,6 +42,7 @@ public class MenuController implements IController {
     private DhkModel model;
     private DhkView view;
     private SettingsManager settingsMgr;
+    private HotKeysController hotKeysController;
     private List<IController> menuButtonControllers;
 
     /**
@@ -53,17 +54,21 @@ public class MenuController implements IController {
      *            - The view for the application
      * @param settingsMgr
      *            - The settings manager for the application
+     * @param hotKeysController
+     *            - The controller for hot key management
      */
-    public MenuController(DhkModel model, DhkView view, SettingsManager settingsMgr) {
+    public MenuController(DhkModel model, DhkView view, SettingsManager settingsMgr,
+            HotKeysController hotKeysController) {
         this.model = model;
         this.view = view;
         this.settingsMgr = settingsMgr;
+        this.hotKeysController = hotKeysController;
     }
 
     @Override
     public void initController() {
         menuButtonControllers = new ArrayList<IController>();
-        menuButtonControllers.add(new GlobalSettingsButtonController(model, view));
+        menuButtonControllers.add(new AdditionalSettingsButtonController(model, view, settingsMgr, hotKeysController));
         menuButtonControllers.add(new AboutButtonController(model, view));
         menuButtonControllers.add(new MinimizeToTrayButtonController(model, view, settingsMgr));
         menuButtonControllers.add(new RunOnStartupButtonController(model, view, settingsMgr));

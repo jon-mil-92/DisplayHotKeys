@@ -43,7 +43,7 @@ void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation);
 static const UINT32 SDC_SUPPLIED_APPLY_FLAGS = SDC_APPLY | SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE;
 
 /**
- * Applies display settings (resolution, refresh rate, scaling mode, and DPI scale percentage) to a display.
+ * Applies display settings (resolution, refresh rate, DPI scale percentage, and scaling mode) to a display.
  *
  * @param env
  *            - The JNI environment pointer
@@ -59,15 +59,15 @@ static const UINT32 SDC_SUPPLIED_APPLY_FLAGS = SDC_APPLY | SDC_USE_SUPPLIED_DISP
  *            - The numerator of the exact refresh rate to apply (Hz = numerator / denominator)
  * @param refreshDenominator
  *            - The denominator of the exact refresh rate to apply (Hz = numerator / denominator)
- * @param scalingMode
- *            - The scaling mode to apply (0 = aspect ratio, 1 = stretched, 2 = centered)
  * @param dpiScalePercentage
  *            - The DPI scale percentage to apply (e.g. 100, 125, 150)
+ * @param scalingMode
+ *            - The scaling mode to apply (0 = aspect ratio, 1 = stretched, 2 = centered)
  */
 JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv *env, jobject obj, jstring displayId, jint resWidth,
                                                              jint resHeight, jint refreshNumerator,
-                                                             jint refreshDenominator, jint scalingMode,
-                                                             jint dpiScalePercentage) {
+                                                             jint refreshDenominator, jint dpiScalePercentage,
+                                                             jint scalingMode) {
     jboolean isCopy;
     const char *displayIdChars = env->GetStringUTFChars(displayId, &isCopy);
     string stableId = displayIdChars;
@@ -86,6 +86,10 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv *env, jobjec
         waitForCcdSourceModeResolution(displayIndex, resWidth, resHeight);
     }
 
+    /*
+     * The scaling mode is applied before the DPI scale percentage, because the scaling re-apply submits a full display
+     * configuration and the DPI scale must be set last against the settled resolution
+     */
     setDisplayScalingMode(displayIndex, scalingMode);
     setDpiScalePercentage(displayIndex, dpiScalePercentage);
 

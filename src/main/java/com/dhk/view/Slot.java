@@ -48,10 +48,10 @@ public class Slot {
     private DisplayMode[] supportedDisplayModes;
     private CenteredComboBox<Resolution> slotResolutions;
     private CenteredComboBox<RefreshRate> slotRefreshRates;
-    private CenteredComboBox<String> slotScalingModes;
     private CenteredComboBox<Integer> slotDpiScalePercentages;
+    private CenteredComboBox<String> slotScalingModes;
     private CenteredComboBox<String> slotOrientationModes;
-    private JLabel slotHotKey;
+    private HotKeyLabel slotHotKey;
     private Button clearHotKeyButton;
     private JButton slotChangeHotKeyButton;
     private Button clearSlotButton;
@@ -66,15 +66,15 @@ public class Slot {
      *            - The index of the display the slot resides in
      * @param displayModes
      *            - The array of display modes for the slot
-     * @param scalingModes
-     *            - The array of scaling modes for the slot
      * @param dpiScalePercentages
      *            - The array of DPI scale percentages for the slot
+     * @param scalingModes
+     *            - The array of scaling modes for the slot
      * @param orientationModes
      *            - The array of orientation modes for the slot
      */
-    public Slot(int slotIndex, int displayIndex, DisplayMode[] displayModes, String[] scalingModes,
-            Integer[] dpiScalePercentages, String[] orientationModes) {
+    public Slot(int slotIndex, int displayIndex, DisplayMode[] displayModes, Integer[] dpiScalePercentages,
+            String[] scalingModes, String[] orientationModes) {
         String slotId = Integer.toString(slotIndex + 1);
 
         slotIndicatorLabel = new JLabel("Slot " + slotId + " :", SwingConstants.CENTER);
@@ -96,16 +96,16 @@ public class Slot {
         slotRefreshRates = new CenteredComboBox<RefreshRate>(refreshRates);
         slotRefreshRates.setPreferredSize(new Dimension(118, 28));
 
-        slotScalingModes = new CenteredComboBox<String>(scalingModes);
-        slotScalingModes.setPreferredSize(new Dimension(110, 28));
-
         slotDpiScalePercentages = new CenteredComboBox<Integer>(dpiScalePercentages);
         slotDpiScalePercentages.setPreferredSize(new Dimension(70, 28));
+
+        slotScalingModes = new CenteredComboBox<String>(scalingModes);
+        slotScalingModes.setPreferredSize(new Dimension(110, 28));
 
         slotOrientationModes = new CenteredComboBox<String>(orientationModes);
         slotOrientationModes.setPreferredSize(new Dimension(118, 28));
 
-        slotHotKey = new JLabel("", SwingConstants.CENTER);
+        slotHotKey = new HotKeyLabel("");
 
         ButtonProperties clearHotKeyButtonProps = new ButtonProperties("Clear Hot Key", new Dimension(18, 20), 0.70f,
                 0.60f);
@@ -190,15 +190,6 @@ public class Slot {
     }
 
     /**
-     * Gets the scaling modes combo box of the slot.
-     *
-     * @return The scaling modes combo box of the slot
-     */
-    public CenteredComboBox<String> getScalingModes() {
-        return slotScalingModes;
-    }
-
-    /**
      * Gets the DPI scale percentages combo box of the slot.
      *
      * @return The DPI scale percentages combo box of the slot
@@ -228,6 +219,15 @@ public class Slot {
     }
 
     /**
+     * Gets the scaling modes combo box of the slot.
+     *
+     * @return The scaling modes combo box of the slot
+     */
+    public CenteredComboBox<String> getScalingModes() {
+        return slotScalingModes;
+    }
+
+    /**
      * Gets the orientation modes combo box of the slot.
      *
      * @return The orientation modes combo box of the slot
@@ -241,7 +241,7 @@ public class Slot {
      *
      * @return The hot key of the slot
      */
-    public JLabel getHotKey() {
+    public HotKeyLabel getHotKey() {
         return slotHotKey;
     }
 

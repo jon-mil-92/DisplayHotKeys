@@ -19,7 +19,6 @@
  */
 package com.dhk.controller.button;
 
-import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 
 import com.dhk.controller.DhkController;
@@ -29,11 +28,12 @@ import com.dhk.io.SettingsManager;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
 import com.dhk.model.DisplayMode;
+import com.dhk.view.ConfirmationDialog;
 import com.dhk.view.DhkView;
 
 /**
  * Controls the Clear All button. Listeners are added to the corresponding view component so that when the Clear All
- * button is pressed, the display mode, scaling mode, DPI scale percentage, and hot key for each slot for the selected
+ * button is pressed, the display mode, DPI scale percentage, scaling mode, and hot key for each slot for the selected
  * display is set to default.
  *
  * @author Jonathan R. Miller
@@ -96,8 +96,8 @@ public class ClearAllButtonController extends AbstractButtonController implement
         if (getUserConfirmation() == JOptionPane.YES_OPTION) {
             clearAllOrientationModes();
             clearAllDisplayModes();
-            clearAllScalingModes();
             clearAllDpiScalePercentages();
+            clearAllScalingModes();
             clearAllHotKeys();
 
             appRefresher.reInitApp();
@@ -110,24 +110,10 @@ public class ClearAllButtonController extends AbstractButtonController implement
      * @return The return value from the option pane
      */
     private int getUserConfirmation() {
-        // Create the JOptionPane with the confirmation message
-        final JOptionPane optionPane = new JOptionPane(CONFIRMATION_MESSAGE, JOptionPane.PLAIN_MESSAGE,
-                JOptionPane.YES_NO_OPTION);
+        ConfirmationDialog confirmationDialog = new ConfirmationDialog(view.getFrame(), TITLE_BAR_MESSAGE,
+                CONFIRMATION_MESSAGE);
 
-        // Create a dialog for the option pane using the application's frame as parent
-        final JDialog dialog = optionPane.createDialog(view.getFrame(), TITLE_BAR_MESSAGE);
-        dialog.setModal(true);
-        dialog.setResizable(false);
-        dialog.setVisible(true);
-
-        // Retrieve the user's choice from the option pane
-        Object selectedValue = optionPane.getValue();
-
-        if (selectedValue instanceof Integer) {
-            return (Integer) selectedValue;
-        } else {
-            return JOptionPane.CLOSED_OPTION;
-        }
+        return confirmationDialog.showConfirmationDialog();
     }
 
     /**
@@ -169,22 +155,6 @@ public class ClearAllButtonController extends AbstractButtonController implement
     }
 
     /**
-     * Clears all scaling modes for the selected display and save the changes.
-     */
-    private void clearAllScalingModes() {
-        int displayIndex = view.getDisplayIds().getSelectedIndex();
-        String displayId = model.getDisplayIds()[displayIndex];
-
-        for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
-            int slotId = slotIndex + 1;
-
-            model.getSlot(displayIndex, slotIndex).setScalingMode(0);
-            view.getSlot(displayIndex, slotIndex).getScalingModes().setSelectedIndex(0);
-            settingsMgr.saveIniSlotScalingMode(displayId, slotId, 0);
-        }
-    }
-
-    /**
      * Clears all DPI scale percentages for the selected display and save the changes.
      */
     private void clearAllDpiScalePercentages() {
@@ -197,6 +167,22 @@ public class ClearAllButtonController extends AbstractButtonController implement
             model.getSlot(displayIndex, slotIndex).setDpiScalePercentage(100);
             view.getSlot(displayIndex, slotIndex).getDpiScalePercentages().setSelectedIndex(0);
             settingsMgr.saveIniSlotDpiScalePercentage(displayId, slotId, 100);
+        }
+    }
+
+    /**
+     * Clears all scaling modes for the selected display and save the changes.
+     */
+    private void clearAllScalingModes() {
+        int displayIndex = view.getDisplayIds().getSelectedIndex();
+        String displayId = model.getDisplayIds()[displayIndex];
+
+        for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
+            int slotId = slotIndex + 1;
+
+            model.getSlot(displayIndex, slotIndex).setScalingMode(0);
+            view.getSlot(displayIndex, slotIndex).getScalingModes().setSelectedIndex(0);
+            settingsMgr.saveIniSlotScalingMode(displayId, slotId, 0);
         }
     }
 

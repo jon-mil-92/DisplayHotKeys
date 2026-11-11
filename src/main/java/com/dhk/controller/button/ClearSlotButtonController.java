@@ -30,7 +30,7 @@ import com.dhk.view.DhkView;
 
 /**
  * Controls the Clear Slot buttons. Listeners are added to the corresponding view components so that when a Clear Slot
- * button is pressed, the display mode, scaling mode, DPI scale percentage, orientation mode, and hot key for that slot
+ * button is pressed, the display mode, DPI scale percentage, scaling mode, orientation mode, and hot key for that slot
  * are reset to their default values.
  *
  * @author Jonathan R. Miller
@@ -102,8 +102,8 @@ public class ClearSlotButtonController extends AbstractButtonController implemen
     private void clearSlotButtonAction(int displayIndex, int slotIndex) {
         clearOrientationMode(displayIndex, slotIndex);
         clearDisplayMode(displayIndex, slotIndex);
-        clearScalingMode(displayIndex, slotIndex);
         clearDpiScalePercentage(displayIndex, slotIndex);
+        clearScalingMode(displayIndex, slotIndex);
         clearHotKey(displayIndex, slotIndex);
 
         appRefresher.reInitApp();
@@ -150,23 +150,6 @@ public class ClearSlotButtonController extends AbstractButtonController implemen
     }
 
     /**
-     * Clears the scaling mode for the given slot and saves the change.
-     *
-     * @param displayIndex
-     *            - The index of the display the slot resides in
-     * @param slotIndex
-     *            - The index of the slot to clear the scaling mode for
-     */
-    private void clearScalingMode(int displayIndex, int slotIndex) {
-        String displayId = model.getDisplayIds()[displayIndex];
-        int slotId = slotIndex + 1;
-
-        model.getSlot(displayIndex, slotIndex).setScalingMode(0);
-        view.getSlot(displayIndex, slotIndex).getScalingModes().setSelectedIndex(0);
-        settingsMgr.saveIniSlotScalingMode(displayId, slotId, 0);
-    }
-
-    /**
      * Clears the DPI scale percentage for the given slot and saves the change.
      *
      * @param displayIndex
@@ -181,6 +164,23 @@ public class ClearSlotButtonController extends AbstractButtonController implemen
         model.getSlot(displayIndex, slotIndex).setDpiScalePercentage(100);
         view.getSlot(displayIndex, slotIndex).getDpiScalePercentages().setSelectedIndex(0);
         settingsMgr.saveIniSlotDpiScalePercentage(displayId, slotId, 100);
+    }
+
+    /**
+     * Clears the scaling mode for the given slot and saves the change.
+     *
+     * @param displayIndex
+     *            - The index of the display the slot resides in
+     * @param slotIndex
+     *            - The index of the slot to clear the scaling mode for
+     */
+    private void clearScalingMode(int displayIndex, int slotIndex) {
+        String displayId = model.getDisplayIds()[displayIndex];
+        int slotId = slotIndex + 1;
+
+        model.getSlot(displayIndex, slotIndex).setScalingMode(0);
+        view.getSlot(displayIndex, slotIndex).getScalingModes().setSelectedIndex(0);
+        settingsMgr.saveIniSlotScalingMode(displayId, slotId, 0);
     }
 
     /**

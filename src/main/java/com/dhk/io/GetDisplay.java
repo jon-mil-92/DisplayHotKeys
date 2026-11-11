@@ -97,6 +97,18 @@ public class GetDisplay {
     private native String[] captureDisplayArrangement();
 
     /**
+     * Defines a JNI function to read the settings currently in effect on each given display, as a flat int array of
+     * {width, height, refreshNumerator, refreshDenominator, dpiScalePercentage, scalingMode, orientation, desktopX,
+     * desktopY} records.
+     *
+     * @param displayIds
+     *            - The IDs of the displays to read the active settings of
+     *
+     * @return A flat int array of one active display settings record per given display, in the given order
+     */
+    private native int[] queryActiveDisplaySettings(String[] displayIds);
+
+    /**
      * Gets the supported display modes for the given display as a flat int array of {width, height, refreshNumerator,
      * refreshDenominator} records. The caller rebuilds the display-mode objects from these fields so the JNI boundary
      * stays primitive and the exact rational refresh rate is preserved.
@@ -170,6 +182,20 @@ public class GetDisplay {
      */
     public String[] captureArrangement() {
         return captureDisplayArrangement();
+    }
+
+    /**
+     * Gets the settings currently in effect on each given display as a flat int array of {width, height,
+     * refreshNumerator, refreshDenominator, dpiScalePercentage, scalingMode, orientation, desktopX, desktopY} records.
+     * A display without a visible active path gets a record of zeros, and the caller rebuilds the settings objects.
+     *
+     * @param displayIds
+     *            - The IDs of the displays to read the active settings of
+     *
+     * @return A flat int array of one active display settings record per given display, in the given order
+     */
+    public int[] getActiveDisplaySettingsRecords(String[] displayIds) {
+        return queryActiveDisplaySettings(displayIds);
     }
 
 }

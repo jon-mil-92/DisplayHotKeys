@@ -166,7 +166,7 @@ public class RunOnStartupButtonController extends AbstractButtonController imple
         // Prevent the icon from flashing the hover state
         view.getDefaultFocusComponent().requestFocusInWindow();
 
-        new RunOnStartupNoticeDialog().showChangedNotice(startsOnLogon);
+        new RunOnStartupNoticeDialog(view.getFrame()).showChangedNotice(startsOnLogon);
     }
 
     /**
@@ -232,7 +232,7 @@ public class RunOnStartupButtonController extends AbstractButtonController imple
             // Prevent the icon from flashing the hover state
             view.getDefaultFocusComponent().requestFocusInWindow();
 
-            new RunOnStartupNoticeDialog().showFailedNotice(runOnStartup);
+            new RunOnStartupNoticeDialog(view.getFrame()).showFailedNotice(runOnStartup);
 
             return;
         }

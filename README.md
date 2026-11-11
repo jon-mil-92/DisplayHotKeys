@@ -32,7 +32,7 @@
 
 ## About The Project
 
-This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, refresh rate, scaling mode, DPI scale percentage, and orientation can be changed for each connected display with user-defined hot keys.
+This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, refresh rate, DPI scale percentage, scaling mode, and orientation can be changed for each connected display with user-defined hot keys.
 
 <img src="screenshot.png" alt="Display Hot Keys" width="800" />
 
@@ -124,7 +124,9 @@ This application will be distributed as a portable package and as an installer. 
 
 2. Select a refresh rate value in the "Refresh Rate" drop-down box for the hot key slot.
 
-3. Select a scaling mode value in the "Scaling Mode" drop-down box for the hot key slot.
+3. Select a DPI scale percentage value in the "DPI Scale" drop-down box for the hot key slot.
+
+4. Select a scaling mode value in the "Scaling Mode" drop-down box for the hot key slot.
 
 	* Select "Preserved" to preserve the aspect ratio of the image.
 	
@@ -133,8 +135,6 @@ This application will be distributed as a portable package and as an installer. 
 	* Select "Centered" to center the image in the middle of the panel without scaling.
 	
 **Note:** You may need to use GPU Scaling in your display driver settings to prevent the display from overriding the scaling mode.
-
-4. Select a DPI scale percentage value in the "DPI Scale" drop-down box for the hot key slot.
 
 5. Select a display orientation value in the "Orientation" drop-down box for the hot key slot.
 

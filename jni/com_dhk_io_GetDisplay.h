@@ -55,6 +55,14 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_getSupportedDpiScalePerce
 JNIEXPORT jobjectArray JNICALL Java_com_dhk_io_GetDisplay_captureDisplayArrangement
   (JNIEnv *, jobject);
 
+/*
+ * Class:     com_dhk_io_GetDisplay
+ * Method:    queryActiveDisplaySettings
+ * Signature: ([Ljava/lang/String;)[I
+ */
+JNIEXPORT jintArray JNICALL Java_com_dhk_io_GetDisplay_queryActiveDisplaySettings
+  (JNIEnv *, jobject, jobjectArray);
+
 #ifdef __cplusplus
 }
 #endif

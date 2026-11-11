@@ -122,6 +122,9 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
             // Capture the frame placement before the display reconfiguration relocates the window
             FramePlacement placement = FrameUtil.capturePlacement(view.getFrame());
 
+            // Dismiss a showing tray menu and display info panels, since both were placed against the old geometry
+            controller.displayConfigurationChanged();
+
             // Capture the display arrangement before the display reconfiguration rearranges the display
             String[] arrangementSnapshot = displayConfig.captureArrangement();
 
@@ -131,8 +134,8 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getHeight(),
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshNumerator(),
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshDenominator(),
-                    model.getSlot(displayIndex, slotIndex).getScalingMode(),
-                    model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
+                    model.getSlot(displayIndex, slotIndex).getDpiScalePercentage(),
+                    model.getSlot(displayIndex, slotIndex).getScalingMode());
             setDisplay.preserveArrangement(arrangementSnapshot);
 
             /*
