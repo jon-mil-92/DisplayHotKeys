@@ -105,8 +105,8 @@ public class AppRefresher {
 
         FlatLaf.updateUI();
 
-        // Rescale the tray icon last, since the shell answers for the task bar slowly while still rebuilding it
-        controller.getMinimizeToTray().displayConfigurationSettled();
+        // Place the tray icon and any display info panels last, against the settled displays and the new theme
+        controller.displayConfigurationSettled();
     }
 
 }

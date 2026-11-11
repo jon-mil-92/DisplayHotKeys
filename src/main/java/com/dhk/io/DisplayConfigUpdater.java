@@ -29,7 +29,8 @@ import com.dhk.view.DhkView;
 
 /**
  * Re-initializes the application when the native layer reports a display configuration change. The native
- * {@link DisplayEventNotifier} signals displays added or removed, and resolution, DPI, or orientation changes.
+ * {@link DisplayEventNotifier} signals displays added or removed, and resolution, refresh rate, DPI scale, scaling
+ * mode, or orientation changes.
  *
  * @author Jonathan R. Miller
  */
@@ -70,8 +71,8 @@ public class DisplayConfigUpdater implements DisplayChangeListener {
             return;
         }
 
-        // Covers changes made outside the app, which reach the tray through no other path
-        controller.getMinimizeToTray().displayConfigurationChanged();
+        // Covers changes made outside the app, which reach the tray and the display info panels through no other path
+        controller.displayConfigurationChanged();
 
         reInitTimer.restart();
     }

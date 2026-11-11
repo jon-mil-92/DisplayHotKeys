@@ -53,7 +53,7 @@ public class TrayMenu {
     /**
      * Text of each menu item, in the order the items are shown and their actions are indexed.
      */
-    private static final String[] ITEM_TEXTS = {"Restore", "About", "Exit"};
+    private static final String[] ITEM_TEXTS = {"Restore", "Settings", "About", "Exit"};
 
     /**
      * Name of the Roboto font file, which sits beside the class that installs the font.
@@ -67,14 +67,17 @@ public class TrayMenu {
      *            - The tray icon the menu belongs to
      * @param restoreAction
      *            - The action to run when the restore item is selected
+     * @param settingsAction
+     *            - The action to run when the settings item is selected
      * @param aboutAction
      *            - The action to run when the about item is selected
      * @param exitAction
      *            - The action to run when the exit item is selected
      */
-    public TrayMenu(SystemTrayIcon systemTrayIcon, Runnable restoreAction, Runnable aboutAction, Runnable exitAction) {
+    public TrayMenu(SystemTrayIcon systemTrayIcon, Runnable restoreAction, Runnable settingsAction,
+            Runnable aboutAction, Runnable exitAction) {
         this.systemTrayIcon = systemTrayIcon;
-        this.itemActions = new Runnable[]{restoreAction, aboutAction, exitAction};
+        this.itemActions = new Runnable[]{restoreAction, settingsAction, aboutAction, exitAction};
     }
 
     /**

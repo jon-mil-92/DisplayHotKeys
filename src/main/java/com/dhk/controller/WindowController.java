@@ -97,6 +97,13 @@ public class WindowController implements IController, WindowListener {
 
     @Override
     public void windowClosing(WindowEvent e) {
+        // Closing to the tray is a refinement of minimizing to the tray, so it only applies while that is on
+        if (model.isMinimizeToTray() && model.isCloseToTray()) {
+            minimizeToTray.execute();
+
+            return;
+        }
+
         minimizeToTray.shutDownSystemTray();
         System.exit(0);
     }

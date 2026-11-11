@@ -1,6 +1,6 @@
 ## About The Project
 
-This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, refresh rate, scaling mode, DPI scale percentage, and orientation can be changed for each connected display with user-defined hot keys.
+This project was created to circumvent the tedious navigation of the Windows settings menus to change display settings. With Display Hot Keys, the display resolution, refresh rate, DPI scale percentage, scaling mode, and orientation can be changed for each connected display with user-defined hot keys.
 
 ### Common Use Cases
 
@@ -88,7 +88,9 @@ This application will be distributed as a portable package and as an installer. 
 
 2. Select a refresh rate value in the "Refresh Rate" drop-down box for the hot key slot.
 
-3. Select a scaling mode value in the "Scaling Mode" drop-down box for the hot key slot.
+3. Select a DPI scale percentage value in the "DPI Scale" drop-down box for the hot key slot.
+
+4. Select a scaling mode value in the "Scaling Mode" drop-down box for the hot key slot.
 
 	* Select "Preserved" to preserve the aspect ratio of the image.
 	
@@ -98,7 +100,7 @@ This application will be distributed as a portable package and as an installer. 
 	
 **Note:** You may need to use GPU Scaling in your display driver settings to prevent the display from overriding the scaling mode.
 
-4. Select a DPI scale percentage value in the "DPI Scale" drop-down box for the hot key slot.
+**Note:** Scaling modes that only exist in a display driver, such as NVIDIA's "Integer Scaling", are reported to Windows as aspect ratio scaling. Display Hot Keys shows these modes as "Preserved".
 
 5. Select a display orientation value in the "Orientation" drop-down box for the hot key slot.
 
@@ -130,6 +132,20 @@ Individual hot key slots can be reset by clicking on the "Clear Slot" button for
 
 All hot key slots for the selected display can be reset by clicking on the "Clear All Slots" button.
 
+#### Additional Settings
+
+Opens a window with additional app settings. The window can also be opened by clicking the system tray icon and selecting "Settings".
+
+* "Run on Startup" starts the application automatically when the user logs into Windows.
+
+* "Minimize to Tray" sends the application to the system tray when its window is minimized. To restore the application, click the system tray icon and select "Restore".
+
+* "Close to Tray" sends the application to the system tray instead of exiting when its window is closed. This option requires "Minimize to Tray" to be toggled on.
+
+* "Autoshow Info Overlay" shows each display's applied settings in its top-right corner whenever a hot key slot is applied or the display configuration changes.
+
+* "Show Info Overlay" sets a hot key that shows each display's applied settings on demand. Set it with the "Change Hot Key" button, and clear it with the "Clear Hot Key" button.
+
 #### About App
 
 Opens a window to display the current version, PayPal donate button, license button, and releases button.
@@ -137,14 +153,6 @@ Opens a window to display the current version, PayPal donate button, license but
 #### Change Theme
 
 The theme can be changed between "Light Mode" and "Dark Mode" by clicking on the "Change Theme" button. The icon will change to indicate the current theme.
-
-#### Run On Startup
-
-The application can start automatically when the user logs into Windows by clicking on the "Run On Startup" button. The arrow will turn green to indicate that this option is enabled.
-
-#### Minimize To Tray
-
-The application will be minimized to the system tray when the "Minimize To Tray" button is toggled on. To restore the application, click the system tray icon and select "Restore".
 
 #### PayPal Donate
 

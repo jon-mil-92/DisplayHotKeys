@@ -48,11 +48,12 @@ import com.dhk.model.Key;
 import com.dhk.model.button.Button;
 import com.dhk.utility.FrameUtil;
 import com.dhk.view.DhkView;
+import com.dhk.view.AdditionalSettingsDialog;
 
 /**
  * Controls the hot keys for the application. Listeners are added to the Change Hot Key buttons to enable the
  * functionality of changing hot keys. This class is also responsible for triggering hot key events once a hot key press
- * is detected.
+ * is detected, which applies a slot's display settings or shows the applied settings of every display.
  *
  * @author Jonathan R. Miller
  */
@@ -65,6 +66,7 @@ public class HotKeysController implements IController, NativeKeyListener {
     private DisplayConfig displayConfig;
     private SetDisplay setDisplay;
     private HotKey hotKeyBackup;
+    private RecordingTarget recordingTarget;
     private Timer idleTimer;
     private Timer releaseMessageTimer;
     private Timer reInitTimer;
@@ -157,6 +159,10 @@ public class HotKeysController implements IController, NativeKeyListener {
             reInitTimer.stop();
             reInitTimer = null;
         }
+
+        // A recording cut short by a refresh is discarded, since the refreshed model reloads the saved hot keys
+        recordingTarget = null;
+        anyHotKeyChanging = false;
     }
 
     @Override
@@ -176,44 +182,49 @@ public class HotKeysController implements IController, NativeKeyListener {
 
                 for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
                     for (int slotIndex = 0; slotIndex < maxNumOfSlots; slotIndex++) {
-                        setPressedKeys(keyEvent, model.getSlot(displayIndex, slotIndex).getHotKey().getKeys());
-                        updateHotKeyState(model.getSlot(displayIndex, slotIndex).getHotKey());
+                        HotKey slotHotKey = model.getSlot(displayIndex, slotIndex).getHotKey();
 
-                        if (!showReleaseMessage) {
-                            // Only check the active slots for building a new key or setting a display mode
-                            if (slotIndex < model.getNumOfSlotsForDisplay(displayIndex)) {
-                                if (model.getSlot(displayIndex, slotIndex).getHotKey().isChangingHotKey()) {
-                                    buildHotKey(keyEvent, model.getSlot(displayIndex, slotIndex).getHotKey(),
-                                            slotIndex);
+                        setPressedKeys(keyEvent, slotHotKey.getKeys());
+                        updateHotKeyState(slotHotKey);
 
-                                    if (anyHotKeySubset()) {
-                                        // Notify the user that hot keys cannot be a subset of another hot key
-                                        view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton()
-                                                .setText(NO_SUBSETS_TEXT);
-
-                                        anyHotKeySubset = true;
-                                    } else {
-                                        // Update the Change Hot Key button text to notify the user to release keys
-                                        view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton()
-                                                .setText(RELEASE_TO_SET_TEXT);
-
-                                        anyHotKeySubset = false;
-                                    }
-                                }
-
-                                // If no hot key is being changed, and a hot key is pressed but not held down
-                                if (!anyHotKeyChanging
-                                        && model.getSlot(displayIndex, slotIndex).getHotKey().isHotKeyPressed()
-                                        && !model.getSlot(displayIndex, slotIndex).getHotKey().isHotKeyHeldDown()) {
-                                    /*
-                                     * Defer applying settings until after we finish scanning all slots to ensure
-                                     * multiple displays using the same hot key are all applied
-                                     */
-                                    displayToSlotMap.put(displayIndex, slotIndex);
-                                }
-                            }
+                        // If no hot key is being changed, and an active slot's hot key is pressed but not held down
+                        if (!showReleaseMessage && !anyHotKeyChanging
+                                && slotIndex < model.getNumOfSlotsForDisplay(displayIndex)
+                                && slotHotKey.isHotKeyPressed() && !slotHotKey.isHotKeyHeldDown()) {
+                            /*
+                             * Defer applying settings until after we finish scanning all slots to ensure multiple
+                             * displays using the same hot key are all applied
+                             */
+                            displayToSlotMap.put(displayIndex, slotIndex);
                         }
                     }
+                }
+
+                HotKey displayInfoHotKey = model.getDisplayInfoHotKey();
+
+                setPressedKeys(keyEvent, displayInfoHotKey.getKeys());
+                updateHotKeyState(displayInfoHotKey);
+
+                if (!showReleaseMessage && recordingTarget != null) {
+                    buildHotKey(keyEvent);
+
+                    if (anyHotKeyConflict()) {
+                        // Notify the user that hot keys cannot be a subset of another hot key
+                        recordingTarget.getChangeHotKeyButton().setText(NO_SUBSETS_TEXT);
+
+                        anyHotKeySubset = true;
+                    } else {
+                        // Update the Change Hot Key button text to notify the user to release keys
+                        recordingTarget.getChangeHotKeyButton().setText(RELEASE_TO_SET_TEXT);
+
+                        anyHotKeySubset = false;
+                    }
+                }
+
+                // Show the applied settings of every display once the Display Info hot key is pressed but not held down
+                if (!showReleaseMessage && !anyHotKeyChanging && displayInfoHotKey.isHotKeyPressed()
+                        && !displayInfoHotKey.isHotKeyHeldDown()) {
+                    controller.getDisplayInfoOverlayView().show(model);
                 }
 
                 // Capture the frame placement before any display reconfiguration relocates the window
@@ -225,8 +236,8 @@ public class HotKeysController implements IController, NativeKeyListener {
                 boolean displaySettingsApplied = false;
 
                 if (!displayToSlotMap.isEmpty()) {
-                    // Dismiss a showing tray menu before the mode change, since it was placed against the old geometry
-                    controller.getMinimizeToTray().displayConfigurationChanged();
+                    // Dismiss the tray menu and display info panels, since both were placed against the old geometry
+                    controller.displayConfigurationChanged();
 
                     String[] arrangementSnapshot = displayConfig.captureArrangement();
 
@@ -265,16 +276,19 @@ public class HotKeysController implements IController, NativeKeyListener {
                     for (int slotIndex = 0; slotIndex < maxNumOfSlots; slotIndex++) {
                         setReleasedKeys(keyEvent, model.getSlot(displayIndex, slotIndex).getHotKey().getKeys());
                         updateHotKeyState(model.getSlot(displayIndex, slotIndex).getHotKey());
-
-                        // If the user releases the hot key during the "changing hot key" state
-                        if (model.getSlot(displayIndex, slotIndex).getHotKey().isChangingHotKey()
-                                && !model.getSlot(displayIndex, slotIndex).getHotKey().isHotKeyPressed()) {
-                            showReleaseMessage = true;
-
-                            leaveChangingHotKeyState(slotIndex);
-                            startReleaseMessageTimer(RELEASE_MESSAGE_TIMEOUT, slotIndex);
-                        }
                     }
+                }
+
+                setReleasedKeys(keyEvent, model.getDisplayInfoHotKey().getKeys());
+                updateHotKeyState(model.getDisplayInfoHotKey());
+
+                // If the user releases the hot key during the "changing hot key" state
+                if (recordingTarget != null && !recordingTarget.getHotKey().isHotKeyPressed()) {
+                    RecordingTarget releasedTarget = recordingTarget;
+                    showReleaseMessage = true;
+
+                    leaveChangingHotKeyState();
+                    startReleaseMessageTimer(RELEASE_MESSAGE_TIMEOUT, releasedTarget);
                 }
             }
         });
@@ -308,8 +322,9 @@ public class HotKeysController implements IController, NativeKeyListener {
      */
     public void rebuildActiveKeyCodes() {
         /*
-         * The native reporting thread reads this set without locking, so it is rebuilt into a new instance and published
-         * in a single assignment. Mutating the live set in place could resize it mid-read and hang that thread
+         * The native reporting thread reads this set without locking, so it is rebuilt into a new instance and
+         * published in a single assignment. Mutating the live set in place could resize it mid-read and hang that
+         * thread
          */
         Set<Integer> rebuiltKeyCodes = new HashSet<>();
 
@@ -323,6 +338,12 @@ public class HotKeysController implements IController, NativeKeyListener {
             }
         }
 
+        List<Key> displayInfoKeys = model.getDisplayInfoHotKey().getKeys();
+
+        for (int k = 0; k < displayInfoKeys.size(); k++) {
+            rebuiltKeyCodes.add(displayInfoKeys.get(k).getKey());
+        }
+
         activeKeyCodes = rebuiltKeyCodes;
     }
 
@@ -333,24 +354,36 @@ public class HotKeysController implements IController, NativeKeyListener {
     private void seedHeldKeyStates() {
         for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
             for (int slotIndex = 0; slotIndex < maxNumOfSlots; slotIndex++) {
-                HotKey hotKey = model.getSlot(displayIndex, slotIndex).getHotKey();
-                List<Key> keys = hotKey.getKeys();
-                boolean allKeysPressed = keys.size() > 0;
-
-                for (int keyIndex = 0; keyIndex < keys.size(); keyIndex++) {
-                    boolean keyHeld = heldKeyTracker.isKeyHeld(keys.get(keyIndex).getKey());
-                    keys.get(keyIndex).setKeyPressed(keyHeld);
-                    allKeysPressed &= keyHeld;
-                }
-
-                hotKey.setHotKeyPressed(allKeysPressed);
-                hotKey.setHotKeyHeldDown(allKeysPressed);
+                seedHeldKeyState(model.getSlot(displayIndex, slotIndex).getHotKey());
             }
         }
+
+        seedHeldKeyState(model.getDisplayInfoHotKey());
     }
 
     /**
-     * Changes the specified slot's Change Hot Key button text and updates the model's corresponding boolean.
+     * Restores the physically held key states onto the given hot key, marking a fully held combo as held down so it is
+     * not fired again on the next event.
+     *
+     * @param hotKey
+     *            - The hot key to restore the held key states onto
+     */
+    private void seedHeldKeyState(HotKey hotKey) {
+        List<Key> keys = hotKey.getKeys();
+        boolean allKeysPressed = keys.size() > 0;
+
+        for (int keyIndex = 0; keyIndex < keys.size(); keyIndex++) {
+            boolean keyHeld = heldKeyTracker.isKeyHeld(keys.get(keyIndex).getKey());
+            keys.get(keyIndex).setKeyPressed(keyHeld);
+            allKeysPressed &= keyHeld;
+        }
+
+        hotKey.setHotKeyPressed(allKeysPressed);
+        hotKey.setHotKeyHeldDown(allKeysPressed);
+    }
+
+    /**
+     * Starts recording a new hot key for the specified slot.
      *
      * @param displayIndex
      *            - The index of the display to update the hot key for
@@ -358,24 +391,50 @@ public class HotKeysController implements IController, NativeKeyListener {
      *            - The index of the slot to change the hot key for
      */
     private void slotHotKeyChangeEvent(int displayIndex, int slotIndex) {
+        beginHotKeyChange(new RecordingTarget(displayIndex, slotIndex));
+    }
+
+    /**
+     * Starts recording a new Display Info hot key from the given additional settings dialog, which shows the hot key
+     * and holds the controls that are disabled while it is recorded.
+     *
+     * @param additionalSettingsDialog
+     *            - The additional settings dialog the Display Info hot key is being changed from
+     */
+    public void displayInfoHotKeyChangeEvent(AdditionalSettingsDialog additionalSettingsDialog) {
+        beginHotKeyChange(new RecordingTarget(additionalSettingsDialog));
+    }
+
+    /**
+     * Starts recording a new hot key for the given target, backing up its current hot key so a recording that ends
+     * without a usable hot key restores it.
+     *
+     * @param target
+     *            - The slot or Display Info hot key to record a new hot key for
+     */
+    private void beginHotKeyChange(RecordingTarget target) {
         // Do not allow changing multiple hot keys at the same time
-        if (!changingHotKey()) {
-            // Reset the key counter so a new hot key starts fresh, even if a prior change ended without finalizing
-            currentKeyCount = 0;
-
-            hotKeyBackup = new HotKey(new ArrayList<Key>());
-            hotKeyBackup.getKeys().addAll(model.getSlot(displayIndex, slotIndex).getHotKey().getKeys());
-
-            model.getSlot(displayIndex, slotIndex).getHotKey().setKeys(new ArrayList<Key>());
-            view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton().setText(PRESS_HOT_KEY_TEXT);
-
-            disableComponents();
-
-            model.getSlot(displayIndex, slotIndex).getHotKey().setChangingHotKey(true);
-            anyHotKeyChanging = true;
-
-            startIdleTimer(IDLE_INPUT_TIMEOUT, slotIndex);
+        if (recordingTarget != null || showReleaseMessage) {
+            return;
         }
+
+        // Reset the key counter so a new hot key starts fresh, even if a prior change ended without finalizing
+        currentKeyCount = 0;
+        recordingTarget = target;
+
+        hotKeyBackup = new HotKey(new ArrayList<Key>());
+        hotKeyBackup.getKeys().addAll(target.getHotKey().getKeys());
+
+        target.getHotKey().setKeys(new ArrayList<Key>());
+        target.getChangeHotKeyButton().setText(PRESS_HOT_KEY_TEXT);
+        target.showRecording(true);
+        target.disableControls();
+        target.getHotKey().setChangingHotKey(true);
+
+        // Every hot key, including the slot hot keys, is suppressed until the recording ends
+        anyHotKeyChanging = true;
+
+        startIdleTimer(IDLE_INPUT_TIMEOUT);
     }
 
     /**
@@ -448,22 +507,20 @@ public class HotKeysController implements IController, NativeKeyListener {
     }
 
     /**
-     * Builds the new hot key that will be used to change display settings.
+     * Adds the pressed key to the hot key being recorded, unless the hot key already holds it or is full.
      *
      * @param keyEvent
      *            - The native key event that was fired
-     * @param hotKey
-     *            - The hot key to build
-     * @param slotIndex
-     *            - The index of the slot to build the hot key for
      */
-    private void buildHotKey(NativeKeyEvent keyEvent, HotKey hotKey, int slotIndex) {
-        idleTimer.stop();
+    private void buildHotKey(NativeKeyEvent keyEvent) {
+        if (idleTimer != null) {
+            idleTimer.stop();
+        }
 
         Key pressedKey;
         int keyCode = keyEvent.getVirtualKeyCode();
         String keyCodeText = KeyText.getKeyCodeText(keyCode);
-        int selectedDisplayIndex = view.getDisplayIds().getSelectedIndex();
+        HotKey hotKey = recordingTarget.getHotKey();
 
         if (currentKeyCount < MAX_KEY_COUNT) {
             pressedKey = new Key(keyCode, keyCodeText, true);
@@ -472,9 +529,7 @@ public class HotKeysController implements IController, NativeKeyListener {
             if (!hotKey.getKeys().contains(pressedKey)) {
                 hotKey.getKeys().add(pressedKey);
 
-                view.getSlot(selectedDisplayIndex, slotIndex).getHotKey()
-                        .setText(model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().getHotKeyString());
-                FrameUtil.refreshFrame(view.getFrame());
+                recordingTarget.showHotKeyText();
 
                 // Update cached active key codes, republishing a copy so the reporting thread never reads a live edit
                 Set<Integer> updatedKeyCodes = (activeKeyCodes == null)
@@ -488,6 +543,58 @@ public class HotKeysController implements IController, NativeKeyListener {
                 currentKeyCount += 1;
             }
         }
+    }
+
+    /**
+     * Checks whether the hot key being recorded conflicts with another hot key. The Display Info hot key conflicts with
+     * any slot hot key it overlaps, and a slot hot key also conflicts with the Display Info hot key it overlaps.
+     *
+     * @return Whether the hot key being recorded conflicts with another hot key
+     */
+    private boolean anyHotKeyConflict() {
+        List<Key> recordedKeys = recordingTarget.getHotKey().getKeys();
+
+        // One press must never both apply a slot and show the display info, so no overlap is allowed either way
+        if (recordingTarget.isDisplayInfo()) {
+            return overlapsAnySlotHotKey(recordedKeys);
+        }
+
+        return anyHotKeySubset() || overlapsHotKey(recordedKeys, model.getDisplayInfoHotKey().getKeys());
+    }
+
+    /**
+     * Checks whether the given keys overlap the hot key of any slot of any display, active or not.
+     *
+     * @param keys
+     *            - The keys to check
+     *
+     * @return Whether the given keys overlap any slot hot key
+     */
+    private boolean overlapsAnySlotHotKey(List<Key> keys) {
+        for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
+            for (int slotIndex = 0; slotIndex < maxNumOfSlots; slotIndex++) {
+                if (overlapsHotKey(keys, model.getSlot(displayIndex, slotIndex).getHotKey().getKeys())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks whether two hot keys overlap, which they do when both are set and either holds every key of the other, so
+     * an equal hot key, a subset, and a superset all overlap.
+     *
+     * @param keys
+     *            - The keys of the first hot key
+     * @param otherKeys
+     *            - The keys of the second hot key
+     *
+     * @return Whether the two hot keys overlap
+     */
+    private boolean overlapsHotKey(List<Key> keys, List<Key> otherKeys) {
+        return !keys.isEmpty() && !otherKeys.isEmpty() && (keys.containsAll(otherKeys) || otherKeys.containsAll(keys));
     }
 
     /**
@@ -603,22 +710,6 @@ public class HotKeysController implements IController, NativeKeyListener {
     }
 
     /**
-     * Checks to see if any slots are in the "changing hot key" state.
-     *
-     * @return Whether or not any active slots are in the "changing hot key" state
-     */
-    private boolean changingHotKey() {
-        boolean changingHotKeys = false;
-        int selectedDisplayIndex = view.getDisplayIds().getSelectedIndex();
-
-        for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(selectedDisplayIndex); slotIndex++) {
-            changingHotKeys |= (model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().isChangingHotKey());
-        }
-
-        return changingHotKeys;
-    }
-
-    /**
      * Sets the display settings if the display is connected. Does not refresh the app; the caller is responsible for
      * triggering a single app refresh after all targeted displays have been updated.
      *
@@ -641,8 +732,8 @@ public class HotKeysController implements IController, NativeKeyListener {
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getHeight(),
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshNumerator(),
                     model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshDenominator(),
-                    model.getSlot(displayIndex, slotIndex).getScalingMode(),
-                    model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
+                    model.getSlot(displayIndex, slotIndex).getDpiScalePercentage(),
+                    model.getSlot(displayIndex, slotIndex).getScalingMode());
 
             return true;
         }
@@ -672,12 +763,10 @@ public class HotKeysController implements IController, NativeKeyListener {
     }
 
     /**
-     * Leaves the "changing hot key" state for the specified slot's hot key.
-     *
-     * @param slotIndex
-     *            - The slot index for the hot key that is leaving the "changing hot key" state
+     * Leaves the "changing hot key" state for the hot key being recorded, keeping the recorded hot key when it is
+     * usable and restoring the backed up hot key otherwise, then saves whichever hot key results.
      */
-    private void leaveChangingHotKeyState(int slotIndex) {
+    private void leaveChangingHotKeyState() {
         currentKeyCount = 0;
 
         if (idleTimer != null) {
@@ -685,38 +774,38 @@ public class HotKeysController implements IController, NativeKeyListener {
             idleTimer = null;
         }
 
-        int selectedDisplayIndex = view.getDisplayIds().getSelectedIndex();
-        String displayId = model.getDisplayIds()[selectedDisplayIndex];
-        int slotId = slotIndex + 1;
+        RecordingTarget target = recordingTarget;
 
-        // If the user did not type any keys before the idle timeout or any hot key is a subset of another
-        if (model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().getKeys().size() == 0 || anyHotKeySubset) {
-            if (anyHotKeySubset) {
-                view.getSlot(selectedDisplayIndex, slotIndex).getChangeHotKeyButton().setText(HOT_KEY_NOT_SET_TEXT);
-            }
-
-            model.getSlot(selectedDisplayIndex, slotIndex).setHotKey(hotKeyBackup);
-            view.getSlot(selectedDisplayIndex, slotIndex).getHotKey()
-                    .setText(model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().getHotKeyString());
-            anyHotKeySubset = false;
-
-            FrameUtil.refreshFrame(view.getFrame());
-        } else {
-            view.getSlot(selectedDisplayIndex, slotIndex).getChangeHotKeyButton().setText(HOT_KEY_SET_TEXT);
+        if (target == null) {
+            return;
         }
 
-        model.getSlot(selectedDisplayIndex, slotIndex).getHotKey().setChangingHotKey(false);
+        // If the user did not type any keys before the idle timeout or any hot key is a subset of another
+        if (target.getHotKey().getKeys().size() == 0 || anyHotKeySubset) {
+            if (anyHotKeySubset) {
+                target.getChangeHotKeyButton().setText(HOT_KEY_NOT_SET_TEXT);
+            }
+
+            target.setHotKey(hotKeyBackup);
+            target.showHotKeyText();
+            anyHotKeySubset = false;
+        } else {
+            target.getChangeHotKeyButton().setText(HOT_KEY_SET_TEXT);
+        }
+
+        target.getHotKey().setChangingHotKey(false);
+        target.showRecording(false);
+        recordingTarget = null;
         anyHotKeyChanging = false;
 
-        settingsMgr.saveIniSlotHotKey(displayId, slotId, model.getSlot(selectedDisplayIndex, slotIndex).getHotKey());
+        target.saveHotKey();
 
         // Hot key definitions may have changed; rebuild the membership cache
         rebuildActiveKeyCodes();
 
         if (!showReleaseMessage) {
-            view.getSlot(selectedDisplayIndex, slotIndex).getChangeHotKeyButton().setText(CHANGE_HOT_KEY_TEXT);
-
-            enableComponents();
+            target.getChangeHotKeyButton().setText(CHANGE_HOT_KEY_TEXT);
+            target.enableControls();
         }
     }
 
@@ -725,19 +814,17 @@ public class HotKeysController implements IController, NativeKeyListener {
      *
      * @param milliseconds
      *            - The timeout value
-     * @param slotIndex
-     *            - The index of the slot for the potentially changed hot key
+     * @param target
+     *            - The slot or Display Info hot key that was potentially changed
      */
-    private void startReleaseMessageTimer(int milliseconds, int slotIndex) {
+    private void startReleaseMessageTimer(int milliseconds, RecordingTarget target) {
         releaseMessageTimer = new Timer(milliseconds, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 showReleaseMessage = false;
-                int selectedDisplayIndex = view.getDisplayIds().getSelectedIndex();
 
-                view.getSlot(selectedDisplayIndex, slotIndex).getChangeHotKeyButton().setText(CHANGE_HOT_KEY_TEXT);
-
-                enableComponents();
+                target.getChangeHotKeyButton().setText(CHANGE_HOT_KEY_TEXT);
+                target.enableControls();
             }
         });
 
@@ -750,14 +837,12 @@ public class HotKeysController implements IController, NativeKeyListener {
      *
      * @param milliseconds
      *            - The timeout value
-     * @param slotIndex
-     *            - The index of the slot for the hot key to change
      */
-    private void startIdleTimer(int milliseconds, int slotIndex) {
+    private void startIdleTimer(int milliseconds) {
         idleTimer = new Timer(milliseconds, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                leaveChangingHotKeyState(slotIndex);
+                leaveChangingHotKeyState();
             }
         });
 
@@ -797,8 +882,8 @@ public class HotKeysController implements IController, NativeKeyListener {
             for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
                 view.getSlot(displayIndex, slotIndex).getResolutions().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getRefreshRates().setEnabled(false);
-                view.getSlot(displayIndex, slotIndex).getScalingModes().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getDpiScalePercentages().setEnabled(false);
+                view.getSlot(displayIndex, slotIndex).getScalingModes().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getOrientationModes().setEnabled(false);
                 view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton().setEnabled(false);
             }
@@ -834,8 +919,8 @@ public class HotKeysController implements IController, NativeKeyListener {
             for (int slotIndex = 0; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
                 view.getSlot(displayIndex, slotIndex).getResolutions().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getRefreshRates().setEnabled(true);
-                view.getSlot(displayIndex, slotIndex).getScalingModes().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getDpiScalePercentages().setEnabled(true);
+                view.getSlot(displayIndex, slotIndex).getScalingModes().setEnabled(true);
                 view.getSlot(displayIndex, slotIndex).getOrientationModes().setEnabled(true);
 
                 JButton changeHotKeyButton = view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton();
@@ -859,6 +944,146 @@ public class HotKeysController implements IController, NativeKeyListener {
             view.getFrame().revalidate();
             view.getFrame().repaint();
         }
+    }
+
+    /**
+     * The hot key being recorded, which is either a slot's hot key shown in the main window or the Display Info hot key
+     * shown in the additional settings dialog. It hides where the hot key lives so one recording flow serves both.
+     *
+     * @author Jonathan R. Miller
+     */
+    private class RecordingTarget {
+
+        private int displayIndex;
+        private int slotIndex;
+        private AdditionalSettingsDialog additionalSettingsDialog;
+
+        /**
+         * Constructor for the {@link RecordingTarget} class, targeting the hot key of a slot.
+         *
+         * @param displayIndex
+         *            - The index of the display the slot belongs to
+         * @param slotIndex
+         *            - The index of the slot
+         */
+        RecordingTarget(int displayIndex, int slotIndex) {
+            this.displayIndex = displayIndex;
+            this.slotIndex = slotIndex;
+        }
+
+        /**
+         * Constructor for the {@link RecordingTarget} class, targeting the Display Info hot key.
+         *
+         * @param additionalSettingsDialog
+         *            - The additional settings dialog showing the Display Info hot key
+         */
+        RecordingTarget(AdditionalSettingsDialog additionalSettingsDialog) {
+            this.additionalSettingsDialog = additionalSettingsDialog;
+        }
+
+        /**
+         * Checks whether the target is the Display Info hot key rather than a slot's hot key.
+         *
+         * @return Whether the target is the Display Info hot key
+         */
+        boolean isDisplayInfo() {
+            return additionalSettingsDialog != null;
+        }
+
+        /**
+         * Gets the hot key being recorded.
+         *
+         * @return The hot key being recorded
+         */
+        HotKey getHotKey() {
+            return isDisplayInfo() ? model.getDisplayInfoHotKey() : model.getSlot(displayIndex, slotIndex).getHotKey();
+        }
+
+        /**
+         * Replaces the hot key being recorded, which is how a backed up hot key is restored.
+         *
+         * @param hotKey
+         *            - The hot key to put in place
+         */
+        void setHotKey(HotKey hotKey) {
+            if (isDisplayInfo()) {
+                model.setDisplayInfoHotKey(hotKey);
+            } else {
+                model.getSlot(displayIndex, slotIndex).setHotKey(hotKey);
+            }
+        }
+
+        /**
+         * Gets the Change Hot Key button that started the recording and shows its progress.
+         *
+         * @return The Change Hot Key button
+         */
+        JButton getChangeHotKeyButton() {
+            return isDisplayInfo()
+                    ? additionalSettingsDialog.getChangeHotKeyButton()
+                    : view.getSlot(displayIndex, slotIndex).getChangeHotKeyButton();
+        }
+
+        /**
+         * Shows the hot key's current keys where the hot key is displayed.
+         */
+        void showHotKeyText() {
+            if (isDisplayInfo()) {
+                additionalSettingsDialog.setDisplayInfoHotKeyText(getHotKey().getHotKeyString());
+                return;
+            }
+
+            view.getSlot(displayIndex, slotIndex).getHotKey().setText(getHotKey().getHotKeyString());
+            FrameUtil.refreshFrame(view.getFrame());
+        }
+
+        /**
+         * Shows whether the hot key is being recorded by outlining it in the theme's focus color while it is.
+         *
+         * @param recording
+         *            - Whether the hot key is being recorded
+         */
+        void showRecording(boolean recording) {
+            if (isDisplayInfo()) {
+                additionalSettingsDialog.setDisplayInfoHotKeyRecording(recording);
+            } else {
+                view.getSlot(displayIndex, slotIndex).getHotKey().setRecording(recording);
+            }
+        }
+
+        /**
+         * Saves the hot key to the settings file.
+         */
+        void saveHotKey() {
+            if (isDisplayInfo()) {
+                settingsMgr.saveIniDisplayInfoHotKey(getHotKey());
+            } else {
+                settingsMgr.saveIniSlotHotKey(model.getDisplayIds()[displayIndex], slotIndex + 1, getHotKey());
+            }
+        }
+
+        /**
+         * Disables the controls around the hot key so nothing can be changed while it is recorded.
+         */
+        void disableControls() {
+            if (isDisplayInfo()) {
+                additionalSettingsDialog.setControlsEnabled(false);
+            } else {
+                disableComponents();
+            }
+        }
+
+        /**
+         * Re-enables the controls around the hot key once its recording has finished.
+         */
+        void enableControls() {
+            if (isDisplayInfo()) {
+                additionalSettingsDialog.setControlsEnabled(true);
+            } else {
+                enableComponents();
+            }
+        }
+
     }
 
 }

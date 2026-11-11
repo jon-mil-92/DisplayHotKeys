@@ -50,7 +50,7 @@ public class AlreadyRunningDialog {
     }
 
     /**
-     * Shows the modal "already running" dialog with a centered message above a centered Close button.
+     * Shows the modal "already running" dialog with a centered message above a centered OK button.
      */
     public void showAlreadyRunningDialog() {
         final JDialog dialog = new JDialog((JFrame) null, "Display Hot Keys", true);
@@ -59,11 +59,11 @@ public class AlreadyRunningDialog {
         dialog.setLayout(new GridBagLayout());
 
         JLabel message = new JLabel(MESSAGE_TEXT, SwingConstants.CENTER);
-        JButton closeButton = new JButton("Close");
+        JButton okButton = new JButton("OK");
 
         // Suppress the focus ring
-        closeButton.setFocusPainted(false);
-        closeButton.addActionListener(new ActionListener() {
+        okButton.setFocusPainted(false);
+        okButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 dialog.dispose();
@@ -80,7 +80,7 @@ public class AlreadyRunningDialog {
         constraints.gridy = 1;
         constraints.insets = new Insets(0, 0, 18, 0);
 
-        dialog.add(closeButton, constraints);
+        dialog.add(okButton, constraints);
 
         dialog.pack();
         dialog.setLocationRelativeTo(null);

@@ -40,7 +40,10 @@ public class DhkModel {
     private int maxNumOfSlots;
     private boolean darkMode;
     private boolean minimizeToTray;
+    private boolean closeToTray;
     private boolean runOnStartup;
+    private HotKey displayInfoHotKey;
+    private boolean autoShowInfoOverlay;
 
     /**
      * Default constructor for the {@link DhkModel} class.
@@ -57,7 +60,10 @@ public class DhkModel {
     public void initModel(SettingsManager settingsMgr) {
         darkMode = settingsMgr.getIniDarkMode();
         minimizeToTray = settingsMgr.getIniMinimizeToTray();
+        closeToTray = settingsMgr.getIniCloseToTray();
         runOnStartup = settingsMgr.getIniRunOnStartup();
+        displayInfoHotKey = settingsMgr.getIniDisplayInfoHotKey();
+        autoShowInfoOverlay = settingsMgr.getIniAutoShowInfoOverlay();
         displayConfig = settingsMgr.getDisplayConfig();
         maxNumOfSlots = settingsMgr.getMaxNumOfSlots();
         displayIds = settingsMgr.getDisplayIds();
@@ -71,12 +77,12 @@ public class DhkModel {
 
             for (int slotId = 1; slotId <= maxNumOfSlots; slotId++) {
                 DisplayMode displayMode = settingsMgr.getIniSlotDisplayMode(displayId, slotId);
-                int scalingMode = settingsMgr.getIniSlotScalingMode(displayId, slotId);
                 int dpiScalePercentage = settingsMgr.getIniSlotDpiScalePercentage(displayId, slotId);
+                int scalingMode = settingsMgr.getIniSlotScalingMode(displayId, slotId);
                 int orientationMode = settingsMgr.getIniSlotOrientationMode(displayId, slotId);
                 HotKey hotKey = settingsMgr.getIniSlotHotKey(displayId, slotId);
 
-                slots.add(new Slot(displayMode, scalingMode, dpiScalePercentage, orientationMode, false, hotKey));
+                slots.add(new Slot(displayMode, dpiScalePercentage, scalingMode, orientationMode, false, hotKey));
             }
 
             int numOfSlots = settingsMgr.getIniNumOfSlotsForDisplay(displayId);
@@ -186,10 +192,13 @@ public class DhkModel {
     }
 
     /**
-     * Toggles the "minimize to tray" state.
+     * Sets the "minimize to tray" state.
+     *
+     * @param minimizeToTray
+     *            - The "minimize to tray" state to set
      */
-    public void toggleMinimizeToTray() {
-        minimizeToTray = !minimizeToTray;
+    public void setMinimizeToTray(boolean minimizeToTray) {
+        this.minimizeToTray = minimizeToTray;
     }
 
     /**
@@ -199,6 +208,26 @@ public class DhkModel {
      */
     public boolean isMinimizeToTray() {
         return minimizeToTray;
+    }
+
+    /**
+     * Gets the "close to tray" state, which hides the application in the system tray instead of exiting when its window
+     * is closed. It only applies while the "minimize to tray" state is on.
+     *
+     * @return The "close to tray" state
+     */
+    public boolean isCloseToTray() {
+        return closeToTray;
+    }
+
+    /**
+     * Sets the "close to tray" state.
+     *
+     * @param closeToTray
+     *            - The "close to tray" state to set
+     */
+    public void setCloseToTray(boolean closeToTray) {
+        this.closeToTray = closeToTray;
     }
 
     /**
@@ -218,6 +247,45 @@ public class DhkModel {
      */
     public boolean isRunOnStartup() {
         return runOnStartup;
+    }
+
+    /**
+     * Gets the global hot key that shows the applied settings of every connected display.
+     *
+     * @return The Display Info hot key
+     */
+    public HotKey getDisplayInfoHotKey() {
+        return displayInfoHotKey;
+    }
+
+    /**
+     * Sets the global hot key that shows the applied settings of every connected display.
+     *
+     * @param displayInfoHotKey
+     *            - The new Display Info hot key
+     */
+    public void setDisplayInfoHotKey(HotKey displayInfoHotKey) {
+        this.displayInfoHotKey = displayInfoHotKey;
+    }
+
+    /**
+     * Gets the "auto show info overlay" state, which shows the applied settings of every connected display whenever a
+     * slot is applied or the display configuration changes.
+     *
+     * @return The "auto show info overlay" state
+     */
+    public boolean isAutoShowInfoOverlay() {
+        return autoShowInfoOverlay;
+    }
+
+    /**
+     * Sets the "auto show info overlay" state.
+     *
+     * @param autoShowInfoOverlay
+     *            - The "auto show info overlay" state to set
+     */
+    public void setAutoShowInfoOverlay(boolean autoShowInfoOverlay) {
+        this.autoShowInfoOverlay = autoShowInfoOverlay;
     }
 
 }

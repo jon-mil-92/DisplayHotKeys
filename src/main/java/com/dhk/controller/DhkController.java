@@ -36,6 +36,7 @@ import com.dhk.io.SettingsManager;
 import com.dhk.io.ShellRestartHandler;
 import com.dhk.model.DhkModel;
 import com.dhk.view.DhkView;
+import com.dhk.view.DisplayInfoOverlayView;
 import com.dhk.view.MinimizeToTray;
 
 /**
@@ -52,12 +53,15 @@ public class DhkController implements IController {
     private boolean inputHookRecoveryAttempted;
     private HeldKeyTracker heldKeyTracker;
     private HotKeysController hotKeysController;
+    private MenuController menuController;
     private List<IController> controllers;
     private int frameState;
     private DisplayConfigUpdater displayConfigUpdater;
     private DisplayEventNotifier displayNotifications;
     private ShellRestartHandler shellRestartHandler;
     private MinimizeToTray minimizeToTray;
+    private DisplayInfoOverlayView displayInfoOverlayView;
+    private boolean displayInfoAutoShowPending;
 
     /**
      * Constructor for the {@link DhkController} class.
@@ -92,7 +96,10 @@ public class DhkController implements IController {
         heldKeyTracker = hookInstaller.getHeldKeyTracker();
 
         // Create the minimize-to-tray object once so app refreshes reuse the live tray instead of rebuilding it
-        minimizeToTray = new MinimizeToTray(model, view, "/tray_icon.svg");
+        minimizeToTray = new MinimizeToTray(model, view, "/tray_icon.svg", this::showAdditionalSettingsDialog);
+
+        // Create the display info overlay once so app refreshes can still hide panels shown before them
+        displayInfoOverlayView = new DisplayInfoOverlayView();
     }
 
     @Override
@@ -123,7 +130,8 @@ public class DhkController implements IController {
         controllers.add(new DisplayModeController(model, view, settingsMgr));
         controllers.add(new DpiScaleController(model, view, settingsMgr));
         controllers.add(new FrameDragController(view, inputHook));
-        controllers.add(new MenuController(model, view, settingsMgr));
+        menuController = new MenuController(model, view, settingsMgr, hotKeysController);
+        controllers.add(menuController);
         controllers.add(new NumberOfSlotsController(model, view, settingsMgr));
         controllers.add(new OrientationController(model, view, this, settingsMgr));
         controllers.add(new ScalingModeController(model, view, settingsMgr));
@@ -255,6 +263,56 @@ public class DhkController implements IController {
      */
     public MinimizeToTray getMinimizeToTray() {
         return minimizeToTray;
+    }
+
+    /**
+     * Shows the "Additional Settings" dialog through the current menu controller, which wires its settings, so the tray
+     * can open it even though every app refresh replaces that controller.
+     *
+     * @param onCloseAction
+     *            - The action to run when the dialog closes
+     */
+    public void showAdditionalSettingsDialog(Runnable onCloseAction) {
+        menuController.getAdditionalSettingsButtonController().showAdditionalSettingsDialog(onCloseAction);
+    }
+
+    /**
+     * Gets the application-lifetime display info overlay, which shows the applied settings of every connected display.
+     *
+     * @return The display info overlay
+     */
+    public DisplayInfoOverlayView getDisplayInfoOverlayView() {
+        return displayInfoOverlayView;
+    }
+
+    /**
+     * Dismisses everything placed against the current display geometry, which is a showing tray menu and any display
+     * info panels, since a display configuration change leaves both misplaced. The panels are shown again once the
+     * change settles when they are set to show automatically.
+     */
+    public void displayConfigurationChanged() {
+        minimizeToTray.displayConfigurationChanged();
+        displayInfoOverlayView.hide();
+
+        displayInfoAutoShowPending = true;
+    }
+
+    /**
+     * Places everything that depends on the display geometry against the settled display configuration. The display
+     * info panels show on every display when a change is pending and they are set to show automatically.
+     */
+    public void displayConfigurationSettled() {
+        // A slot apply and a reported display change both set the flag, and each is followed by one app refresh
+        if (displayInfoAutoShowPending) {
+            displayInfoAutoShowPending = false;
+
+            if (model.isAutoShowInfoOverlay()) {
+                displayInfoOverlayView.show(model);
+            }
+        }
+
+        // Rescale the tray icon last, since the shell answers for the task bar slowly while still rebuilding it
+        minimizeToTray.displayConfigurationSettled();
     }
 
 }

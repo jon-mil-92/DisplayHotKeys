@@ -37,6 +37,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JSeparator;
 import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
@@ -51,7 +52,6 @@ import com.dhk.model.Resolution;
 import com.dhk.model.button.Button;
 import com.dhk.model.button.ButtonProperties;
 import com.dhk.model.button.ThemeableButton;
-import com.dhk.model.button.ThemeableToggleButton;
 import com.dhk.utility.DisplayModeUtil;
 import com.dhk.utility.FrameUtil;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
@@ -80,11 +80,12 @@ public class DhkView implements IView {
     private JLabel selectedDisplayLabel;
     private JLabel numberOfActiveSlotsLabel;
     private JLabel clearSlotHeader;
+    private JSeparator slotTableSeparator;
     private JLabel applySlotHeader;
     private JLabel resolutionHeader;
     private JLabel refreshRateHeader;
-    private JLabel scalingModeHeader;
     private JLabel dpiScaleHeader;
+    private JLabel scalingModeHeader;
     private JLabel orientationHeader;
     private JLabel hotKeyHeader;
     private JLabel clearHotKeyHeader;
@@ -95,18 +96,56 @@ public class DhkView implements IView {
     private CenteredComboBox<Integer> noDisplayIdsPlaceholder;
     private CenteredComboBox<Integer> noActiveSlotsPlaceholder;
     private Button clearAllButton;
+    private ThemeableButton additionalSettingsButton;
     private ThemeableButton aboutButton;
     private ThemeableButton themeButton;
-    private ThemeableToggleButton minimizeToTrayButton;
-    private ThemeableToggleButton runOnStartupButton;
     private List<Button> buttons;
     private int previouslySelectedDisplayIndex;
     private int gridYPosForSlotInPanel;
     private boolean startMinimizedToTray;
 
     private static final int NUM_OF_SLOT_COMPONENTS = 11;
-    private static final String[] ORIENTATION_MODES = {"Landscape", "Portrait", "iLandscape", "iPortrait"};
-    private static final String[] SCALING_MODES = new String[]{"Preserved", "Stretched", "Centered"};
+
+    /**
+     * Row of the main panel holding the first slot, below the top controls, the slot table separator, and the slot
+     * table headers.
+     */
+    private static final int FIRST_SLOT_GRID_Y = 3;
+
+    /**
+     * Name of each orientation mode, indexed by the orientation mode a slot stores.
+     */
+    static final String[] ORIENTATION_MODES = {"Landscape", "Portrait", "iLandscape", "iPortrait"};
+
+    /**
+     * Name of each scaling mode, indexed by the scaling mode a slot stores.
+     */
+    static final String[] SCALING_MODES = new String[]{"Preserved", "Stretched", "Centered"};
+
+    /**
+     * Text of the slot table's resolution column header.
+     */
+    static final String RESOLUTION_HEADER_TEXT = "Resolution";
+
+    /**
+     * Text of the slot table's refresh rate column header.
+     */
+    static final String REFRESH_RATE_HEADER_TEXT = "Refresh Rate";
+
+    /**
+     * Text of the slot table's DPI scale column header.
+     */
+    static final String DPI_SCALE_HEADER_TEXT = "DPI Scale";
+
+    /**
+     * Text of the slot table's scaling mode column header.
+     */
+    static final String SCALING_MODE_HEADER_TEXT = "Scaling Mode";
+
+    /**
+     * Text of the slot table's orientation column header.
+     */
+    static final String ORIENTATION_HEADER_TEXT = "Orientation";
 
     /**
      * Constructor for the {@link DhkView} class.
@@ -122,7 +161,7 @@ public class DhkView implements IView {
         FlatSVGIcon.setLoggingEnabled(false);
 
         // The starting Y-coordinate for slots
-        gridYPosForSlotInPanel = 2;
+        gridYPosForSlotInPanel = FIRST_SLOT_GRID_Y;
     }
 
     @Override
@@ -152,19 +191,19 @@ public class DhkView implements IView {
                 : 0;
 
         /*
-         * Decide the tray handoff before the frame is ever shown, so a frame bound for the tray is never flashed. A
-         * rebuild keeps the frame off screen only when it was already away, so it comes back exactly as the user left
-         * it
+         * Decide the tray handoff before the frame is ever shown, so a frame bound for the tray is never flashed. The
+         * launch follows the minimize to tray setting, but a rebuild keeps the frame off screen whenever it was already
+         * away, so it comes back exactly as the user left it even if the setting was turned off from the tray
          */
         boolean previousFrameWasAway = (previousFrame != null) && !previousFrame.isShowing();
-        startMinimizedToTray = model.isMinimizeToTray() && (previousFrame == null || previousFrameWasAway);
+        startMinimizedToTray = (previousFrame == null) ? model.isMinimizeToTray() : previousFrameWasAway;
 
         // Reset view state used by component initialization
         displayConfig = model.getDisplayConfig();
         displayMap = new HashMap<>();
         numberOfActiveSlotsMap = new HashMap<>();
         previouslySelectedDisplayIndex = desiredDisplayIndex;
-        gridYPosForSlotInPanel = 2;
+        gridYPosForSlotInPanel = FIRST_SLOT_GRID_Y;
 
         // Build and populate the frame
         final JFrame newFrame = new JFrame("Display Hot Keys");
@@ -302,11 +341,11 @@ public class DhkView implements IView {
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getRefreshRates(), mainPanelConstraints);
 
                 mainPanelConstraints.gridx = 4;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getScalingModes(), mainPanelConstraints);
-
-                mainPanelConstraints.gridx = 5;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDpiScalePercentages(),
                         mainPanelConstraints);
+
+                mainPanelConstraints.gridx = 5;
+                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getScalingModes(), mainPanelConstraints);
 
                 mainPanelConstraints.gridx = 6;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getOrientationModes(), mainPanelConstraints);
@@ -386,18 +425,18 @@ public class DhkView implements IView {
             mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getRefreshRates());
             mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getRefreshRates(), prevRefreshRatesConstraints);
 
-            GridBagConstraints prevScalingModesConstraints = mainPanelLayout
-                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getScalingModes());
-
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getScalingModes());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getScalingModes(), prevScalingModesConstraints);
-
             GridBagConstraints prevDpiScalePercentagesConstraints = mainPanelLayout.getConstraints(
                     displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getDpiScalePercentages());
 
             mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getDpiScalePercentages());
             mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDpiScalePercentages(),
                     prevDpiScalePercentagesConstraints);
+
+            GridBagConstraints prevScalingModesConstraints = mainPanelLayout
+                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getScalingModes());
+
+            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getScalingModes());
+            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getScalingModes(), prevScalingModesConstraints);
 
             GridBagConstraints prevOrientationModeConstraints = mainPanelLayout.getConstraints(
                     displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getOrientationModes());
@@ -533,6 +572,12 @@ public class DhkView implements IView {
                 0.60f);
         clearAllButton = new Button("/clear_all_idle.svg", "/clear_all_hover.svg", clearAllButtonProps, true);
 
+        ButtonProperties additionalSettingsButtonProps = new ButtonProperties("Additional Settings",
+                new Dimension(18, 40), 0.70f, 0.60f);
+        additionalSettingsButton = new ThemeableButton("/additional_settings_idle.svg",
+                "/additional_settings_light_hover.svg", "/additional_settings_idle.svg",
+                "/additional_settings_dark_hover.svg", additionalSettingsButtonProps, true, model.isDarkMode());
+
         ButtonProperties aboutButtonProps = new ButtonProperties("About App", new Dimension(36, 40), 0.70f, 0.60f);
         aboutButton = new ThemeableButton("/about_idle.svg", "/about_light_hover.svg", "/about_idle.svg",
                 "/about_dark_hover.svg", aboutButtonProps, true, model.isDarkMode());
@@ -541,49 +586,34 @@ public class DhkView implements IView {
         themeButton = new ThemeableButton("/light_mode_idle.svg", "/light_mode_hover.svg", "/dark_mode_idle.svg",
                 "/dark_mode_hover.svg", themeButtonProps, true, model.isDarkMode());
 
-        ButtonProperties minimizeToTrayButtonProps = new ButtonProperties("Minimize To Tray", new Dimension(36, 40),
-                0.70f, 0.60f);
-        minimizeToTrayButton = new ThemeableToggleButton("/minimize_to_tray_enabled_idle.svg",
-                "/minimize_to_tray_disabled_idle.svg", "/minimize_to_tray_enabled_light_hover.svg",
-                "/minimize_to_tray_disabled_light_hover.svg", "/minimize_to_tray_enabled_dark_hover.svg",
-                "/minimize_to_tray_disabled_dark_hover.svg", minimizeToTrayButtonProps, true, model.isDarkMode(),
-                model.isMinimizeToTray());
-
-        ButtonProperties runOnStartupButtonProps = new ButtonProperties("Run On Startup", new Dimension(36, 40), 0.70f,
-                0.60f);
-        runOnStartupButton = new ThemeableToggleButton("/run_on_startup_enabled_idle.svg",
-                "/run_on_startup_disabled_idle.svg", "/run_on_startup_enabled_light_hover.svg",
-                "/run_on_startup_disabled_light_hover.svg", "/run_on_startup_enabled_dark_hover.svg",
-                "/run_on_startup_disabled_dark_hover.svg", runOnStartupButtonProps, true, model.isDarkMode(),
-                model.isRunOnStartup());
-
         buttons.add(clearAllButton);
+        buttons.add(additionalSettingsButton);
         buttons.add(aboutButton);
         buttons.add(themeButton);
-        buttons.add(minimizeToTrayButton);
-        buttons.add(runOnStartupButton);
+
+        slotTableSeparator = new JSeparator();
 
         applySlotHeader = new JLabel("", SwingConstants.CENTER);
         applySlotHeader.setPreferredSize(new Dimension(20, 28));
         makeLabelBold(applySlotHeader);
 
-        resolutionHeader = new JLabel("Resolution", SwingConstants.CENTER);
+        resolutionHeader = new JLabel(RESOLUTION_HEADER_TEXT, SwingConstants.CENTER);
         resolutionHeader.setPreferredSize(new Dimension(138, 28));
         makeLabelBold(resolutionHeader);
 
-        refreshRateHeader = new JLabel("Refresh Rate", SwingConstants.CENTER);
+        refreshRateHeader = new JLabel(REFRESH_RATE_HEADER_TEXT, SwingConstants.CENTER);
         refreshRateHeader.setPreferredSize(new Dimension(118, 28));
         makeLabelBold(refreshRateHeader);
 
-        scalingModeHeader = new JLabel("Scaling Mode", SwingConstants.CENTER);
-        scalingModeHeader.setPreferredSize(new Dimension(110, 28));
-        makeLabelBold(scalingModeHeader);
-
-        dpiScaleHeader = new JLabel("DPI Scale", SwingConstants.CENTER);
+        dpiScaleHeader = new JLabel(DPI_SCALE_HEADER_TEXT, SwingConstants.CENTER);
         dpiScaleHeader.setPreferredSize(new Dimension(70, 28));
         makeLabelBold(dpiScaleHeader);
 
-        orientationHeader = new JLabel("Orientation", SwingConstants.CENTER);
+        scalingModeHeader = new JLabel(SCALING_MODE_HEADER_TEXT, SwingConstants.CENTER);
+        scalingModeHeader.setPreferredSize(new Dimension(110, 28));
+        makeLabelBold(scalingModeHeader);
+
+        orientationHeader = new JLabel(ORIENTATION_HEADER_TEXT, SwingConstants.CENTER);
         orientationHeader.setPreferredSize(new Dimension(118, 28));
         makeLabelBold(orientationHeader);
 
@@ -680,7 +710,7 @@ public class DhkView implements IView {
                      */
                     Resolution slotResolution = slotDisplayMode.getResolution();
 
-                    slots.add(new Slot(slotIndex, displayIndex, displayModes, SCALING_MODES, dpiScalePercentages,
+                    slots.add(new Slot(slotIndex, displayIndex, displayModes, dpiScalePercentages, SCALING_MODES,
                             ORIENTATION_MODES));
 
                     slots.get(slotIndex).getResolutions().setSelectedItem(slotResolution);
@@ -690,11 +720,11 @@ public class DhkView implements IView {
 
                     slots.get(slotIndex).getRefreshRates().setSelectedItem(slotDisplayMode.getRefreshRate());
 
-                    slots.get(slotIndex).getScalingModes()
-                            .setSelectedIndex(model.getSlot(displayIndex, slotIndex).getScalingMode());
-
                     slots.get(slotIndex).getDpiScalePercentages()
                             .setSelectedItem(model.getSlot(displayIndex, slotIndex).getDpiScalePercentage());
+
+                    slots.get(slotIndex).getScalingModes()
+                            .setSelectedIndex(model.getSlot(displayIndex, slotIndex).getScalingMode());
 
                     slots.get(slotIndex).getOrientationModes()
                             .setSelectedIndex(model.getSlot(displayIndex, slotIndex).getOrientationMode());
@@ -734,16 +764,13 @@ public class DhkView implements IView {
         menuPanelConstraints.gridwidth = 1;
         menuPanelConstraints.gridx = 0;
         menuPanelConstraints.gridy = 0;
-        menuPanel.add(aboutButton, menuPanelConstraints);
+        menuPanel.add(additionalSettingsButton, menuPanelConstraints);
 
         menuPanelConstraints.gridx = 1;
-        menuPanel.add(themeButton, menuPanelConstraints);
+        menuPanel.add(aboutButton, menuPanelConstraints);
 
         menuPanelConstraints.gridx = 2;
-        menuPanel.add(minimizeToTrayButton, menuPanelConstraints);
-
-        menuPanelConstraints.gridx = 3;
-        menuPanel.add(runOnStartupButton, menuPanelConstraints);
+        menuPanel.add(themeButton, menuPanelConstraints);
 
         mainPanelConstraints.anchor = GridBagConstraints.WEST;
         mainPanelConstraints.gridwidth = 11;
@@ -754,9 +781,17 @@ public class DhkView implements IView {
         mainPanelConstraints.anchor = GridBagConstraints.EAST;
         mainPanel.add(menuPanel, mainPanelConstraints);
 
+        // Separate the top controls from the slot table, relying on the spacing of the rows around it for its gap
         mainPanelConstraints.anchor = GridBagConstraints.CENTER;
-        mainPanelConstraints.gridwidth = 1;
+        mainPanelConstraints.fill = GridBagConstraints.HORIZONTAL;
+        mainPanelConstraints.insets = new Insets(0, 8, 0, 8);
         mainPanelConstraints.gridy = 1;
+        mainPanel.add(slotTableSeparator, mainPanelConstraints);
+
+        mainPanelConstraints.fill = GridBagConstraints.NONE;
+        mainPanelConstraints.insets = new Insets(8, 8, 8, 8);
+        mainPanelConstraints.gridwidth = 1;
+        mainPanelConstraints.gridy = 2;
         mainPanel.add(clearAllButton, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 1;
@@ -769,10 +804,10 @@ public class DhkView implements IView {
         mainPanel.add(refreshRateHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 4;
-        mainPanel.add(scalingModeHeader, mainPanelConstraints);
+        mainPanel.add(dpiScaleHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 5;
-        mainPanel.add(dpiScaleHeader, mainPanelConstraints);
+        mainPanel.add(scalingModeHeader, mainPanelConstraints);
 
         mainPanelConstraints.gridx = 6;
         mainPanel.add(orientationHeader, mainPanelConstraints);
@@ -906,6 +941,15 @@ public class DhkView implements IView {
     }
 
     /**
+     * Gets the additional settings button.
+     *
+     * @return The additional settings button
+     */
+    public ThemeableButton getAdditionalSettingsButton() {
+        return additionalSettingsButton;
+    }
+
+    /**
      * Gets the about button.
      *
      * @return The about button
@@ -921,24 +965,6 @@ public class DhkView implements IView {
      */
     public ThemeableButton getThemeButton() {
         return themeButton;
-    }
-
-    /**
-     * Gets the minimize to tray button.
-     *
-     * @return The minimize to tray button
-     */
-    public ThemeableToggleButton getMinimizeToTrayButton() {
-        return minimizeToTrayButton;
-    }
-
-    /**
-     * Gets the run on startup button.
-     *
-     * @return The run on startup button
-     */
-    public ThemeableToggleButton getRunOnStartupButton() {
-        return runOnStartupButton;
     }
 
     /**

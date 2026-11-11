@@ -32,22 +32,24 @@ import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 
 /**
- * Shows a modal, icon-free dialog reporting why the run on startup setting could not be changed, or why it was
- * corrected on launch to match what really starts the application.
+ * Shows a modal, icon-free dialog centered on the application frame, reporting why the run on startup setting could not
+ * be changed, or why it was corrected on launch to match what really starts the application.
  *
  * @author Jonathan R. Miller
  */
 public class RunOnStartupNoticeDialog {
 
+    private JFrame parentFrame;
+
     /**
      * Message shown above the reason lines when a requested change could not be made.
      */
-    private static final String FAILED_MESSAGE_TEXT = "Run On Startup could not be changed!";
+    private static final String FAILED_MESSAGE_TEXT = "Run on Startup could not be changed!";
 
     /**
      * Message shown above the reason lines when the saved setting was corrected on launch rather than by a click.
      */
-    private static final String CHANGED_MESSAGE_TEXT = "Run On Startup was changed to match the scheduled task!";
+    private static final String CHANGED_MESSAGE_TEXT = "Run on Startup was changed to match the scheduled task!";
 
     /**
      * First reason line shown when the setting could not be turned off.
@@ -85,9 +87,13 @@ public class RunOnStartupNoticeDialog {
     private static final String CHANGED_OFF_REASON_LINE_2 = "created without administrator rights.";
 
     /**
-     * Default constructor for the {@link RunOnStartupNoticeDialog} class.
+     * Constructor for the {@link RunOnStartupNoticeDialog} class.
+     *
+     * @param parentFrame
+     *            - The application frame the dialog is centered on
      */
-    public RunOnStartupNoticeDialog() {
+    public RunOnStartupNoticeDialog(JFrame parentFrame) {
+        this.parentFrame = parentFrame;
     }
 
     /**
@@ -114,7 +120,7 @@ public class RunOnStartupNoticeDialog {
     }
 
     /**
-     * Shows the modal dialog with centered message lines above a centered Close button.
+     * Shows the modal dialog, centered on the parent frame, with centered message lines above a centered OK button.
      *
      * @param messageText
      *            - The message shown above the reason lines
@@ -124,7 +130,14 @@ public class RunOnStartupNoticeDialog {
      *            - The second reason line
      */
     private void showDialog(String messageText, String reasonText1, String reasonText2) {
-        final JDialog dialog = new JDialog((JFrame) null, "Display Hot Keys", true);
+        /*
+         * A frame hidden for the tray or minimized has no on-screen bounds to center on, which can happen to the notice
+         * shown on launch, so the dialog then stands alone at the center of the screen
+         */
+        boolean frameShowing = parentFrame.isShowing() && (parentFrame.getExtendedState() & JFrame.ICONIFIED) == 0;
+        JFrame owner = frameShowing ? parentFrame : null;
+
+        final JDialog dialog = new JDialog(owner, "Display Hot Keys", true);
         dialog.setResizable(false);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setLayout(new GridBagLayout());
@@ -132,11 +145,11 @@ public class RunOnStartupNoticeDialog {
         JLabel message = new JLabel(messageText, SwingConstants.CENTER);
         JLabel reasonLine1 = new JLabel(reasonText1, SwingConstants.CENTER);
         JLabel reasonLine2 = new JLabel(reasonText2, SwingConstants.CENTER);
-        JButton closeButton = new JButton("Close");
+        JButton okButton = new JButton("OK");
 
         // Suppress the focus ring
-        closeButton.setFocusPainted(false);
-        closeButton.addActionListener(new ActionListener() {
+        okButton.setFocusPainted(false);
+        okButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 dialog.dispose();
@@ -163,10 +176,10 @@ public class RunOnStartupNoticeDialog {
         constraints.gridy = 3;
         constraints.insets = new Insets(0, 0, 22, 0);
 
-        dialog.add(closeButton, constraints);
+        dialog.add(okButton, constraints);
 
         dialog.pack();
-        dialog.setLocationRelativeTo(null);
+        dialog.setLocationRelativeTo(owner);
         dialog.setVisible(true);
     }
 

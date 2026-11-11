@@ -36,8 +36,8 @@ import com.dhk.model.Key;
 
 /**
  * Saves the application settings to an ini file. It enables the saving of the active number of slots, the orientation
- * mode, the theme state, the minimize to tray state, the run on startup state, the display modes, the scaling modes,
- * the DPI scale percentages, and the hot keys for each display
+ * mode, the theme state, the minimize to tray state, the close to tray state, the run on startup state, the display
+ * modes, the DPI scale percentages, the scaling modes, and the hot keys for each display
  *
  * @author Jonathan R. Miller
  */
@@ -54,6 +54,12 @@ public class SettingsManager {
 
     // The max number of visible slots in the application frame
     private static final int MAX_NUM_OF_SLOTS = 12;
+
+    /**
+     * Section of the settings file holding the Display Info hot key, which uses the same property names as a slot's hot
+     * key so both are read, saved, and validated the same way.
+     */
+    static final String DISPLAY_INFO_HOT_KEY_SECTION = "DisplayInfoHotKey";
 
     /**
      * Constructor for the {@link SettingsManager} class.
@@ -137,6 +143,27 @@ public class SettingsManager {
     }
 
     /**
+     * Gets the close to tray property value from the settings file object.
+     *
+     * @return The value for the close to tray property
+     */
+    public boolean getIniCloseToTray() {
+        return ini.get("Application", "closeToTray", boolean.class);
+    }
+
+    /**
+     * Sets the close to tray property value in the settings file object.
+     *
+     * @param closeToTray
+     *            - The new value for the close to tray property
+     */
+    public void saveIniCloseToTray(boolean closeToTray) {
+        ini.put("Application", "closeToTray", closeToTray);
+
+        updateSettingsFile();
+    }
+
+    /**
      * Gets the run on startup property value from the settings file object.
      *
      * @return The value for the run on startup property
@@ -153,6 +180,27 @@ public class SettingsManager {
      */
     public void saveIniRunOnStartup(boolean runOnStartup) {
         ini.put("Application", "runOnStartup", runOnStartup);
+
+        updateSettingsFile();
+    }
+
+    /**
+     * Gets the auto show info overlay property value from the settings file object.
+     *
+     * @return The value for the auto show info overlay property
+     */
+    public boolean getIniAutoShowInfoOverlay() {
+        return ini.get("Application", "autoShowInfoOverlay", boolean.class);
+    }
+
+    /**
+     * Sets the auto show info overlay property value in the settings file object.
+     *
+     * @param autoShowInfoOverlay
+     *            - The new value for the auto show info overlay property
+     */
+    public void saveIniAutoShowInfoOverlay(boolean autoShowInfoOverlay) {
+        ini.put("Application", "autoShowInfoOverlay", autoShowInfoOverlay);
 
         updateSettingsFile();
     }
@@ -231,39 +279,6 @@ public class SettingsManager {
     }
 
     /**
-     * Gets the specified slot's scaling mode property value from the settings file object.
-     *
-     * @param displayId
-     *            - The ID of the display to get the scaling mode for
-     * @param slotId
-     *            - The ID of the slot to get the scaling mode for
-     *
-     * @return The specified slot's scaling mode property value
-     */
-    public int getIniSlotScalingMode(String displayId, int slotId) {
-        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
-
-        return ini.get(iniSection, "scalingMode", int.class);
-    }
-
-    /**
-     * Sets the specified slot's scaling mode property value in the settings file object.
-     *
-     * @param displayId
-     *            - The ID of the display to set the scaling mode for
-     * @param slotId
-     *            - The ID of the slot to set the scaling mode for
-     * @param scalingMode
-     *            - The specified slot's new value for the scaling mode property
-     */
-    public void saveIniSlotScalingMode(String displayId, int slotId, int scalingMode) {
-        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
-        ini.put(iniSection, "scalingMode", scalingMode);
-
-        updateSettingsFile();
-    }
-
-    /**
      * Gets the specified slot's DPI scale percentage property value from the settings file object.
      *
      * @param displayId
@@ -292,6 +307,39 @@ public class SettingsManager {
     public void saveIniSlotDpiScalePercentage(String displayId, int slotId, int dpiScalePercentage) {
         String iniSection = displayId + "--Slot" + Integer.toString(slotId);
         ini.put(iniSection, "dpiScalePercentage", dpiScalePercentage);
+
+        updateSettingsFile();
+    }
+
+    /**
+     * Gets the specified slot's scaling mode property value from the settings file object.
+     *
+     * @param displayId
+     *            - The ID of the display to get the scaling mode for
+     * @param slotId
+     *            - The ID of the slot to get the scaling mode for
+     *
+     * @return The specified slot's scaling mode property value
+     */
+    public int getIniSlotScalingMode(String displayId, int slotId) {
+        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+
+        return ini.get(iniSection, "scalingMode", int.class);
+    }
+
+    /**
+     * Sets the specified slot's scaling mode property value in the settings file object.
+     *
+     * @param displayId
+     *            - The ID of the display to set the scaling mode for
+     * @param slotId
+     *            - The ID of the slot to set the scaling mode for
+     * @param scalingMode
+     *            - The specified slot's new value for the scaling mode property
+     */
+    public void saveIniSlotScalingMode(String displayId, int slotId, int scalingMode) {
+        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+        ini.put(iniSection, "scalingMode", scalingMode);
 
         updateSettingsFile();
     }
@@ -340,16 +388,7 @@ public class SettingsManager {
      * @return The specified slot's hot key
      */
     public HotKey getIniSlotHotKey(String displayId, int slotId) {
-        HotKey hotKey = new HotKey(new ArrayList<Key>());
-        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
-        int hotKeySize = ini.get(iniSection, "hotKeySize", int.class);
-
-        for (int keyId = 1; keyId <= hotKeySize; keyId++) {
-            int keyCode = ini.get(iniSection, "key" + Integer.toString(keyId), int.class);
-            hotKey.getKeys().add(new Key(keyCode, KeyText.getKeyCodeText(keyCode), false));
-        }
-
-        return hotKey;
+        return getIniHotKey(displayId + "--Slot" + Integer.toString(slotId));
     }
 
     /**
@@ -363,8 +402,58 @@ public class SettingsManager {
      *            - The specified slot's hot key
      */
     public void saveIniSlotHotKey(String displayId, int slotId, HotKey hotKey) {
+        saveIniHotKey(displayId + "--Slot" + Integer.toString(slotId), hotKey);
+    }
+
+    /**
+     * Gets the Display Info hot key built from the hot key properties in the settings file object.
+     *
+     * @return The Display Info hot key
+     */
+    public HotKey getIniDisplayInfoHotKey() {
+        return getIniHotKey(DISPLAY_INFO_HOT_KEY_SECTION);
+    }
+
+    /**
+     * Sets the Display Info hot key properties in the settings file object.
+     *
+     * @param hotKey
+     *            - The Display Info hot key
+     */
+    public void saveIniDisplayInfoHotKey(HotKey hotKey) {
+        saveIniHotKey(DISPLAY_INFO_HOT_KEY_SECTION, hotKey);
+    }
+
+    /**
+     * Gets a hot key built from the hot key properties in the given section of the settings file object.
+     *
+     * @param iniSection
+     *            - The section of the settings file holding the hot key properties
+     *
+     * @return The hot key held in the given section
+     */
+    private HotKey getIniHotKey(String iniSection) {
+        HotKey hotKey = new HotKey(new ArrayList<Key>());
+        int hotKeySize = ini.get(iniSection, "hotKeySize", int.class);
+
+        for (int keyId = 1; keyId <= hotKeySize; keyId++) {
+            int keyCode = ini.get(iniSection, "key" + Integer.toString(keyId), int.class);
+            hotKey.getKeys().add(new Key(keyCode, KeyText.getKeyCodeText(keyCode), false));
+        }
+
+        return hotKey;
+    }
+
+    /**
+     * Sets the hot key properties in the given section of the settings file object.
+     *
+     * @param iniSection
+     *            - The section of the settings file to hold the hot key properties
+     * @param hotKey
+     *            - The hot key to save
+     */
+    private void saveIniHotKey(String iniSection, HotKey hotKey) {
         int hotKeySize = hotKey.getKeys().size();
-        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
         ini.put(iniSection, "hotKeySize", hotKeySize);
 
         for (int keyIndex = 0; keyIndex < 3; keyIndex++) {

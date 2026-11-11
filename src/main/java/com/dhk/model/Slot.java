@@ -20,7 +20,7 @@
 package com.dhk.model;
 
 /**
- * Defines the model for a Slot. The display mode, scaling mode, DPI scale percentage, orientation mode, and hot key for
+ * Defines the model for a Slot. The display mode, DPI scale percentage, scaling mode, orientation mode, and hot key for
  * a slot are initialized here.
  *
  * @author Jonathan R. Miller
@@ -28,8 +28,8 @@ package com.dhk.model;
 public class Slot {
 
     private DisplayMode displayMode;
-    private int scalingMode;
     private int dpiScalePercentage;
+    private int scalingMode;
     private int orientationMode;
     private HotKey hotKey;
     private boolean clearingSlot;
@@ -39,10 +39,10 @@ public class Slot {
      *
      * @param displayMode
      *            - The display mode for the slot
-     * @param scalingMode
-     *            - The scaling mode for the slot
      * @param dpiScalePercentage
      *            - The DPI scale percentage for the slot
+     * @param scalingMode
+     *            - The scaling mode for the slot
      * @param orientationMode
      *            - The orientation mode for the display
      * @param changingHotKey
@@ -50,11 +50,11 @@ public class Slot {
      * @param hotKey
      *            - The hot key for the slot
      */
-    public Slot(DisplayMode displayMode, int scalingMode, int dpiScalePercentage, int orientationMode,
+    public Slot(DisplayMode displayMode, int dpiScalePercentage, int scalingMode, int orientationMode,
             boolean changingHotKey, HotKey hotKey) {
         this.displayMode = displayMode;
-        this.scalingMode = scalingMode;
         this.dpiScalePercentage = dpiScalePercentage;
+        this.scalingMode = scalingMode;
         this.orientationMode = orientationMode;
         this.hotKey = hotKey;
         this.clearingSlot = false;
@@ -80,25 +80,6 @@ public class Slot {
     }
 
     /**
-     * Gets the scaling mode of the slot.
-     *
-     * @return The scaling mode of the slot
-     */
-    public int getScalingMode() {
-        return scalingMode;
-    }
-
-    /**
-     * Sets the scaling mode of the slot.
-     *
-     * @param scalingMode
-     *            - The new scaling mode of the slot
-     */
-    public void setScalingMode(int scalingMode) {
-        this.scalingMode = scalingMode;
-    }
-
-    /**
      * Gets the DPI scale percentage of the slot.
      *
      * @return The DPI scale percentage of the slot
@@ -115,6 +96,25 @@ public class Slot {
      */
     public void setDpiScalePercentage(int dpiScalePercentage) {
         this.dpiScalePercentage = dpiScalePercentage;
+    }
+
+    /**
+     * Gets the scaling mode of the slot.
+     *
+     * @return The scaling mode of the slot
+     */
+    public int getScalingMode() {
+        return scalingMode;
+    }
+
+    /**
+     * Sets the scaling mode of the slot.
+     *
+     * @param scalingMode
+     *            - The new scaling mode of the slot
+     */
+    public void setScalingMode(int scalingMode) {
+        this.scalingMode = scalingMode;
     }
 
     /**

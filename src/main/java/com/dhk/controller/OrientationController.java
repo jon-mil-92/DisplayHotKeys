@@ -19,7 +19,6 @@
  */
 package com.dhk.controller;
 
-import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 
 import com.dhk.io.SettingsManager;
@@ -27,6 +26,7 @@ import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
 import com.dhk.model.DisplayMode;
 import com.dhk.utility.DisplayModeInverter;
+import com.dhk.view.ConfirmationDialog;
 import com.dhk.view.DhkView;
 
 /**
@@ -43,8 +43,8 @@ public class OrientationController implements IController {
     private SettingsManager settingsMgr;
     private AppRefresher appRefresher;
 
-    private static final String CONFIRMATION_MESSAGE = "Are you sure you want to change the display orientation for the slot?"
-            + " Only do this if you can rotate your display!";
+    private static final String CONFIRMATION_QUESTION = "Are you sure you want to change the display orientation for the slot?";
+    private static final String CONFIRMATION_WARNING = "Only do this if you can rotate your display!";
     private static final String TITLE_BAR_MESSAGE = "Confirm Display Orientation Change";
 
     /**
@@ -116,29 +116,15 @@ public class OrientationController implements IController {
     }
 
     /**
-     * Shows a confirmation window that asks if the user wants to clear all slots.
+     * Shows a confirmation window that asks if the user wants to change the display orientation for the slot.
      *
      * @return The return value from the option pane
      */
     private int getUserConfirmation() {
-        // Create the JOptionPane with the confirmation message
-        final JOptionPane optionPane = new JOptionPane(CONFIRMATION_MESSAGE, JOptionPane.PLAIN_MESSAGE,
-                JOptionPane.YES_NO_OPTION);
+        ConfirmationDialog confirmationDialog = new ConfirmationDialog(view.getFrame(), TITLE_BAR_MESSAGE,
+                CONFIRMATION_QUESTION, CONFIRMATION_WARNING);
 
-        // Create a dialog for the option pane using the application's frame as parent
-        final JDialog dialog = optionPane.createDialog(view.getFrame(), TITLE_BAR_MESSAGE);
-        dialog.setModal(true);
-        dialog.setResizable(false);
-        dialog.setVisible(true);
-
-        // Retrieve the user's choice from the option pane
-        Object selectedValue = optionPane.getValue();
-
-        if (selectedValue instanceof Integer) {
-            return (Integer) selectedValue;
-        } else {
-            return JOptionPane.CLOSED_OPTION;
-        }
+        return confirmationDialog.showConfirmationDialog();
     }
 
     /**
