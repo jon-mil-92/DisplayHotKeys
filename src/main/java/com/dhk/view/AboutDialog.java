@@ -94,6 +94,18 @@ public class AboutDialog implements IView {
     private static final String RELEASES_LINK = GITHUB_DOMAIN + RELEASES_PATH;
 
     /**
+     * Visible space above the first section, between sections, and below the buttons, which keeps the dialog's spacing
+     * even throughout.
+     */
+    private static final int SECTION_GAP = 20;
+
+    /**
+     * Space a label's text or a button's border leaves inside the component's bounds, which already counts toward a
+     * visible gap and is taken out of the inset beside it.
+     */
+    private static final int INNER_PADDING = 2;
+
+    /**
      * Constructor for the {@link AboutDialog} class.
      *
      * @param model
@@ -242,7 +254,7 @@ public class AboutDialog implements IView {
         aboutDialog.setLayout(mainLayout);
 
         mainConstraints = new GridBagConstraints();
-        mainConstraints.insets = new Insets(8, 20, 8, 20);
+        mainConstraints.insets = new Insets(0, 20, 0, 20);
         mainConstraints.anchor = GridBagConstraints.CENTER;
         mainConstraints.gridwidth = 1;
 
@@ -251,7 +263,6 @@ public class AboutDialog implements IView {
         buttonPanel.setLayout(buttonPanelLayout);
 
         buttonPanelConstraints = new GridBagConstraints();
-        buttonPanelConstraints.insets = new Insets(2, 8, 10, 8);
         buttonPanelConstraints.anchor = GridBagConstraints.CENTER;
         buttonPanelConstraints.gridwidth = 1;
 
@@ -352,6 +363,18 @@ public class AboutDialog implements IView {
      *            - The about dialog to add components to
      */
     private void addAboutComponents(JDialog aboutDialog) {
+        // An edge adds no padding of its own, so only the padding of the text or button beside it counts toward the gap
+        int edgeInset = SECTION_GAP - INNER_PADDING;
+
+        // A heading below text has padding on both sides of its gap, so both are taken out of its inset
+        int sectionInset = SECTION_GAP - 2 * INNER_PADDING;
+
+        // The PayPal icon is drawn smaller than its button, so the blank margin around it counts toward the gap below
+        int paypalButtonHeight = paypalDonateButton.getPreferredSize().height;
+        int paypalIconMargin = (paypalButtonHeight - paypalDonateButton.getIcon().getIconHeight()) / 2;
+
+        buttonPanelConstraints.insets = new Insets(SECTION_GAP - INNER_PADDING - paypalIconMargin, 8, edgeInset, 8);
+
         buttonPanelConstraints.gridx = 0;
         buttonPanelConstraints.gridy = 0;
         buttonPanel.add(licenseButton, buttonPanelConstraints);
@@ -361,27 +384,27 @@ public class AboutDialog implements IView {
         buttonPanel.add(releasesButton, buttonPanelConstraints);
 
         addInfo(infoPanel, infoPanelConstraints, versionSectionLabel, 0, 0, 1, GridBagConstraints.CENTER,
-                GridBagConstraints.NONE, new Insets(0, 8, 4, 8));
+                GridBagConstraints.NONE, new Insets(edgeInset, 8, 4, 8));
         addInfo(infoPanel, infoPanelConstraints, versionSeparator, 0, 1, 1, GridBagConstraints.CENTER,
                 GridBagConstraints.HORIZONTAL, new Insets(0, 8, 4, 8));
         addInfo(infoPanel, infoPanelConstraints, versionLabel, 0, 2, 1, GridBagConstraints.CENTER,
                 GridBagConstraints.NONE, new Insets(4, 8, 2, 8));
         addInfo(infoPanel, infoPanelConstraints, latestVersionLabel, 0, 3, 1, GridBagConstraints.CENTER,
-                GridBagConstraints.NONE, new Insets(2, 8, 4, 8));
+                GridBagConstraints.NONE, new Insets(2, 8, 0, 8));
 
         addInfo(infoPanel, infoPanelConstraints, developerSectionLabel, 0, 4, 1, GridBagConstraints.CENTER,
-                GridBagConstraints.NONE, new Insets(16, 8, 4, 8));
+                GridBagConstraints.NONE, new Insets(sectionInset, 8, 4, 8));
         addInfo(infoPanel, infoPanelConstraints, developerSeparator, 0, 5, 1, GridBagConstraints.CENTER,
                 GridBagConstraints.HORIZONTAL, new Insets(0, 8, 4, 8));
         addInfo(infoPanel, infoPanelConstraints, developedByLabel, 0, 6, 1, GridBagConstraints.CENTER,
-                GridBagConstraints.NONE, new Insets(4, 8, 4, 8));
+                GridBagConstraints.NONE, new Insets(4, 8, 0, 8));
 
         addInfo(infoPanel, infoPanelConstraints, donateSectionLabel, 0, 7, 1, GridBagConstraints.CENTER,
-                GridBagConstraints.NONE, new Insets(16, 8, 4, 8));
+                GridBagConstraints.NONE, new Insets(sectionInset, 8, 4, 8));
         addInfo(infoPanel, infoPanelConstraints, donateSeparator, 0, 8, 1, GridBagConstraints.CENTER,
                 GridBagConstraints.HORIZONTAL, new Insets(0, 8, 4, 8));
         addInfo(infoPanel, infoPanelConstraints, paypalDonateButton, 0, 9, 1, GridBagConstraints.CENTER,
-                GridBagConstraints.NONE, new Insets(4, 8, 4, 8));
+                GridBagConstraints.NONE, new Insets(4, 8, 0, 8));
 
         mainConstraints.gridx = 0;
         mainConstraints.gridy = 0;
