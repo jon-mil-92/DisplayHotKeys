@@ -97,7 +97,7 @@ public class AboutDialog implements IView {
      * Visible space above the first section, between sections, and below the buttons, which keeps the dialog's spacing
      * even throughout.
      */
-    private static final int SECTION_GAP = 20;
+    private static final int SECTION_GAP = 24;
 
     /**
      * Space a label's text or a button's border leaves inside the component's bounds, which already counts toward a
