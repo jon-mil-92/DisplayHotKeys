@@ -53,6 +53,7 @@ public class DhkController implements IController {
     private boolean inputHookRecoveryAttempted;
     private HeldKeyTracker heldKeyTracker;
     private HotKeysController hotKeysController;
+    private MenuController menuController;
     private List<IController> controllers;
     private int frameState;
     private DisplayConfigUpdater displayConfigUpdater;
@@ -95,7 +96,7 @@ public class DhkController implements IController {
         heldKeyTracker = hookInstaller.getHeldKeyTracker();
 
         // Create the minimize-to-tray object once so app refreshes reuse the live tray instead of rebuilding it
-        minimizeToTray = new MinimizeToTray(model, view, "/tray_icon.svg");
+        minimizeToTray = new MinimizeToTray(model, view, "/tray_icon.svg", this::showAdditionalSettingsDialog);
 
         // Create the display info overlay once so app refreshes can still hide panels shown before them
         displayInfoOverlayView = new DisplayInfoOverlayView();
@@ -129,7 +130,8 @@ public class DhkController implements IController {
         controllers.add(new DisplayModeController(model, view, settingsMgr));
         controllers.add(new DpiScaleController(model, view, settingsMgr));
         controllers.add(new FrameDragController(view, inputHook));
-        controllers.add(new MenuController(model, view, settingsMgr, hotKeysController));
+        menuController = new MenuController(model, view, settingsMgr, hotKeysController);
+        controllers.add(menuController);
         controllers.add(new NumberOfSlotsController(model, view, settingsMgr));
         controllers.add(new OrientationController(model, view, this, settingsMgr));
         controllers.add(new ScalingModeController(model, view, settingsMgr));
@@ -261,6 +263,17 @@ public class DhkController implements IController {
      */
     public MinimizeToTray getMinimizeToTray() {
         return minimizeToTray;
+    }
+
+    /**
+     * Shows the "Additional Settings" dialog through the current menu controller, which wires its settings, so the tray
+     * can open it even though every app refresh replaces that controller.
+     *
+     * @param onCloseAction
+     *            - The action to run when the dialog closes
+     */
+    public void showAdditionalSettingsDialog(Runnable onCloseAction) {
+        menuController.getAdditionalSettingsButtonController().showAdditionalSettingsDialog(onCloseAction);
     }
 
     /**

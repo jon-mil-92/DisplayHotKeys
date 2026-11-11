@@ -22,6 +22,7 @@ package com.dhk.view;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.util.function.Consumer;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
@@ -41,6 +42,7 @@ public class MinimizeToTray {
 
     private DhkModel model;
     private DhkView view;
+    private Consumer<Runnable> settingsDialogShower;
     private SystemTrayIcon systemTrayIcon;
     private FlatSVGIcon trayIcon;
 
@@ -58,10 +60,14 @@ public class MinimizeToTray {
      *            - The view for the application
      * @param iconResourcePath
      *            - The icon resource path for the tray icon
+     * @param settingsDialogShower
+     *            - The action that shows the "Additional Settings" dialog, given the action to run when it closes
      */
-    public MinimizeToTray(DhkModel model, DhkView view, String iconResourcePath) {
+    public MinimizeToTray(DhkModel model, DhkView view, String iconResourcePath,
+            Consumer<Runnable> settingsDialogShower) {
         this.model = model;
         this.view = view;
+        this.settingsDialogShower = settingsDialogShower;
 
         // Kept as a vector, so every icon size is rasterized from it rather than resampled from one fixed size
         trayIcon = new FlatSVGIcon(getClass().getResource(iconResourcePath));
@@ -89,7 +95,8 @@ public class MinimizeToTray {
         systemTrayIcon = new SystemTrayIcon();
 
         // Installed before the icon starts, so the icon never shows without its menu
-        new TrayMenu(systemTrayIcon, this::restoreAction, this::aboutAction, this::exitAction).install();
+        new TrayMenu(systemTrayIcon, this::restoreAction, this::settingsAction, this::aboutAction, this::exitAction)
+                .install();
 
         if (!systemTrayIcon.start(TRAY_NAME, this::renderTrayIconPixels)) {
             restoreAction();
@@ -175,6 +182,31 @@ public class MinimizeToTray {
         });
 
         shutDownSystemTray();
+    }
+
+    /**
+     * Shows the "Additional Settings" dialog.
+     */
+    private void settingsAction() {
+        hideSystemTray();
+
+        // The dialog builds its components when shown, so it is shown from the event dispatching thread
+        SwingUtilities.invokeLater(() -> settingsDialogShower.accept(this::settingsClosedAction));
+    }
+
+    /**
+     * Shows the tray icon again when the "Additional Settings" dialog opened from it closes, or restores the
+     * application instead when minimizing to the tray was turned off in that dialog, since the application should then
+     * no longer sit in the tray.
+     */
+    private void settingsClosedAction() {
+        if (!model.isMinimizeToTray()) {
+            restoreAction();
+
+            return;
+        }
+
+        showSystemTray();
     }
 
     /**

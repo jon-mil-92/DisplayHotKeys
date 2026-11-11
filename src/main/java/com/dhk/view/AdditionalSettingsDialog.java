@@ -60,13 +60,20 @@ public class AdditionalSettingsDialog implements IView {
     private JPanel settingsPanel;
     private GridBagLayout settingsPanelLayout;
     private GridBagConstraints settingsPanelConstraints;
+    private JPanel optionsPanel;
+    private GridBagLayout optionsPanelLayout;
+    private GridBagConstraints optionsPanelConstraints;
     private JLabel optionsSectionLabel;
     private JSeparator optionsSeparator;
-    private JLabel autoShowInfoOverlayLabel;
-    private ToggleSwitch autoShowInfoOverlaySwitch;
+    private JLabel runOnStartupLabel;
+    private ToggleSwitch runOnStartupSwitch;
+    private JLabel minimizeToTrayLabel;
+    private ToggleSwitch minimizeToTraySwitch;
     private JLabel closeToTrayLabel;
     private ToggleSwitch closeToTraySwitch;
     private JLabel closeToTrayNoteLabel;
+    private JLabel autoShowInfoOverlayLabel;
+    private ToggleSwitch autoShowInfoOverlaySwitch;
     private JLabel hotKeysSectionLabel;
     private JSeparator hotKeysSeparator;
     private JLabel displayInfoHotKeyLabel;
@@ -84,6 +91,12 @@ public class AdditionalSettingsDialog implements IView {
      * Title of the dialog, shown in its title bar.
      */
     private static final String DIALOG_TITLE = "Additional Settings";
+
+    /**
+     * Space in pixels between the track of a switch in the first options column and the label beside it in the second
+     * column, which stays fixed so a long hot key never widens it.
+     */
+    private static final int OPTION_COLUMN_GAP = 40;
 
     /**
      * Constructor for the {@link AdditionalSettingsDialog} class.
@@ -156,12 +169,21 @@ public class AdditionalSettingsDialog implements IView {
     }
 
     /**
-     * Gets the switch that turns showing the info overlay automatically on or off.
+     * Gets the switch that turns starting the application upon login on or off.
      *
-     * @return The Auto Show Info Overlay switch
+     * @return The Run on Startup switch
      */
-    public ToggleSwitch getAutoShowInfoOverlaySwitch() {
-        return autoShowInfoOverlaySwitch;
+    public ToggleSwitch getRunOnStartupSwitch() {
+        return runOnStartupSwitch;
+    }
+
+    /**
+     * Gets the switch that turns minimizing the application to the system tray on or off.
+     *
+     * @return The Minimize to Tray switch
+     */
+    public ToggleSwitch getMinimizeToTraySwitch() {
+        return minimizeToTraySwitch;
     }
 
     /**
@@ -171,6 +193,15 @@ public class AdditionalSettingsDialog implements IView {
      */
     public ToggleSwitch getCloseToTraySwitch() {
         return closeToTraySwitch;
+    }
+
+    /**
+     * Gets the switch that turns showing the info overlay automatically on or off.
+     *
+     * @return The Auto Show Info Overlay switch
+     */
+    public ToggleSwitch getAutoShowInfoOverlaySwitch() {
+        return autoShowInfoOverlaySwitch;
     }
 
     /**
@@ -217,6 +248,19 @@ public class AdditionalSettingsDialog implements IView {
     }
 
     /**
+     * Enables the Close to Tray switch and hides its note only while minimizing to the tray is on, since closing to the
+     * tray only applies then. A showing dialog is resized to fit the note as it appears or disappears.
+     */
+    public void updateCloseToTrayAvailability() {
+        closeToTraySwitch.setEnabled(controlsEnabled && model.isMinimizeToTray());
+        closeToTrayNoteLabel.setVisible(!model.isMinimizeToTray());
+
+        if (additionalSettingsDialog != null && additionalSettingsDialog.isShowing()) {
+            additionalSettingsDialog.pack();
+        }
+    }
+
+    /**
      * Enables or disables every control of the dialog, which is done while a hot key is being recorded so nothing can
      * be pressed or closed partway through. The Clear Hot Key button is only enabled while a hot key is set.
      *
@@ -226,8 +270,10 @@ public class AdditionalSettingsDialog implements IView {
     public void setControlsEnabled(boolean enabled) {
         controlsEnabled = enabled;
 
-        autoShowInfoOverlaySwitch.setEnabled(enabled);
+        runOnStartupSwitch.setEnabled(enabled);
+        minimizeToTraySwitch.setEnabled(enabled);
         closeToTraySwitch.setEnabled(enabled && model.isMinimizeToTray());
+        autoShowInfoOverlaySwitch.setEnabled(enabled);
         changeHotKeyButton.setEnabled(enabled);
         clearHotKeyButton.setEnabled(enabled && model.getDisplayInfoHotKey().getKeys().size() > 0);
 
@@ -257,6 +303,12 @@ public class AdditionalSettingsDialog implements IView {
         settingsPanel.setLayout(settingsPanelLayout);
 
         settingsPanelConstraints = new GridBagConstraints();
+
+        optionsPanel = new JPanel();
+        optionsPanelLayout = new GridBagLayout();
+        optionsPanel.setLayout(optionsPanelLayout);
+
+        optionsPanelConstraints = new GridBagConstraints();
     }
 
     /**
@@ -268,25 +320,32 @@ public class AdditionalSettingsDialog implements IView {
 
         optionsSeparator = new JSeparator();
 
+        runOnStartupLabel = new JLabel("Run on Startup :", SwingConstants.LEFT);
+        new LightweightTooltip(runOnStartupLabel).setText("Start the app automatically upon login.");
+
+        runOnStartupSwitch = new ToggleSwitch(model.isRunOnStartup());
+
+        minimizeToTrayLabel = new JLabel("Minimize to Tray :", SwingConstants.LEFT);
+        new LightweightTooltip(minimizeToTrayLabel).setText("Keep running in the system tray when minimized.");
+
+        minimizeToTraySwitch = new ToggleSwitch(model.isMinimizeToTray());
+
+        closeToTrayLabel = new JLabel("Close to Tray :", SwingConstants.LEFT);
+        new LightweightTooltip(closeToTrayLabel).setText("Keep running in the system tray when closed.");
+
+        closeToTraySwitch = new ToggleSwitch(model.isCloseToTray());
+
+        closeToTrayNoteLabel = new JLabel("Requires Minimize to Tray", SwingConstants.LEFT);
+        closeToTrayNoteLabel.putClientProperty("FlatLaf.style",
+                "font: $small.font; foreground: $Label.disabledForeground");
+
+        // Closing to the tray only applies while minimizing to the tray is on, so its switch and note follow that state
+        updateCloseToTrayAvailability();
+
         autoShowInfoOverlayLabel = new JLabel("Autoshow Info Overlay :", SwingConstants.LEFT);
         new LightweightTooltip(autoShowInfoOverlayLabel).setText("Automatically show each display's applied settings.");
 
         autoShowInfoOverlaySwitch = new ToggleSwitch(model.isAutoShowInfoOverlay());
-
-        closeToTrayLabel = new JLabel("Close to Tray :", SwingConstants.LEFT);
-        new LightweightTooltip(closeToTrayLabel).setText("Keep running in the system tray when the window closes.");
-
-        /*
-         * Closing to the tray only applies while minimizing to the tray is on, so the switch is disabled otherwise and
-         * a note explains why. The dialog is modal, so that state cannot change while it is showing
-         */
-        closeToTraySwitch = new ToggleSwitch(model.isCloseToTray());
-        closeToTraySwitch.setEnabled(model.isMinimizeToTray());
-
-        closeToTrayNoteLabel = new JLabel("Requires Minimize to Tray to be enabled.", SwingConstants.LEFT);
-        closeToTrayNoteLabel.putClientProperty("FlatLaf.style",
-                "font: $small.font; foreground: $Label.disabledForeground");
-        closeToTrayNoteLabel.setVisible(!model.isMinimizeToTray());
 
         hotKeysSectionLabel = new JLabel("Hot Keys", SwingConstants.LEFT);
         hotKeysSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
@@ -320,6 +379,12 @@ public class AdditionalSettingsDialog implements IView {
         // Prevent default close and handle the title-bar close ourselves
         additionalSettingsDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         additionalSettingsDialog.addWindowListener(new WindowAdapter() {
+            // Take the foreground when opened from the tray, since the hidden owner cannot bring the dialog forward
+            @Override
+            public void windowOpened(WindowEvent e) {
+                additionalSettingsDialog.toFront();
+            }
+
             @Override
             public void windowClosing(WindowEvent e) {
                 // Ignore the title-bar close while a hot key is being recorded, so the recording always finishes
@@ -355,24 +420,54 @@ public class AdditionalSettingsDialog implements IView {
         // Each switch already keeps an edge margin, so its insets shrink by it and its track stays aligned
         int switchInset = 8 - ToggleSwitch.EDGE_MARGIN;
 
+        // The second column's labels sit the fixed gap past the first column's switch tracks
+        int secondColumnInset = OPTION_COLUMN_GAP - switchInset - ToggleSwitch.EDGE_MARGIN;
+
+        /*
+         * The option labels stay in the main grid so their column is shared with the hot key label, which leaves their
+         * rows sized by the labels alone. Each row is held to the height of the switch row beside it in the options
+         * panel
+         */
+        int switchRowHeight = runOnStartupSwitch.getPreferredSize().height + 2 * switchInset;
+        settingsPanelLayout.rowHeights = new int[]{0, 0, switchRowHeight, switchRowHeight};
+
         addSetting(settingsPanel, settingsPanelConstraints, optionsSectionLabel, 0, 0, 4, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
         addSetting(settingsPanel, settingsPanelConstraints, optionsSeparator, 0, 1, 4, GridBagConstraints.CENTER,
                 GridBagConstraints.HORIZONTAL, new Insets(0, 8, 0, 8));
 
-        addSetting(settingsPanel, settingsPanelConstraints, autoShowInfoOverlayLabel, 0, 2, 1, GridBagConstraints.WEST,
+        addSetting(settingsPanel, settingsPanelConstraints, runOnStartupLabel, 0, 2, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
-        addSetting(settingsPanel, settingsPanelConstraints, autoShowInfoOverlaySwitch, 1, 2, 1, GridBagConstraints.WEST,
+        addSetting(settingsPanel, settingsPanelConstraints, autoShowInfoOverlayLabel, 0, 3, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
+
+        addSetting(optionsPanel, optionsPanelConstraints, runOnStartupSwitch, 0, 0, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(switchInset, switchInset, switchInset, switchInset));
+        addSetting(optionsPanel, optionsPanelConstraints, minimizeToTrayLabel, 1, 0, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(8, secondColumnInset, 8, 8));
+        addSetting(optionsPanel, optionsPanelConstraints, minimizeToTraySwitch, 2, 0, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(switchInset, switchInset, switchInset, switchInset));
 
-        addSetting(settingsPanel, settingsPanelConstraints, closeToTrayLabel, 0, 3, 1, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
-        addSetting(settingsPanel, settingsPanelConstraints, closeToTraySwitch, 1, 3, 1, GridBagConstraints.WEST,
+        addSetting(optionsPanel, optionsPanelConstraints, autoShowInfoOverlaySwitch, 0, 1, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(switchInset, switchInset, switchInset, switchInset));
+        addSetting(optionsPanel, optionsPanelConstraints, closeToTrayLabel, 1, 1, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(8, secondColumnInset, 8, 8));
+        addSetting(optionsPanel, optionsPanelConstraints, closeToTraySwitch, 2, 1, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(switchInset, switchInset, switchInset, switchInset));
 
         // A hidden note takes up no space, so the row collapses whenever minimizing to the tray is on
-        addSetting(settingsPanel, settingsPanelConstraints, closeToTrayNoteLabel, 0, 4, 4, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(0, 8, 8, 8));
+        addSetting(optionsPanel, optionsPanelConstraints, closeToTrayNoteLabel, 1, 2, 2, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(0, secondColumnInset, 8, 8));
+
+        /*
+         * The switches and the second column share one panel packed against the switch column, so the gap between the
+         * columns stays fixed however wide the hot key below makes that column. The panel spans an extra row below the
+         * labels, so the note's height lands there rather than stretching the row beside Close to Tray
+         */
+        settingsPanelConstraints.gridheight = 3;
+        addSetting(settingsPanel, settingsPanelConstraints, optionsPanel, 1, 2, 3, GridBagConstraints.NORTHWEST,
+                GridBagConstraints.NONE, new Insets(0, 0, 0, 0));
+        settingsPanelConstraints.gridheight = 1;
 
         addSetting(settingsPanel, settingsPanelConstraints, hotKeysSectionLabel, 0, 5, 4, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(8, 8, 8, 8));

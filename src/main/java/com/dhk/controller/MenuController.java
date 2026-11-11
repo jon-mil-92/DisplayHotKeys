@@ -24,8 +24,6 @@ import java.util.List;
 
 import com.dhk.controller.button.AboutButtonController;
 import com.dhk.controller.button.AdditionalSettingsButtonController;
-import com.dhk.controller.button.MinimizeToTrayButtonController;
-import com.dhk.controller.button.RunOnStartupButtonController;
 import com.dhk.controller.button.ThemeButtonController;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
@@ -43,6 +41,7 @@ public class MenuController implements IController {
     private DhkView view;
     private SettingsManager settingsMgr;
     private HotKeysController hotKeysController;
+    private AdditionalSettingsButtonController additionalSettingsButtonController;
     private List<IController> menuButtonControllers;
 
     /**
@@ -67,11 +66,12 @@ public class MenuController implements IController {
 
     @Override
     public void initController() {
+        additionalSettingsButtonController = new AdditionalSettingsButtonController(model, view, settingsMgr,
+                hotKeysController);
+
         menuButtonControllers = new ArrayList<IController>();
-        menuButtonControllers.add(new AdditionalSettingsButtonController(model, view, settingsMgr, hotKeysController));
+        menuButtonControllers.add(additionalSettingsButtonController);
         menuButtonControllers.add(new AboutButtonController(model, view));
-        menuButtonControllers.add(new MinimizeToTrayButtonController(model, view, settingsMgr));
-        menuButtonControllers.add(new RunOnStartupButtonController(model, view, settingsMgr));
         menuButtonControllers.add(new ThemeButtonController(model, view, settingsMgr));
 
         for (IController menuButtonController : menuButtonControllers) {
@@ -88,6 +88,15 @@ public class MenuController implements IController {
 
     @Override
     public void cleanUp() {
+    }
+
+    /**
+     * Gets the controller of the Additional Settings button, which also shows the dialog for the tray.
+     *
+     * @return The Additional Settings button controller
+     */
+    public AdditionalSettingsButtonController getAdditionalSettingsButtonController() {
+        return additionalSettingsButtonController;
     }
 
 }

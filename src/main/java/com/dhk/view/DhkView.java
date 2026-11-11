@@ -52,7 +52,6 @@ import com.dhk.model.Resolution;
 import com.dhk.model.button.Button;
 import com.dhk.model.button.ButtonProperties;
 import com.dhk.model.button.ThemeableButton;
-import com.dhk.model.button.ThemeableToggleButton;
 import com.dhk.utility.DisplayModeUtil;
 import com.dhk.utility.FrameUtil;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
@@ -100,8 +99,6 @@ public class DhkView implements IView {
     private ThemeableButton additionalSettingsButton;
     private ThemeableButton aboutButton;
     private ThemeableButton themeButton;
-    private ThemeableToggleButton minimizeToTrayButton;
-    private ThemeableToggleButton runOnStartupButton;
     private List<Button> buttons;
     private int previouslySelectedDisplayIndex;
     private int gridYPosForSlotInPanel;
@@ -194,12 +191,12 @@ public class DhkView implements IView {
                 : 0;
 
         /*
-         * Decide the tray handoff before the frame is ever shown, so a frame bound for the tray is never flashed. A
-         * rebuild keeps the frame off screen only when it was already away, so it comes back exactly as the user left
-         * it
+         * Decide the tray handoff before the frame is ever shown, so a frame bound for the tray is never flashed. The
+         * launch follows the minimize to tray setting, but a rebuild keeps the frame off screen whenever it was already
+         * away, so it comes back exactly as the user left it even if the setting was turned off from the tray
          */
         boolean previousFrameWasAway = (previousFrame != null) && !previousFrame.isShowing();
-        startMinimizedToTray = model.isMinimizeToTray() && (previousFrame == null || previousFrameWasAway);
+        startMinimizedToTray = (previousFrame == null) ? model.isMinimizeToTray() : previousFrameWasAway;
 
         // Reset view state used by component initialization
         displayConfig = model.getDisplayConfig();
@@ -589,28 +586,10 @@ public class DhkView implements IView {
         themeButton = new ThemeableButton("/light_mode_idle.svg", "/light_mode_hover.svg", "/dark_mode_idle.svg",
                 "/dark_mode_hover.svg", themeButtonProps, true, model.isDarkMode());
 
-        ButtonProperties minimizeToTrayButtonProps = new ButtonProperties("Minimize to Tray", new Dimension(36, 40),
-                0.70f, 0.60f);
-        minimizeToTrayButton = new ThemeableToggleButton("/minimize_to_tray_enabled_idle.svg",
-                "/minimize_to_tray_disabled_idle.svg", "/minimize_to_tray_enabled_light_hover.svg",
-                "/minimize_to_tray_disabled_light_hover.svg", "/minimize_to_tray_enabled_dark_hover.svg",
-                "/minimize_to_tray_disabled_dark_hover.svg", minimizeToTrayButtonProps, true, model.isDarkMode(),
-                model.isMinimizeToTray());
-
-        ButtonProperties runOnStartupButtonProps = new ButtonProperties("Run On Startup", new Dimension(36, 40), 0.70f,
-                0.60f);
-        runOnStartupButton = new ThemeableToggleButton("/run_on_startup_enabled_idle.svg",
-                "/run_on_startup_disabled_idle.svg", "/run_on_startup_enabled_light_hover.svg",
-                "/run_on_startup_disabled_light_hover.svg", "/run_on_startup_enabled_dark_hover.svg",
-                "/run_on_startup_disabled_dark_hover.svg", runOnStartupButtonProps, true, model.isDarkMode(),
-                model.isRunOnStartup());
-
         buttons.add(clearAllButton);
         buttons.add(additionalSettingsButton);
         buttons.add(aboutButton);
         buttons.add(themeButton);
-        buttons.add(minimizeToTrayButton);
-        buttons.add(runOnStartupButton);
 
         slotTableSeparator = new JSeparator();
 
@@ -792,12 +771,6 @@ public class DhkView implements IView {
 
         menuPanelConstraints.gridx = 2;
         menuPanel.add(themeButton, menuPanelConstraints);
-
-        menuPanelConstraints.gridx = 3;
-        menuPanel.add(minimizeToTrayButton, menuPanelConstraints);
-
-        menuPanelConstraints.gridx = 4;
-        menuPanel.add(runOnStartupButton, menuPanelConstraints);
 
         mainPanelConstraints.anchor = GridBagConstraints.WEST;
         mainPanelConstraints.gridwidth = 11;
@@ -992,24 +965,6 @@ public class DhkView implements IView {
      */
     public ThemeableButton getThemeButton() {
         return themeButton;
-    }
-
-    /**
-     * Gets the minimize to tray button.
-     *
-     * @return The minimize to tray button
-     */
-    public ThemeableToggleButton getMinimizeToTrayButton() {
-        return minimizeToTrayButton;
-    }
-
-    /**
-     * Gets the run on startup button.
-     *
-     * @return The run on startup button
-     */
-    public ThemeableToggleButton getRunOnStartupButton() {
-        return runOnStartupButton;
     }
 
     /**

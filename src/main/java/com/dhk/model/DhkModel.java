@@ -192,10 +192,13 @@ public class DhkModel {
     }
 
     /**
-     * Toggles the "minimize to tray" state.
+     * Sets the "minimize to tray" state.
+     *
+     * @param minimizeToTray
+     *            - The "minimize to tray" state to set
      */
-    public void toggleMinimizeToTray() {
-        minimizeToTray = !minimizeToTray;
+    public void setMinimizeToTray(boolean minimizeToTray) {
+        this.minimizeToTray = minimizeToTray;
     }
 
     /**

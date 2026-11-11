@@ -44,12 +44,12 @@ public class RunOnStartupNoticeDialog {
     /**
      * Message shown above the reason lines when a requested change could not be made.
      */
-    private static final String FAILED_MESSAGE_TEXT = "Run On Startup could not be changed!";
+    private static final String FAILED_MESSAGE_TEXT = "Run on Startup could not be changed!";
 
     /**
      * Message shown above the reason lines when the saved setting was corrected on launch rather than by a click.
      */
-    private static final String CHANGED_MESSAGE_TEXT = "Run On Startup was changed to match the scheduled task!";
+    private static final String CHANGED_MESSAGE_TEXT = "Run on Startup was changed to match the scheduled task!";
 
     /**
      * First reason line shown when the setting could not be turned off.
