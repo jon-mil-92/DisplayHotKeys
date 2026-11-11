@@ -99,6 +99,18 @@ public class AdditionalSettingsDialog implements IView {
     private static final int OPTION_COLUMN_GAP = 40;
 
     /**
+     * Visible space above the first section, between sections, and below the last row, which keeps the dialog's spacing
+     * even throughout.
+     */
+    private static final int SECTION_GAP = 24;
+
+    /**
+     * Space a label's text leaves inside the component's bounds, which already counts toward a visible gap and is taken
+     * out of the inset beside it.
+     */
+    private static final int INNER_PADDING = 2;
+
+    /**
      * Constructor for the {@link AdditionalSettingsDialog} class.
      *
      * @param model
@@ -294,7 +306,7 @@ public class AdditionalSettingsDialog implements IView {
         additionalSettingsDialog.setLayout(mainLayout);
 
         mainConstraints = new GridBagConstraints();
-        mainConstraints.insets = new Insets(8, 20, 8, 20);
+        mainConstraints.insets = new Insets(0, 20, 0, 20);
         mainConstraints.anchor = GridBagConstraints.CENTER;
         mainConstraints.gridwidth = 1;
 
@@ -423,6 +435,12 @@ public class AdditionalSettingsDialog implements IView {
         // The second column's labels sit the fixed gap past the first column's switch tracks
         int secondColumnInset = OPTION_COLUMN_GAP - switchInset - ToggleSwitch.EDGE_MARGIN;
 
+        // An edge adds no padding of its own, so only the heading's text padding counts toward the gap above it
+        int edgeInset = SECTION_GAP - INNER_PADDING;
+
+        // The options end in switch rows, whose inset and edge margin already count toward the next heading's gap
+        int sectionInset = SECTION_GAP - switchInset - ToggleSwitch.EDGE_MARGIN - INNER_PADDING;
+
         /*
          * The option labels stay in the main grid so their column is shared with the hot key label, which leaves their
          * rows sized by the labels alone. Each row is held to the height of the switch row beside it in the options
@@ -432,7 +450,7 @@ public class AdditionalSettingsDialog implements IView {
         settingsPanelLayout.rowHeights = new int[]{0, 0, switchRowHeight, switchRowHeight};
 
         addSetting(settingsPanel, settingsPanelConstraints, optionsSectionLabel, 0, 0, 4, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
+                GridBagConstraints.NONE, new Insets(edgeInset, 8, 8, 8));
         addSetting(settingsPanel, settingsPanelConstraints, optionsSeparator, 0, 1, 4, GridBagConstraints.CENTER,
                 GridBagConstraints.HORIZONTAL, new Insets(0, 8, 0, 8));
 
@@ -455,9 +473,12 @@ public class AdditionalSettingsDialog implements IView {
         addSetting(optionsPanel, optionsPanelConstraints, closeToTraySwitch, 2, 1, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(switchInset, switchInset, switchInset, switchInset));
 
-        // A hidden note takes up no space, so the row collapses whenever minimizing to the tray is on
+        /*
+         * A hidden note takes up no space, so the row collapses whenever minimizing to the tray is on. The note ends
+         * the options the way a switch row does, so it keeps the same space below it
+         */
         addSetting(optionsPanel, optionsPanelConstraints, closeToTrayNoteLabel, 1, 2, 2, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(0, secondColumnInset, 8, 8));
+                GridBagConstraints.NONE, new Insets(0, secondColumnInset, switchInset, 8));
 
         /*
          * The switches and the second column share one panel packed against the switch column, so the gap between the
@@ -470,18 +491,19 @@ public class AdditionalSettingsDialog implements IView {
         settingsPanelConstraints.gridheight = 1;
 
         addSetting(settingsPanel, settingsPanelConstraints, hotKeysSectionLabel, 0, 5, 4, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
+                GridBagConstraints.NONE, new Insets(sectionInset, 8, 8, 8));
         addSetting(settingsPanel, settingsPanelConstraints, hotKeysSeparator, 0, 6, 4, GridBagConstraints.CENTER,
                 GridBagConstraints.HORIZONTAL, new Insets(0, 8, 0, 8));
 
+        // The hot key outline is drawn at its own edge, so the whole gap below the last row comes from its inset
         addSetting(settingsPanel, settingsPanelConstraints, displayInfoHotKeyLabel, 0, 7, 1, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
+                GridBagConstraints.NONE, new Insets(8, 8, SECTION_GAP, 8));
         addSetting(settingsPanel, settingsPanelConstraints, displayInfoHotKey, 1, 7, 1, GridBagConstraints.CENTER,
-                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
+                GridBagConstraints.NONE, new Insets(8, 8, SECTION_GAP, 8));
         addSetting(settingsPanel, settingsPanelConstraints, clearHotKeyButton, 2, 7, 1, GridBagConstraints.CENTER,
-                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
+                GridBagConstraints.NONE, new Insets(8, 8, SECTION_GAP, 8));
         addSetting(settingsPanel, settingsPanelConstraints, changeHotKeyButton, 3, 7, 1, GridBagConstraints.CENTER,
-                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
+                GridBagConstraints.NONE, new Insets(8, 8, SECTION_GAP, 8));
 
         mainConstraints.gridx = 0;
         mainConstraints.gridy = 0;
