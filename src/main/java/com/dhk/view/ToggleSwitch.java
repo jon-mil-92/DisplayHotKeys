@@ -52,6 +52,12 @@ public class ToggleSwitch extends JToggleButton {
     private static final int TRACK_HEIGHT = 20;
 
     /**
+     * Space kept clear around the track on every side. At fractional display scaling the switch's bounds can fall
+     * between device pixels, and the clip rounded to whole pixels would cut off a track drawn flush against them.
+     */
+    public static final int EDGE_MARGIN = 1;
+
+    /**
      * Space between the thumb and the edges of the track.
      */
     private static final int THUMB_INSET = 4;
@@ -79,7 +85,7 @@ public class ToggleSwitch extends JToggleButton {
 
     @Override
     public Dimension getPreferredSize() {
-        return new Dimension(TRACK_WIDTH, TRACK_HEIGHT);
+        return new Dimension(TRACK_WIDTH + 2 * EDGE_MARGIN, TRACK_HEIGHT + 2 * EDGE_MARGIN);
     }
 
     @Override
@@ -100,7 +106,7 @@ public class ToggleSwitch extends JToggleButton {
             switchGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             switchGraphics.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 
-            // Center the track in case a layout gives the switch more room than its own size
+            // Center the track, which keeps the edge margin clear even when a layout gives the switch more room
             float trackX = (getWidth() - TRACK_WIDTH) / 2f;
             float trackY = (getHeight() - TRACK_HEIGHT) / 2f;
             float thumbDiameter = TRACK_HEIGHT - 2 * THUMB_INSET;

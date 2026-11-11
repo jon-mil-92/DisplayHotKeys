@@ -352,6 +352,9 @@ public class AdditionalSettingsDialog implements IView {
      *            - The additional settings dialog to add components to
      */
     private void addComponents(JDialog additionalSettingsDialog) {
+        // Each switch already keeps an edge margin, so its insets shrink by it and its track stays aligned
+        int switchInset = 8 - ToggleSwitch.EDGE_MARGIN;
+
         addSetting(settingsPanel, settingsPanelConstraints, optionsSectionLabel, 0, 0, 4, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
         addSetting(settingsPanel, settingsPanelConstraints, optionsSeparator, 0, 1, 4, GridBagConstraints.CENTER,
@@ -360,12 +363,12 @@ public class AdditionalSettingsDialog implements IView {
         addSetting(settingsPanel, settingsPanelConstraints, autoShowInfoOverlayLabel, 0, 2, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
         addSetting(settingsPanel, settingsPanelConstraints, autoShowInfoOverlaySwitch, 1, 2, 1, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
+                GridBagConstraints.NONE, new Insets(switchInset, switchInset, switchInset, switchInset));
 
         addSetting(settingsPanel, settingsPanelConstraints, closeToTrayLabel, 0, 3, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
         addSetting(settingsPanel, settingsPanelConstraints, closeToTraySwitch, 1, 3, 1, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
+                GridBagConstraints.NONE, new Insets(switchInset, switchInset, switchInset, switchInset));
 
         // A hidden note takes up no space, so the row collapses whenever minimizing to the tray is on
         addSetting(settingsPanel, settingsPanelConstraints, closeToTrayNoteLabel, 0, 4, 4, GridBagConstraints.WEST,
