@@ -100,6 +100,8 @@ This application will be distributed as a portable package and as an installer. 
 	
 **Note:** You may need to use GPU Scaling in your display driver settings to prevent the display from overriding the scaling mode.
 
+**Note:** Scaling modes that only exist in a display driver, such as NVIDIA's "Integer Scaling", are reported to Windows as aspect ratio scaling. Display Hot Keys shows these modes as "Preserved".
+
 5. Select a display orientation value in the "Orientation" drop-down box for the hot key slot.
 
 	* Select "Landscape" for a landscape orientation of no rotation.

@@ -125,8 +125,8 @@ static chrono::steady_clock::time_point lastStateChangeTime;
 static chrono::steady_clock::time_point lastPollTime;
 
 /**
- * Last-known visible display signatures (stable ID plus resolution, position, rotation, DPI scale, refresh rate) used
- * to detect real configuration changes, including resolution, DPI, orientation, and refresh rate.
+ * Last-known visible display signatures (stable ID plus resolution, refresh rate, DPI scale, scaling mode, rotation,
+ * position, and display number) used to detect real configuration changes, even when the visible set is unchanged.
  */
 static vector<string> lastVisibleSignatures;
 

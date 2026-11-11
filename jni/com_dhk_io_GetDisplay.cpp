@@ -45,8 +45,6 @@ static ActiveDisplaySettings readActiveDisplaySettings(const DISPLAYCONFIG_PATH_
                                                        const vector<DISPLAYCONFIG_MODE_INFO> &modes,
                                                        const DisplayConfig &databaseConfig);
 static jint currentDpiScalePercentage(const DISPLAYCONFIG_PATH_SOURCE_INFO &sourceInfo);
-static DISPLAYCONFIG_SCALING persistedScaling(const DisplayConfig &databaseConfig,
-                                              const DISPLAYCONFIG_PATH_TARGET_INFO &targetInfo);
 static jint scalingModeIndex(DISPLAYCONFIG_SCALING scaling);
 static int orientationIndex(DISPLAYCONFIG_ROTATION rotation);
 
@@ -766,32 +764,6 @@ static jint currentDpiScalePercentage(const DISPLAYCONFIG_PATH_SOURCE_INFO &sour
 }
 
 /**
- * Gets the scaling mode persisted for the display driven by the given target. The active paths report the scaling
- * Windows is effectively doing (identity even while a lower resolution is centered), so the set mode is read instead.
- *
- * @param databaseConfig
- *            - The persisted display configuration to search
- * @param targetInfo
- *            - The active path target of the display
- *
- * @return The persisted scaling mode, or the active path's scaling when the display has none persisted
- */
-static DISPLAYCONFIG_SCALING persistedScaling(const DisplayConfig &databaseConfig,
-                                              const DISPLAYCONFIG_PATH_TARGET_INFO &targetInfo) {
-    for (UINT32 i = 0; i < databaseConfig.numPathInfoArrayElements; i++) {
-        const DISPLAYCONFIG_PATH_TARGET_INFO &databaseTarget = databaseConfig.pathInfoArray[i].targetInfo;
-
-        // A target is identified by its adapter and its ID on that adapter
-        if (databaseTarget.id == targetInfo.id && databaseTarget.adapterId.LowPart == targetInfo.adapterId.LowPart &&
-            databaseTarget.adapterId.HighPart == targetInfo.adapterId.HighPart) {
-            return databaseTarget.scaling;
-        }
-    }
-
-    return targetInfo.scaling;
-}
-
-/**
  * Maps a DISPLAYCONFIG_SCALING value to its scaling mode index, the inverse of the mapping used when applying one.
  *
  * @param scaling
@@ -808,7 +780,7 @@ static jint scalingModeIndex(DISPLAYCONFIG_SCALING scaling) {
         // Centered in panel
         return 2;
     default:
-        // Preserve aspect ratio, which also covers the identity, preferred, and custom values a driver may report
+        // Aspect ratio, which also covers identity, preferred, custom, and driver-only modes such as integer scaling
         return 0;
     }
 }

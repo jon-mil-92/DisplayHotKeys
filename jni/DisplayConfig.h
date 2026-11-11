@@ -287,9 +287,9 @@ std::vector<int> getVisibleDisplayOrientations();
 std::vector<int> getVisibleDisplayNumbers(const std::vector<std::string> &visibleIds);
 
 /**
- * Gets a per-display signature (stable ID plus source resolution, position, rotation, DPI scale index, refresh rate,
- * and Windows display number) for each visible display, so resolution, DPI, orientation, refresh rate, and identifier
- * changes are detectable even when the visible set is unchanged.
+ * Gets a per-display signature (stable ID plus source resolution, refresh rate, DPI scale index, persisted scaling
+ * mode, rotation, position, and Windows display number) for each visible display, so a change to any of them is
+ * detectable even when the visible set is unchanged.
  *
  * @return Signatures for the currently visible displays
  */
@@ -375,6 +375,20 @@ std::wstring sourceGdiDeviceName(const DISPLAYCONFIG_PATH_SOURCE_INFO &sourceInf
  */
 DISPLAYCONFIG_RATIONAL pathRefreshRate(const DISPLAYCONFIG_PATH_INFO &path, const DISPLAYCONFIG_MODE_INFO *modes,
                                        UINT32 numModes);
+
+/**
+ * Gets the scaling mode persisted for the display driven by the given target. The active paths report the scaling
+ * Windows is effectively doing (identity even while a lower resolution is centered), so the set mode is read instead.
+ *
+ * @param databaseConfig
+ *            - The persisted display configuration to search
+ * @param targetInfo
+ *            - The active path target of the display
+ *
+ * @return The persisted scaling mode, or the active path's scaling when the display has none persisted
+ */
+DISPLAYCONFIG_SCALING persistedScaling(const DisplayConfig &databaseConfig,
+                                       const DISPLAYCONFIG_PATH_TARGET_INFO &targetInfo);
 
 /**
  * Shared CCD (Connecting and Configuring Displays) helpers that query the active configuration and submit a supplied

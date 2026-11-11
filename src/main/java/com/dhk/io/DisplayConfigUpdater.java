@@ -29,7 +29,8 @@ import com.dhk.view.DhkView;
 
 /**
  * Re-initializes the application when the native layer reports a display configuration change. The native
- * {@link DisplayEventNotifier} signals displays added or removed, and resolution, DPI, or orientation changes.
+ * {@link DisplayEventNotifier} signals displays added or removed, and resolution, refresh rate, DPI scale, scaling
+ * mode, or orientation changes.
  *
  * @author Jonathan R. Miller
  */

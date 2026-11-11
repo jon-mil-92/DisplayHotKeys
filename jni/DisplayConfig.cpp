@@ -185,7 +185,8 @@ static UINT32 gdiNumberForSource(const DISPLAYCONFIG_PATH_SOURCE_INFO &sourceInf
  * @param flags
  *            - The QueryDisplayConfig flags selecting which paths to enumerate
  * @param includeGeometry
- *            - Whether each entry also carries resolution, position, rotation, DPI scale index, and refresh rate
+ *            - Whether each entry also carries resolution, refresh rate, DPI scale index, scaling mode, rotation, and
+ *            position
  * @param rotationsOut
  *            - When non-null, receives each visible display's rotation in lockstep with the returned IDs
  *
@@ -233,6 +234,12 @@ static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGe
         return visible;
     }
 
+    /*
+     * The active paths report identity scaling while Windows scales through the desktop image, so a signature reads the
+     * scaling mode that was set from the persisted configuration, queried once per check rather than once per display
+     */
+    DisplayConfig databaseConfig = includeGeometry ? getDisplayConfig() : DisplayConfig{};
+
     for (UINT32 i = 0; i < queryPath; i++) {
         const auto &path = pathArray[i];
 
@@ -269,9 +276,12 @@ static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGe
         }
 
         if (includeGeometry) {
-            // Resolution, desktop position, and rotation so a mode or orientation change is reflected in the signature
-            entry += "|" + to_string(src.width) + "x" + to_string(src.height) + "|" + to_string(src.position.x) + "," +
-                     to_string(src.position.y) + "|r" + to_string((int) path.targetInfo.rotation);
+            // Resolution so a mode change is reflected in the signature
+            entry += "|" + to_string(src.width) + "x" + to_string(src.height);
+
+            // Exact refresh rate rational so a refresh-rate-only change is reflected in the signature
+            DISPLAYCONFIG_RATIONAL refreshRate = pathRefreshRate(path, modeArray, queryMode);
+            entry += "|f" + to_string(refreshRate.Numerator) + "/" + to_string(refreshRate.Denominator);
 
             // Relative current DPI scale index so a DPI scale change is reflected in the signature
             DISPLAYCONFIG_GET_DPI_SCALE_INDICES dpiIndices = {};
@@ -284,9 +294,12 @@ static vector<string> queryVisibleDisplaysWithFlags(UINT32 flags, bool includeGe
                 entry += "|d" + to_string(dpiIndices.relativeCurrentDpiScaleIndex);
             }
 
-            // Exact refresh rate rational so a refresh-rate-only change is reflected in the signature
-            DISPLAYCONFIG_RATIONAL refreshRate = pathRefreshRate(path, modeArray, queryMode);
-            entry += "|f" + to_string(refreshRate.Numerator) + "/" + to_string(refreshRate.Denominator);
+            // Persisted scaling mode so a scaling-only change is reflected in the signature
+            entry += "|s" + to_string((int) persistedScaling(databaseConfig, path.targetInfo));
+
+            // Rotation and desktop position so an orientation or arrangement change is reflected in the signature
+            entry += "|r" + to_string((int) path.targetInfo.rotation) + "|" + to_string(src.position.x) + "," +
+                     to_string(src.position.y);
         }
 
         entries.push_back({gdiNumberForSource(path.sourceInfo), entry, (int) path.targetInfo.rotation});
@@ -746,6 +759,32 @@ DISPLAYCONFIG_RATIONAL pathRefreshRate(const DISPLAYCONFIG_PATH_INFO &path, cons
     }
 
     return refreshRate;
+}
+
+/**
+ * Gets the scaling mode persisted for the display driven by the given target. The active paths report the scaling
+ * Windows is effectively doing (identity even while a lower resolution is centered), so the set mode is read instead.
+ *
+ * @param databaseConfig
+ *            - The persisted display configuration to search
+ * @param targetInfo
+ *            - The active path target of the display
+ *
+ * @return The persisted scaling mode, or the active path's scaling when the display has none persisted
+ */
+DISPLAYCONFIG_SCALING persistedScaling(const DisplayConfig &databaseConfig,
+                                       const DISPLAYCONFIG_PATH_TARGET_INFO &targetInfo) {
+    for (UINT32 i = 0; i < databaseConfig.numPathInfoArrayElements; i++) {
+        const DISPLAYCONFIG_PATH_TARGET_INFO &databaseTarget = databaseConfig.pathInfoArray[i].targetInfo;
+
+        // A target is identified by its adapter and its ID on that adapter
+        if (databaseTarget.id == targetInfo.id && databaseTarget.adapterId.LowPart == targetInfo.adapterId.LowPart &&
+            databaseTarget.adapterId.HighPart == targetInfo.adapterId.HighPart) {
+            return databaseTarget.scaling;
+        }
+    }
+
+    return targetInfo.scaling;
 }
 
 /**
