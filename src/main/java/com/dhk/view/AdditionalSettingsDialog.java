@@ -63,6 +63,9 @@ public class AdditionalSettingsDialog implements IView {
     private JPanel optionsPanel;
     private GridBagLayout optionsPanelLayout;
     private GridBagConstraints optionsPanelConstraints;
+    private JPanel hotKeysPanel;
+    private GridBagLayout hotKeysPanelLayout;
+    private GridBagConstraints hotKeysPanelConstraints;
     private JLabel optionsSectionLabel;
     private JSeparator optionsSeparator;
     private JLabel runOnStartupLabel;
@@ -93,10 +96,10 @@ public class AdditionalSettingsDialog implements IView {
     private static final String DIALOG_TITLE = "Additional Settings";
 
     /**
-     * Space in pixels between the track of a switch in the first options column and the label beside it in the second
-     * column, which stays fixed so a long hot key never widens it.
+     * Visible space in pixels between neighboring components in each section's table, both across a row and between
+     * rows, which keeps the two tables spaced alike.
      */
-    private static final int OPTION_COLUMN_GAP = 40;
+    private static final int COMPONENT_GAP = 16;
 
     /**
      * Visible space above the first section, between sections, and below the last row, which keeps the dialog's spacing
@@ -321,6 +324,12 @@ public class AdditionalSettingsDialog implements IView {
         optionsPanel.setLayout(optionsPanelLayout);
 
         optionsPanelConstraints = new GridBagConstraints();
+
+        hotKeysPanel = new JPanel();
+        hotKeysPanelLayout = new GridBagLayout();
+        hotKeysPanel.setLayout(hotKeysPanelLayout);
+
+        hotKeysPanelConstraints = new GridBagConstraints();
     }
 
     /**
@@ -429,81 +438,80 @@ public class AdditionalSettingsDialog implements IView {
      *            - The additional settings dialog to add components to
      */
     private void addComponents(JDialog additionalSettingsDialog) {
-        // Each switch already keeps an edge margin, so its insets shrink by it and its track stays aligned
-        int switchInset = 8 - ToggleSwitch.EDGE_MARGIN;
+        // Each component takes part of the gap on each side, so neighboring components always sit the full gap apart
+        int leadingInset = COMPONENT_GAP / 2;
+        int trailingInset = COMPONENT_GAP - leadingInset;
 
-        // The second column's labels sit the fixed gap past the first column's switch tracks
-        int secondColumnInset = OPTION_COLUMN_GAP - switchInset - ToggleSwitch.EDGE_MARGIN;
+        // Each switch already keeps an edge margin, so its insets shrink by it and its track stays aligned
+        int switchLeadingInset = leadingInset - ToggleSwitch.EDGE_MARGIN;
+        int switchTrailingInset = trailingInset - ToggleSwitch.EDGE_MARGIN;
 
         // An edge adds no padding of its own, so only the heading's text padding counts toward the gap above it
         int edgeInset = SECTION_GAP - INNER_PADDING;
 
-        // The options end in switch rows, whose inset and edge margin already count toward the next heading's gap
-        int sectionInset = SECTION_GAP - switchInset - ToggleSwitch.EDGE_MARGIN - INNER_PADDING;
+        // The options end in switch rows, whose tracks already sit the trailing inset above the next heading
+        int sectionInset = SECTION_GAP - trailingInset - INNER_PADDING;
 
-        /*
-         * The option labels stay in the main grid so their column is shared with the hot key label, which leaves their
-         * rows sized by the labels alone. Each row is held to the height of the switch row beside it in the options
-         * panel
-         */
-        int switchRowHeight = runOnStartupSwitch.getPreferredSize().height + 2 * switchInset;
-        settingsPanelLayout.rowHeights = new int[]{0, 0, switchRowHeight, switchRowHeight};
+        // The panels copy the insets of each component as it is added, so every label or switch can share one set
+        Insets labelInsets = new Insets(leadingInset, leadingInset, trailingInset, trailingInset);
+        Insets switchInsets = new Insets(switchLeadingInset, switchLeadingInset, switchTrailingInset,
+                switchTrailingInset);
 
-        addSetting(settingsPanel, settingsPanelConstraints, optionsSectionLabel, 0, 0, 4, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(edgeInset, 8, 8, 8));
-        addSetting(settingsPanel, settingsPanelConstraints, optionsSeparator, 0, 1, 4, GridBagConstraints.CENTER,
-                GridBagConstraints.HORIZONTAL, new Insets(0, 8, 0, 8));
+        // The option labels share a row with their switches, so each row is sized by the taller switch
+        addSetting(optionsPanel, optionsPanelConstraints, runOnStartupLabel, 0, 0, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, labelInsets);
+        addSetting(optionsPanel, optionsPanelConstraints, runOnStartupSwitch, 1, 0, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, switchInsets);
+        addSetting(optionsPanel, optionsPanelConstraints, minimizeToTrayLabel, 2, 0, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, labelInsets);
+        addSetting(optionsPanel, optionsPanelConstraints, minimizeToTraySwitch, 3, 0, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, switchInsets);
 
-        addSetting(settingsPanel, settingsPanelConstraints, runOnStartupLabel, 0, 2, 1, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
-        addSetting(settingsPanel, settingsPanelConstraints, autoShowInfoOverlayLabel, 0, 3, 1, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
-
-        addSetting(optionsPanel, optionsPanelConstraints, runOnStartupSwitch, 0, 0, 1, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(switchInset, switchInset, switchInset, switchInset));
-        addSetting(optionsPanel, optionsPanelConstraints, minimizeToTrayLabel, 1, 0, 1, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(8, secondColumnInset, 8, 8));
-        addSetting(optionsPanel, optionsPanelConstraints, minimizeToTraySwitch, 2, 0, 1, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(switchInset, switchInset, switchInset, switchInset));
-
-        addSetting(optionsPanel, optionsPanelConstraints, autoShowInfoOverlaySwitch, 0, 1, 1, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(switchInset, switchInset, switchInset, switchInset));
-        addSetting(optionsPanel, optionsPanelConstraints, closeToTrayLabel, 1, 1, 1, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(8, secondColumnInset, 8, 8));
-        addSetting(optionsPanel, optionsPanelConstraints, closeToTraySwitch, 2, 1, 1, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(switchInset, switchInset, switchInset, switchInset));
+        addSetting(optionsPanel, optionsPanelConstraints, autoShowInfoOverlayLabel, 0, 1, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, labelInsets);
+        addSetting(optionsPanel, optionsPanelConstraints, autoShowInfoOverlaySwitch, 1, 1, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, switchInsets);
+        addSetting(optionsPanel, optionsPanelConstraints, closeToTrayLabel, 2, 1, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, labelInsets);
+        addSetting(optionsPanel, optionsPanelConstraints, closeToTraySwitch, 3, 1, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, switchInsets);
 
         /*
          * A hidden note takes up no space, so the row collapses whenever minimizing to the tray is on. The note ends
          * the options the way a switch row does, so it keeps the same space below it
          */
-        addSetting(optionsPanel, optionsPanelConstraints, closeToTrayNoteLabel, 1, 2, 2, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(0, secondColumnInset, switchInset, 8));
-
-        /*
-         * The switches and the second column share one panel packed against the switch column, so the gap between the
-         * columns stays fixed however wide the hot key below makes that column. The panel spans an extra row below the
-         * labels, so the note's height lands there rather than stretching the row beside Close to Tray
-         */
-        settingsPanelConstraints.gridheight = 3;
-        addSetting(settingsPanel, settingsPanelConstraints, optionsPanel, 1, 2, 3, GridBagConstraints.NORTHWEST,
-                GridBagConstraints.NONE, new Insets(0, 0, 0, 0));
-        settingsPanelConstraints.gridheight = 1;
-
-        addSetting(settingsPanel, settingsPanelConstraints, hotKeysSectionLabel, 0, 5, 4, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(sectionInset, 8, 8, 8));
-        addSetting(settingsPanel, settingsPanelConstraints, hotKeysSeparator, 0, 6, 4, GridBagConstraints.CENTER,
-                GridBagConstraints.HORIZONTAL, new Insets(0, 8, 0, 8));
+        addSetting(optionsPanel, optionsPanelConstraints, closeToTrayNoteLabel, 2, 2, 2, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(0, leadingInset, switchTrailingInset, trailingInset));
 
         // The hot key outline is drawn at its own edge, so the whole gap below the last row comes from its inset
-        addSetting(settingsPanel, settingsPanelConstraints, displayInfoHotKeyLabel, 0, 7, 1, GridBagConstraints.WEST,
-                GridBagConstraints.NONE, new Insets(8, 8, SECTION_GAP, 8));
-        addSetting(settingsPanel, settingsPanelConstraints, displayInfoHotKey, 1, 7, 1, GridBagConstraints.CENTER,
-                GridBagConstraints.NONE, new Insets(8, 8, SECTION_GAP, 8));
-        addSetting(settingsPanel, settingsPanelConstraints, clearHotKeyButton, 2, 7, 1, GridBagConstraints.CENTER,
-                GridBagConstraints.NONE, new Insets(8, 8, SECTION_GAP, 8));
-        addSetting(settingsPanel, settingsPanelConstraints, changeHotKeyButton, 3, 7, 1, GridBagConstraints.CENTER,
-                GridBagConstraints.NONE, new Insets(8, 8, SECTION_GAP, 8));
+        Insets hotKeyRowInsets = new Insets(leadingInset, leadingInset, SECTION_GAP, trailingInset);
+
+        addSetting(hotKeysPanel, hotKeysPanelConstraints, displayInfoHotKeyLabel, 0, 0, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, hotKeyRowInsets);
+        addSetting(hotKeysPanel, hotKeysPanelConstraints, displayInfoHotKey, 1, 0, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.NONE, hotKeyRowInsets);
+        addSetting(hotKeysPanel, hotKeysPanelConstraints, clearHotKeyButton, 2, 0, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.NONE, hotKeyRowInsets);
+        addSetting(hotKeysPanel, hotKeysPanelConstraints, changeHotKeyButton, 3, 0, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.NONE, hotKeyRowInsets);
+
+        /*
+         * Each section lays out its own table, so a long hot key widens only the hot key table and never moves the
+         * options columns. Both tables sit flush with the headings, so each table's labels line up under its heading
+         */
+        addSetting(settingsPanel, settingsPanelConstraints, optionsSectionLabel, 0, 0, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(edgeInset, leadingInset, 8, trailingInset));
+        addSetting(settingsPanel, settingsPanelConstraints, optionsSeparator, 0, 1, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.HORIZONTAL, new Insets(0, leadingInset, 0, trailingInset));
+        addSetting(settingsPanel, settingsPanelConstraints, optionsPanel, 0, 2, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(0, 0, 0, 0));
+
+        addSetting(settingsPanel, settingsPanelConstraints, hotKeysSectionLabel, 0, 3, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(sectionInset, leadingInset, 8, trailingInset));
+        addSetting(settingsPanel, settingsPanelConstraints, hotKeysSeparator, 0, 4, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.HORIZONTAL, new Insets(0, leadingInset, 0, trailingInset));
+        addSetting(settingsPanel, settingsPanelConstraints, hotKeysPanel, 0, 5, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(0, 0, 0, 0));
 
         mainConstraints.gridx = 0;
         mainConstraints.gridy = 0;
