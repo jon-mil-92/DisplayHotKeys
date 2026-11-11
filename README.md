@@ -168,6 +168,16 @@ Individual hot key slots can be reset by clicking on the "Clear Slot" button for
 
 All hot key slots for the selected display can be reset by clicking on the "Clear All Slots" button.
 
+#### Additional Settings
+
+Opens a window with additional app settings.
+
+* "Autoshow Info Overlay" shows each display's applied settings in its top-right corner whenever a hot key slot is applied or the display configuration changes.
+
+* "Close to Tray" sends the application to the system tray instead of exiting when its window is closed. This option requires "Minimize to Tray" to be toggled on.
+
+* "Show Info Overlay" sets a hot key that shows each display's applied settings on demand. Set it with the "Change Hot Key" button, and clear it with the "Clear Hot Key" button.
+
 #### About App
 
 Opens a window to display the current version, PayPal donate button, license button, and releases button.
@@ -180,9 +190,9 @@ The theme can be changed between "Light Mode" and "Dark Mode" by clicking on the
 
 The application can start automatically when the user logs into Windows by clicking on the "Run On Startup" button. The arrow will turn green to indicate that this option is enabled.
 
-#### Minimize To Tray
+#### Minimize to Tray
 
-The application will be minimized to the system tray when the "Minimize To Tray" button is toggled on. To restore the application, click the system tray icon and select "Restore".
+The application will be minimized to the system tray when the "Minimize to Tray" button is toggled on. To restore the application, click the system tray icon and select "Restore".
 
 #### PayPal Donate
 
@@ -212,6 +222,8 @@ Opens a web page in the default browser to display the releases for Display Hot 
 - [x] &thinsp; Add a latest version check in the "About" view.
 - [x] &thinsp; Create a custom system tray implementation.
 - [x] &thinsp; Create a custom input hook implementation.
+- [x] &thinsp; Add an "Additional Settings" view.
+- [x] &thinsp; Add the ability to display an info overlay.
 
 See [open issues] for a full list of proposed features (and known issues).
 

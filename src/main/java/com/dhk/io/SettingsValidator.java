@@ -81,6 +81,7 @@ public class SettingsValidator {
     public boolean validateAllProperties() {
         validateDarkMode();
         validateMinimizeToTray();
+        validateCloseToTray();
         validateRunOnStartup();
         validateAutoShowInfoOverlay();
         validateNumOfSlots();
@@ -195,6 +196,18 @@ public class SettingsValidator {
 
         if (minimizeToTray == null || !(minimizeToTray.equals("false") || minimizeToTray.equals("true"))) {
             repairProperty("Application", "minimizeToTray", false);
+        }
+    }
+
+    /**
+     * Validates the value for the closeToTray property from the settings file. If the value is not a string
+     * representation of a boolean, then it writes the default value for the closeToTray property.
+     */
+    private void validateCloseToTray() {
+        String closeToTray = ini.get("Application", "closeToTray");
+
+        if (closeToTray == null || !(closeToTray.equals("false") || closeToTray.equals("true"))) {
+            repairProperty("Application", "closeToTray", false);
         }
     }
 

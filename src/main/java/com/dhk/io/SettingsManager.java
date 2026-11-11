@@ -36,8 +36,8 @@ import com.dhk.model.Key;
 
 /**
  * Saves the application settings to an ini file. It enables the saving of the active number of slots, the orientation
- * mode, the theme state, the minimize to tray state, the run on startup state, the display modes, the DPI scale
- * percentages, the scaling modes, and the hot keys for each display
+ * mode, the theme state, the minimize to tray state, the close to tray state, the run on startup state, the display
+ * modes, the DPI scale percentages, the scaling modes, and the hot keys for each display
  *
  * @author Jonathan R. Miller
  */
@@ -138,6 +138,27 @@ public class SettingsManager {
      */
     public void saveIniMinimizeToTray(boolean minimizeToTray) {
         ini.put("Application", "minimizeToTray", minimizeToTray);
+
+        updateSettingsFile();
+    }
+
+    /**
+     * Gets the close to tray property value from the settings file object.
+     *
+     * @return The value for the close to tray property
+     */
+    public boolean getIniCloseToTray() {
+        return ini.get("Application", "closeToTray", boolean.class);
+    }
+
+    /**
+     * Sets the close to tray property value in the settings file object.
+     *
+     * @param closeToTray
+     *            - The new value for the close to tray property
+     */
+    public void saveIniCloseToTray(boolean closeToTray) {
+        ini.put("Application", "closeToTray", closeToTray);
 
         updateSettingsFile();
     }

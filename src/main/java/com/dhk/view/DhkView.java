@@ -589,7 +589,7 @@ public class DhkView implements IView {
         themeButton = new ThemeableButton("/light_mode_idle.svg", "/light_mode_hover.svg", "/dark_mode_idle.svg",
                 "/dark_mode_hover.svg", themeButtonProps, true, model.isDarkMode());
 
-        ButtonProperties minimizeToTrayButtonProps = new ButtonProperties("Minimize To Tray", new Dimension(36, 40),
+        ButtonProperties minimizeToTrayButtonProps = new ButtonProperties("Minimize to Tray", new Dimension(36, 40),
                 0.70f, 0.60f);
         minimizeToTrayButton = new ThemeableToggleButton("/minimize_to_tray_enabled_idle.svg",
                 "/minimize_to_tray_disabled_idle.svg", "/minimize_to_tray_enabled_light_hover.svg",

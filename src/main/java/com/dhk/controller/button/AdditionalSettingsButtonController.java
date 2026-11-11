@@ -84,6 +84,7 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
         additionalSettingsDialog = dialog;
 
         dialog.getAutoShowInfoOverlaySwitch().addActionListener(e -> autoShowInfoOverlaySwitchAction(dialog));
+        dialog.getCloseToTraySwitch().addActionListener(e -> closeToTraySwitchAction(dialog));
         dialog.getChangeHotKeyButton().addActionListener(e -> hotKeysController.displayInfoHotKeyChangeEvent(dialog));
         dialog.getClearHotKeyButton().addActionListener(e -> clearDisplayInfoHotKeyButtonAction(dialog));
 
@@ -104,6 +105,22 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
 
         model.setAutoShowInfoOverlay(autoShowInfoOverlay);
         settingsMgr.saveIniAutoShowInfoOverlay(autoShowInfoOverlay);
+
+        dialog.getDefaultFocusComponent().requestFocusInWindow();
+    }
+
+    /**
+     * Saves whether closing the window hides the application in the system tray instead of exiting, which takes effect
+     * at the next close.
+     *
+     * @param dialog
+     *            - The additional settings dialog showing the Close to Tray switch
+     */
+    private void closeToTraySwitchAction(AdditionalSettingsDialog dialog) {
+        boolean closeToTray = dialog.getCloseToTraySwitch().isSelected();
+
+        model.setCloseToTray(closeToTray);
+        settingsMgr.saveIniCloseToTray(closeToTray);
 
         dialog.getDefaultFocusComponent().requestFocusInWindow();
     }

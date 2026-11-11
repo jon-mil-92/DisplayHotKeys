@@ -64,6 +64,9 @@ public class AdditionalSettingsDialog implements IView {
     private JSeparator optionsSeparator;
     private JLabel autoShowInfoOverlayLabel;
     private ToggleSwitch autoShowInfoOverlaySwitch;
+    private JLabel closeToTrayLabel;
+    private ToggleSwitch closeToTraySwitch;
+    private JLabel closeToTrayNoteLabel;
     private JLabel hotKeysSectionLabel;
     private JSeparator hotKeysSeparator;
     private JLabel displayInfoHotKeyLabel;
@@ -162,6 +165,15 @@ public class AdditionalSettingsDialog implements IView {
     }
 
     /**
+     * Gets the switch that turns closing the application to the system tray on or off.
+     *
+     * @return The Close to Tray switch
+     */
+    public ToggleSwitch getCloseToTraySwitch() {
+        return closeToTraySwitch;
+    }
+
+    /**
      * Gets the button that starts recording a new Display Info hot key.
      *
      * @return The Change Hot Key button
@@ -215,6 +227,7 @@ public class AdditionalSettingsDialog implements IView {
         controlsEnabled = enabled;
 
         autoShowInfoOverlaySwitch.setEnabled(enabled);
+        closeToTraySwitch.setEnabled(enabled && model.isMinimizeToTray());
         changeHotKeyButton.setEnabled(enabled);
         clearHotKeyButton.setEnabled(enabled && model.getDisplayInfoHotKey().getKeys().size() > 0);
 
@@ -259,6 +272,21 @@ public class AdditionalSettingsDialog implements IView {
         new LightweightTooltip(autoShowInfoOverlayLabel).setText("Automatically show each display's applied settings.");
 
         autoShowInfoOverlaySwitch = new ToggleSwitch(model.isAutoShowInfoOverlay());
+
+        closeToTrayLabel = new JLabel("Close to Tray :", SwingConstants.LEFT);
+        new LightweightTooltip(closeToTrayLabel).setText("Keep running in the system tray when the window closes.");
+
+        /*
+         * Closing to the tray only applies while minimizing to the tray is on, so the switch is disabled otherwise and
+         * a note explains why. The dialog is modal, so that state cannot change while it is showing
+         */
+        closeToTraySwitch = new ToggleSwitch(model.isCloseToTray());
+        closeToTraySwitch.setEnabled(model.isMinimizeToTray());
+
+        closeToTrayNoteLabel = new JLabel("Requires Minimize to Tray to be enabled.", SwingConstants.LEFT);
+        closeToTrayNoteLabel.putClientProperty("FlatLaf.style",
+                "font: $small.font; foreground: $Label.disabledForeground");
+        closeToTrayNoteLabel.setVisible(!model.isMinimizeToTray());
 
         hotKeysSectionLabel = new JLabel("Hot Keys", SwingConstants.LEFT);
         hotKeysSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
@@ -334,18 +362,27 @@ public class AdditionalSettingsDialog implements IView {
         addSetting(settingsPanel, settingsPanelConstraints, autoShowInfoOverlaySwitch, 1, 2, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
 
-        addSetting(settingsPanel, settingsPanelConstraints, hotKeysSectionLabel, 0, 3, 4, GridBagConstraints.WEST,
+        addSetting(settingsPanel, settingsPanelConstraints, closeToTrayLabel, 0, 3, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
-        addSetting(settingsPanel, settingsPanelConstraints, hotKeysSeparator, 0, 4, 4, GridBagConstraints.CENTER,
+        addSetting(settingsPanel, settingsPanelConstraints, closeToTraySwitch, 1, 3, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
+
+        // A hidden note takes up no space, so the row collapses whenever minimizing to the tray is on
+        addSetting(settingsPanel, settingsPanelConstraints, closeToTrayNoteLabel, 0, 4, 4, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(0, 8, 8, 8));
+
+        addSetting(settingsPanel, settingsPanelConstraints, hotKeysSectionLabel, 0, 5, 4, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
+        addSetting(settingsPanel, settingsPanelConstraints, hotKeysSeparator, 0, 6, 4, GridBagConstraints.CENTER,
                 GridBagConstraints.HORIZONTAL, new Insets(0, 8, 0, 8));
 
-        addSetting(settingsPanel, settingsPanelConstraints, displayInfoHotKeyLabel, 0, 5, 1, GridBagConstraints.WEST,
+        addSetting(settingsPanel, settingsPanelConstraints, displayInfoHotKeyLabel, 0, 7, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
-        addSetting(settingsPanel, settingsPanelConstraints, displayInfoHotKey, 1, 5, 1, GridBagConstraints.CENTER,
+        addSetting(settingsPanel, settingsPanelConstraints, displayInfoHotKey, 1, 7, 1, GridBagConstraints.CENTER,
                 GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
-        addSetting(settingsPanel, settingsPanelConstraints, clearHotKeyButton, 2, 5, 1, GridBagConstraints.CENTER,
+        addSetting(settingsPanel, settingsPanelConstraints, clearHotKeyButton, 2, 7, 1, GridBagConstraints.CENTER,
                 GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
-        addSetting(settingsPanel, settingsPanelConstraints, changeHotKeyButton, 3, 5, 1, GridBagConstraints.CENTER,
+        addSetting(settingsPanel, settingsPanelConstraints, changeHotKeyButton, 3, 7, 1, GridBagConstraints.CENTER,
                 GridBagConstraints.NONE, new Insets(8, 8, 8, 8));
 
         mainConstraints.gridx = 0;

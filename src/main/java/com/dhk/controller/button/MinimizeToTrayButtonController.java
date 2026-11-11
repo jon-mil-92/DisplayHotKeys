@@ -25,8 +25,8 @@ import com.dhk.model.DhkModel;
 import com.dhk.view.DhkView;
 
 /**
- * Controls the Minimize To Tray button. Listeners are added to the corresponding view component so that when the
- * Minimize To Tray button is pressed, the application will toggle the ability for the application to minimize to the
+ * Controls the Minimize to Tray button. Listeners are added to the corresponding view component so that when the
+ * Minimize to Tray button is pressed, the application will toggle the ability for the application to minimize to the
  * system tray.
  *
  * @author Jonathan R. Miller

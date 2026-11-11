@@ -40,6 +40,7 @@ public class DhkModel {
     private int maxNumOfSlots;
     private boolean darkMode;
     private boolean minimizeToTray;
+    private boolean closeToTray;
     private boolean runOnStartup;
     private HotKey displayInfoHotKey;
     private boolean autoShowInfoOverlay;
@@ -59,6 +60,7 @@ public class DhkModel {
     public void initModel(SettingsManager settingsMgr) {
         darkMode = settingsMgr.getIniDarkMode();
         minimizeToTray = settingsMgr.getIniMinimizeToTray();
+        closeToTray = settingsMgr.getIniCloseToTray();
         runOnStartup = settingsMgr.getIniRunOnStartup();
         displayInfoHotKey = settingsMgr.getIniDisplayInfoHotKey();
         autoShowInfoOverlay = settingsMgr.getIniAutoShowInfoOverlay();
@@ -203,6 +205,26 @@ public class DhkModel {
      */
     public boolean isMinimizeToTray() {
         return minimizeToTray;
+    }
+
+    /**
+     * Gets the "close to tray" state, which hides the application in the system tray instead of exiting when its window
+     * is closed. It only applies while the "minimize to tray" state is on.
+     *
+     * @return The "close to tray" state
+     */
+    public boolean isCloseToTray() {
+        return closeToTray;
+    }
+
+    /**
+     * Sets the "close to tray" state.
+     *
+     * @param closeToTray
+     *            - The "close to tray" state to set
+     */
+    public void setCloseToTray(boolean closeToTray) {
+        this.closeToTray = closeToTray;
     }
 
     /**
