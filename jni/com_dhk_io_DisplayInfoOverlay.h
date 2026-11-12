@@ -27,17 +27,19 @@ extern "C" {
 #define com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_LINE_GAP 4L
 #undef com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_MARGIN
 #define com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_MARGIN 5L
+#undef com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_COLUMN_GAP
+#define com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_COLUMN_GAP 6L
 #undef com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_COUNT
-#define com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_COUNT 6L
+#define com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_COUNT 7L
 #undef com_dhk_io_DisplayInfoOverlay_ANCHOR_FIELD_COUNT
 #define com_dhk_io_DisplayInfoOverlay_ANCHOR_FIELD_COUNT 2L
 /*
  * Class:     com_dhk_io_DisplayInfoOverlay
  * Method:    nativeShow
- * Signature: ([Ljava/lang/String;[Ljava/lang/String;I[I[I[ILjava/lang/String;[[BII)Z
+ * Signature: ([Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/String;[I[I[ILjava/lang/String;[[BII)Z
  */
 JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeShow
-  (JNIEnv *, jobject, jobjectArray, jobjectArray, jint, jintArray, jintArray, jintArray, jstring, jobjectArray, jint, jint);
+  (JNIEnv *, jobject, jobjectArray, jobjectArray, jobjectArray, jintArray, jintArray, jintArray, jstring, jobjectArray, jint, jint);
 
 /*
  * Class:     com_dhk_io_DisplayInfoOverlay

@@ -68,7 +68,7 @@ public class DisplayInfoOverlay {
     public static final int OVERLAY_METRIC_PADDING = 2;
 
     /**
-     * Index of the space between the header line and the first setting line in the metrics handed to {@link #show}.
+     * Index of the space on each side of the separator beneath the header line in the metrics handed to {@link #show}.
      */
     public static final int OVERLAY_METRIC_HEADER_GAP = 3;
 
@@ -84,9 +84,14 @@ public class DisplayInfoOverlay {
     public static final int OVERLAY_METRIC_MARGIN = 5;
 
     /**
+     * Index of the space between the label column and the value column in the metrics handed to {@link #show}.
+     */
+    public static final int OVERLAY_METRIC_COLUMN_GAP = 6;
+
+    /**
      * Number of metrics handed to {@link #show}.
      */
-    public static final int OVERLAY_METRIC_COUNT = 6;
+    public static final int OVERLAY_METRIC_COUNT = 7;
 
     /**
      * Number of ints per panel in the anchor points handed to {@link #show}, which are the desktop x and y of a point
@@ -114,10 +119,10 @@ public class DisplayInfoOverlay {
      *
      * @param headers
      *            - The bold first line of each panel
-     * @param lines
-     *            - The setting lines of every panel, panel by panel, with linesPerPanel lines for each header
-     * @param linesPerPanel
-     *            - The number of setting lines in each panel
+     * @param labels
+     *            - The label of each setting line, shared by every panel, which needs at least one label
+     * @param values
+     *            - The value of each setting line, panel by panel, with one value per label for each header
      * @param anchorPoints
      *            - The desktop x and y coordinates of a point on each panel's display, in physical pixels
      * @param overlayColors
@@ -136,7 +141,7 @@ public class DisplayInfoOverlay {
      *
      * @return Whether the panels were accepted and any supplied fonts are registered
      */
-    private native boolean nativeShow(String[] headers, String[] lines, int linesPerPanel, int[] anchorPoints,
+    private native boolean nativeShow(String[] headers, String[] labels, String[] values, int[] anchorPoints,
             int[] overlayColors, int[] overlayMetrics, String fontFamily, byte[][] fontFiles, int opacity,
             int durationMs);
 
@@ -151,10 +156,10 @@ public class DisplayInfoOverlay {
      *
      * @param headers
      *            - The bold first line of each panel
-     * @param lines
-     *            - The setting lines of every panel, panel by panel, with linesPerPanel lines for each header
-     * @param linesPerPanel
-     *            - The number of setting lines in each panel
+     * @param labels
+     *            - The label of each setting line, shared by every panel, which needs at least one label
+     * @param values
+     *            - The value of each setting line, panel by panel, with one value per label for each header
      * @param anchorPoints
      *            - The desktop x and y coordinates of a point on each panel's display, in physical pixels
      * @param overlayColors
@@ -173,14 +178,14 @@ public class DisplayInfoOverlay {
      *
      * @return Whether the panels were accepted and any supplied fonts are registered
      */
-    public boolean show(String[] headers, String[] lines, int linesPerPanel, int[] anchorPoints, int[] overlayColors,
+    public boolean show(String[] headers, String[] labels, String[] values, int[] anchorPoints, int[] overlayColors,
             int[] overlayMetrics, String fontFamily, byte[][] fontFiles, int opacity, int durationMs) {
         if (!libraryLoaded) {
             return false;
         }
 
-        return nativeShow(headers, lines, linesPerPanel, anchorPoints, overlayColors, overlayMetrics, fontFamily,
-                fontFiles, opacity, durationMs);
+        return nativeShow(headers, labels, values, anchorPoints, overlayColors, overlayMetrics, fontFamily, fontFiles,
+                opacity, durationMs);
     }
 
     /**

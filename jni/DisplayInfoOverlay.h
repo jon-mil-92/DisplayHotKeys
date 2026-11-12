@@ -35,14 +35,15 @@ struct DisplayInfoOverlayDefinition {
     std::vector<std::wstring> headers;
 
     /**
-     * The setting lines of every panel, panel by panel, with linesPerPanel lines for each header.
+     * The label of each setting line, shared by every panel and drawn in the left column.
      */
-    std::vector<std::wstring> lines;
+    std::vector<std::wstring> labels;
 
     /**
-     * Number of setting lines in each panel.
+     * The value of each setting line, panel by panel, with one value per label for each header, drawn bold in the
+     * right column.
      */
-    int linesPerPanel;
+    std::vector<std::wstring> values;
 
     /**
      * A point on each panel's display in physical desktop coordinates, which selects the display the panel sits on.
@@ -60,7 +61,7 @@ struct DisplayInfoOverlayDefinition {
     COLORREF foregroundColor;
 
     /**
-     * Color of the line drawn around each panel.
+     * Color of the line drawn around each panel and of the separator beneath its header line.
      */
     COLORREF borderColor;
 
@@ -85,7 +86,7 @@ struct DisplayInfoOverlayDefinition {
     int padding;
 
     /**
-     * Space between the header line and the first setting line.
+     * Space on each side of the separator beneath the header line.
      */
     int headerGap;
 
@@ -93,6 +94,11 @@ struct DisplayInfoOverlayDefinition {
      * Space between consecutive setting lines.
      */
     int lineGap;
+
+    /**
+     * Space between the label column and the value column.
+     */
+    int columnGap;
 
     /**
      * Space between a panel and the edges of its display's work area, and between panels stacked on one display.
@@ -111,7 +117,8 @@ struct DisplayInfoOverlayDefinition {
 };
 
 /**
- * A shown display info panel and the layout it was measured with, so painting it never has to measure again.
+ * A shown display info panel and the positions it was laid out with, in physical pixels, so painting it never has to
+ * measure or scale anything again.
  */
 struct DisplayInfoPanel {
     /**
@@ -125,17 +132,61 @@ struct DisplayInfoPanel {
     UINT dpi;
 
     /**
-     * Height of the header line in the panel's scaled font.
+     * Top-left corner of the header line, whose left edge every label shares.
      */
-    int headerHeight;
+    POINT headerOrigin;
 
     /**
-     * Height of each setting line in the panel's scaled font.
+     * Bounds of the line separating the header line from the setting lines.
      */
-    int lineHeight;
+    RECT separatorRect;
+
+    /**
+     * Top of the first setting line.
+     */
+    LONG firstLineTop;
+
+    /**
+     * Distance from the top of one setting line to the top of the next.
+     */
+    LONG lineSpacing;
+
+    /**
+     * Left edge of the value column, which sits past the widest label by the column gap.
+     */
+    LONG valueColumnLeft;
 
     /**
      * Whether the panel draws its own border, which it does where the system cannot color the window border.
      */
     bool drawFrame;
+};
+
+/**
+ * Owns the fonts a panel is measured and painted in, scaled for the panel's display, and deletes them on destruction.
+ */
+struct DisplayInfoPanelFonts {
+    /**
+     * Bold font of the header line.
+     */
+    HFONT headerFont;
+
+    /**
+     * Regular font of the setting labels.
+     */
+    HFONT labelFont;
+
+    /**
+     * Bold font of the setting values.
+     */
+    HFONT valueFont;
+
+    /**
+     * Deletes the fonts, which must no longer be selected into any device context.
+     */
+    ~DisplayInfoPanelFonts() {
+        DeleteObject(headerFont);
+        DeleteObject(labelFont);
+        DeleteObject(valueFont);
+    }
 };
