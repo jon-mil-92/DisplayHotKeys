@@ -151,6 +151,11 @@ public class DhkView implements IView {
     static final String ORIENTATION_HEADER_TEXT = "Orientation";
 
     /**
+     * Suffix shown after each DPI scale percentage in the slot table and the display info overlay.
+     */
+    static final String DPI_SCALE_SUFFIX = "%";
+
+    /**
      * Constructor for the {@link DhkView} class.
      *
      * @param model

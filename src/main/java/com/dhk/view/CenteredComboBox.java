@@ -36,6 +36,8 @@ import javax.swing.SwingConstants;
  */
 public class CenteredComboBox<E> extends JComboBox<E> {
 
+    private String itemTextSuffix = "";
+
     /**
      * Serialization version of the {@link CenteredComboBox} class.
      */
@@ -72,6 +74,17 @@ public class CenteredComboBox<E> extends JComboBox<E> {
     }
 
     /**
+     * Sets the text appended to each item wherever it is shown, which leaves the items themselves unchanged.
+     *
+     * @param itemTextSuffix
+     *            - The text to append to each shown item
+     */
+    public void setItemTextSuffix(String itemTextSuffix) {
+        this.itemTextSuffix = itemTextSuffix;
+        repaint();
+    }
+
+    /**
      * Installs a renderer that centers all item text.
      */
     private void installCenteredRenderer() {
@@ -84,6 +97,11 @@ public class CenteredComboBox<E> extends JComboBox<E> {
 
                 if (c instanceof JLabel lbl) {
                     lbl.setHorizontalAlignment(SwingConstants.CENTER);
+
+                    // An empty selection has no item to suffix, so it keeps showing no text
+                    if (value != null && !itemTextSuffix.isEmpty()) {
+                        lbl.setText(value + itemTextSuffix);
+                    }
                 }
 
                 return c;

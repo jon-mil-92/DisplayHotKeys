@@ -214,8 +214,7 @@ public class DisplayInfoOverlayView {
         int dpiScalePercentage = settings.getDpiScalePercentage();
         String refreshRate = refreshRateText(displayConfig, displayId, orientationMode, displayMode);
 
-        // The DPI scale combo box holds a bare Integer, so its text carries no percent sign
-        String dpiScale = dpiScalePercentage > 0 ? Integer.valueOf(dpiScalePercentage).toString() : UNREADABLE_VALUE;
+        String dpiScale = dpiScalePercentage > 0 ? dpiScalePercentage + DhkView.DPI_SCALE_SUFFIX : UNREADABLE_VALUE;
 
         return new String[]{displayMode.getResolution().toString(), refreshRate, dpiScale,
                 modeName(DhkView.SCALING_MODES, settings.getScalingMode()),
