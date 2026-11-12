@@ -34,8 +34,8 @@ import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 public class ThemeUpdater {
 
     /**
-     * Whether the global theme setup (font install, preferred font family, and custom defaults source) has already run
-     * in this JVM, since re-running the expensive font install on every construction is redundant.
+     * Whether the JVM-wide theme setup has run, since repeating its expensive font install on every construction is
+     * wasted work.
      */
     private static boolean globalThemeSetupDone;
 

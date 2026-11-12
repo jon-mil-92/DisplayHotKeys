@@ -38,15 +38,18 @@ public class HotKeyLabel extends JLabel {
 
     private boolean recording;
 
+    /**
+     * Serialization version of the {@link HotKeyLabel} class.
+     */
     private static final long serialVersionUID = 1L;
 
     /**
-     * Height of the outline, matching the combo boxes and buttons beside a hot key.
+     * Height of the outline, which matches the combo boxes and buttons beside a hot key.
      */
     private static final int OUTLINE_HEIGHT = 28;
 
     /**
-     * Space between the hot key's text and the left and right edges of the outline.
+     * Space between the hot key text and the left and right edges of the outline.
      */
     private static final int TEXT_INSET = 10;
 

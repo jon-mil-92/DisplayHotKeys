@@ -38,7 +38,7 @@ public class SystemTrayIcon {
     private int appliedIconHeight;
 
     /**
-     * Fallback icon edge (px) used when the native small-icon size is unavailable, matching the Windows default.
+     * Fallback icon size in pixels when the native small icon size is unavailable, matching the Windows default.
      */
     private static final int DEFAULT_ICON_SIZE = 16;
 

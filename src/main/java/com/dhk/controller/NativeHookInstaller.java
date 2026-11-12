@@ -32,28 +32,17 @@ import com.dhk.io.NativeInputHook;
  */
 public class NativeHookInstaller {
 
-    /**
-     * Native input hook that lives for the whole application lifetime, or null until installed or on failure.
-     */
     private NativeInputHook inputHook;
-
-    /**
-     * Permanent held-key tracker attached to the input hook for the whole application lifetime.
-     */
     private HeldKeyTracker heldKeyTracker;
-
-    /**
-     * Background thread performing the install, or null until the install starts.
-     */
     private Thread installThread;
 
     /**
-     * The hook the shutdown hook stops, replaced whenever a recovery install creates a new one.
+     * Hook the shutdown hook stops, replaced whenever a recovery install creates a new one.
      */
     private static volatile NativeInputHook activeHook;
 
     /**
-     * Whether the shutdown hook was registered, so only the first created hook registers one.
+     * Whether the shutdown hook has been registered, so a recovery install never registers a second one.
      */
     private static final AtomicBoolean shutdownHookRegistered = new AtomicBoolean(false);
 
@@ -68,7 +57,6 @@ public class NativeHookInstaller {
      */
     public void startInstall() {
         installThread = new Thread(this::installHooks, "Native Hook Installer");
-
         installThread.start();
     }
 
@@ -112,7 +100,7 @@ public class NativeHookInstaller {
      * so the owning controller's recovery path can retry it.
      */
     private void installHooks() {
-        // Create the tracker even if the hook install fails so the hot keys controller always receives one
+        // Always create the tracker so the hot keys controller receives one even when the hook fails to install
         heldKeyTracker = new HeldKeyTracker();
 
         inputHook = createInputHook();
@@ -130,11 +118,7 @@ public class NativeHookInstaller {
      */
     public static NativeInputHook createInputHook() {
         try {
-            /*
-             * Release an earlier hook before installing another. A recovery install would otherwise leave the previous
-             * one registered for the life of the process, and a low-level hook sits in the input path of every
-             * application
-             */
+            // Release any earlier hook so a recovery install never leaks it into the input path of every application
             stopActiveHook();
 
             NativeInputHook createdHook = new NativeInputHook();
@@ -143,14 +127,12 @@ public class NativeHookInstaller {
                 return null;
             }
 
-            // Published before anything that can throw below, so a started hook is always the one shutdown stops
+            // Record the hook before registering the shutdown hook so it is still stopped if registering throws
             activeHook = createdHook;
 
             /*
-             * Remove the hooks on the way out through a shutdown hook rather than a single exit path, since the app
-             * exits from the window, the notification area menu, and a sign-out alike. Registered only for the first
-             * hook, so a recovery that follows a failed install never stacks another one. Registering throws once
-             * shutdown is under way, which is harmless here because shutdown is already stopping the hook
+             * A shutdown hook stops the input hook on every exit path, including a sign-out. It is registered once
+             * because it always stops the active hook, and registering it fails harmlessly once shutdown has begun
              */
             if (shutdownHookRegistered.compareAndSet(false, true)) {
                 try {

@@ -46,14 +46,21 @@ public class SettingsValidator {
     private Map<String, DisplayMode[]> landscapeDisplayModesMap;
     private Map<String, DisplayMode[]> portraitDisplayModesMap;
     private List<Integer> validkeyCodes;
-
-    /**
-     * Whether any property was repaired during validation, so the caller knows to persist the settings file.
-     */
     private boolean repairedProperty;
 
+    /**
+     * Key code saved in place of each key a hot key does not use.
+     */
     private static final int UNSET_KEY_CODE = 0;
+
+    /**
+     * Scaling mode values a slot may store, which stand for preserved, stretched, and centered.
+     */
     private static final String[] VALID_SCALING_MODES = {"0", "1", "2"};
+
+    /**
+     * Display mode written to a repaired slot when its display reports no modes for the slot's orientation.
+     */
     private static final DisplayMode DEFAULT_DISPLAY_MODE = new DisplayMode(0, 0, 0, 0);
 
     /**

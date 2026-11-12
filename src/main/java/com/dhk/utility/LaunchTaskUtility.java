@@ -37,53 +37,53 @@ import java.util.List;
 public class LaunchTaskUtility {
 
     /**
-     * Name of the task that starts the application.
+     * Name the scheduled task is registered under.
      */
     private static final String TASK_NAME = "Display Hot Keys";
 
     /**
-     * Command line utility that reads and writes tasks.
+     * Command line utility that queries and registers scheduled tasks.
      */
     private static final String TASK_COMMAND = "schtasks";
 
     /**
-     * Exit code returned by the task command line utility when a command succeeds.
+     * Exit code the task command returns when it succeeds.
      */
     private static final int TASK_COMMAND_SUCCESS = 0;
 
     /**
-     * Instance policy of the task, which must start a second instance so it reaches the single-instance check and
-     * reports that the application is already running. Suppressing it here would drop the launch silently instead.
+     * Lets the task start a second instance so it reaches the single-instance check and reports that the application is
+     * already running, instead of dropping the launch silently.
      */
     private static final String MULTIPLE_INSTANCES_POLICY = "Parallel";
 
     /**
-     * Opening element of the block holding the task's triggers.
+     * Opening tag of the task definition's triggers block.
      */
     private static final String TRIGGERS_OPEN_ELEMENT = "<Triggers>";
 
     /**
-     * Closing element of the block holding the task's triggers.
+     * Closing tag of the task definition's triggers block.
      */
     private static final String TRIGGERS_CLOSE_ELEMENT = "</Triggers>";
 
     /**
-     * Opening tag of the logon trigger, matched without its closing bracket so it also finds the self-closing form.
+     * Opening tag of the logon trigger without its closing bracket, so it also matches the self-closing form.
      */
     private static final String LOGON_TRIGGER_ELEMENT = "<LogonTrigger";
 
     /**
-     * Element marking the enclosing trigger as disabled.
+     * Element that marks the enclosing trigger as disabled.
      */
     private static final String DISABLED_ELEMENT = "<Enabled>false</Enabled>";
 
     /**
-     * Little endian UTF-16 byte order mark that must precede a task definition.
+     * Little endian UTF-16 byte order mark that the task command requires ahead of a task definition.
      */
     private static final byte[] BYTE_ORDER_MARK = {(byte) 0xFF, (byte) 0xFE};
 
     /**
-     * Path of the executable the task runs, resolved once because it cannot change while the application runs.
+     * Path of the packaged executable the task runs, or null in a development run that has none.
      */
     private static final String APP_EXE_PATH = resolveAppExePath();
 

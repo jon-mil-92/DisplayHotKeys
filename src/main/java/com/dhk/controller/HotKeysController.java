@@ -79,14 +79,49 @@ public class HotKeysController implements IController, NativeKeyListener {
     private volatile Set<Integer> activeKeyCodes;
     private HeldKeyTracker heldKeyTracker;
 
+    /**
+     * Text of the Change Hot Key button while no hot key is being recorded.
+     */
     private static final String CHANGE_HOT_KEY_TEXT = "Change Hot Key";
+
+    /**
+     * Button text prompting the user to press the keys of the new hot key.
+     */
     private static final String PRESS_HOT_KEY_TEXT = "Press Hot Key";
+
+    /**
+     * Button text prompting the user to release the pressed keys to set the hot key.
+     */
     private static final String RELEASE_TO_SET_TEXT = "Release To Set";
+
+    /**
+     * Button text shown when the pressed keys are a subset of another hot key, or the reverse.
+     */
     private static final String NO_SUBSETS_TEXT = "No Subsets";
+
+    /**
+     * Button text confirming that the new hot key was set.
+     */
     private static final String HOT_KEY_SET_TEXT = "Hot Key Set";
+
+    /**
+     * Button text reporting that the hot key was left unchanged.
+     */
     private static final String HOT_KEY_NOT_SET_TEXT = "Hot Key Not Set";
-    private static final int IDLE_INPUT_TIMEOUT = 2500;
-    private static final int RELEASE_MESSAGE_TIMEOUT = 1500;
+
+    /**
+     * Time without key input after which hot key recording is abandoned.
+     */
+    private static final int IDLE_INPUT_TIMEOUT_MS = 2500;
+
+    /**
+     * Time the result of a hot key change stays on the button before it reverts.
+     */
+    private static final int RELEASE_MESSAGE_TIMEOUT_MS = 1500;
+
+    /**
+     * Most keys a single hot key can combine.
+     */
     private static final int MAX_KEY_COUNT = 3;
 
     /**
@@ -288,7 +323,7 @@ public class HotKeysController implements IController, NativeKeyListener {
                     showReleaseMessage = true;
 
                     leaveChangingHotKeyState();
-                    startReleaseMessageTimer(RELEASE_MESSAGE_TIMEOUT, releasedTarget);
+                    startReleaseMessageTimer(RELEASE_MESSAGE_TIMEOUT_MS, releasedTarget);
                 }
             }
         });
@@ -434,7 +469,7 @@ public class HotKeysController implements IController, NativeKeyListener {
         // Every hot key, including the slot hot keys, is suppressed until the recording ends
         anyHotKeyChanging = true;
 
-        startIdleTimer(IDLE_INPUT_TIMEOUT);
+        startIdleTimer(IDLE_INPUT_TIMEOUT_MS);
     }
 
     /**

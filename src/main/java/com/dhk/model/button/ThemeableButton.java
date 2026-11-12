@@ -29,12 +29,15 @@ import javax.swing.event.ChangeListener;
  */
 public class ThemeableButton extends Button {
 
-    private static final long serialVersionUID = 4378247830510346232L;
-
     private Icon darkIdleIcon;
     private Icon darkHoverIcon;
     private Icon darkHeldIcon;
     private boolean darkMode;
+
+    /**
+     * Serialization version of the {@link ThemeableButton} class.
+     */
+    private static final long serialVersionUID = 4378247830510346232L;
 
     /**
      * Constructor for the {@link ThemeableButton} class.

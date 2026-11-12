@@ -35,19 +35,16 @@ import com.dhk.utility.LaunchTaskUtility;
  */
 public class RunOnStartupManager {
 
-    /**
-     * The startup folder batch file that starts the application upon login.
-     */
     private File runOnStartupFile;
 
     /**
-     * Path of the startup folder, relative to the user's home folder, that Windows runs the contents of upon login.
+     * Path of the startup folder relative to the user's home folder.
      */
     private static final String STARTUP_PATH = "\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs"
             + "\\Startup\\";
 
     /**
-     * Name of the batch file that starts the application upon login while the task cannot be registered.
+     * Batch file the startup folder runs upon login, used as a fallback when the scheduled task cannot be registered.
      */
     private static final String RUN_ON_STARTUP_FILE_NAME = "StartDisplayHotKeys.bat";
 

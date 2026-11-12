@@ -37,6 +37,9 @@ public class SingleInstanceLock {
     private FileChannel lockChannel;
     private FileLock lock;
 
+    /**
+     * Path of the file locked to ensure only one instance of the application runs.
+     */
     private static final String LOCK_FILE_PATH = System.getProperty("user.home")
             + "\\Documents\\DisplayHotKeys\\DisplayHotKeys.lock";
 

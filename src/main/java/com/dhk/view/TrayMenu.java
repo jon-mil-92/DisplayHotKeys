@@ -45,8 +45,8 @@ public class TrayMenu {
     private Runnable[] itemActions;
 
     /**
-     * Whether the native layer has registered the Roboto font, which it keeps for the life of the process, so the font
-     * file is only read until then and never held in memory.
+     * Whether the native layer holds the Roboto font, which it keeps for the life of the process, so the font file is
+     * only read until then.
      */
     private static boolean robotoFontRegistered;
 
@@ -56,7 +56,7 @@ public class TrayMenu {
     private static final String[] ITEM_TEXTS = {"Restore", "Settings", "About", "Exit"};
 
     /**
-     * Name of the Roboto font file, which sits beside the class that installs the font.
+     * Roboto font file, read from beside the class that installs the font.
      */
     private static final String ROBOTO_FONT_FILE = "Roboto-Regular.ttf";
 

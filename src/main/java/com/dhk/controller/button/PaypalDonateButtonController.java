@@ -39,12 +39,39 @@ public class PaypalDonateButtonController extends AbstractButtonController imple
     private IView view;
     private ThemeableButton paypalDonateButton;
 
+    /**
+     * Domain of the PayPal donation link.
+     */
     private static final String LINK_DOMAIN = "https://www.paypal.com";
+
+    /**
+     * Path of the PayPal donation page.
+     */
     private static final String LINK_PATH = "/donate/";
+
+    /**
+     * Query parameter identifying the PayPal account that receives donations.
+     */
     private static final String LINK_ID = "?business=A6U7KG5BDZTRE";
+
+    /**
+     * Query parameter that lets the donor choose a recurring donation.
+     */
     private static final String LINK_RECURRING = "&no_recurring=0";
+
+    /**
+     * Query parameter holding the thank-you message shown on the donation page.
+     */
     private static final String LINK_MESSAGE = "&item_name=I+appreciate+you+visiting+this+page%21+Thank+you%21";
+
+    /**
+     * Query parameter setting the donation currency to US dollars.
+     */
     private static final String LINK_CURRENCY = "&currency_code=USD";
+
+    /**
+     * Full PayPal donation link opened by the donate button.
+     */
     private static final String PAYPAL_DONATE_LINK = LINK_DOMAIN + LINK_PATH + LINK_ID + LINK_RECURRING + LINK_MESSAGE
             + LINK_CURRENCY;
 

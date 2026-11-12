@@ -36,6 +36,9 @@ import javax.swing.SwingConstants;
  */
 public class CenteredComboBox<E> extends JComboBox<E> {
 
+    /**
+     * Serialization version of the {@link CenteredComboBox} class.
+     */
     private static final long serialVersionUID = 1L;
 
     /**

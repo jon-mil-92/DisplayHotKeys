@@ -88,20 +88,34 @@ public class AboutDialog implements IView {
     private Component darkeningGlassPane;
     private boolean dialogClosed;
 
+    /**
+     * Title shown in the dialog's title bar.
+     */
     private static final String DIALOG_TITLE = "About App";
+
+    /**
+     * Domain of the GitHub releases link.
+     */
     private static final String GITHUB_DOMAIN = "https://github.com";
+
+    /**
+     * Path of the application's GitHub releases page.
+     */
     private static final String RELEASES_PATH = "/jon-mil-92/DisplayHotKeys/releases";
+
+    /**
+     * Link the releases button opens.
+     */
     private static final String RELEASES_LINK = GITHUB_DOMAIN + RELEASES_PATH;
 
     /**
-     * Visible space above the first section, between sections, and below the buttons, which keeps the dialog's spacing
-     * even throughout.
+     * Visible space above the first section, between sections, and below the buttons.
      */
     private static final int SECTION_GAP = 24;
 
     /**
-     * Space a label's text or a button's border leaves inside the component's bounds, which already counts toward a
-     * visible gap and is taken out of the inset beside it.
+     * Space a label's text or a button's border leaves inside the component, which already counts toward a visible gap
+     * and is subtracted from the inset beside it.
      */
     private static final int INNER_PADDING = 2;
 

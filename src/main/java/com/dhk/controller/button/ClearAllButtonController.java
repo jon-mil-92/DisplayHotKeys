@@ -47,7 +47,14 @@ public class ClearAllButtonController extends AbstractButtonController implement
     private DisplayConfig displayConfig;
     private AppRefresher appRefresher;
 
+    /**
+     * Question the confirmation dialog asks before clearing every slot of the selected display.
+     */
     private static final String CONFIRMATION_MESSAGE = "Are you sure you want to clear all slots for the selected display?";
+
+    /**
+     * Title of the confirmation dialog shown before clearing all slots.
+     */
     private static final String TITLE_BAR_MESSAGE = "Confirm Clear All Slots";
 
     /**

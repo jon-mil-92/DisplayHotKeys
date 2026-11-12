@@ -51,37 +51,37 @@ public class LightweightTooltip {
     private JLabel layeredTooltipLabel;
 
     /**
-     * The delay before the tooltip appears after hovering over the component.
+     * Hover time before the tooltip appears.
      */
     private static final int TOOLTIP_DELAY_MS = 600;
 
     /**
-     * Pixels between the component's bottom edge and the tooltip when it is shown below the component.
+     * Space between the component's bottom edge and a tooltip shown below it.
      */
     private static final int TOOLTIP_GAP_BELOW_PX = 18;
 
     /**
-     * Pixels between the component's top edge and the tooltip when there is no room below and it flips above.
+     * Space between the component's top edge and a tooltip that flips above it for lack of room below.
      */
     private static final int TOOLTIP_GAP_ABOVE_PX = 18;
 
     /**
-     * Minimum number of pixels kept between the tooltip and the edges of the layered pane.
+     * Smallest space kept between the tooltip and the edges of the layered pane.
      */
     private static final int TOOLTIP_EDGE_MARGIN_PX = 8;
 
     /**
-     * Inner vertical padding (top and bottom) around the tooltip text.
+     * Space above and below the tooltip text.
      */
     private static final int TOOLTIP_PADDING_VERTICAL_PX = 6;
 
     /**
-     * Inner horizontal padding (left and right) around the tooltip text.
+     * Space to the left and right of the tooltip text.
      */
     private static final int TOOLTIP_PADDING_HORIZONTAL_PX = 6;
 
     /**
-     * Fallback tooltip background used when the active look and feel does not define one.
+     * Tooltip background used when the look and feel defines none.
      */
     private static final Color TOOLTIP_DEFAULT_BACKGROUND = new Color(255, 255, 210);
 

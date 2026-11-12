@@ -46,19 +46,18 @@ public class DisplayConfig {
     private int numOfConnectedDisplays;
 
     /**
-     * Number of int fields per mode in a getDisplayModeRecords result: width, height, refresh numerator, and refresh
-     * denominator.
+     * Number of fields in a mode record, which holds the width, height, refresh numerator, and refresh denominator.
      */
     private static final int FIELDS_PER_MODE = 4;
 
     /**
-     * Number of int fields per display in a getActiveDisplaySettingsRecords result: width, height, refresh numerator,
-     * refresh denominator, DPI scale percentage, scaling mode, orientation, and the desktop x and y.
+     * Number of fields in an active display record, which holds the width, height, refresh numerator, refresh
+     * denominator, DPI scale percentage, scaling mode, orientation, desktop x, and desktop y.
      */
     private static final int FIELDS_PER_ACTIVE_DISPLAY = 9;
 
     /**
-     * Comparator for display mode sorting.
+     * Orders display modes from the largest resolution and refresh rate to the smallest.
      */
     private static final Comparator<DisplayMode> DISPLAY_MODE_COMPARATOR = Comparator
             .comparingInt(DisplayMode::getWidth).thenComparingInt(DisplayMode::getHeight)

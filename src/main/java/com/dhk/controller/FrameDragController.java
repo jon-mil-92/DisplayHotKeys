@@ -43,8 +43,6 @@ import com.dhk.view.DhkView;
  */
 public class FrameDragController implements IController {
 
-    private static final int DISPLAY_SYNC_POST_RELEASE_DELAY_MS = 25;
-
     private DhkView view;
     private JFrame observedFrame;
     private GraphicsConfiguration cachedConfiguration;
@@ -56,6 +54,12 @@ public class FrameDragController implements IController {
     private WindowAdapter frameCloseListener;
     private boolean displayTransitionPending;
     private boolean leftMouseButtonDown;
+
+    /**
+     * Delay after the left mouse button is released before the deferred display synchronization runs, so it never
+     * interrupts a drag.
+     */
+    private static final int DISPLAY_SYNC_POST_RELEASE_DELAY_MS = 25;
 
     /**
      * Constructor for the {@link FrameDragController} class.

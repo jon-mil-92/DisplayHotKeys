@@ -43,8 +43,20 @@ public class OrientationController implements IController {
     private SettingsManager settingsMgr;
     private AppRefresher appRefresher;
 
+    /**
+     * Question the confirmation dialog asks before changing a slot's orientation.
+     */
     private static final String CONFIRMATION_QUESTION = "Are you sure you want to change the display orientation for the slot?";
+
+    /**
+     * Warning shown in the confirmation dialog, since a rotated image is only usable on a display that can be
+     * physically rotated.
+     */
     private static final String CONFIRMATION_WARNING = "Only do this if you can rotate your display!";
+
+    /**
+     * Title of the confirmation dialog shown before changing a slot's orientation.
+     */
     private static final String TITLE_BAR_MESSAGE = "Confirm Display Orientation Change";
 
     /**

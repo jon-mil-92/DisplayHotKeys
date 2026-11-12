@@ -91,25 +91,23 @@ public class AdditionalSettingsDialog implements IView {
     private boolean controlsEnabled;
 
     /**
-     * Title of the dialog, shown in its title bar.
+     * Title shown in the dialog's title bar.
      */
     private static final String DIALOG_TITLE = "Additional Settings";
 
     /**
-     * Visible space in pixels between neighboring components in each section's table, both across a row and between
-     * rows, which keeps the two tables spaced alike.
+     * Visible space between neighboring components in each section's table, both across a row and between rows.
      */
     private static final int COMPONENT_GAP = 16;
 
     /**
-     * Visible space above the first section, between sections, and below the last row, which keeps the dialog's spacing
-     * even throughout.
+     * Visible space above the first section, between sections, and below the last row.
      */
     private static final int SECTION_GAP = 24;
 
     /**
-     * Space a label's text leaves inside the component's bounds, which already counts toward a visible gap and is taken
-     * out of the inset beside it.
+     * Space a label's text leaves inside the component, which already counts toward a visible gap and is subtracted
+     * from the inset beside it.
      */
     private static final int INNER_PADDING = 2;
 

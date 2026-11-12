@@ -32,10 +32,13 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
  */
 public abstract class AbstractButton extends JButton {
 
-    private static final long serialVersionUID = -8040714399831618945L;
-
     private ButtonProperties buttonProperties;
     private transient LightweightTooltip lightweightTooltip;
+
+    /**
+     * Serialization version of the {@link AbstractButton} class.
+     */
+    private static final long serialVersionUID = -8040714399831618945L;
 
     /**
      * Default constructor for the {@link AbstractButton} class.

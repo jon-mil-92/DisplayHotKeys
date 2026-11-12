@@ -46,27 +46,27 @@ import com.dhk.model.FramePlacement;
 public class FrameUtil {
 
     /**
-     * Client-property key under which a frame's most recently cached graphics configuration is stored.
+     * Whether a native surface reclaim collection is running, so back to back refreshes never stack another one.
+     */
+    private static volatile boolean nativeReclaimInProgress;
+
+    /**
+     * Client property key that caches a frame's most recent graphics configuration.
      */
     private static final String CACHED_DISPLAY_CONFIGURATION_PROPERTY = FrameUtil.class.getName()
             + ".cachedDisplayConfiguration";
 
     /**
-     * Client-property key under which a frame's most recently cached working-area size is stored.
+     * Client property key that caches a frame's most recent working area size.
      */
     private static final String CACHED_WORKING_AREA_SIZE_PROPERTY = FrameUtil.class.getName()
             + ".cachedWorkingAreaSize";
 
     /**
-     * Refresh interval, in milliseconds, before refreshing the view so AWT finishes refreshing its own desktop metrics
-     * first so the refresh does not run against the transient working area.
+     * Delay before refreshing the view, which gives AWT time to update its desktop metrics so the refresh never reads a
+     * transient working area.
      */
     public static final int REFRESH_DELAY_MS = 400;
-
-    /**
-     * Guards against stacking native-surface reclaim collections when in-place refreshes arrive back to back.
-     */
-    private static volatile boolean nativeReclaimInProgress;
 
     /**
      * Default constructor for the {@link FrameUtil} class.

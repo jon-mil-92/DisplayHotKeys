@@ -29,8 +29,6 @@ import javax.swing.event.ChangeListener;
  */
 public class ThemeableToggleButton extends ThemeableButton {
 
-    private static final long serialVersionUID = -6579393126960989482L;
-
     private Icon onIdleIcon;
     private Icon offIdleIcon;
     private Icon onHoverIcon;
@@ -42,6 +40,11 @@ public class ThemeableToggleButton extends ThemeableButton {
     private Icon onDarkHeldIcon;
     private Icon offDarkHeldIcon;
     private boolean on;
+
+    /**
+     * Serialization version of the {@link ThemeableToggleButton} class.
+     */
+    private static final long serialVersionUID = -6579393126960989482L;
 
     /**
      * Constructor for the {@link ThemeableToggleButton} button class.

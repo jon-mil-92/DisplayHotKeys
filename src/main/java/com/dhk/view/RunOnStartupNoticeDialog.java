@@ -42,12 +42,12 @@ public class RunOnStartupNoticeDialog {
     private JFrame parentFrame;
 
     /**
-     * Message shown above the reason lines when a requested change could not be made.
+     * Message shown when a requested Run on Startup change could not be made.
      */
     private static final String FAILED_MESSAGE_TEXT = "Run on Startup could not be changed!";
 
     /**
-     * Message shown above the reason lines when the saved setting was corrected on launch rather than by a click.
+     * Message shown when the saved setting was corrected on launch rather than changed by a click.
      */
     private static final String CHANGED_MESSAGE_TEXT = "Run on Startup was changed to match the scheduled task!";
 
@@ -72,17 +72,17 @@ public class RunOnStartupNoticeDialog {
     private static final String ENABLE_REASON_LINE_2 = "and the startup folder could not be written to.";
 
     /**
-     * First reason line shown when the setting was corrected on launch, which both corrections open with.
+     * First reason line shown when the setting was corrected on launch, which both corrections share.
      */
     private static final String CHANGED_REASON_LINE_1 = "The task that starts the app upon login could not be";
 
     /**
-     * Second reason line shown when the setting was turned on because that task could not be turned off.
+     * Second reason line shown when the setting was turned on because the task could not be turned off.
      */
     private static final String CHANGED_ON_REASON_LINE_2 = "turned off without administrator rights.";
 
     /**
-     * Second reason line shown when the setting was turned off because that task could not be created.
+     * Second reason line shown when the setting was turned off because the task could not be created.
      */
     private static final String CHANGED_OFF_REASON_LINE_2 = "created without administrator rights.";
 

@@ -37,42 +37,42 @@ import java.util.regex.Pattern;
 public class VersionRetriever {
 
     /**
-     * Sentinel returned when a version cannot be resolved.
+     * Reused across lookups because building one per call orphans its selector thread and connection pool.
+     */
+    private static HttpClient httpClient;
+
+    /**
+     * Last resolved latest version, or null until a lookup succeeds.
+     */
+    private static volatile String cachedLatestVersion;
+
+    /**
+     * Monotonic time the version was cached, which a time zone or clock change cannot shift.
+     */
+    private static volatile long cachedAtNanos;
+
+    /**
+     * Version text returned when a version cannot be resolved.
      */
     private static final String UNKNOWN_VERSION = "Unknown";
 
     /**
-     * GitHub REST endpoint that returns the latest release for the DisplayHotKeys repository.
+     * GitHub API endpoint that returns the latest release of the application.
      */
     private static final URI LATEST_RELEASE_URI = URI
             .create("https://api.github.com/repos/jon-mil-92/DisplayHotKeys/releases/latest");
 
     /**
-     * Timeout applied to both establishing the connection and completing the request. The connect and request timeouts
-     * compose, so this is kept short enough that an unreachable endpoint still resolves the label quickly.
+     * Applies to both the connection and the request, which add together, so it stays short enough for an unreachable
+     * endpoint to resolve the label quickly.
      */
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
 
     /**
-     * Client reused across lookups, since building one per call orphans its selector thread and connection pool.
-     */
-    private static HttpClient httpClient;
-
-    /**
-     * Lifetime of a cached version. Unauthenticated GitHub API requests are limited to 60 per hour per address, so
-     * repeat lookups are served from the cache rather than spending that budget.
+     * Lifetime of a cached version, which keeps repeat lookups within GitHub's limit of 60 unauthenticated requests per
+     * hour.
      */
     private static final long CACHE_TTL_NANOS = Duration.ofMinutes(5).toNanos();
-
-    /**
-     * Last successfully resolved version, or null when nothing has resolved yet.
-     */
-    private static volatile String cachedLatestVersion;
-
-    /**
-     * Monotonic timestamp of the cached version, immune to the wall clock jumping under a time zone or NTP change.
-     */
-    private static volatile long cachedAtNanos;
 
     /**
      * Extracts the untrusted tag_name value from the release JSON, bounded to a safe length.
@@ -80,7 +80,8 @@ public class VersionRetriever {
     private static final Pattern TAG_NAME_PATTERN = Pattern.compile("\"tag_name\"\\s*:\\s*\"([^\"\\\\]{1,32})\"");
 
     /**
-     * Strict allow-list for a valid version tag, guaranteeing the returned value is a sanitized "vMAJOR.MINOR.PATCH".
+     * Strict allow-list that the untrusted tag must match, so the returned version is always a sanitized
+     * vMAJOR.MINOR.PATCH.
      */
     private static final Pattern VERSION_PATTERN = Pattern.compile("v\\d{1,4}\\.\\d{1,4}\\.\\d{1,4}");
 

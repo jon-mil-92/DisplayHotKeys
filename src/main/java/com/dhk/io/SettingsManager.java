@@ -52,12 +52,14 @@ public class SettingsManager {
     private Map<String, DisplayMode[]> portraitDisplayModesMap;
     private File settingsFile;
 
-    // The max number of visible slots in the application frame
+    /**
+     * Most slots each display can show in the slot table.
+     */
     private static final int MAX_NUM_OF_SLOTS = 12;
 
     /**
-     * Section of the settings file holding the Display Info hot key, which uses the same property names as a slot's hot
-     * key so both are read, saved, and validated the same way.
+     * Settings file section for the Display Info hot key, which reuses the property names of a slot's hot key so both
+     * are read, saved, and validated alike.
      */
     static final String DISPLAY_INFO_HOT_KEY_SECTION = "DisplayInfoHotKey";
 

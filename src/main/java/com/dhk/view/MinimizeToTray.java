@@ -47,7 +47,7 @@ public class MinimizeToTray {
     private FlatSVGIcon trayIcon;
 
     /**
-     * Tooltip text shown for the tray icon.
+     * Tooltip text of the notification area icon.
      */
     private static final String TRAY_NAME = "Display Hot Keys";
 

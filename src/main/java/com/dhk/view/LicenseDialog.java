@@ -40,7 +40,14 @@ public class LicenseDialog {
 
     private Window owner;
 
+    /**
+     * Resource path of the license text shown in the dialog.
+     */
     private static final String LICENSE_RESOURCE = "/LICENSE.txt";
+
+    /**
+     * Text shown in place of the license when its resource cannot be read.
+     */
     private static final String UNAVAILABLE_TEXT = "License text is unavailable.";
 
     /**

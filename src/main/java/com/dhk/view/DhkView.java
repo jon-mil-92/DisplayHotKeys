@@ -104,11 +104,14 @@ public class DhkView implements IView {
     private int gridYPosForSlotInPanel;
     private boolean startMinimizedToTray;
 
+    /**
+     * Number of components in each slot row of the main panel.
+     */
     private static final int NUM_OF_SLOT_COMPONENTS = 11;
 
     /**
-     * Row of the main panel holding the first slot, below the top controls, the slot table separator, and the slot
-     * table headers.
+     * Main panel row of the first slot, which sits below the top controls, the slot table separator, and the column
+     * headers.
      */
     private static final int FIRST_SLOT_GRID_Y = 3;
 
@@ -123,27 +126,27 @@ public class DhkView implements IView {
     static final String[] SCALING_MODES = new String[]{"Preserved", "Stretched", "Centered"};
 
     /**
-     * Text of the slot table's resolution column header.
+     * Text of the slot table's resolution column header, which the display info overlay reuses as a setting label.
      */
     static final String RESOLUTION_HEADER_TEXT = "Resolution";
 
     /**
-     * Text of the slot table's refresh rate column header.
+     * Text of the slot table's refresh rate column header, which the display info overlay reuses as a setting label.
      */
     static final String REFRESH_RATE_HEADER_TEXT = "Refresh Rate";
 
     /**
-     * Text of the slot table's DPI scale column header.
+     * Text of the slot table's DPI scale column header, which the display info overlay reuses as a setting label.
      */
     static final String DPI_SCALE_HEADER_TEXT = "DPI Scale";
 
     /**
-     * Text of the slot table's scaling mode column header.
+     * Text of the slot table's scaling mode column header, which the display info overlay reuses as a setting label.
      */
     static final String SCALING_MODE_HEADER_TEXT = "Scaling Mode";
 
     /**
-     * Text of the slot table's orientation column header.
+     * Text of the slot table's orientation column header, which the display info overlay reuses as a setting label.
      */
     static final String ORIENTATION_HEADER_TEXT = "Orientation";
 

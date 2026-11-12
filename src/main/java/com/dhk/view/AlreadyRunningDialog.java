@@ -39,7 +39,7 @@ import javax.swing.SwingConstants;
 public class AlreadyRunningDialog {
 
     /**
-     * Message reporting that another instance already holds the single instance lock.
+     * Message shown when another instance already holds the single instance lock.
      */
     private static final String MESSAGE_TEXT = "Display Hot Keys is already running!";
 

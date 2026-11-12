@@ -50,65 +50,65 @@ public class DisplayInfoOverlayView {
     private DisplayInfoOverlay displayInfoOverlay;
 
     /**
-     * Whether the native layer has registered the Roboto fonts, which it keeps for the life of the process, so the font
-     * files are only read until then and never held in memory.
+     * Whether the native layer holds the Roboto fonts, which it keeps for the life of the process, so the font files
+     * are only read until then.
      */
     private static boolean robotoFontsRegistered;
 
     /**
-     * Label of each setting line, which is the matching slot table column header so the two always read the same.
+     * Label of each setting line, which reuses the matching slot table column header.
      */
     private static final String[] SETTING_LABELS = {DhkView.RESOLUTION_HEADER_TEXT, DhkView.REFRESH_RATE_HEADER_TEXT,
             DhkView.DPI_SCALE_HEADER_TEXT, DhkView.SCALING_MODE_HEADER_TEXT, DhkView.ORIENTATION_HEADER_TEXT};
 
     /**
-     * Names of the regular and bold Roboto font files, which sit beside the class that installs the font.
+     * Regular and bold Roboto font files, read from beside the class that installs the font.
      */
     private static final String[] ROBOTO_FONT_FILES = {"Roboto-Regular.ttf", "Roboto-Bold.ttf"};
 
     /**
-     * Value shown for a setting that could not be read.
+     * Text shown for a setting that could not be read.
      */
     private static final String UNREADABLE_VALUE = "-";
 
     /**
-     * Largest difference (Hz) at which an applied refresh rate is taken to be a rate the slot table lists, since the
-     * rational Windows reports for a rate can differ slightly from the one the table holds.
+     * Largest difference at which an applied refresh rate matches one the slot table lists, since the rational Windows
+     * reports can differ slightly from the table's.
      */
     private static final double REFRESH_RATE_MATCH_TOLERANCE_HZ = 0.01;
 
     /**
-     * How long (ms) the panels stay visible after the hot key is pressed.
+     * Time the panels stay visible after the hot key is pressed.
      */
     private static final int DISPLAY_DURATION_MS = 5000;
 
     /**
-     * Opacity of the panels, from 0 (invisible) to 255 (opaque).
+     * Opacity of the panels, from 0 for invisible to 255 for opaque.
      */
     private static final int OVERLAY_OPACITY = 224;
 
     /**
-     * Size of the header line's font relative to the setting lines' font.
+     * Size of the header line font relative to the setting line font.
      */
     private static final float HEADER_FONT_SCALE = 1.15f;
 
     /**
-     * Space (unscaled px) between a panel's edges and its text.
+     * Unscaled space between a panel's edges and its text.
      */
     private static final int PADDING = 12;
 
     /**
-     * Space (unscaled px) between the header line and the first setting line.
+     * Unscaled space between the header line and the first setting line.
      */
     private static final int HEADER_GAP = 6;
 
     /**
-     * Space (unscaled px) between consecutive setting lines.
+     * Unscaled space between consecutive setting lines.
      */
     private static final int LINE_GAP = 4;
 
     /**
-     * Space (unscaled px) between a panel and the edges of its display's work area.
+     * Unscaled space between a panel and the edges of its display's work area.
      */
     private static final int MARGIN = 16;
 

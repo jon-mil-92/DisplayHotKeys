@@ -30,11 +30,14 @@ import javax.swing.Icon;
  */
 public class Button extends AbstractButton {
 
-    private static final long serialVersionUID = 7244979033277293460L;
-
     private Icon idleIcon;
     private Icon hoverIcon;
     private Icon heldIcon;
+
+    /**
+     * Serialization version of the {@link Button} class.
+     */
+    private static final long serialVersionUID = 7244979033277293460L;
 
     /**
      * Constructor for the {@link Button} class.

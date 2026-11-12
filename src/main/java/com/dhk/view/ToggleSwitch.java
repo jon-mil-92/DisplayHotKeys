@@ -39,21 +39,24 @@ import javax.swing.UIManager;
  */
 public class ToggleSwitch extends JToggleButton {
 
+    /**
+     * Serialization version of the {@link ToggleSwitch} class.
+     */
     private static final long serialVersionUID = 1L;
 
     /**
-     * Width of the switch's track.
+     * Width of the track the thumb slides along.
      */
     private static final int TRACK_WIDTH = 40;
 
     /**
-     * Height of the switch's track, which also sets the roundness of its ends.
+     * Height of the track, which also sets the roundness of its ends.
      */
     private static final int TRACK_HEIGHT = 20;
 
     /**
-     * Space kept clear around the track on every side. At fractional display scaling the switch's bounds can fall
-     * between device pixels, and the clip rounded to whole pixels would cut off a track drawn flush against them.
+     * Space kept clear around the track, since at fractional display scaling the bounds can fall between device pixels
+     * and the whole-pixel clip would cut off a flush track.
      */
     public static final int EDGE_MARGIN = 1;
 
@@ -63,7 +66,7 @@ public class ToggleSwitch extends JToggleButton {
     private static final int THUMB_INSET = 4;
 
     /**
-     * Width of the outline drawn around the track while the switch is off.
+     * Stroke width of the outline drawn around the track while the switch is off.
      */
     private static final float OUTLINE_WIDTH = 1f;
 

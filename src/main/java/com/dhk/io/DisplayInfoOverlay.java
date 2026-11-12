@@ -28,8 +28,7 @@ package com.dhk.io;
 public class DisplayInfoOverlay {
 
     /**
-     * Whether the native library loaded, so showing and hiding quietly do nothing instead of throwing when it is
-     * missing.
+     * Whether the native library loaded, so showing and hiding do nothing instead of throwing when it is missing.
      */
     private static boolean libraryLoaded;
 
@@ -54,12 +53,12 @@ public class DisplayInfoOverlay {
     public static final int OVERLAY_COLOR_COUNT = 3;
 
     /**
-     * Index of the font size of the setting lines in the metrics handed to {@link #show}.
+     * Index of the setting line font size in the metrics handed to {@link #show}.
      */
     public static final int OVERLAY_METRIC_FONT_SIZE = 0;
 
     /**
-     * Index of the font size of the header line in the metrics handed to {@link #show}.
+     * Index of the header line font size in the metrics handed to {@link #show}.
      */
     public static final int OVERLAY_METRIC_HEADER_FONT_SIZE = 1;
 
@@ -90,8 +89,8 @@ public class DisplayInfoOverlay {
     public static final int OVERLAY_METRIC_COUNT = 6;
 
     /**
-     * Number of ints per panel in the anchor points handed to {@link #show}, which are the desktop x and y coordinates
-     * of a point on the display the panel belongs to.
+     * Number of ints per panel in the anchor points handed to {@link #show}, which are the desktop x and y of a point
+     * on the panel's display.
      */
     public static final int ANCHOR_FIELD_COUNT = 2;
 
