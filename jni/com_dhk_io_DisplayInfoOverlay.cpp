@@ -44,7 +44,8 @@ static void runOverlayThread();
 static LRESULT CALLBACK handleControlEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData);
 static void showPanels();
 static SIZE layoutPanel(const DisplayInfoOverlayDefinition &definition, size_t panelIndex, DisplayInfoPanel &panel);
-static HFONT createPanelFont(const DisplayInfoOverlayDefinition &definition, UINT dpi, bool header);
+static DisplayInfoPanelFonts createPanelFonts(const DisplayInfoOverlayDefinition &definition, UINT dpi);
+static SIZE measureTexts(HDC measureDC, const vector<wstring> &texts, size_t firstIndex, size_t count);
 static int scaleMetric(int metric, UINT dpi);
 static void stylePanelWindow(const DisplayInfoOverlayDefinition &definition, DisplayInfoPanel &panel);
 static void hidePanels();
@@ -182,7 +183,7 @@ static constexpr int OVERLAY_METRIC_HEADER_FONT_SIZE = com_dhk_io_DisplayInfoOve
 static constexpr int OVERLAY_METRIC_PADDING = com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_PADDING;
 
 /**
- * Index of the gap below the header line in the metrics the caller supplies.
+ * Index of the gap on each side of the separator beneath the header line in the metrics the caller supplies.
  */
 static constexpr int OVERLAY_METRIC_HEADER_GAP = com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_HEADER_GAP;
 
@@ -195,6 +196,11 @@ static constexpr int OVERLAY_METRIC_LINE_GAP = com_dhk_io_DisplayInfoOverlay_OVE
  * Index of the work area margin in the metrics the caller supplies.
  */
 static constexpr int OVERLAY_METRIC_MARGIN = com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_MARGIN;
+
+/**
+ * Index of the gap between the label column and the value column in the metrics the caller supplies.
+ */
+static constexpr int OVERLAY_METRIC_COLUMN_GAP = com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_COLUMN_GAP;
 
 /**
  * Number of metrics the caller supplies.
@@ -212,6 +218,11 @@ static constexpr int ANCHOR_FIELD_COUNT = com_dhk_io_DisplayInfoOverlay_ANCHOR_F
 static constexpr jint MAX_OPACITY = 255;
 
 /**
+ * Unscaled thickness of the line separating a panel's header line from its setting lines.
+ */
+static constexpr int SEPARATOR_THICKNESS = 1;
+
+/**
  * Shows one panel per header in the top-right corner of its display, replacing any panels already showing and
  * restarting the time they stay visible. Everything is copied here, so the panels never call back for any of it.
  *
@@ -221,10 +232,10 @@ static constexpr jint MAX_OPACITY = 255;
  *            - The calling object instance
  * @param headers
  *            - The bold first line of each panel
- * @param lines
- *            - The setting lines of every panel, panel by panel, with linesPerPanel lines for each header
- * @param linesPerPanel
- *            - The number of setting lines in each panel
+ * @param labels
+ *            - The label of each setting line, shared by every panel, which needs at least one label
+ * @param values
+ *            - The value of each setting line, panel by panel, with one value per label for each header
  * @param anchorPoints
  *            - The desktop x and y coordinates of a point on each panel's display, in physical pixels
  * @param overlayColors
@@ -244,21 +255,21 @@ static constexpr jint MAX_OPACITY = 255;
  * @return Whether the panels were accepted and any supplied fonts are registered
  */
 extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeShow(
-    JNIEnv *env, jobject obj, jobjectArray headers, jobjectArray lines, jint linesPerPanel, jintArray anchorPoints,
+    JNIEnv *env, jobject obj, jobjectArray headers, jobjectArray labels, jobjectArray values, jintArray anchorPoints,
     jintArray overlayColors, jintArray overlayMetrics, jstring fontFamily, jobjectArray fontFiles, jint opacity,
     jint durationMs) {
     (void) obj;
 
-    if (!headers || !lines || !anchorPoints || !overlayColors || !overlayMetrics || linesPerPanel < 0 ||
-        durationMs <= 0 || env->GetArrayLength(overlayColors) < OVERLAY_COLOR_COUNT ||
+    if (!headers || !labels || !values || !anchorPoints || !overlayColors || !overlayMetrics || durationMs <= 0 ||
+        env->GetArrayLength(labels) == 0 || env->GetArrayLength(overlayColors) < OVERLAY_COLOR_COUNT ||
         env->GetArrayLength(overlayMetrics) < OVERLAY_METRIC_COUNT) {
         return JNI_FALSE;
     }
 
     jsize panelCount = env->GetArrayLength(headers);
 
-    // Every panel needs its full set of lines and an anchor point, so short arrays are rejected rather than misread
-    if (env->GetArrayLength(lines) < panelCount * linesPerPanel ||
+    // Every panel needs a value per label and an anchor point, so short arrays are rejected rather than misread
+    if (env->GetArrayLength(values) < panelCount * env->GetArrayLength(labels) ||
         env->GetArrayLength(anchorPoints) < panelCount * ANCHOR_FIELD_COUNT) {
         return JNI_FALSE;
     }
@@ -276,8 +287,8 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeS
 
     shared_ptr<DisplayInfoOverlayDefinition> definition = make_shared<DisplayInfoOverlayDefinition>();
     definition->headers = readWideStrings(env, headers);
-    definition->lines = readWideStrings(env, lines);
-    definition->linesPerPanel = linesPerPanel;
+    definition->labels = readWideStrings(env, labels);
+    definition->values = readWideStrings(env, values);
 
     for (jsize panelIndex = 0; panelIndex < panelCount; panelIndex++) {
         definition->anchorPoints.push_back(
@@ -293,6 +304,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeS
     definition->padding = metrics[OVERLAY_METRIC_PADDING];
     definition->headerGap = metrics[OVERLAY_METRIC_HEADER_GAP];
     definition->lineGap = metrics[OVERLAY_METRIC_LINE_GAP];
+    definition->columnGap = metrics[OVERLAY_METRIC_COLUMN_GAP];
     definition->margin = metrics[OVERLAY_METRIC_MARGIN];
     definition->opacity = (BYTE) (opacity < 0 ? 0 : (opacity > MAX_OPACITY ? MAX_OPACITY : opacity));
     definition->durationMs = (UINT) durationMs;
@@ -725,87 +737,126 @@ static void showPanels() {
 }
 
 /**
- * Measures a panel's header and setting lines in fonts scaled for the panel's display, storing the line heights the
- * panel paints with.
+ * Lays out a panel in fonts scaled for its display, storing every position the panel paints at so painting never has
+ * to measure or scale anything.
  *
  * @param definition
  *            - The definition of the panels being shown
  * @param panelIndex
- *            - The index of the panel to measure
+ *            - The index of the panel to lay out
  * @param panel
- *            - The panel to measure, whose DPI is already set and whose line heights are filled in
+ *            - The panel to lay out, whose DPI is already set and whose positions are filled in
  *
  * @return The size of the panel's window, in physical pixels
  */
 static SIZE layoutPanel(const DisplayInfoOverlayDefinition &definition, size_t panelIndex, DisplayInfoPanel &panel) {
+    DisplayInfoPanelFonts fonts = createPanelFonts(definition, panel.dpi);
     HDC measureDC = CreateCompatibleDC(NULL);
-    HFONT headerFont = createPanelFont(definition, panel.dpi, true);
-    HFONT lineFont = createPanelFont(definition, panel.dpi, false);
-    HGDIOBJ previousFont = SelectObject(measureDC, headerFont);
-    TEXTMETRICW textMetrics = {};
-    SIZE textSize = {};
-    const wstring &header = definition.headers[panelIndex];
+    size_t lineCount = definition.labels.size();
 
-    GetTextMetricsW(measureDC, &textMetrics);
-    GetTextExtentPoint32W(measureDC, header.c_str(), (int) header.size(), &textSize);
-    panel.headerHeight = textMetrics.tmHeight;
+    HGDIOBJ previousFont = SelectObject(measureDC, fonts.headerFont);
+    SIZE headerSize = measureTexts(measureDC, definition.headers, panelIndex, 1);
 
-    LONG contentWidth = textSize.cx;
+    SelectObject(measureDC, fonts.labelFont);
+    SIZE labelColumnSize = measureTexts(measureDC, definition.labels, 0, lineCount);
 
-    SelectObject(measureDC, lineFont);
-    GetTextMetricsW(measureDC, &textMetrics);
-    panel.lineHeight = textMetrics.tmHeight;
-
-    for (int lineIndex = 0; lineIndex < definition.linesPerPanel; lineIndex++) {
-        const wstring &line = definition.lines[panelIndex * definition.linesPerPanel + lineIndex];
-
-        GetTextExtentPoint32W(measureDC, line.c_str(), (int) line.size(), &textSize);
-
-        if (textSize.cx > contentWidth) {
-            contentWidth = textSize.cx;
-        }
-    }
+    SelectObject(measureDC, fonts.valueFont);
+    SIZE valueColumnSize = measureTexts(measureDC, definition.values, panelIndex * lineCount, lineCount);
 
     SelectObject(measureDC, previousFont);
-    DeleteObject(headerFont);
-    DeleteObject(lineFont);
     DeleteDC(measureDC);
 
+    // The bold value font can stand taller than the label font, so each line fits whichever is taller
+    LONG lineHeight = valueColumnSize.cy > labelColumnSize.cy ? valueColumnSize.cy : labelColumnSize.cy;
     int padding = scaleMetric(definition.padding, panel.dpi);
-    int lineCount = definition.linesPerPanel;
-    int linesHeight = 0;
+    int headerGap = scaleMetric(definition.headerGap, panel.dpi);
+    LONG valueColumnOffset = labelColumnSize.cx + scaleMetric(definition.columnGap, panel.dpi);
+    LONG contentWidth = valueColumnOffset + valueColumnSize.cx;
 
-    if (lineCount > 0) {
-        linesHeight = scaleMetric(definition.headerGap, panel.dpi) + lineCount * panel.lineHeight +
-                      (lineCount - 1) * scaleMetric(definition.lineGap, panel.dpi);
+    if (headerSize.cx > contentWidth) {
+        contentWidth = headerSize.cx;
     }
 
-    return {contentWidth + 2 * padding, panel.headerHeight + linesHeight + 2 * padding};
+    LONG separatorTop = padding + headerSize.cy + headerGap;
+
+    panel.headerOrigin = {padding, padding};
+    panel.separatorRect = {padding, separatorTop, padding + contentWidth,
+                           separatorTop + scaleMetric(SEPARATOR_THICKNESS, panel.dpi)};
+    panel.firstLineTop = panel.separatorRect.bottom + headerGap;
+    panel.lineSpacing = lineHeight + scaleMetric(definition.lineGap, panel.dpi);
+    panel.valueColumnLeft = padding + valueColumnOffset;
+
+    // The last setting line ends one line height below its top, without the gap that follows every other line
+    LONG contentBottom = panel.firstLineTop + ((LONG) lineCount - 1) * panel.lineSpacing + lineHeight;
+
+    return {contentWidth + 2 * padding, contentBottom + padding};
 }
 
 /**
- * Creates the font a panel draws its header or setting lines in, sized for the given DPI.
+ * Creates the header, label, and value fonts a panel draws its text in, sized for the given DPI.
  *
  * @param definition
  *            - The definition of the panels being shown
  * @param dpi
  *            - The DPI of the display the panel sits on
- * @param header
- *            - Whether to create the bold header font rather than the setting lines' font
  *
- * @return The created font, which the caller deletes
+ * @return The created fonts, which are deleted when they go out of scope
  */
-static HFONT createPanelFont(const DisplayInfoOverlayDefinition &definition, UINT dpi, bool header) {
+static DisplayInfoPanelFonts createPanelFonts(const DisplayInfoOverlayDefinition &definition, UINT dpi) {
     LOGFONTW logFont = {};
 
-    // A negative height requests the font size itself rather than the taller line height, matching the size supplied
-    logFont.lfHeight = -scaleMetric(header ? definition.headerFontSize : definition.fontSize, dpi);
-    logFont.lfWeight = header ? FW_BOLD : FW_NORMAL;
     logFont.lfCharSet = DEFAULT_CHARSET;
     logFont.lfQuality = CLEARTYPE_QUALITY;
     wcsncpy_s(logFont.lfFaceName, definition.fontFamily.c_str(), _TRUNCATE);
 
-    return CreateFontIndirectW(&logFont);
+    // A negative height requests the font size itself rather than the taller line height, matching the size supplied
+    logFont.lfHeight = -scaleMetric(definition.fontSize, dpi);
+    logFont.lfWeight = FW_NORMAL;
+    HFONT labelFont = CreateFontIndirectW(&logFont);
+
+    logFont.lfWeight = FW_BOLD;
+    HFONT valueFont = CreateFontIndirectW(&logFont);
+
+    logFont.lfHeight = -scaleMetric(definition.headerFontSize, dpi);
+    HFONT headerFont = CreateFontIndirectW(&logFont);
+
+    return {headerFont, labelFont, valueFont};
+}
+
+/**
+ * Measures a run of texts in the font selected into the given device context, where each text's height is the font's
+ * full line height whatever characters it holds.
+ *
+ * @param measureDC
+ *            - The device context holding the font to measure in
+ * @param texts
+ *            - The texts holding the run to measure
+ * @param firstIndex
+ *            - The index of the first text in the run
+ * @param count
+ *            - The number of texts in the run
+ *
+ * @return The width of the widest text and the height of the tallest text in the run, in physical pixels
+ */
+static SIZE measureTexts(HDC measureDC, const vector<wstring> &texts, size_t firstIndex, size_t count) {
+    SIZE runSize = {};
+    SIZE textSize = {};
+
+    for (size_t textIndex = firstIndex; textIndex < firstIndex + count; textIndex++) {
+        const wstring &text = texts[textIndex];
+
+        GetTextExtentPoint32W(measureDC, text.c_str(), (int) text.size(), &textSize);
+
+        if (textSize.cx > runSize.cx) {
+            runSize.cx = textSize.cx;
+        }
+
+        if (textSize.cy > runSize.cy) {
+            runSize.cy = textSize.cy;
+        }
+    }
+
+    return runSize;
 }
 
 /**
@@ -897,8 +948,8 @@ static LRESULT CALLBACK handlePanelEvents(HWND windowHandle, UINT message, WPARA
 }
 
 /**
- * Paints a panel's background, its border where the system does not draw one, its bold header line, and its setting
- * lines beneath, using the layout measured when the panel was shown.
+ * Paints a panel's background, its border where the system does not draw one, its bold header line with a separator
+ * beneath, and its setting lines as labels beside bold values, at the positions laid out when the panel was shown.
  *
  * @param windowHandle
  *            - The panel window to paint
@@ -915,10 +966,10 @@ static void paintPanel(HWND windowHandle) {
 
     const DisplayInfoOverlayDefinition &definition = *shownDefinition;
     const DisplayInfoPanel &panel = panels[panelIndex];
-    HFONT headerFont = createPanelFont(definition, panel.dpi, true);
-    HFONT lineFont = createPanelFont(definition, panel.dpi, false);
+    DisplayInfoPanelFonts fonts = createPanelFonts(definition, panel.dpi);
     HBRUSH colorBrush = (HBRUSH) GetStockObject(DC_BRUSH);
-    int padding = scaleMetric(definition.padding, panel.dpi);
+    const wstring &header = definition.headers[panelIndex];
+    size_t lineCount = definition.labels.size();
     RECT clientRect = {};
 
     GetClientRect(windowHandle, &clientRect);
@@ -926,36 +977,31 @@ static void paintPanel(HWND windowHandle) {
 
     SetDCBrushColor(paintDC, definition.backgroundColor);
     FillRect(paintDC, &clientRect, colorBrush);
+    SetDCBrushColor(paintDC, definition.borderColor);
+    FillRect(paintDC, &panel.separatorRect, colorBrush);
 
     if (panel.drawFrame) {
-        SetDCBrushColor(paintDC, definition.borderColor);
         FrameRect(paintDC, &clientRect, colorBrush);
     }
 
     SetBkMode(paintDC, TRANSPARENT);
     SetTextColor(paintDC, definition.foregroundColor);
-    SelectObject(paintDC, headerFont);
+    SelectObject(paintDC, fonts.headerFont);
+    TextOutW(paintDC, panel.headerOrigin.x, panel.headerOrigin.y, header.c_str(), (int) header.size());
 
-    const wstring &header = definition.headers[panelIndex];
-    RECT textRect = {padding, padding, clientRect.right - padding, padding + panel.headerHeight};
-    UINT textFormat = DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOPREFIX;
+    for (size_t lineIndex = 0; lineIndex < lineCount; lineIndex++) {
+        const wstring &label = definition.labels[lineIndex];
+        const wstring &value = definition.values[panelIndex * lineCount + lineIndex];
+        LONG lineTop = panel.firstLineTop + (LONG) lineIndex * panel.lineSpacing;
 
-    DrawTextW(paintDC, header.c_str(), (int) header.size(), &textRect, textFormat);
-    SelectObject(paintDC, lineFont);
-
-    textRect.top = textRect.bottom + scaleMetric(definition.headerGap, panel.dpi);
-
-    for (int lineIndex = 0; lineIndex < definition.linesPerPanel; lineIndex++) {
-        const wstring &line = definition.lines[panelIndex * definition.linesPerPanel + lineIndex];
-
-        textRect.bottom = textRect.top + panel.lineHeight;
-        DrawTextW(paintDC, line.c_str(), (int) line.size(), &textRect, textFormat);
-        textRect.top = textRect.bottom + scaleMetric(definition.lineGap, panel.dpi);
+        SelectObject(paintDC, fonts.labelFont);
+        TextOutW(paintDC, panel.headerOrigin.x, lineTop, label.c_str(), (int) label.size());
+        SelectObject(paintDC, fonts.valueFont);
+        TextOutW(paintDC, panel.valueColumnLeft, lineTop, value.c_str(), (int) value.size());
     }
 
+    // Restoring the device context deselects the fonts, so they can be deleted when they go out of scope
     RestoreDC(paintDC, -1);
-    DeleteObject(headerFont);
-    DeleteObject(lineFont);
     EndPaint(windowHandle, &paint);
 }
 
