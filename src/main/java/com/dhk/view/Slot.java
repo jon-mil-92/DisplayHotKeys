@@ -98,7 +98,7 @@ public class Slot {
 
         slotDpiScalePercentages = new CenteredComboBox<Integer>(dpiScalePercentages);
         slotDpiScalePercentages.setItemTextSuffix(DhkView.DPI_SCALE_SUFFIX);
-        slotDpiScalePercentages.setPreferredSize(new Dimension(86, 28));
+        slotDpiScalePercentages.setPreferredSize(new Dimension(88, 28));
 
         slotScalingModes = new CenteredComboBox<String>(scalingModes);
         slotScalingModes.setPreferredSize(new Dimension(110, 28));
