@@ -1,21 +1,16 @@
 /*
- * The MIT License (MIT)
+ * Display Hot Keys
+ * Copyright © 2024-2026 Jonathan R. Miller
  *
- * Copyright © 2026 Jonathan R. Miller
+ * This program is free software: you can redistribute it and/or modify it under the terms of version 3 of the GNU
+ * General Public License as published by the Free Software Foundation, together with the additional terms under section
+ * 7 of that License in ADDITIONAL_TERMS.txt.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
- * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
- * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
  *
- * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
- * the Software.
- *
- * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
- * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
- * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * You should have received a copy of the GNU General Public License and the additional terms along with this program in
+ * LICENSE.txt and ADDITIONAL_TERMS.txt. If not, see <https://www.gnu.org/licenses/>.
  */
 package com.dhk.view;
 
@@ -29,7 +24,7 @@ import javax.swing.SwingUtilities;
 
 import com.dhk.io.SystemTrayIcon;
 import com.dhk.model.DhkModel;
-import com.dhk.utility.FrameUtil;
+import com.dhk.utility.WindowUtil;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 
 /**
@@ -43,6 +38,7 @@ public class MinimizeToTray {
     private DhkModel model;
     private DhkView view;
     private Consumer<Runnable> settingsDialogShower;
+    private Consumer<Runnable> aboutDialogShower;
     private SystemTrayIcon systemTrayIcon;
     private FlatSVGIcon trayIcon;
 
@@ -62,12 +58,15 @@ public class MinimizeToTray {
      *            - The icon resource path for the tray icon
      * @param settingsDialogShower
      *            - The action that shows the "Additional Settings" dialog, given the action to run when it closes
+     * @param aboutDialogShower
+     *            - The action that shows the "About App" dialog, given the action to run when it closes
      */
     public MinimizeToTray(DhkModel model, DhkView view, String iconResourcePath,
-            Consumer<Runnable> settingsDialogShower) {
+            Consumer<Runnable> settingsDialogShower, Consumer<Runnable> aboutDialogShower) {
         this.model = model;
         this.view = view;
         this.settingsDialogShower = settingsDialogShower;
+        this.aboutDialogShower = aboutDialogShower;
 
         // Kept as a vector, so every icon size is rasterized from it rather than resampled from one fixed size
         trayIcon = new FlatSVGIcon(getClass().getResource(iconResourcePath));
@@ -177,7 +176,7 @@ public class MinimizeToTray {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                FrameUtil.refreshFrame(view.getFrame());
+                WindowUtil.refreshWindow(view.getFrame());
             }
         });
 
@@ -215,8 +214,8 @@ public class MinimizeToTray {
     private void aboutAction() {
         hideSystemTray();
 
-        // Build the dialog per show so it binds to the current frame, since every re-initialization replaces it
-        new AboutDialog(model, view).showAboutDialog(this::showSystemTray);
+        // The current controller builds the dialog per show, so it binds to the current frame and the shared input hook
+        aboutDialogShower.accept(this::showSystemTray);
     }
 
     /**

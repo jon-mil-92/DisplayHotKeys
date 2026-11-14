@@ -3,12 +3,13 @@
 $ErrorActionPreference = 'Stop'
 $distDir = $PSScriptRoot
 $projectDir = Split-Path $distDir -Parent
-$version = '4.3.1'
+$version = '4.4.0'
 $jarName = "DisplayHotKeys-$version.jar"
-$copyright = "Copyright $([char]0x00A9) 2026 Jonathan R. Miller"
+$copyright = "Copyright $([char]0x00A9) 2024-2026 Jonathan R. Miller"
 $inputDir = Join-Path $distDir 'input'
 $outDir = Join-Path $distDir 'jpackage-out'
 $appImage = Join-Path $outDir 'DisplayHotKeys'
+$installerLicense = Join-Path $outDir 'InstallerLicense.txt'
 $appExe = Join-Path $appImage 'DisplayHotKeys.exe'
 $manifest = Join-Path $distDir 'DisplayHotKeys.manifest'
 $icon = Join-Path $distDir 'dhk.ico'
@@ -20,11 +21,13 @@ $startLauncherName = 'DisplayHotKeysLauncher.exe'
 $startLauncher = Join-Path $distDir $startLauncherName
 $uninstallScript = Join-Path $distDir 'uninstall.bat'
 
-# The license lives at the project root while the readme and third-party licenses ship from the distribution folder
+# The license and its additional terms live at the project root, while the readme and third-party licenses ship from
+# the distribution folder
 $docFiles = @(
     (Join-Path $projectDir 'LICENSE.txt'),
+    (Join-Path $projectDir 'ADDITIONAL_TERMS.txt'),
     (Join-Path $distDir 'README.txt'),
-    (Join-Path $distDir 'AGPL_3.0_LICENSE_3RD_PARTY.txt'),
+    (Join-Path $distDir 'MIT_LICENSE_3RD_PARTY.txt'),
     (Join-Path $distDir 'APACHE_2.0_LICENSE_3RD_PARTY.txt')
 )
 
@@ -208,6 +211,16 @@ try {
     foreach ($docFile in $docFiles) {
         Copy-Item $docFile $appImage
     }
+
+    # The installer's license page shows a single file, so combine the additional terms and the license in the order
+    # the app's License dialog shows them. It sits beside the app image, so only the installer uses it, and its UTF-8
+    # BOM lets Inno Setup read any non-ASCII character correctly
+    Write-Host 'Combining the additional terms and the license for the installer...'
+
+    $additionalTerms = [IO.File]::ReadAllText((Join-Path $projectDir 'ADDITIONAL_TERMS.txt')).TrimEnd()
+    $license = [IO.File]::ReadAllText((Join-Path $projectDir 'LICENSE.txt'))
+    $utf8WithBom = New-Object System.Text.UTF8Encoding $true
+    [IO.File]::WriteAllText($installerLicense, $additionalTerms + "`r`n`r`n`r`n" + $license, $utf8WithBom)
 
     # The input folder is only staging for jpackage, so clean it up
     Remove-Item $inputDir -Recurse -Force

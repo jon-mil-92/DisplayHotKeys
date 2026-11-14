@@ -1,60 +1,46 @@
 /*
- * The MIT License (MIT)
+ * Display Hot Keys
+ * Copyright © 2024-2026 Jonathan R. Miller
  *
- * Copyright © 2026 Jonathan R. Miller
+ * This program is free software: you can redistribute it and/or modify it under the terms of version 3 of the GNU
+ * General Public License as published by the Free Software Foundation, together with the additional terms under section
+ * 7 of that License in ADDITIONAL_TERMS.txt.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
- * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
- * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
  *
- * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
- * the Software.
- *
- * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
- * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
- * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * You should have received a copy of the GNU General Public License and the additional terms along with this program in
+ * LICENSE.txt and ADDITIONAL_TERMS.txt. If not, see <https://www.gnu.org/licenses/>.
  */
 package com.dhk.view;
 
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
 
+import com.dhk.io.NativeInputHook;
 import com.dhk.model.DhkModel;
 import com.dhk.model.button.Button;
 import com.dhk.model.button.ButtonProperties;
 import com.dhk.utility.LightweightTooltip;
 
 /**
- * Shows an "Additional Settings" dialog on the AWT event dispatching thread. Creates a semi-transparent darkening panel
- * to overlay the parent frame.
+ * Shows an "Additional Settings" dialog over the darkened main frame, holding the settings that affect all displays.
  *
  * @author Jonathan R. Miller
  */
-public class AdditionalSettingsDialog implements IView {
+public class AdditionalSettingsDialog extends OverlayDialog {
 
     private DhkModel model;
-    private DhkView view;
     private GridBagLayout mainLayout;
     private GridBagConstraints mainConstraints;
     private JPanel settingsPanel;
@@ -83,11 +69,6 @@ public class AdditionalSettingsDialog implements IView {
     private HotKeyLabel displayInfoHotKey;
     private Button clearHotKeyButton;
     private JButton changeHotKeyButton;
-    private JDialog additionalSettingsDialog;
-    private JFrame parentFrame;
-    private Component originalGlassPane;
-    private Component darkeningGlassPane;
-    private boolean dialogClosed;
     private boolean controlsEnabled;
 
     /**
@@ -118,15 +99,13 @@ public class AdditionalSettingsDialog implements IView {
      *            - The model for the application
      * @param view
      *            - The view for the application
+     * @param nativeInputHook
+     *            - The shared native input hook used to re-fit the dialog after a cross-display drag (may be null)
      */
-    public AdditionalSettingsDialog(DhkModel model, DhkView view) {
+    public AdditionalSettingsDialog(DhkModel model, DhkView view, NativeInputHook nativeInputHook) {
+        super(view, nativeInputHook, DIALOG_TITLE);
         this.model = model;
-        this.view = view;
-        this.parentFrame = view.getFrame();
         this.controlsEnabled = true;
-
-        originalGlassPane = parentFrame.getGlassPane();
-        darkeningGlassPane = createDarkeningGlassPane();
 
         // Created up front so a controller can attach its listeners before the dialog is shown
         initComponents();
@@ -146,39 +125,24 @@ public class AdditionalSettingsDialog implements IView {
      *            - The action to run when the dialog closes (not required)
      */
     public void showAdditionalSettingsDialog(Runnable onCloseAction) {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                // Create the dialog and lay out the components created with this object
-                additionalSettingsDialog = new JDialog(parentFrame, DIALOG_TITLE, true);
-                additionalSettingsDialog.setResizable(false);
-
-                initPanels(additionalSettingsDialog);
-                initComponentListeners(additionalSettingsDialog, onCloseAction);
-                addComponents(additionalSettingsDialog);
-
-                view.getDefaultFocusComponent().requestFocusInWindow();
-                parentFrame.setGlassPane(darkeningGlassPane);
-                darkeningGlassPane.setVisible(true);
-
-                // Pack and position to fit the info text, then show
-                additionalSettingsDialog.pack();
-                additionalSettingsDialog.setLocationRelativeTo(parentFrame);
-                additionalSettingsDialog.setVisible(true);
-            }
-        });
-
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                getDefaultFocusComponent().requestFocusInWindow();
-            }
-        });
+        showDialog(onCloseAction);
     }
 
     @Override
     public Component getDefaultFocusComponent() {
         return optionsSectionLabel;
+    }
+
+    @Override
+    protected void buildContent(JDialog dialog, JPanel contentPanel) {
+        initPanels(contentPanel);
+        addComponents(contentPanel);
+    }
+
+    @Override
+    protected boolean canClose() {
+        // Ignore the title-bar close while a hot key is being recorded, so the recording always finishes
+        return controlsEnabled;
     }
 
     /**
@@ -236,18 +200,14 @@ public class AdditionalSettingsDialog implements IView {
     }
 
     /**
-     * Shows the given text as the Display Info hot key, resizing a showing dialog so the text always fits. The dialog
-     * keeps its location, so a dialog the user moved is not pulled back while a hot key is typed.
+     * Shows the given text as the Display Info hot key, resizing a showing dialog to fit the text within its display.
      *
      * @param hotKeyText
      *            - The text of the Display Info hot key
      */
     public void setDisplayInfoHotKeyText(String hotKeyText) {
         displayInfoHotKey.setText(hotKeyText);
-
-        if (additionalSettingsDialog != null && additionalSettingsDialog.isShowing()) {
-            additionalSettingsDialog.pack();
-        }
+        refitShowingDialog();
     }
 
     /**
@@ -267,10 +227,7 @@ public class AdditionalSettingsDialog implements IView {
     public void updateCloseToTrayAvailability() {
         closeToTraySwitch.setEnabled(controlsEnabled && model.isMinimizeToTray());
         closeToTrayNoteLabel.setVisible(!model.isMinimizeToTray());
-
-        if (additionalSettingsDialog != null && additionalSettingsDialog.isShowing()) {
-            additionalSettingsDialog.pack();
-        }
+        refitShowingDialog();
     }
 
     /**
@@ -299,12 +256,12 @@ public class AdditionalSettingsDialog implements IView {
     /**
      * Initializes panels for a additional settings dialog.
      *
-     * @param additionalSettingsDialog
-     *            - The additional settings dialog to initialize panels for
+     * @param contentPanel
+     *            - The dialog's scrolling content panel to lay the settings out in
      */
-    private void initPanels(JDialog additionalSettingsDialog) {
+    private void initPanels(JPanel contentPanel) {
         mainLayout = new GridBagLayout();
-        additionalSettingsDialog.setLayout(mainLayout);
+        contentPanel.setLayout(mainLayout);
 
         mainConstraints = new GridBagConstraints();
         mainConstraints.insets = new Insets(0, 20, 0, 20);
@@ -387,55 +344,12 @@ public class AdditionalSettingsDialog implements IView {
     }
 
     /**
-     * Initializes listeners for the components in a additional settings dialog.
-     *
-     * @param additionalSettingsDialog
-     *            - The additional settings dialog to initialize listeners for
-     * @param onCloseAction
-     *            - The action to run when the dialog closes (not required)
-     */
-    private void initComponentListeners(final JDialog additionalSettingsDialog, final Runnable onCloseAction) {
-        // Prevent default close and handle the title-bar close ourselves
-        additionalSettingsDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-        additionalSettingsDialog.addWindowListener(new WindowAdapter() {
-            // Take the foreground when opened from the tray, since the hidden owner cannot bring the dialog forward
-            @Override
-            public void windowOpened(WindowEvent e) {
-                additionalSettingsDialog.toFront();
-            }
-
-            @Override
-            public void windowClosing(WindowEvent e) {
-                // Ignore the title-bar close while a hot key is being recorded, so the recording always finishes
-                if (!controlsEnabled) {
-                    return;
-                }
-
-                closeDialog(additionalSettingsDialog, onCloseAction);
-            }
-
-            // A re-initialization disposes the parent frame, destroying this dialog without any close request
-            @Override
-            public void windowClosed(WindowEvent e) {
-                closeDialog(additionalSettingsDialog, onCloseAction);
-            }
-        });
-
-        additionalSettingsDialog.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent mousePressedEvent) {
-                getDefaultFocusComponent().requestFocusInWindow();
-            }
-        });
-    }
-
-    /**
      * Adds components to a additional settings dialog.
      *
-     * @param additionalSettingsDialog
-     *            - The additional settings dialog to add components to
+     * @param contentPanel
+     *            - The dialog's scrolling content panel to add the settings to
      */
-    private void addComponents(JDialog additionalSettingsDialog) {
+    private void addComponents(JPanel contentPanel) {
         // Each component takes part of the gap on each side, so neighboring components always sit the full gap apart
         int leadingInset = COMPONENT_GAP / 2;
         int trailingInset = COMPONENT_GAP - leadingInset;
@@ -513,7 +427,7 @@ public class AdditionalSettingsDialog implements IView {
 
         mainConstraints.gridx = 0;
         mainConstraints.gridy = 0;
-        additionalSettingsDialog.add(settingsPanel, mainConstraints);
+        contentPanel.add(settingsPanel, mainConstraints);
     }
 
     /**
@@ -548,55 +462,6 @@ public class AdditionalSettingsDialog implements IView {
         constraints.insets = insets;
 
         panel.add(component, constraints);
-    }
-
-    /**
-     * Closes a additional settings dialog.
-     *
-     * @param additionalSettingsDialog
-     *            - The additional settings dialog to close
-     * @param onCloseAction
-     *            - The action to run when the dialog closes (not required)
-     */
-    private void closeDialog(JDialog additionalSettingsDialog, Runnable onCloseAction) {
-        // Disposing fires the close path again, and the title-bar close can land after it has already run
-        if (dialogClosed) {
-            return;
-        }
-
-        dialogClosed = true;
-
-        getDefaultFocusComponent().requestFocusInWindow();
-
-        if (onCloseAction != null) {
-            onCloseAction.run();
-        }
-
-        darkeningGlassPane.setVisible(false);
-        parentFrame.setGlassPane(originalGlassPane);
-
-        additionalSettingsDialog.dispose();
-    }
-
-    /**
-     * Creates a semi-transparent darkening panel to overlay the parent frame.
-     *
-     * @return A semi-transparent darkening panel to overlay the parent frame
-     */
-    private Component createDarkeningGlassPane() {
-        JPanel darkeningPanel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics graphics) {
-                graphics.setColor(new Color(0, 0, 0, 110));
-                graphics.fillRect(0, 0, getWidth(), getHeight());
-            }
-        };
-
-        darkeningPanel.setOpaque(false);
-        darkeningPanel.addMouseListener(new MouseAdapter() {
-        });
-
-        return darkeningPanel;
     }
 
 }

@@ -1,21 +1,16 @@
 /*
- * The MIT License (MIT)
+ * Display Hot Keys
+ * Copyright © 2024-2026 Jonathan R. Miller
  *
- * Copyright © 2026 Jonathan R. Miller
+ * This program is free software: you can redistribute it and/or modify it under the terms of version 3 of the GNU
+ * General Public License as published by the Free Software Foundation, together with the additional terms under section
+ * 7 of that License in ADDITIONAL_TERMS.txt.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
- * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
- * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
  *
- * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
- * the Software.
- *
- * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
- * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
- * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * You should have received a copy of the GNU General Public License and the additional terms along with this program in
+ * LICENSE.txt and ADDITIONAL_TERMS.txt. If not, see <https://www.gnu.org/licenses/>.
  */
 package com.dhk.view;
 
@@ -26,14 +21,11 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Toolkit;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -53,7 +45,7 @@ import com.dhk.model.button.Button;
 import com.dhk.model.button.ButtonProperties;
 import com.dhk.model.button.ThemeableButton;
 import com.dhk.utility.DisplayModeUtil;
-import com.dhk.utility.FrameUtil;
+import com.dhk.utility.WindowUtil;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.ui.FlatUIUtils;
 
@@ -220,17 +212,10 @@ public class DhkView implements IView {
         initPanels();
         initComponents();
 
-        /*
-         * Scroll the content so every component stays reachable when the frame is capped to a small display; the
-         * borderless, as-needed scroll bars are invisible at normal resolutions where the whole frame fits
-         */
-        JScrollPane scrollPane = new JScrollPane(mainPanel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        scrollPane.getHorizontalScrollBar().setUnitIncrement(16);
+        // The content scrolls when the frame is capped to a small display, and a press on empty space clears focus
+        JScrollPane scrollPane = WindowUtil.setScrollingContent(newFrame, mainPanel,
+                () -> getDefaultFocusComponent().requestFocusInWindow());
 
-        newFrame.setContentPane(scrollPane);
         frame = newFrame;
         newFrame.pack();
 
@@ -238,33 +223,14 @@ public class DhkView implements IView {
          * Cap the packed size to the display's working area (reserving room for any needed scroll bars) before
          * computing the location, so the frame fits on screen immediately and the location uses the final size
          */
-        final Dimension workingAreaSize = FrameUtil.workingAreaSize(previousPlacement);
-        Dimension fittedFrameSize = FrameUtil.fitToWorkingArea(newFrame.getSize(), scrollPane, workingAreaSize);
-
-        if (!fittedFrameSize.equals(newFrame.getSize())) {
-            newFrame.setSize(fittedFrameSize);
-        }
+        final Dimension workingAreaSize = WindowUtil.workingAreaSize(previousPlacement);
+        WindowUtil.capToWorkingArea(newFrame, scrollPane, workingAreaSize);
 
         final Dimension expectedFrameSize = newFrame.getSize();
-        newFrame.setLocation(FrameUtil.computeLocation(previousPlacement, expectedFrameSize));
+        newFrame.setLocation(WindowUtil.computeLocation(previousPlacement, expectedFrameSize));
 
         // Set the taskbar icon
         newFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
-
-        /*
-         * Clear focus when clicking empty space. The listener is added to the panel and viewport, not only the frame,
-         * because the scroll pane consumes the press before it can bubble up to the frame
-         */
-        MouseAdapter clearFocusOnPress = new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent mousePressedEvent) {
-                getDefaultFocusComponent().requestFocusInWindow();
-            }
-        };
-
-        newFrame.addMouseListener(clearFocusOnPress);
-        mainPanel.addMouseListener(clearFocusOnPress);
-        scrollPane.getViewport().addMouseListener(clearFocusOnPress);
 
         /*
          * Make the frame visible after all components are added and the frame is packed. Showing the frame earlier can
@@ -275,13 +241,13 @@ public class DhkView implements IView {
             newFrame.setVisible(true);
 
             // Grow the frame to absorb any pack shortfall so scroll bars do not appear when the content fits on screen
-            SwingUtilities.invokeLater(() -> FrameUtil.settleScrollBars(newFrame, scrollPane, workingAreaSize));
+            SwingUtilities.invokeLater(() -> WindowUtil.settleScrollBars(newFrame, scrollPane, workingAreaSize));
 
             /*
              * Re-assert the placement after the frame is shown, in case the OS positioned it elsewhere. Both fix-ups
              * only mean something for a frame on screen, so a frame held back for the tray corrects them when restored
              */
-            SwingUtilities.invokeLater(() -> FrameUtil.correctLocation(newFrame, previousPlacement));
+            SwingUtilities.invokeLater(() -> WindowUtil.correctLocation(newFrame, previousPlacement));
         }
 
         // Dispose of the previous frame
@@ -313,7 +279,7 @@ public class DhkView implements IView {
     public void reInitView(FramePlacement preCapturedPlacement) {
         FramePlacement previousPlacement = (preCapturedPlacement != null)
                 ? preCapturedPlacement
-                : FrameUtil.capturePlacement(frame);
+                : WindowUtil.capturePlacement(frame);
 
         // Capture the currently selected display so it stays selected after the view is rebuilt
         int previousSelectedDisplayIndex = (displayIds != null) ? displayIds.getSelectedIndex() : 0;

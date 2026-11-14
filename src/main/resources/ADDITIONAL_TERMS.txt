@@ -1,0 +1,99 @@
+                 DISPLAY HOT KEYS ADDITIONAL TERMS
+    Under Section 7 of the GNU General Public License, Version 3
+
+ Copyright (C) 2024-2026 Jonathan R. Miller
+ Everyone is permitted to copy and distribute verbatim copies
+ of this document, but changing it is not allowed.
+
+                              Preamble
+
+  Display Hot Keys is free software licensed under version 3 of the GNU
+General Public License (the "GPL"), which is in LICENSE.txt, together
+with the additional terms below.  The Original Author adds these terms
+under section 7 of the GPL.  They apply to all material in
+Display Hot Keys, and they continue to apply to that material in any
+work based on it, including any modified version.
+
+                        TERMS AND CONDITIONS
+
+  0. Definitions.
+
+  "Original Author" means Jonathan R. Miller, the original developer of
+Display Hot Keys.
+
+  "Modified version" and "Appropriate Legal Notices" have the meanings
+given in section 0 of the GPL.
+
+  "Logo" means the Display Hot Keys keycap logo, including the
+tray_icon.svg, tray_icon.png, and dhk.ico image files, and any design
+confusingly similar to it.
+
+  1. Disclaimer for Modified Versions (GPL section 7(a)).
+
+  In addition to sections 15 and 16 of the GPL, the Original Author
+provides no warranty for, and is not responsible or liable for, any
+modified version, or any change or addition made by anyone other than
+the Original Author.
+
+  2. Author Attribution and Legal Notice (GPL section 7(b)).
+
+  The Appropriate Legal Notices displayed by Display Hot Keys, and by
+any work based on it, must preserve all of the following, in an "About"
+dialog or an equivalent location that users can readily find.  They must
+not be removed, altered, or obscured, and they must be displayed as
+prominently as the work's other Appropriate Legal Notices.
+
+    a) The attribution of Jonathan R. Miller as the original developer
+    of Display Hot Keys.
+
+    b) The following notice, word for word: "Modified versions are not
+    endorsed by Jonathan R. Miller, who is not responsible or liable for
+    them."
+
+  3. Marking of Modified Versions (GPL section 7(c)).
+
+  The origin of Display Hot Keys must not be misrepresented, and a
+modified version must be marked in the following reasonable ways as
+different from the original version.
+
+    a) Its Appropriate Legal Notices must state clearly that it is a
+    modified version of Display Hot Keys, that it is not the original
+    Display Hot Keys software, and that those who modified it are not
+    the original authors of Display Hot Keys.
+
+    b) If its name contains "Display Hot Keys" in any spelling, such as
+    "DisplayHotKeys", the name must include an addition that clearly
+    identifies it as a modified version, such as
+    "Display Hot Keys (Unofficial Fork)",
+    "Display Hot Keys - <Modifier Name> Edition", or
+    "Display Hot Keys (Modified by <Modifier Name>)".  A change only to
+    spelling, spacing, capitalization, or version number is not such an
+    addition, and neither is an addition that suggests an official
+    edition, such as "Pro", "Plus", or "Official".
+
+    c) It must use the name described in item b) everywhere it
+    identifies itself by name, including its window titles, installer,
+    and file properties.
+
+    d) It must not use the Logo as its own logo or icon.
+
+    e) It must not be represented as an official release of
+    Display Hot Keys, or as endorsed by, sponsored by, or affiliated
+    with the Original Author.
+
+  4. Names and Trademarks (GPL section 7(e)).
+
+  No rights are granted under trademark law to use the name
+"Display Hot Keys", the name of the Original Author, or the Logo, except
+as needed to preserve and display the notices these terms require, to
+name a modified version in the way section 3 allows, or to state
+truthfully that a work is based on Display Hot Keys.
+
+  5. Indemnification (GPL section 7(f)).
+
+  Anyone who conveys Display Hot Keys, or a modified version of it, with
+contractual assumptions of liability to the recipient must indemnify the
+Original Author for any liability that these contractual assumptions
+directly impose on the Original Author.
+
+                      END OF ADDITIONAL TERMS

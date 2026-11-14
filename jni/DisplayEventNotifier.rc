@@ -17,7 +17,7 @@ BEGIN
             VALUE "FileVersion", "1.0.5.0"
             VALUE "ProductName", "DisplayEventNotifier"
             VALUE "ProductVersion", "1.0.5.0"
-            VALUE "LegalCopyright", "Copyright © 2026 Jonathan R. Miller"
+            VALUE "LegalCopyright", "Copyright © 2024-2026 Jonathan R. Miller"
             VALUE "OriginalFilename", "DisplayEventNotifier"
         END
     END

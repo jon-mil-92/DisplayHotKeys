@@ -1,38 +1,24 @@
 /*
- * The MIT License (MIT)
+ * Display Hot Keys
+ * Copyright © 2024-2026 Jonathan R. Miller
  *
- * Copyright © 2026 Jonathan R. Miller
+ * This program is free software: you can redistribute it and/or modify it under the terms of version 3 of the GNU
+ * General Public License as published by the Free Software Foundation, together with the additional terms under section
+ * 7 of that License in ADDITIONAL_TERMS.txt.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
- * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
- * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
  *
- * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
- * the Software.
- *
- * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
- * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
- * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * You should have received a copy of the GNU General Public License and the additional terms along with this program in
+ * LICENSE.txt and ADDITIONAL_TERMS.txt. If not, see <https://www.gnu.org/licenses/>.
  */
 package com.dhk.controller;
 
-import java.awt.GraphicsConfiguration;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.beans.PropertyChangeListener;
-
 import javax.swing.JFrame;
-import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 
 import com.dhk.io.NativeInputHook;
-import com.dhk.io.NativeMouseListener;
-import com.dhk.utility.FrameUtil;
+import com.dhk.utility.WindowDragRefitter;
+import com.dhk.utility.WindowUtil;
 import com.dhk.view.DhkView;
 
 /**
@@ -44,22 +30,8 @@ import com.dhk.view.DhkView;
 public class FrameDragController implements IController {
 
     private DhkView view;
-    private JFrame observedFrame;
-    private GraphicsConfiguration cachedConfiguration;
-    private Timer displaySyncTimer;
     private NativeInputHook nativeInputHook;
-    private NativeMouseListener nativeMouseListener;
-    private PropertyChangeListener graphicsConfigurationListener;
-    private ComponentAdapter frameMoveListener;
-    private WindowAdapter frameCloseListener;
-    private boolean displayTransitionPending;
-    private boolean leftMouseButtonDown;
-
-    /**
-     * Delay after the left mouse button is released before the deferred display synchronization runs, so it never
-     * interrupts a drag.
-     */
-    private static final int DISPLAY_SYNC_POST_RELEASE_DELAY_MS = 25;
+    private WindowDragRefitter frameDragRefitter;
 
     /**
      * Constructor for the {@link FrameDragController} class.
@@ -76,11 +48,7 @@ public class FrameDragController implements IController {
 
     @Override
     public void initController() {
-        observedFrame = null;
-        cachedConfiguration = null;
-        displayTransitionPending = false;
-        leftMouseButtonDown = false;
-        displaySyncTimer = createDisplaySyncTimer();
+        frameDragRefitter = null;
     }
 
     @Override
@@ -91,218 +59,15 @@ public class FrameDragController implements IController {
             return;
         }
 
-        observedFrame = frame;
-        cachedConfiguration = frame.getGraphicsConfiguration();
-        displayTransitionPending = false;
-        leftMouseButtonDown = false;
-
-        installNativeMouseListener();
-        installFrameListeners(frame);
+        frameDragRefitter = new WindowDragRefitter(frame, nativeInputHook, () -> WindowUtil.refreshWindow(frame));
+        frameDragRefitter.install();
     }
 
     @Override
     public void cleanUp() {
-        removeFrameListeners();
-
-        stopTimer(displaySyncTimer);
-        displayTransitionPending = false;
-
-        // Detach only this controller's listener; the shared hook persists across app refreshes
-        removeNativeMouseListener();
-
-        leftMouseButtonDown = false;
-        observedFrame = null;
-        cachedConfiguration = null;
-    }
-
-    /**
-     * Installs frame-level listeners that detect cross-display moves and frame disposal.
-     */
-    private void installFrameListeners(JFrame frame) {
-        frameCloseListener = new WindowAdapter() {
-            @Override
-            public void windowClosed(WindowEvent windowEvent) {
-                cleanUp();
-            }
-        };
-
-        graphicsConfigurationListener = propertyChangeEvent -> beginDisplayTransition();
-        frameMoveListener = new ComponentAdapter() {
-            @Override
-            public void componentMoved(ComponentEvent componentEvent) {
-                if (frame.getGraphicsConfiguration() != cachedConfiguration) {
-                    beginDisplayTransition();
-                } else if (displayTransitionPending) {
-                    scheduleDisplaySyncAfterMove();
-                }
-            }
-        };
-
-        frame.addWindowListener(frameCloseListener);
-        frame.addPropertyChangeListener("graphicsConfiguration", graphicsConfigurationListener);
-        frame.addComponentListener(frameMoveListener);
-    }
-
-    /**
-     * Removes the listeners attached directly to the frame currently being observed.
-     */
-    private void removeFrameListeners() {
-        if (observedFrame == null) {
-            frameCloseListener = null;
-            graphicsConfigurationListener = null;
-            frameMoveListener = null;
-            return;
-        }
-
-        if (frameCloseListener != null) {
-            observedFrame.removeWindowListener(frameCloseListener);
-            frameCloseListener = null;
-        }
-
-        if (graphicsConfigurationListener != null) {
-            observedFrame.removePropertyChangeListener("graphicsConfiguration", graphicsConfigurationListener);
-            graphicsConfigurationListener = null;
-        }
-
-        if (frameMoveListener != null) {
-            observedFrame.removeComponentListener(frameMoveListener);
-            frameMoveListener = null;
-        }
-    }
-
-    /**
-     * Marks that a cross-display move is underway. The refresh waits for the real left-button release, then runs once
-     * the destination display has settled.
-     */
-    private void beginDisplayTransition() {
-        displayTransitionPending = true;
-        stopTimer(displaySyncTimer);
-        scheduleDisplaySyncAfterMove();
-    }
-
-    /**
-     * Schedules a deferred refresh after the drag is released.
-     */
-    private void scheduleDisplaySyncAfterMove() {
-        if (!displayTransitionPending || displaySyncTimer == null) {
-            return;
-        }
-
-        if (leftMouseButtonDown) {
-            stopTimer(displaySyncTimer);
-            return;
-        }
-
-        restartTimer(displaySyncTimer, DISPLAY_SYNC_POST_RELEASE_DELAY_MS);
-    }
-
-    /**
-     * Performs the deferred frame refresh after move/configuration changes have settled.
-     */
-    private void updateAfterDisplaySync() {
-        JFrame frame = view.getFrame();
-
-        if (frame == null || !frame.isDisplayable() || !displayTransitionPending) {
-            return;
-        }
-
-        if (leftMouseButtonDown) {
-            scheduleDisplaySyncAfterMove();
-            return;
-        }
-
-        displayTransitionPending = false;
-
-        // Cache the destination config before refreshing so the refresh's own moves are not read as a new transition
-        cachedConfiguration = frame.getGraphicsConfiguration();
-        FrameUtil.refreshFrame(frame);
-    }
-
-    /**
-     * Attaches this controller's listener to the shared input hook so native title-bar drags report the real
-     * left-button press/release. Adding the listener is cheap, so no background thread is needed.
-     */
-    private void installNativeMouseListener() {
-        if (nativeInputHook == null || nativeMouseListener != null) {
-            return;
-        }
-
-        nativeMouseListener = createNativeMouseListener();
-        nativeInputHook.addMouseListener(nativeMouseListener);
-    }
-
-    /**
-     * Creates the global mouse listener used for native title-bar drags that Swing cannot observe.
-     */
-    private NativeMouseListener createNativeMouseListener() {
-        return new NativeMouseListener() {
-            @Override
-            public void mousePressed() {
-                SwingUtilities.invokeLater(() -> {
-                    leftMouseButtonDown = true;
-                    stopTimer(displaySyncTimer);
-                });
-            }
-
-            @Override
-            public void mouseReleased() {
-                SwingUtilities.invokeLater(() -> {
-                    leftMouseButtonDown = false;
-
-                    if (displayTransitionPending) {
-                        scheduleDisplaySyncAfterMove();
-                    }
-                });
-            }
-        };
-    }
-
-    /**
-     * Detaches this controller's listener from the shared input hook, leaving it alive for later refreshes.
-     */
-    private void removeNativeMouseListener() {
-        if (nativeInputHook == null || nativeMouseListener == null) {
-            return;
-        }
-
-        try {
-            nativeInputHook.removeMouseListener(nativeMouseListener);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        nativeMouseListener = null;
-    }
-
-    /**
-     * Creates the one-shot timer used for deferred display synchronization work.
-     */
-    private Timer createDisplaySyncTimer() {
-        Timer timer = new Timer(DISPLAY_SYNC_POST_RELEASE_DELAY_MS, e -> updateAfterDisplaySync());
-        timer.setRepeats(false);
-
-        return timer;
-    }
-
-    /**
-     * Restarts a one-shot timer using the provided delay.
-     */
-    private void restartTimer(Timer timer, int delayMs) {
-        if (timer == null) {
-            return;
-        }
-
-        timer.setInitialDelay(delayMs);
-        timer.setDelay(delayMs);
-        timer.restart();
-    }
-
-    /**
-     * Stops a timer when present.
-     */
-    private void stopTimer(Timer timer) {
-        if (timer != null) {
-            timer.stop();
+        if (frameDragRefitter != null) {
+            frameDragRefitter.uninstall();
+            frameDragRefitter = null;
         }
     }
 

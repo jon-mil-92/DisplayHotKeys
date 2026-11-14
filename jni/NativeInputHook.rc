@@ -17,7 +17,7 @@ BEGIN
             VALUE "FileVersion", "1.0.0.0"
             VALUE "ProductName", "NativeInputHook"
             VALUE "ProductVersion", "1.0.0.0"
-            VALUE "LegalCopyright", "Copyright © 2026 Jonathan R. Miller"
+            VALUE "LegalCopyright", "Copyright © 2024-2026 Jonathan R. Miller"
             VALUE "OriginalFilename", "NativeInputHook"
         END
     END

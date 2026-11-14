@@ -148,15 +148,15 @@ Opens a window with additional app settings. The window can also be opened by cl
 
 #### About App
 
-Opens a window to display the current version, PayPal donate button, license button, and releases button.
+Opens a window to display the current version, the original developer, the legal notices, a license button, a donate button, and a releases button.
 
 #### Change Theme
 
 The theme can be changed between "Light Mode" and "Dark Mode" by clicking on the "Change Theme" button. The icon will change to indicate the current theme.
 
-#### PayPal Donate
+#### Donate
 
-If you find the application useful and wish to donate, the "PayPal Donate" button will open a PayPal donation web page.
+If you find the application useful and wish to donate, the "Donate" button in the "About App" window opens a donation web page.
 
 #### Releases
 
@@ -166,7 +166,15 @@ See [open issues] for a full list of proposed features (and known issues).
 
 ## License
 
-Distributed under the [MIT License]. See LICENSE.txt for more information.
+Copyright © 2024-2026 Jonathan R. Miller
+
+Display Hot Keys is free software. You may redistribute it and modify it under the terms of [version 3 of the GNU General Public License][GNU General Public License v3.0], together with the additional terms under section 7 of that License.
+
+Display Hot Keys comes with ABSOLUTELY NO WARRANTY, to the extent permitted by applicable law.
+
+Modified versions are not endorsed by Jonathan R. Miller, who is not responsible or liable for them.
+
+See LICENSE.txt for the GNU General Public License and ADDITIONAL_TERMS.txt for the additional terms.
 
 ## Contact
 
@@ -176,9 +184,9 @@ Jonathan R. Miller - jonRock1992@gmail.com
 
 * [FlatLaf - Flat Look and Feel] <b>·</b> [Apache License 2.0]
 
-* [Material Design Icons] <b>·</b> [Apache License 2.0]
+* [jsvg] <b>·</b> [MIT License]
 
-* [PayPal Donate Button] <b>·</b> [AGPL License 3.0]
+* [Material Symbols] <b>·</b> [Apache License 2.0] <b>·</b> Recolored and edited for Display Hot Keys
 
 * [Ini4j] <b>·</b> [Apache License 2.0]
 
@@ -233,13 +241,13 @@ If your antivirus quarantines the app, you can restore it and add an exclusion. 
 [Microsoft Security Intelligence submission portal]: https://www.microsoft.com/en-us/wdsi/filesubmission
 [open issues]: https://github.com/jon-mil-92/DisplayHotKeys/issues
 [FlatLaf - Flat Look and Feel]: https://github.com/JFormDesigner/FlatLaf
-[Material Design Icons]: https://github.com/marella/material-design-icons
-[PayPal Donate Button]: https://github.com/stefan-niedermann/paypal-donate-button
+[jsvg]: https://github.com/weisj/jsvg
+[Material Symbols]: https://github.com/google/material-design-icons
 [Ini4j]: https://ini4j.sourceforge.net/
 [Apache Maven Assembly Plugin]: https://maven.apache.org/plugins/maven-assembly-plugin/index.html
 [Maven Compiler Plugin]: https://maven.apache.org/plugins/maven-compiler-plugin/index.html
 [jpackage]: https://docs.oracle.com/en/java/javase/17/docs/specs/man/jpackage.html
 [Inno Setup]: https://jrsoftware.org/isinfo.php
+[GNU General Public License v3.0]: https://www.gnu.org/licenses/gpl-3.0.html
 [MIT License]: https://mit-license.org
 [Apache License 2.0]: https://www.apache.org/licenses/LICENSE-2.0
-[AGPL License 3.0]: https://www.gnu.org/licenses/agpl-3.0.en.html

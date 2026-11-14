@@ -1,25 +1,21 @@
 /*
- * The MIT License (MIT)
+ * Display Hot Keys
+ * Copyright © 2024-2026 Jonathan R. Miller
  *
- * Copyright © 2026 Jonathan R. Miller
+ * This program is free software: you can redistribute it and/or modify it under the terms of version 3 of the GNU
+ * General Public License as published by the Free Software Foundation, together with the additional terms under section
+ * 7 of that License in ADDITIONAL_TERMS.txt.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
- * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
- * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
  *
- * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
- * the Software.
- *
- * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
- * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
- * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * You should have received a copy of the GNU General Public License and the additional terms along with this program in
+ * LICENSE.txt and ADDITIONAL_TERMS.txt. If not, see <https://www.gnu.org/licenses/>.
  */
 package com.dhk.utility;
 
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
@@ -28,22 +24,30 @@ import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
+import java.awt.Window;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
+import javax.swing.BorderFactory;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JRootPane;
 import javax.swing.JScrollPane;
+import javax.swing.RootPaneContainer;
 import javax.swing.SwingUtilities;
 
 import com.dhk.model.FramePlacement;
 
 /**
- * Provides frame placement and refresh utilities across displays. This class preserves a previous frame's position when
- * a new frame is created, even when the display it was on has had its resolution, DPI scale, or virtual-desktop origin
- * changed (for example, immediately after applying a new display mode).
+ * Provides placement, fitting, and refresh utilities for the main frame and the dialogs across displays. A new frame
+ * keeps the previous frame's position even after its display changes resolution, DPI scale, or virtual-desktop origin,
+ * and every frame or dialog is capped to its display's working area with scroll bars only where its content overflows.
  *
  * @author Jonathan R. Miller
  */
-public class FrameUtil {
+public class WindowUtil {
 
     /**
      * Whether a native surface reclaim collection is running, so back to back refreshes never stack another one.
@@ -53,13 +57,13 @@ public class FrameUtil {
     /**
      * Client property key that caches a frame's most recent graphics configuration.
      */
-    private static final String CACHED_DISPLAY_CONFIGURATION_PROPERTY = FrameUtil.class.getName()
+    private static final String CACHED_DISPLAY_CONFIGURATION_PROPERTY = WindowUtil.class.getName()
             + ".cachedDisplayConfiguration";
 
     /**
      * Client property key that caches a frame's most recent working area size.
      */
-    private static final String CACHED_WORKING_AREA_SIZE_PROPERTY = FrameUtil.class.getName()
+    private static final String CACHED_WORKING_AREA_SIZE_PROPERTY = WindowUtil.class.getName()
             + ".cachedWorkingAreaSize";
 
     /**
@@ -69,25 +73,30 @@ public class FrameUtil {
     public static final int REFRESH_DELAY_MS = 400;
 
     /**
-     * Default constructor for the {@link FrameUtil} class.
+     * Pixels the scrolling content moves per mouse-wheel notch or scroll-bar arrow click, for frames and dialogs alike.
      */
-    public FrameUtil() {
+    private static final int SCROLL_UNIT_INCREMENT = 16;
+
+    /**
+     * Default constructor for the {@link WindowUtil} class.
+     */
+    public WindowUtil() {
     }
 
     /**
-     * Grows the frame by any pixels its client area falls short of the content, so the as-needed scroll bars do not
+     * Grows the window by any pixels its client area falls short of the content, so the as-needed scroll bars do not
      * appear when the content actually fits on screen.
      *
-     * @param frame
-     *            - The frame to correct (may be null)
+     * @param window
+     *            - The frame or dialog to correct (may be null)
      * @param scrollPane
-     *            - The frame's content scroll pane whose content to fit (may be null)
+     *            - The window's content scroll pane whose content to fit (may be null)
      * @param workingArea
      *            - The display's working area size, reused from the fit so no second native insets query is made on the
      *            re-init path (may be null to skip the cap)
      */
-    public static void settleScrollBars(JFrame frame, JScrollPane scrollPane, Dimension workingArea) {
-        if (frame == null || scrollPane == null || !frame.isDisplayable()) {
+    public static void settleScrollBars(Window window, JScrollPane scrollPane, Dimension workingArea) {
+        if (window == null || scrollPane == null || !window.isDisplayable()) {
             return;
         }
 
@@ -108,48 +117,115 @@ public class FrameUtil {
         }
 
         // Cap growth to the working area so a small display keeps its scroll bars instead of growing off screen
-        int newWidth = frame.getWidth() + shortfallWidth;
-        int newHeight = frame.getHeight() + shortfallHeight;
+        int newWidth = window.getWidth() + shortfallWidth;
+        int newHeight = window.getHeight() + shortfallHeight;
 
         if (workingArea != null) {
             newWidth = Math.min(newWidth, workingArea.width);
             newHeight = Math.min(newHeight, workingArea.height);
         }
 
-        if (newWidth != frame.getWidth() || newHeight != frame.getHeight()) {
-            frame.setSize(newWidth, newHeight);
-            frame.validate();
+        if (newWidth != window.getWidth() || newHeight != window.getHeight()) {
+            window.setSize(newWidth, newHeight);
+            window.validate();
         }
     }
 
     /**
-     * Refreshes a frame's UI, then re-fits it to the working area of the display it currently occupies. Absorbs any
-     * pack shortfall afterward so every refresh path settles the as-needed scroll bars, not only the initial build.
+     * Refreshes a frame's or dialog's UI, then re-fits it to the working area of the display it currently occupies.
+     * Absorbs any pack shortfall afterward so every refresh path settles the as-needed scroll bars.
      *
-     * @param frame
-     *            - The frame to refresh
+     * @param window
+     *            - The frame or dialog to refresh (may be null)
      */
-    public static void refreshFrame(JFrame frame) {
-        if (frame == null || !frame.isDisplayable()) {
+    public static void refreshWindow(Window window) {
+        if (!(window instanceof RootPaneContainer) || !window.isDisplayable()) {
             return;
         }
 
-        JScrollPane scrollPane = frameScrollPane(frame);
-        JPanel mainPanel = scrollContentPanel(scrollPane);
+        JScrollPane scrollPane = contentScrollPane(window);
 
-        updateCachedDisplayMetrics(frame);
+        updateCachedDisplayMetrics(window);
 
-        SwingUtilities.updateComponentTreeUI(frame);
-        mainPanel.revalidate();
-        scrollPane.revalidate();
-        repackAndFitToScreen(frame, scrollPane);
-        frame.validate();
+        SwingUtilities.updateComponentTreeUI(window);
+        revalidateContent(window, scrollPane);
+        refitWindow(window);
 
-        // The frame is already realized here, so its client area is laid out and the shortfall can settle in place
-        settleScrollBars(frame, scrollPane, cachedWorkingAreaSize(frame));
-
-        frame.repaint();
+        window.repaint();
         scheduleNativeSurfaceReclaim();
+    }
+
+    /**
+     * Re-packs a showing frame or dialog after its content changes and re-fits it to the working area of the display it
+     * occupies, keeping its location unless that would leave part of it off screen. Unlike a refresh, the UI is kept.
+     *
+     * @param window
+     *            - The frame or dialog to re-fit (may be null)
+     */
+    public static void refitWindow(Window window) {
+        if (!(window instanceof RootPaneContainer) || !window.isDisplayable()) {
+            return;
+        }
+
+        JScrollPane scrollPane = contentScrollPane(window);
+
+        // The display is measured again only after a move to another one, so repeated re-fits make no native query
+        updateCachedDisplayMetrics(window);
+
+        repackAndFitToScreen(window, scrollPane);
+        window.validate();
+
+        // The window is already realized here, so its client area is laid out and the shortfall can settle in place
+        settleScrollBars(window, scrollPane, cachedWorkingAreaSize(window));
+    }
+
+    /**
+     * Wraps the content in a borderless scroll pane that becomes the window's content pane, so every component stays
+     * reachable when the window is capped to a small display. The as-needed scroll bars stay hidden wherever it fits.
+     *
+     * @param window
+     *            - The frame or dialog whose content pane to set
+     * @param content
+     *            - The panel holding the window's content
+     * @param onEmptySpacePress
+     *            - The action to run when the mouse is pressed on empty space in the window
+     *
+     * @return The scroll pane set as the window's content pane
+     */
+    public static JScrollPane setScrollingContent(Window window, JPanel content, Runnable onEmptySpacePress) {
+        JScrollPane scrollPane = new JScrollPane(content, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(SCROLL_UNIT_INCREMENT);
+        scrollPane.getHorizontalScrollBar().setUnitIncrement(SCROLL_UNIT_INCREMENT);
+        ((RootPaneContainer) window).setContentPane(scrollPane);
+
+        MouseAdapter emptySpacePressListener = new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent mousePressedEvent) {
+                onEmptySpacePress.run();
+            }
+        };
+
+        // The scroll pane consumes a press before it reaches the window, so the panel and viewport listen as well
+        window.addMouseListener(emptySpacePressListener);
+        content.addMouseListener(emptySpacePressListener);
+        scrollPane.getViewport().addMouseListener(emptySpacePressListener);
+
+        return scrollPane;
+    }
+
+    /**
+     * Determines whether a window has been fitted to a working area by this class, which a dialog is once it is shown
+     * and the main frame is once it has been refreshed.
+     *
+     * @param window
+     *            - The window to check (may be null)
+     *
+     * @return True if the window holds cached display metrics from a fit, otherwise false
+     */
+    public static boolean isFittedToWorkingArea(Window window) {
+        return window instanceof RootPaneContainer && cachedWorkingAreaSize(window) != null;
     }
 
     /**
@@ -353,6 +429,55 @@ public class FrameUtil {
     }
 
     /**
+     * Caps a window's current size to the working area, reserving room for any scroll bars its content needs. A size
+     * that already fits is left unchanged.
+     *
+     * @param window
+     *            - The frame or dialog to cap
+     * @param scrollPane
+     *            - The window's content scroll pane, whose scroll bars to reserve room for (may be null to skip it)
+     * @param workingArea
+     *            - The display's working area size (may be null to leave the size unchanged)
+     */
+    public static void capToWorkingArea(Window window, JScrollPane scrollPane, Dimension workingArea) {
+        Dimension fittedSize = fitToWorkingArea(window.getSize(), scrollPane, workingArea);
+
+        if (!fittedSize.equals(window.getSize())) {
+            window.setSize(fittedSize);
+        }
+    }
+
+    /**
+     * Caps a packed dialog to the working area of its display the same way the main frame is fitted, then centers it on
+     * its owner while keeping it fully on screen. Its scroll bars settle once it is shown, as the main frame's do.
+     *
+     * @param dialog
+     *            - The packed dialog to fit and place
+     */
+    public static void fitDialogToWorkingArea(JDialog dialog) {
+        JScrollPane scrollPane = contentScrollPane(dialog);
+        GraphicsConfiguration configuration = dialog.getGraphicsConfiguration();
+        Rectangle workingArea = workingAreaBounds(configuration);
+
+        if (workingArea == null) {
+            dialog.setLocationRelativeTo(dialog.getOwner());
+            return;
+        }
+
+        // Cache the measured display, so later re-fits reuse it until the dialog moves to another display
+        Dimension workingAreaSize = workingArea.getSize();
+        cacheDisplayMetrics(dialog, configuration, workingAreaSize);
+        capToWorkingArea(dialog, scrollPane, workingAreaSize);
+
+        // Centering on an owner near a display edge can push the dialog past it, so pull it back inside
+        dialog.setLocationRelativeTo(dialog.getOwner());
+        dialog.setLocation(clampToWorkingArea(workingArea, dialog.getSize(), dialog.getLocation()));
+
+        // Queued before a modal show blocks, so the scroll bars settle once the dialog is on screen
+        SwingUtilities.invokeLater(() -> settleScrollBars(dialog, scrollPane, workingAreaSize));
+    }
+
+    /**
      * Re-assert the captured placement on a frame that is already showing. This reproduces the placement against the
      * current bounds of its intended display, correcting cases where the OS positioned the new frame somewhere other
      * than intended.
@@ -405,14 +530,29 @@ public class FrameUtil {
             return preferredLocation;
         }
 
-        Rectangle workingArea = workingAreaBounds(configuration);
+        return clampToWorkingArea(workingAreaBounds(configuration), frameSize, preferredLocation);
+    }
 
-        if (workingArea == null) {
+    /**
+     * Clamps the preferred top-left location for a window into already measured working-area bounds, so a caller that
+     * has the bounds avoids another native screen insets query.
+     *
+     * @param workingArea
+     *            - The working-area bounds that should contain the window (may be null)
+     * @param windowSize
+     *            - The window size to keep within the working area
+     * @param preferredLocation
+     *            - The desired top-left location before clamping
+     *
+     * @return The clamped top-left location, or the preferred location unchanged if no working area is available
+     */
+    public static Point clampToWorkingArea(Rectangle workingArea, Dimension windowSize, Point preferredLocation) {
+        if (workingArea == null || windowSize == null || preferredLocation == null) {
             return preferredLocation;
         }
 
-        int maxLeft = workingArea.x + Math.max(0, workingArea.width - frameSize.width);
-        int maxTop = workingArea.y + Math.max(0, workingArea.height - frameSize.height);
+        int maxLeft = workingArea.x + Math.max(0, workingArea.width - windowSize.width);
+        int maxTop = workingArea.y + Math.max(0, workingArea.height - windowSize.height);
         int clampedLeft = Math.max(workingArea.x, Math.min(preferredLocation.x, maxLeft));
         int clampedTop = Math.max(workingArea.y, Math.min(preferredLocation.y, maxTop));
 
@@ -420,110 +560,137 @@ public class FrameUtil {
     }
 
     /**
-     * Refreshes the cached graphics configuration and working area when the frame moves to another display, or when
+     * Refreshes the cached graphics configuration and working area when the window moves to another display, or when
      * those metrics have not been cached yet.
      *
-     * @param frame
-     *            - The frame whose cached display metrics to refresh
+     * @param window
+     *            - The frame or dialog whose cached display metrics to refresh
      */
-    private static void updateCachedDisplayMetrics(JFrame frame) {
-        GraphicsConfiguration configuration = frame.getGraphicsConfiguration();
-        GraphicsConfiguration cachedConfiguration = cachedDisplayConfiguration(frame);
-        Dimension cachedWorkingArea = cachedWorkingAreaSize(frame);
+    private static void updateCachedDisplayMetrics(Window window) {
+        GraphicsConfiguration configuration = window.getGraphicsConfiguration();
+        GraphicsConfiguration cachedConfiguration = cachedDisplayConfiguration(window);
+        Dimension cachedWorkingArea = cachedWorkingAreaSize(window);
 
         if (configuration != cachedConfiguration || cachedWorkingArea == null) {
-            frame.getRootPane().putClientProperty(CACHED_DISPLAY_CONFIGURATION_PROPERTY, configuration);
-            frame.getRootPane().putClientProperty(CACHED_WORKING_AREA_SIZE_PROPERTY, workingAreaSize(configuration));
+            cacheDisplayMetrics(window, configuration, workingAreaSize(configuration));
         }
     }
 
     /**
-     * Re-packs the frame for the current display, then caps its size to the display's working area and keeps the title
+     * Stores a window's display configuration and working area size on its root pane for later re-fits.
+     *
+     * @param window
+     *            - The frame or dialog to cache the display metrics on
+     * @param configuration
+     *            - The graphics configuration of the display the window occupies
+     * @param workingArea
+     *            - The working area size of that display
+     */
+    private static void cacheDisplayMetrics(Window window, GraphicsConfiguration configuration, Dimension workingArea) {
+        rootPane(window).putClientProperty(CACHED_DISPLAY_CONFIGURATION_PROPERTY, configuration);
+        rootPane(window).putClientProperty(CACHED_WORKING_AREA_SIZE_PROPERTY, workingArea);
+    }
+
+    /**
+     * Re-packs the window for the current display, then caps its size to the display's working area and keeps the title
      * bar reachable.
      *
-     * @param frame
-     *            - The frame to re-pack and fit to the current display
+     * @param window
+     *            - The frame or dialog to re-pack and fit to the current display
      * @param scrollPane
-     *            - The scroll pane used to reserve room for scroll bars when fitting
+     *            - The scroll pane used to reserve room for scroll bars when fitting (may be null)
      */
-    private static void repackAndFitToScreen(JFrame frame, JScrollPane scrollPane) {
-        Point preferredLocation = frame.getLocation();
+    private static void repackAndFitToScreen(Window window, JScrollPane scrollPane) {
+        Point preferredLocation = window.getLocation();
 
-        frame.pack();
-        resizeToFitScreen(frame, scrollPane);
+        window.pack();
+        capToWorkingArea(window, scrollPane, cachedWorkingAreaSize(window));
 
-        Point clampedLocation = clampToWorkingArea(frame.getGraphicsConfiguration(), frame.getSize(),
+        Point clampedLocation = clampToWorkingArea(window.getGraphicsConfiguration(), window.getSize(),
                 preferredLocation);
 
-        if (clampedLocation != null && !clampedLocation.equals(frame.getLocation())) {
-            frame.setLocation(clampedLocation);
+        if (clampedLocation != null && !clampedLocation.equals(window.getLocation())) {
+            window.setLocation(clampedLocation);
         }
     }
 
     /**
-     * Sizes the frame to its preferred size capped to the cached working area when needed.
+     * Revalidates the window's content, the scrolled view first and then its scroll pane when the content scrolls.
      *
-     * @param frame
-     *            - The frame to resize
+     * @param window
+     *            - The frame or dialog whose content to revalidate
      * @param scrollPane
-     *            - The scroll pane used to reserve room for scroll bars when fitting
+     *            - The window's content scroll pane (may be null when the content pane does not scroll)
      */
-    private static void resizeToFitScreen(JFrame frame, JScrollPane scrollPane) {
-        Dimension target = fitToWorkingArea(frame.getSize(), scrollPane, cachedWorkingAreaSize(frame));
+    private static void revalidateContent(Window window, JScrollPane scrollPane) {
+        if (scrollPane == null) {
+            Container contentPane = ((RootPaneContainer) window).getContentPane();
 
-        if (!target.equals(frame.getSize())) {
-            frame.setSize(target);
+            if (contentPane instanceof JComponent) {
+                ((JComponent) contentPane).revalidate();
+            }
+
+            return;
         }
+
+        Component view = scrollPane.getViewport().getView();
+
+        if (view instanceof JComponent) {
+            ((JComponent) view).revalidate();
+        }
+
+        scrollPane.revalidate();
     }
 
     /**
-     * Returns the frame's content pane as a scroll pane.
+     * Returns the window's content pane when it is a scroll pane, which is how the main frame and the overlay dialogs
+     * scroll their content.
      *
-     * @param frame
-     *            - The frame whose content pane to return
+     * @param window
+     *            - The frame or dialog whose content pane to inspect
      *
-     * @return The frame's content pane cast to a scroll pane
+     * @return The content scroll pane, or null if the content pane does not scroll
      */
-    private static JScrollPane frameScrollPane(JFrame frame) {
-        return (JScrollPane) frame.getContentPane();
+    private static JScrollPane contentScrollPane(Window window) {
+        Container contentPane = ((RootPaneContainer) window).getContentPane();
+
+        return contentPane instanceof JScrollPane ? (JScrollPane) contentPane : null;
     }
 
     /**
-     * Returns the main panel shown in the frame's content scroll pane.
+     * Returns the root pane of a frame or dialog, which holds its cached display metrics.
      *
-     * @param scrollPane
-     *            - The scroll pane whose viewport view to return
+     * @param window
+     *            - The frame or dialog whose root pane to return
      *
-     * @return The main panel shown in the scroll pane's viewport
+     * @return The window's root pane
      */
-    private static JPanel scrollContentPanel(JScrollPane scrollPane) {
-        Component content = scrollPane.getViewport().getView();
-
-        return (JPanel) content;
+    private static JRootPane rootPane(Window window) {
+        return ((RootPaneContainer) window).getRootPane();
     }
 
     /**
-     * Returns the cached graphics configuration stored on the frame.
+     * Returns the cached graphics configuration stored on the window.
      *
-     * @param frame
-     *            - The frame whose cached graphics configuration to return
+     * @param window
+     *            - The frame or dialog whose cached graphics configuration to return
      *
      * @return The cached graphics configuration, or null if none has been cached
      */
-    private static GraphicsConfiguration cachedDisplayConfiguration(JFrame frame) {
-        return (GraphicsConfiguration) frame.getRootPane().getClientProperty(CACHED_DISPLAY_CONFIGURATION_PROPERTY);
+    private static GraphicsConfiguration cachedDisplayConfiguration(Window window) {
+        return (GraphicsConfiguration) rootPane(window).getClientProperty(CACHED_DISPLAY_CONFIGURATION_PROPERTY);
     }
 
     /**
-     * Returns the cached working-area size stored on the frame.
+     * Returns the cached working-area size stored on the window.
      *
-     * @param frame
-     *            - The frame whose cached working-area size to return
+     * @param window
+     *            - The frame or dialog whose cached working-area size to return
      *
      * @return The cached working-area size, or null if none has been cached
      */
-    private static Dimension cachedWorkingAreaSize(JFrame frame) {
-        return (Dimension) frame.getRootPane().getClientProperty(CACHED_WORKING_AREA_SIZE_PROPERTY);
+    private static Dimension cachedWorkingAreaSize(Window window) {
+        return (Dimension) rootPane(window).getClientProperty(CACHED_WORKING_AREA_SIZE_PROPERTY);
     }
 
     /**

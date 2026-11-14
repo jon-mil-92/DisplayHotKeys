@@ -17,7 +17,7 @@ BEGIN
             VALUE "FileVersion", "2.2.0.0"
             VALUE "ProductName", "GetDisplay"
             VALUE "ProductVersion", "2.2.0.0"
-            VALUE "LegalCopyright", "Copyright © 2026 Jonathan R. Miller"
+            VALUE "LegalCopyright", "Copyright © 2024-2026 Jonathan R. Miller"
             VALUE "OriginalFilename", "GetDisplay"
         END
     END

@@ -1,21 +1,16 @@
 /*
- * The MIT License (MIT)
+ * Display Hot Keys
+ * Copyright © 2024-2026 Jonathan R. Miller
  *
- * Copyright © 2026 Jonathan R. Miller
+ * This program is free software: you can redistribute it and/or modify it under the terms of version 3 of the GNU
+ * General Public License as published by the Free Software Foundation, together with the additional terms under section
+ * 7 of that License in ADDITIONAL_TERMS.txt.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
- * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
- * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
  *
- * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
- * the Software.
- *
- * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
- * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
- * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * You should have received a copy of the GNU General Public License and the additional terms along with this program in
+ * LICENSE.txt and ADDITIONAL_TERMS.txt. If not, see <https://www.gnu.org/licenses/>.
  */
 package com.dhk.controller.button;
 
@@ -23,6 +18,7 @@ import javax.swing.SwingUtilities;
 
 import com.dhk.controller.HotKeysController;
 import com.dhk.controller.IController;
+import com.dhk.io.NativeInputHook;
 import com.dhk.io.RunOnStartupManager;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
@@ -43,6 +39,7 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
     private DhkView view;
     private SettingsManager settingsMgr;
     private HotKeysController hotKeysController;
+    private NativeInputHook nativeInputHook;
     private RunOnStartupManager runOnStartupManager;
     private AdditionalSettingsDialog additionalSettingsDialog;
     private boolean applyingRunOnStartup;
@@ -59,13 +56,16 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
      *            - The settings manager for the application
      * @param hotKeysController
      *            - The controller for hot key management
+     * @param nativeInputHook
+     *            - The shared native input hook the dialog uses to re-fit after a cross-display drag (may be null)
      */
     public AdditionalSettingsButtonController(DhkModel model, DhkView view, SettingsManager settingsMgr,
-            HotKeysController hotKeysController) {
+            HotKeysController hotKeysController, NativeInputHook nativeInputHook) {
         this.model = model;
         this.view = view;
         this.settingsMgr = settingsMgr;
         this.hotKeysController = hotKeysController;
+        this.nativeInputHook = nativeInputHook;
     }
 
     @Override
@@ -93,7 +93,7 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
      *            - The action to run when the dialog closes (not required)
      */
     public void showAdditionalSettingsDialog(Runnable onCloseAction) {
-        AdditionalSettingsDialog dialog = new AdditionalSettingsDialog(model, view);
+        AdditionalSettingsDialog dialog = new AdditionalSettingsDialog(model, view, nativeInputHook);
         additionalSettingsDialog = dialog;
 
         dialog.getRunOnStartupSwitch().addActionListener(e -> runOnStartupSwitchAction(dialog));

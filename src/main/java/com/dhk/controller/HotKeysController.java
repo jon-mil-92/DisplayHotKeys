@@ -1,21 +1,16 @@
 /*
- * The MIT License (MIT)
+ * Display Hot Keys
+ * Copyright © 2024-2026 Jonathan R. Miller
  *
- * Copyright © 2026 Jonathan R. Miller
+ * This program is free software: you can redistribute it and/or modify it under the terms of version 3 of the GNU
+ * General Public License as published by the Free Software Foundation, together with the additional terms under section
+ * 7 of that License in ADDITIONAL_TERMS.txt.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
- * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
- * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
  *
- * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
- * the Software.
- *
- * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
- * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
- * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * You should have received a copy of the GNU General Public License and the additional terms along with this program in
+ * LICENSE.txt and ADDITIONAL_TERMS.txt. If not, see <https://www.gnu.org/licenses/>.
  */
 package com.dhk.controller;
 
@@ -46,7 +41,7 @@ import com.dhk.model.FramePlacement;
 import com.dhk.model.HotKey;
 import com.dhk.model.Key;
 import com.dhk.model.button.Button;
-import com.dhk.utility.FrameUtil;
+import com.dhk.utility.WindowUtil;
 import com.dhk.view.DhkView;
 import com.dhk.view.AdditionalSettingsDialog;
 
@@ -265,7 +260,7 @@ public class HotKeysController implements IController, NativeKeyListener {
                 // Capture the frame placement before any display reconfiguration relocates the window
                 FramePlacement placement = displayToSlotMap.isEmpty()
                         ? null
-                        : FrameUtil.capturePlacement(view.getFrame());
+                        : WindowUtil.capturePlacement(view.getFrame());
 
                 // Apply settings for all collected slots, capturing the arrangement first so it is reflowed once after
                 boolean displaySettingsApplied = false;
@@ -792,7 +787,7 @@ public class HotKeysController implements IController, NativeKeyListener {
             return;
         }
 
-        reInitTimer = new Timer(FrameUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp(placement));
+        reInitTimer = new Timer(WindowUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp(placement));
         reInitTimer.setRepeats(false);
         reInitTimer.start();
     }
@@ -1069,7 +1064,7 @@ public class HotKeysController implements IController, NativeKeyListener {
             }
 
             view.getSlot(displayIndex, slotIndex).getHotKey().setText(getHotKey().getHotKeyString());
-            FrameUtil.refreshFrame(view.getFrame());
+            WindowUtil.refreshWindow(view.getFrame());
         }
 
         /**

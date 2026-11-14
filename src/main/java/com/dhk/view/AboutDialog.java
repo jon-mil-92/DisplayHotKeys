@@ -1,67 +1,50 @@
 /*
- * The MIT License (MIT)
+ * Display Hot Keys
+ * Copyright © 2024-2026 Jonathan R. Miller
  *
- * Copyright © 2026 Jonathan R. Miller
+ * This program is free software: you can redistribute it and/or modify it under the terms of version 3 of the GNU
+ * General Public License as published by the Free Software Foundation, together with the additional terms under section
+ * 7 of that License in ADDITIONAL_TERMS.txt.
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
- * documentation files (the “Software”), to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
- * to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
  *
- * The above copyright notice and this permission notice shall be included in all copies or substantial portions of
- * the Software.
- *
- * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
- * THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
- * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * You should have received a copy of the GNU General Public License and the additional terms along with this program in
+ * LICENSE.txt and ADDITIONAL_TERMS.txt. If not, see <https://www.gnu.org/licenses/>.
  */
 package com.dhk.view;
 
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Desktop;
-import java.awt.Dimension;
-import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
-import com.dhk.controller.button.PaypalDonateButtonController;
-import com.dhk.model.DhkModel;
-import com.dhk.model.button.ButtonProperties;
-import com.dhk.model.button.ThemeableButton;
+import com.dhk.controller.button.DonateButtonController;
+import com.dhk.io.NativeInputHook;
 import com.dhk.utility.VersionRetriever;
 
 /**
- * Shows an "About Display Hot Keys" dialog on the AWT event dispatching thread. Creates a semi-transparent darkening
- * panel to overlay the parent frame.
+ * Shows an "About Display Hot Keys" dialog over the darkened main frame, with the version, the original developer, and
+ * the legal notices.
  *
  * @author Jonathan R. Miller
  */
-public class AboutDialog implements IView {
+public class AboutDialog extends OverlayDialog {
 
-    private DhkModel model;
-    private DhkView view;
     private GridBagLayout mainLayout;
     private GridBagConstraints mainConstraints;
     private JPanel buttonPanel;
@@ -77,16 +60,12 @@ public class AboutDialog implements IView {
     private JLabel developerSectionLabel;
     private JSeparator developerSeparator;
     private JLabel developedByLabel;
-    private JLabel donateSectionLabel;
-    private JSeparator donateSeparator;
+    private JLabel legalSectionLabel;
+    private JSeparator legalSeparator;
+    private JLabel legalNoticesLabel;
     private JButton licenseButton;
+    private JButton donateButton;
     private JButton releasesButton;
-    private ThemeableButton paypalDonateButton;
-    private PaypalDonateButtonController paypalButtonController;
-    private JFrame parentFrame;
-    private Component originalGlassPane;
-    private Component darkeningGlassPane;
-    private boolean dialogClosed;
 
     /**
      * Title shown in the dialog's title bar.
@@ -109,6 +88,18 @@ public class AboutDialog implements IView {
     private static final String RELEASES_LINK = GITHUB_DOMAIN + RELEASES_PATH;
 
     /**
+     * Appropriate Legal Notices the GNU General Public License requires the app to display, including the notice the
+     * additional terms require every modified version to keep word for word. The body width wraps them into a column.
+     */
+    private static final String LEGAL_NOTICES = "<html><body style='width: 320px'>Copyright © 2024-2026 Jonathan R. "
+            + "Miller<br><br>Display Hot Keys is free software. You may redistribute it and modify it under the terms "
+            + "of version 3 of the GNU General Public License, together with the additional terms under section 7 of "
+            + "that License.<br><br>Display Hot Keys comes with ABSOLUTELY NO WARRANTY, to the extent permitted by "
+            + "applicable law.<br><br>Modified versions are not endorsed by Jonathan R. Miller, who is not responsible "
+            + "or liable for them.<br><br>Select License to view the GNU General Public License and the additional "
+            + "terms.</body></html>";
+
+    /**
      * Visible space above the first section, between sections, and below the buttons.
      */
     private static final int SECTION_GAP = 24;
@@ -122,25 +113,13 @@ public class AboutDialog implements IView {
     /**
      * Constructor for the {@link AboutDialog} class.
      *
-     * @param model
-     *            - The model for the application
      * @param view
      *            - The view for the application
+     * @param nativeInputHook
+     *            - The shared native input hook used to re-fit the dialog after a cross-display drag (may be null)
      */
-    public AboutDialog(DhkModel model, DhkView view) {
-        this.model = model;
-        this.view = view;
-        this.parentFrame = view.getFrame();
-
-        originalGlassPane = parentFrame.getGlassPane();
-        darkeningGlassPane = createDarkeningGlassPane();
-    }
-
-    /**
-     * Shows an "About Display Hot Keys" dialog on the AWT event dispatching thread.
-     */
-    public void showAboutDialog() {
-        showAboutDialog(null);
+    public AboutDialog(DhkView view, NativeInputHook nativeInputHook) {
+        super(view, nativeInputHook, DIALOG_TITLE);
     }
 
     /**
@@ -150,43 +129,26 @@ public class AboutDialog implements IView {
      *            - The action to run when the dialog closes (not required)
      */
     public void showAboutDialog(Runnable onCloseAction) {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                // Create the dialog and initialize components
-                final JDialog aboutDialog = new JDialog(parentFrame, DIALOG_TITLE, true);
-                aboutDialog.setResizable(false);
-
-                initAboutPanels(aboutDialog);
-                initAboutComponents(aboutDialog);
-                initAboutComponentListeners(aboutDialog, onCloseAction);
-                addAboutComponents(aboutDialog);
-
-                view.getDefaultFocusComponent().requestFocusInWindow();
-                parentFrame.setGlassPane(darkeningGlassPane);
-                darkeningGlassPane.setVisible(true);
-
-                // Start off-EDT before the modal setVisible blocks, so the label updates while the dialog is shown
-                fetchLatestVersion();
-
-                // Pack and position to fit the info text, then show
-                aboutDialog.pack();
-                aboutDialog.setLocationRelativeTo(parentFrame);
-                aboutDialog.setVisible(true);
-            }
-        });
-
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                getDefaultFocusComponent().requestFocusInWindow();
-            }
-        });
+        showDialog(onCloseAction);
     }
 
     @Override
     public Component getDefaultFocusComponent() {
         return versionLabel;
+    }
+
+    @Override
+    protected void buildContent(JDialog aboutDialog, JPanel contentPanel) {
+        initAboutPanels(contentPanel);
+        initAboutComponents();
+        initAboutComponentListeners(aboutDialog);
+        addAboutComponents(contentPanel);
+    }
+
+    @Override
+    protected void beforeShow() {
+        // Start off-EDT before the modal setVisible blocks, so the label updates while the dialog is shown
+        fetchLatestVersion();
     }
 
     /**
@@ -260,12 +222,12 @@ public class AboutDialog implements IView {
     /**
      * Initializes panels for an about dialog.
      *
-     * @param aboutDialog
-     *            - The about dialog to initialize panels for
+     * @param contentPanel
+     *            - The dialog's scrolling content panel to lay the sections out in
      */
-    private void initAboutPanels(JDialog aboutDialog) {
+    private void initAboutPanels(JPanel contentPanel) {
         mainLayout = new GridBagLayout();
-        aboutDialog.setLayout(mainLayout);
+        contentPanel.setLayout(mainLayout);
 
         mainConstraints = new GridBagConstraints();
         mainConstraints.insets = new Insets(0, 20, 0, 20);
@@ -291,38 +253,33 @@ public class AboutDialog implements IView {
 
     /**
      * Initializes components for an about dialog.
-     *
-     * @param aboutDialog
-     *            - The about dialog to initialize components for
      */
-    private void initAboutComponents(JDialog aboutDialog) {
-        versionSectionLabel = new JLabel("Version", SwingConstants.CENTER);
+    private void initAboutComponents() {
+        versionSectionLabel = new JLabel("Version", SwingConstants.LEFT);
         versionSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
         versionSeparator = new JSeparator();
 
-        versionLabel = new JLabel("Current: " + VersionRetriever.getVersion(), SwingConstants.CENTER);
+        versionLabel = new JLabel("Current: " + VersionRetriever.getVersion(), SwingConstants.LEFT);
 
         // Placeholder text is the widest state, so the async result never clips in the non-resizable dialog
-        latestVersionLabel = new JLabel("Latest: checking…", SwingConstants.CENTER);
+        latestVersionLabel = new JLabel("Latest: checking…", SwingConstants.LEFT);
 
-        developerSectionLabel = new JLabel("Developer", SwingConstants.CENTER);
+        developerSectionLabel = new JLabel("Original Developer", SwingConstants.LEFT);
         developerSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
         developerSeparator = new JSeparator();
 
-        developedByLabel = new JLabel("Jonathan R. Miller", SwingConstants.CENTER);
+        developedByLabel = new JLabel("Jonathan R. Miller", SwingConstants.LEFT);
 
-        donateSectionLabel = new JLabel("Donate", SwingConstants.CENTER);
-        donateSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
-        donateSeparator = new JSeparator();
+        legalSectionLabel = new JLabel("Legal Notices", SwingConstants.LEFT);
+        legalSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
+        legalSeparator = new JSeparator();
 
-        ButtonProperties paypalButtonProperties = new ButtonProperties(null, new Dimension(134, 46), 0.70f, 0.63f);
-        paypalDonateButton = new ThemeableButton("/paypal_donate_light_idle.svg", "/paypal_donate_light_hover.svg",
-                "/paypal_donate_dark_idle.svg", "/paypal_donate_dark_hover.svg", paypalButtonProperties, true,
-                model.isDarkMode());
+        legalNoticesLabel = new JLabel(LEGAL_NOTICES, SwingConstants.LEFT);
 
-        paypalButtonController = new PaypalDonateButtonController(AboutDialog.this, paypalDonateButton);
         licenseButton = new JButton("License");
         licenseButton.setFocusPainted(false);
+        donateButton = new JButton("Donate");
+        donateButton.setFocusPainted(false);
         releasesButton = new JButton("Releases");
         releasesButton.setFocusPainted(false);
     }
@@ -331,63 +288,33 @@ public class AboutDialog implements IView {
      * Initializes listeners for the components in an about dialog.
      *
      * @param aboutDialog
-     *            - The about dialog to initialize listeners for
-     * @param onCloseAction
-     *            - The action to run when the dialog closes (not required)
+     *            - The about dialog that owns the license dialog its License button opens
      */
-    private void initAboutComponentListeners(final JDialog aboutDialog, final Runnable onCloseAction) {
-        paypalButtonController.initListeners();
-
+    private void initAboutComponentListeners(JDialog aboutDialog) {
         licenseButton.addActionListener(createLicenseActionListener(aboutDialog));
         releasesButton.addActionListener(createReleasesActionListener());
 
-        // Prevent default close and handle the title-bar close ourselves
-        aboutDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-        aboutDialog.addWindowListener(new WindowAdapter() {
-            // Ensure the dialog takes the foreground after opening from the tray
-            @Override
-            public void windowOpened(WindowEvent e) {
-                aboutDialog.toFront();
-            }
-
-            @Override
-            public void windowClosing(WindowEvent e) {
-                closeDialog(aboutDialog, onCloseAction);
-            }
-
-            // A re-initialization disposes the parent frame, destroying this dialog without any close request
-            @Override
-            public void windowClosed(WindowEvent e) {
-                closeDialog(aboutDialog, onCloseAction);
-            }
-        });
-
-        aboutDialog.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent mousePressedEvent) {
-                getDefaultFocusComponent().requestFocusInWindow();
-            }
-        });
+        // The donation provider lives entirely in this controller, so switching providers never touches the dialog
+        DonateButtonController donateButtonController = new DonateButtonController(this, donateButton);
+        donateButtonController.initController();
+        donateButtonController.initListeners();
     }
 
     /**
      * Adds components to an about dialog.
      *
-     * @param aboutDialog
-     *            - The about dialog to add components to
+     * @param contentPanel
+     *            - The dialog's scrolling content panel to add the sections to
      */
-    private void addAboutComponents(JDialog aboutDialog) {
+    private void addAboutComponents(JPanel contentPanel) {
         // An edge adds no padding of its own, so only the padding of the text or button beside it counts toward the gap
         int edgeInset = SECTION_GAP - INNER_PADDING;
 
         // A heading below text has padding on both sides of its gap, so both are taken out of its inset
         int sectionInset = SECTION_GAP - 2 * INNER_PADDING;
 
-        // The PayPal icon is drawn smaller than its button, so the blank margin around it counts toward the gap below
-        int paypalButtonHeight = paypalDonateButton.getPreferredSize().height;
-        int paypalIconMargin = (paypalButtonHeight - paypalDonateButton.getIcon().getIconHeight()) / 2;
-
-        buttonPanelConstraints.insets = new Insets(SECTION_GAP - INNER_PADDING - paypalIconMargin, 8, edgeInset, 8);
+        // The buttons sit below text, so the text's padding and the buttons' border padding both count toward the gap
+        buttonPanelConstraints.insets = new Insets(sectionInset, 8, edgeInset, 8);
 
         buttonPanelConstraints.gridx = 0;
         buttonPanelConstraints.gridy = 0;
@@ -395,40 +322,44 @@ public class AboutDialog implements IView {
 
         buttonPanelConstraints.gridx = 1;
         buttonPanelConstraints.gridy = 0;
+        buttonPanel.add(donateButton, buttonPanelConstraints);
+
+        buttonPanelConstraints.gridx = 2;
+        buttonPanelConstraints.gridy = 0;
         buttonPanel.add(releasesButton, buttonPanelConstraints);
 
-        addInfo(infoPanel, infoPanelConstraints, versionSectionLabel, 0, 0, 1, GridBagConstraints.CENTER,
+        addInfo(infoPanel, infoPanelConstraints, versionSectionLabel, 0, 0, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(edgeInset, 8, 4, 8));
         addInfo(infoPanel, infoPanelConstraints, versionSeparator, 0, 1, 1, GridBagConstraints.CENTER,
                 GridBagConstraints.HORIZONTAL, new Insets(0, 8, 4, 8));
-        addInfo(infoPanel, infoPanelConstraints, versionLabel, 0, 2, 1, GridBagConstraints.CENTER,
+        addInfo(infoPanel, infoPanelConstraints, versionLabel, 0, 2, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(4, 8, 2, 8));
-        addInfo(infoPanel, infoPanelConstraints, latestVersionLabel, 0, 3, 1, GridBagConstraints.CENTER,
+        addInfo(infoPanel, infoPanelConstraints, latestVersionLabel, 0, 3, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(2, 8, 0, 8));
 
-        addInfo(infoPanel, infoPanelConstraints, developerSectionLabel, 0, 4, 1, GridBagConstraints.CENTER,
+        addInfo(infoPanel, infoPanelConstraints, developerSectionLabel, 0, 4, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(sectionInset, 8, 4, 8));
         addInfo(infoPanel, infoPanelConstraints, developerSeparator, 0, 5, 1, GridBagConstraints.CENTER,
                 GridBagConstraints.HORIZONTAL, new Insets(0, 8, 4, 8));
-        addInfo(infoPanel, infoPanelConstraints, developedByLabel, 0, 6, 1, GridBagConstraints.CENTER,
+        addInfo(infoPanel, infoPanelConstraints, developedByLabel, 0, 6, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(4, 8, 0, 8));
 
-        addInfo(infoPanel, infoPanelConstraints, donateSectionLabel, 0, 7, 1, GridBagConstraints.CENTER,
+        addInfo(infoPanel, infoPanelConstraints, legalSectionLabel, 0, 7, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(sectionInset, 8, 4, 8));
-        addInfo(infoPanel, infoPanelConstraints, donateSeparator, 0, 8, 1, GridBagConstraints.CENTER,
+        addInfo(infoPanel, infoPanelConstraints, legalSeparator, 0, 8, 1, GridBagConstraints.CENTER,
                 GridBagConstraints.HORIZONTAL, new Insets(0, 8, 4, 8));
-        addInfo(infoPanel, infoPanelConstraints, paypalDonateButton, 0, 9, 1, GridBagConstraints.CENTER,
+        addInfo(infoPanel, infoPanelConstraints, legalNoticesLabel, 0, 9, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(4, 8, 0, 8));
 
         mainConstraints.gridx = 0;
         mainConstraints.gridy = 0;
         mainConstraints.fill = GridBagConstraints.HORIZONTAL;
-        aboutDialog.add(infoPanel, mainConstraints);
+        contentPanel.add(infoPanel, mainConstraints);
 
         mainConstraints.gridx = 0;
         mainConstraints.gridy = 1;
         mainConstraints.fill = GridBagConstraints.NONE;
-        aboutDialog.add(buttonPanel, mainConstraints);
+        contentPanel.add(buttonPanel, mainConstraints);
     }
 
     /**
@@ -485,7 +416,7 @@ public class AboutDialog implements IView {
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
                     public void run() {
-                        new LicenseDialog(aboutDialog).showLicenseDialog();
+                        new LicenseDialog(aboutDialog, getNativeInputHook()).showLicenseDialog();
                     }
                 });
             }
@@ -520,55 +451,6 @@ public class AboutDialog implements IView {
         } catch (IOException | URISyntaxException e) {
             e.printStackTrace();
         }
-    }
-
-    /**
-     * Closes an about dialog.
-     *
-     * @param aboutDialog
-     *            - The about dialog to close
-     * @param onCloseAction
-     *            - The action to run when the dialog closes (not required)
-     */
-    private void closeDialog(JDialog aboutDialog, Runnable onCloseAction) {
-        // Disposing fires the close path again, and the title-bar close can land after it has already run
-        if (dialogClosed) {
-            return;
-        }
-
-        dialogClosed = true;
-
-        getDefaultFocusComponent().requestFocusInWindow();
-
-        if (onCloseAction != null) {
-            onCloseAction.run();
-        }
-
-        darkeningGlassPane.setVisible(false);
-        parentFrame.setGlassPane(originalGlassPane);
-
-        aboutDialog.dispose();
-    }
-
-    /**
-     * Creates a semi-transparent darkening panel to overlay the parent frame.
-     *
-     * @return A semi-transparent darkening panel to overlay the parent frame
-     */
-    private Component createDarkeningGlassPane() {
-        JPanel darkeningPanel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics graphics) {
-                graphics.setColor(new Color(0, 0, 0, 110));
-                graphics.fillRect(0, 0, getWidth(), getHeight());
-            }
-        };
-
-        darkeningPanel.setOpaque(false);
-        darkeningPanel.addMouseListener(new MouseAdapter() {
-        });
-
-        return darkeningPanel;
     }
 
 }

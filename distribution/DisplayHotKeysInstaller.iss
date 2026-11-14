@@ -4,8 +4,8 @@
 #define MyLockFileName "DisplayHotKeys.lock"
 #define MyStartupFilePath "AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\StartDisplayHotKeys.bat"
 #define ProfileListKey "SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList"
-#define MyAppVersion "4.3.1"
-#define MyAppCopyright "Copyright (C) 2026 Jonathan R. Miller"
+#define MyAppVersion "4.4.0"
+#define MyAppCopyright "Copyright (C) 2024-2026 Jonathan R. Miller"
 #define MyAppPublisher "Jonathan R. Miller"
 #define MyAppURL "https://github.com/jon-mil-92/DisplayHotKeys"
 #define MyAppExeName "DisplayHotKeys.exe"
@@ -28,7 +28,7 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 DefaultDirName={autopf}\{#MyAppName}
 DisableDirPage=yes
 DisableProgramGroupPage=yes
-LicenseFile={#ProjectDir}\LICENSE.txt
+LicenseFile={#DistDir}\jpackage-out\InstallerLicense.txt
 OutputDir={#DistDir}
 OutputBaseFilename=DisplayHotKeysInstaller
 SetupIconFile={#DistDir}\dhk.ico
@@ -59,11 +59,13 @@ Type: filesandordirs; Name: {app}\DisplayHotKeysLauncher.exe;
 Type: filesandordirs; Name: {app}\SetDisplay.exe;
 Type: filesandordirs; Name: {app}\APACHE_LICENSE_3RD_PARTY.txt;
 Type: filesandordirs; Name: {app}\LICENSE.txt;
+Type: filesandordirs; Name: {app}\ADDITIONAL_TERMS.txt;
 Type: filesandordirs; Name: {app}\README.txt;
 Type: filesandordirs; Name: {app}\JDK;
 Type: filesandordirs; Name: {app}\app;
 Type: filesandordirs; Name: {app}\runtime;
 Type: filesandordirs; Name: {app}\AGPL_3.0_LICENSE_3RD_PARTY.txt;
+Type: filesandordirs; Name: {app}\MIT_LICENSE_3RD_PARTY.txt;
 Type: filesandordirs; Name: {app}\APACHE_2.0_LICENSE_3RD_PARTY.txt;
 Type: filesandordirs; Name: {app}\EnumDisplayIds.dll;
 Type: filesandordirs; Name: {app}\EnumDisplayModes.dll;
