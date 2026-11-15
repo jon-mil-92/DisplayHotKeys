@@ -238,6 +238,11 @@ public class DhkView implements IView {
         if (!startMinimizedToTray) {
             newFrame.setVisible(true);
 
+            // Showing alone cannot take the foreground at launch, while a rebuild must never take it from another app
+            if (previousFrame == null) {
+                newFrame.toFront();
+            }
+
             // Grow the frame to absorb any pack shortfall so scroll bars do not appear when the content fits on screen
             SwingUtilities.invokeLater(() -> WindowUtil.settleScrollBars(newFrame, scrollPane, workingAreaSize));
 
