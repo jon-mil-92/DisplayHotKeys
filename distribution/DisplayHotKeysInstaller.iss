@@ -60,7 +60,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#DistDir}\jpackage-out\DisplayHotKeys\*"; DestDir: "{app}"; Excludes: "uninstall.bat"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [INI]
-// The app shows itself in the language picked for setup until a language is picked in the app
+// The app switches to the language picked for setup whenever it differs from the one the previous setup picked
 Filename: "{app}\{#MyDefaultsFileName}"; Section: "Application"; Key: "defaultLanguage"; String: "{cm:AppLanguageTag}"
 
 [Icons]

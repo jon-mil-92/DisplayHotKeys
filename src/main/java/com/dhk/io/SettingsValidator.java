@@ -243,15 +243,27 @@ public class SettingsValidator {
     }
 
     /**
-     * Validates the value for the language property from the settings file. If the value is not the tag of a language
-     * the application is translated into, then it writes the tag of the language the application is showing.
+     * Validates the language property, which must always hold the tag of the language the application is showing, so a
+     * missing or unsupported tag is replaced as well. It also records the installer's language once it is adopted, so
+     * it never overrides a later pick in the app.
      */
     private void validateLanguage() {
-        String language = ini.get("Application", "language");
+        String shownLanguageTag = Localizer.getLanguage().getTag();
 
-        // The language shown was picked at launch from the installer default or Windows, so a new file stores that one
-        if (Language.fromTag(language) == null) {
-            repairProperty("Application", "language", Localizer.getLanguage().getTag());
+        // The shown language is always supported, and launch may have picked it over the saved one for a newer install
+        if (!shownLanguageTag.equals(ini.get("Application", "language"))) {
+            repairProperty("Application", "language", shownLanguageTag);
+        }
+
+        Language installerLanguage = SettingsManager.getInstallerLanguage();
+
+        // A copy that no installer set up, such as a portable one, has no installer language to record
+        if (installerLanguage == null) {
+            return;
+        }
+
+        if (!installerLanguage.getTag().equals(ini.get("Application", "installerLanguage"))) {
+            repairProperty("Application", "installerLanguage", installerLanguage.getTag());
         }
     }
 

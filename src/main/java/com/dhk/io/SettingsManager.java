@@ -50,6 +50,12 @@ public class SettingsManager {
     private File settingsFile;
 
     /**
+     * Language picked in the installer, read once at launch so every later validation can record it without reading the
+     * installer's file again, or null when no installer picked one.
+     */
+    private static Language installerLanguage;
+
+    /**
      * Most slots each display can show in the slot table.
      */
     private static final int MAX_NUM_OF_SLOTS = 12;
@@ -108,7 +114,7 @@ public class SettingsManager {
      * @return The saved dark mode value, or false when it cannot be read
      */
     public static boolean getSavedDarkMode() {
-        return Boolean.parseBoolean(readApplicationSetting(new File(getSettingsFilePath()), "darkMode"));
+        return Boolean.parseBoolean(readApplicationSettings(new File(getSettingsFilePath())).get("darkMode"));
     }
 
     /**
@@ -124,32 +130,46 @@ public class SettingsManager {
     }
 
     /**
-     * Picks the language to show at launch, which is the saved language, then the default language picked in the
-     * installer, and otherwise the Windows display language. It reads the files straight away, without initializing
-     * displays or validating the settings file, since the language is needed before anything is shown.
+     * Picks the language to show at launch, which is the saved language unless a newer install picked another, then the
+     * installer's language, and otherwise the Windows display language. It reads the files directly, since the language
+     * is needed before anything is shown.
      *
      * @return The language to show at launch
      */
     public static Language getStartupLanguage() {
-        Language savedLanguage = Language.fromTag(readApplicationSetting(new File(getSettingsFilePath()), "language"));
-
-        if (savedLanguage != null) {
-            return savedLanguage;
-        }
+        Map<String, String> savedSettings = readApplicationSettings(new File(getSettingsFilePath()));
+        Language savedLanguage = Language.fromTag(savedSettings.get("language"));
 
         // Only the packaged launcher sets the executable path, and the installer writes its defaults beside it
         String appExePath = System.getProperty("jpackage.app-path");
 
         if (appExePath != null) {
             File defaultsFile = new File(new File(appExePath).getParentFile(), INSTALLER_DEFAULTS_FILE_NAME);
-            Language installerLanguage = Language.fromTag(readApplicationSetting(defaultsFile, "defaultLanguage"));
+            installerLanguage = Language.fromTag(readApplicationSettings(defaultsFile).get("defaultLanguage"));
+        }
 
-            if (installerLanguage != null) {
-                return installerLanguage;
-            }
+        // Each account records the install language it adopted, so a different one comes from a newer install and wins
+        boolean newerInstallLanguage = installerLanguage != null
+                && !installerLanguage.getTag().equals(savedSettings.get("installerLanguage"));
+
+        if (savedLanguage != null && !newerInstallLanguage) {
+            return savedLanguage;
+        }
+
+        if (installerLanguage != null) {
+            return installerLanguage;
         }
 
         return Language.fromLocale(Locale.getDefault(Locale.Category.DISPLAY));
+    }
+
+    /**
+     * Gets the language picked in the installer, as read at launch.
+     *
+     * @return The language picked in the installer, or null when no installer picked one
+     */
+    static Language getInstallerLanguage() {
+        return installerLanguage;
     }
 
     /**
@@ -184,26 +204,27 @@ public class SettingsManager {
     }
 
     /**
-     * Reads a property of the application section straight from an ini file.
+     * Reads the application section straight from an ini file, so a caller that needs several of its properties parses
+     * the file only once.
      *
      * @param iniFile
      *            - The ini file to read
-     * @param key
-     *            - The name of the property to read
      *
-     * @return The property value, or null when the file or the property is missing or cannot be read
+     * @return The properties of the application section, empty when the file or section is missing or unreadable
      */
-    private static String readApplicationSetting(File iniFile, String key) {
+    private static Map<String, String> readApplicationSettings(File iniFile) {
         if (!iniFile.exists()) {
-            return null;
+            return Map.of();
         }
 
         try {
-            return new Wini(iniFile).get("Application", key);
+            Map<String, String> applicationSettings = new Wini(iniFile).get("Application");
+
+            return applicationSettings != null ? applicationSettings : Map.of();
         } catch (IOException e) {
             e.printStackTrace();
 
-            return null;
+            return Map.of();
         }
     }
 
