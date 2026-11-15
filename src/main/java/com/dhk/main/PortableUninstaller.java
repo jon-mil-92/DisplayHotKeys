@@ -83,14 +83,20 @@ public class PortableUninstaller {
      * @return True if a running copy was closed, otherwise false
      */
     private boolean closeRunningApp() {
-        long uninstallerPid = ProcessHandle.current().pid();
+        ProcessHandle uninstaller = ProcessHandle.current();
+        ProcessHandle launcher = uninstaller.parent().orElse(null);
         boolean appClosed = false;
 
         for (ProcessHandle process : ProcessHandle.allProcesses().toList()) {
             Optional<String> command = process.info().command();
 
-            // This cleanup runs from the same executable, so it must never close itself
-            if (process.pid() == uninstallerPid || command.isEmpty() || !command.get().endsWith(APP_EXE_NAME)) {
+            /*
+             * This cleanup runs from the same executable, which relaunches itself as a child process that ends whenever
+             * the launching process ends, so neither of the two may be closed
+             */
+            boolean runsThisCleanup = process.equals(uninstaller) || process.equals(launcher);
+
+            if (runsThisCleanup || command.isEmpty() || !command.get().endsWith(APP_EXE_NAME)) {
                 continue;
             }
 
