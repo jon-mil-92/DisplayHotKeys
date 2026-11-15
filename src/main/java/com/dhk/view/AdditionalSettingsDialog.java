@@ -28,6 +28,8 @@ import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
 
 import com.dhk.io.NativeInputHook;
+import com.dhk.localization.Language;
+import com.dhk.localization.Localizer;
 import com.dhk.model.DhkModel;
 import com.dhk.model.button.Button;
 import com.dhk.model.button.ButtonProperties;
@@ -49,6 +51,9 @@ public class AdditionalSettingsDialog extends OverlayDialog {
     private JPanel optionsPanel;
     private GridBagLayout optionsPanelLayout;
     private GridBagConstraints optionsPanelConstraints;
+    private JPanel customizationPanel;
+    private GridBagLayout customizationPanelLayout;
+    private GridBagConstraints customizationPanelConstraints;
     private JPanel hotKeysPanel;
     private GridBagLayout hotKeysPanelLayout;
     private GridBagConstraints hotKeysPanelConstraints;
@@ -63,6 +68,10 @@ public class AdditionalSettingsDialog extends OverlayDialog {
     private JLabel closeToTrayNoteLabel;
     private JLabel autoShowInfoOverlayLabel;
     private ToggleSwitch autoShowInfoOverlaySwitch;
+    private JLabel customizationSectionLabel;
+    private JSeparator customizationSeparator;
+    private JLabel languageLabel;
+    private CenteredComboBox<Language> languageComboBox;
     private JLabel hotKeysSectionLabel;
     private JSeparator hotKeysSeparator;
     private JLabel displayInfoHotKeyLabel;
@@ -70,11 +79,6 @@ public class AdditionalSettingsDialog extends OverlayDialog {
     private Button clearHotKeyButton;
     private JButton changeHotKeyButton;
     private boolean controlsEnabled;
-
-    /**
-     * Title shown in the dialog's title bar.
-     */
-    private static final String DIALOG_TITLE = "Additional Settings";
 
     /**
      * Visible space between neighboring components in each section's table, both across a row and between rows.
@@ -103,7 +107,7 @@ public class AdditionalSettingsDialog extends OverlayDialog {
      *            - The shared native input hook used to re-fit the dialog after a cross-display drag (may be null)
      */
     public AdditionalSettingsDialog(DhkModel model, DhkView view, NativeInputHook nativeInputHook) {
-        super(view, nativeInputHook, DIALOG_TITLE);
+        super(view, nativeInputHook, Localizer.getText("settings.title"));
         this.model = model;
         this.controlsEnabled = true;
 
@@ -113,19 +117,14 @@ public class AdditionalSettingsDialog extends OverlayDialog {
 
     /**
      * Shows an "Additional Settings" dialog on the AWT event dispatching thread.
-     */
-    public void showAdditionalSettingsDialog() {
-        showAdditionalSettingsDialog(null);
-    }
-
-    /**
-     * Shows an "Additional Settings" dialog on the AWT event dispatching thread.
      *
      * @param onCloseAction
      *            - The action to run when the dialog closes (not required)
+     * @param reopenAction
+     *            - The action that shows the dialog again after a re-initialization destroys it with the main frame
      */
-    public void showAdditionalSettingsDialog(Runnable onCloseAction) {
-        showDialog(onCloseAction);
+    public void showAdditionalSettingsDialog(Runnable onCloseAction, Runnable reopenAction) {
+        showDialog(onCloseAction, reopenAction);
     }
 
     @Override
@@ -179,6 +178,15 @@ public class AdditionalSettingsDialog extends OverlayDialog {
      */
     public ToggleSwitch getAutoShowInfoOverlaySwitch() {
         return autoShowInfoOverlaySwitch;
+    }
+
+    /**
+     * Gets the combo box that selects the language the application is shown in.
+     *
+     * @return The Language combo box
+     */
+    public CenteredComboBox<Language> getLanguageComboBox() {
+        return languageComboBox;
     }
 
     /**
@@ -244,6 +252,7 @@ public class AdditionalSettingsDialog extends OverlayDialog {
         minimizeToTraySwitch.setEnabled(enabled);
         closeToTraySwitch.setEnabled(enabled && model.isMinimizeToTray());
         autoShowInfoOverlaySwitch.setEnabled(enabled);
+        languageComboBox.setEnabled(enabled);
         changeHotKeyButton.setEnabled(enabled);
         clearHotKeyButton.setEnabled(enabled && model.getDisplayInfoHotKey().getKeys().size() > 0);
 
@@ -280,6 +289,12 @@ public class AdditionalSettingsDialog extends OverlayDialog {
 
         optionsPanelConstraints = new GridBagConstraints();
 
+        customizationPanel = new JPanel();
+        customizationPanelLayout = new GridBagLayout();
+        customizationPanel.setLayout(customizationPanelLayout);
+
+        customizationPanelConstraints = new GridBagConstraints();
+
         hotKeysPanel = new JPanel();
         hotKeysPanelLayout = new GridBagLayout();
         hotKeysPanel.setLayout(hotKeysPanelLayout);
@@ -291,56 +306,67 @@ public class AdditionalSettingsDialog extends OverlayDialog {
      * Initializes components for a additional settings dialog.
      */
     private void initComponents() {
-        optionsSectionLabel = new JLabel("Options", SwingConstants.LEFT);
+        optionsSectionLabel = new JLabel(Localizer.getText("settings.options"), SwingConstants.LEFT);
         optionsSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
 
         optionsSeparator = new JSeparator();
 
-        runOnStartupLabel = new JLabel("Run on Startup :", SwingConstants.LEFT);
-        new LightweightTooltip(runOnStartupLabel).setText("Start the app automatically upon login.");
+        runOnStartupLabel = new JLabel(Localizer.getText("settings.runOnStartup"), SwingConstants.LEFT);
+        new LightweightTooltip(runOnStartupLabel).setText(Localizer.getText("settings.runOnStartup.tooltip"));
 
         runOnStartupSwitch = new ToggleSwitch(model.isRunOnStartup());
 
-        minimizeToTrayLabel = new JLabel("Minimize to Tray :", SwingConstants.LEFT);
-        new LightweightTooltip(minimizeToTrayLabel).setText("Keep running in the system tray when minimized.");
+        minimizeToTrayLabel = new JLabel(Localizer.getText("settings.minimizeToTray"), SwingConstants.LEFT);
+        new LightweightTooltip(minimizeToTrayLabel).setText(Localizer.getText("settings.minimizeToTray.tooltip"));
 
         minimizeToTraySwitch = new ToggleSwitch(model.isMinimizeToTray());
 
-        closeToTrayLabel = new JLabel("Close to Tray :", SwingConstants.LEFT);
-        new LightweightTooltip(closeToTrayLabel).setText("Keep running in the system tray when closed.");
+        closeToTrayLabel = new JLabel(Localizer.getText("settings.closeToTray"), SwingConstants.LEFT);
+        new LightweightTooltip(closeToTrayLabel).setText(Localizer.getText("settings.closeToTray.tooltip"));
 
         closeToTraySwitch = new ToggleSwitch(model.isCloseToTray());
 
-        closeToTrayNoteLabel = new JLabel("Requires Minimize to Tray", SwingConstants.LEFT);
+        closeToTrayNoteLabel = new JLabel(Localizer.getText("settings.closeToTray.note"), SwingConstants.LEFT);
         closeToTrayNoteLabel.putClientProperty("FlatLaf.style",
                 "font: $small.font; foreground: $Label.disabledForeground");
 
         // Closing to the tray only applies while minimizing to the tray is on, so its switch and note follow that state
         updateCloseToTrayAvailability();
 
-        autoShowInfoOverlayLabel = new JLabel("Autoshow Info Overlay :", SwingConstants.LEFT);
-        new LightweightTooltip(autoShowInfoOverlayLabel).setText("Automatically show each display's applied settings.");
+        autoShowInfoOverlayLabel = new JLabel(Localizer.getText("settings.autoShowInfoOverlay"), SwingConstants.LEFT);
+        new LightweightTooltip(autoShowInfoOverlayLabel)
+                .setText(Localizer.getText("settings.autoShowInfoOverlay.tooltip"));
 
         autoShowInfoOverlaySwitch = new ToggleSwitch(model.isAutoShowInfoOverlay());
 
-        hotKeysSectionLabel = new JLabel("Hot Keys", SwingConstants.LEFT);
+        customizationSectionLabel = new JLabel(Localizer.getText("settings.customization"), SwingConstants.LEFT);
+        customizationSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
+
+        customizationSeparator = new JSeparator();
+
+        languageLabel = new JLabel(Localizer.getText("settings.language"), SwingConstants.LEFT);
+        new LightweightTooltip(languageLabel).setText(Localizer.getText("settings.language.tooltip"));
+
+        // Each language is listed by its own name, so every reader can find their language whatever is shown
+        languageComboBox = new CenteredComboBox<Language>(Language.values());
+        languageComboBox.setSelectedItem(Localizer.getLanguage());
+
+        hotKeysSectionLabel = new JLabel(Localizer.getText("settings.hotKeys"), SwingConstants.LEFT);
         hotKeysSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
 
         hotKeysSeparator = new JSeparator();
 
-        displayInfoHotKeyLabel = new JLabel("Show Info Overlay :", SwingConstants.LEFT);
-        new LightweightTooltip(displayInfoHotKeyLabel).setText("Shows each display's applied settings.");
+        displayInfoHotKeyLabel = new JLabel(Localizer.getText("settings.showInfoOverlay"), SwingConstants.LEFT);
+        new LightweightTooltip(displayInfoHotKeyLabel).setText(Localizer.getText("settings.showInfoOverlay.tooltip"));
 
         displayInfoHotKey = new HotKeyLabel(model.getDisplayInfoHotKey().getHotKeyString());
 
-        ButtonProperties clearHotKeyButtonProps = new ButtonProperties("Clear Hot Key", new Dimension(18, 20), 0.70f,
-                0.60f);
+        ButtonProperties clearHotKeyButtonProps = new ButtonProperties(Localizer.getText("hotKey.clear"),
+                new Dimension(18, 20), 0.70f, 0.60f);
         clearHotKeyButton = new Button("/clear_hot_key_idle.svg", "/clear_hot_key_hover.svg", clearHotKeyButtonProps,
                 model.getDisplayInfoHotKey().getKeys().size() > 0);
 
-        changeHotKeyButton = new JButton("Change Hot Key");
-        changeHotKeyButton.setPreferredSize(new Dimension(148, 28));
-        changeHotKeyButton.setFocusPainted(false);
+        changeHotKeyButton = new ChangeHotKeyButton();
     }
 
     /**
@@ -395,13 +421,18 @@ public class AdditionalSettingsDialog extends OverlayDialog {
         addSetting(optionsPanel, optionsPanelConstraints, closeToTrayNoteLabel, 2, 2, 2, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(0, leadingInset, switchTrailingInset, trailingInset));
 
+        addSetting(customizationPanel, customizationPanelConstraints, languageLabel, 0, 0, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, labelInsets);
+        addSetting(customizationPanel, customizationPanelConstraints, languageComboBox, 1, 0, 1,
+                GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
+
         // The hot key outline is drawn at its own edge, so the whole gap below the last row comes from its inset
         Insets hotKeyRowInsets = new Insets(leadingInset, leadingInset, SECTION_GAP, trailingInset);
 
         addSetting(hotKeysPanel, hotKeysPanelConstraints, displayInfoHotKeyLabel, 0, 0, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, hotKeyRowInsets);
         addSetting(hotKeysPanel, hotKeysPanelConstraints, displayInfoHotKey, 1, 0, 1, GridBagConstraints.CENTER,
-                GridBagConstraints.NONE, hotKeyRowInsets);
+                GridBagConstraints.VERTICAL, hotKeyRowInsets);
         addSetting(hotKeysPanel, hotKeysPanelConstraints, clearHotKeyButton, 2, 0, 1, GridBagConstraints.CENTER,
                 GridBagConstraints.NONE, hotKeyRowInsets);
         addSetting(hotKeysPanel, hotKeysPanelConstraints, changeHotKeyButton, 3, 0, 1, GridBagConstraints.CENTER,
@@ -418,11 +449,19 @@ public class AdditionalSettingsDialog extends OverlayDialog {
         addSetting(settingsPanel, settingsPanelConstraints, optionsPanel, 0, 2, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(0, 0, 0, 0));
 
-        addSetting(settingsPanel, settingsPanelConstraints, hotKeysSectionLabel, 0, 3, 1, GridBagConstraints.WEST,
+        addSetting(settingsPanel, settingsPanelConstraints, customizationSectionLabel, 0, 3, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(sectionInset, leadingInset, 8, trailingInset));
-        addSetting(settingsPanel, settingsPanelConstraints, hotKeysSeparator, 0, 4, 1, GridBagConstraints.CENTER,
+        addSetting(settingsPanel, settingsPanelConstraints, customizationSeparator, 0, 4, 1, GridBagConstraints.CENTER,
                 GridBagConstraints.HORIZONTAL, new Insets(0, leadingInset, 0, trailingInset));
-        addSetting(settingsPanel, settingsPanelConstraints, hotKeysPanel, 0, 5, 1, GridBagConstraints.WEST,
+        addSetting(settingsPanel, settingsPanelConstraints, customizationPanel, 0, 5, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(0, 0, 0, 0));
+
+        // The language combo box sits the trailing inset above the next heading like a switch track, so the gap matches
+        addSetting(settingsPanel, settingsPanelConstraints, hotKeysSectionLabel, 0, 6, 1, GridBagConstraints.WEST,
+                GridBagConstraints.NONE, new Insets(sectionInset, leadingInset, 8, trailingInset));
+        addSetting(settingsPanel, settingsPanelConstraints, hotKeysSeparator, 0, 7, 1, GridBagConstraints.CENTER,
+                GridBagConstraints.HORIZONTAL, new Insets(0, leadingInset, 0, trailingInset));
+        addSetting(settingsPanel, settingsPanelConstraints, hotKeysPanel, 0, 8, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(0, 0, 0, 0));
 
         mainConstraints.gridx = 0;

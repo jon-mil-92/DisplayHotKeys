@@ -33,7 +33,6 @@ using namespace std;
 static vector<wstring> readWideStrings(JNIEnv *env, jobjectArray javaStrings);
 static wstring readWideString(JNIEnv *env, jstring javaString);
 static COLORREF colorFromArgb(jint argb);
-static bool registerPrivateFonts(JNIEnv *env, jobjectArray fontFiles);
 static bool startOverlayThread();
 static void runOverlayThread();
 static LRESULT CALLBACK handleControlEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData);
@@ -83,16 +82,6 @@ static shared_ptr<const DisplayInfoOverlayDefinition> pendingDefinition;
  * Guards the panels waiting to be shown.
  */
 static mutex definitionMutex;
-
-/**
- * Font files registered privately for this process so the panels can draw in a family that is not installed.
- */
-static vector<HANDLE> privateFontResources;
-
-/**
- * Guards the privately registered font files.
- */
-static mutex fontMutex;
 
 /**
  * Definition of the panels being shown, read only by the thread owning the panels.
@@ -238,21 +227,17 @@ static constexpr int SEPARATOR_THICKNESS = 1;
  * @param overlayMetrics
  *            - The panel metrics in unscaled pixels, indexed by the OVERLAY_METRIC constants
  * @param fontFamily
- *            - The family of the font the panels are drawn in
- * @param fontFiles
- *            - The font files to register privately for the family, or null when the family is installed or the fonts
- *            were already registered, which lasts for the life of the process
+ *            - The family of the installed font the panels are drawn in
  * @param opacity
  *            - The opacity of the panels, from 0 (invisible) to 255 (opaque)
  * @param durationMs
  *            - How long the panels stay visible, in milliseconds
  *
- * @return Whether the panels were accepted and any supplied fonts are registered
+ * @return Whether the panels were accepted
  */
 extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeShow(
     JNIEnv *env, jobject obj, jobjectArray headers, jobjectArray labels, jobjectArray values, jintArray anchorPoints,
-    jintArray overlayColors, jintArray overlayMetrics, jstring fontFamily, jobjectArray fontFiles, jint opacity,
-    jint durationMs) {
+    jintArray overlayColors, jintArray overlayMetrics, jstring fontFamily, jint opacity, jint durationMs) {
     (void) obj;
 
     if (!headers || !labels || !values || !anchorPoints || !overlayColors || !overlayMetrics || durationMs <= 0 ||
@@ -304,9 +289,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeS
     definition->opacity = (BYTE) (opacity < 0 ? 0 : (opacity > MAX_OPACITY ? MAX_OPACITY : opacity));
     definition->durationMs = (UINT) durationMs;
 
-    // Registered before the panels are handed over, so no panel is ever drawn before its font exists
-    bool fontsRegistered = registerPrivateFonts(env, fontFiles);
-
     if (!startOverlayThread()) {
         return JNI_FALSE;
     }
@@ -323,8 +305,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeS
         return JNI_FALSE;
     }
 
-    // A failed registration reports false, so the caller supplies the fonts again with its next panels
-    return fontsRegistered ? JNI_TRUE : JNI_FALSE;
+    return JNI_TRUE;
 }
 
 /**
@@ -347,8 +328,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeHide(
 }
 
 /**
- * Called when the native library is unloaded. Stops the thread owning the panels and releases the private fonts and
- * the panels still waiting to be shown.
+ * Called when the native library is unloaded. Stops the thread owning the panels and releases the panels still waiting
+ * to be shown.
  *
  * @param vm
  *            - The JavaVM pointer
@@ -361,18 +342,8 @@ extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
 
     stopOverlayThread();
 
-    {
-        lock_guard<mutex> definitionLock(definitionMutex);
-        pendingDefinition.reset();
-    }
-
-    lock_guard<mutex> fontLock(fontMutex);
-
-    for (HANDLE fontResource : privateFontResources) {
-        RemoveFontMemResourceEx(fontResource);
-    }
-
-    privateFontResources.clear();
+    lock_guard<mutex> definitionLock(definitionMutex);
+    pendingDefinition.reset();
 }
 
 /**
@@ -438,63 +409,6 @@ static wstring readWideString(JNIEnv *env, jstring javaString) {
  */
 static COLORREF colorFromArgb(jint argb) {
     return RGB((argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF);
-}
-
-/**
- * Registers the given font files privately for this process, once for its whole life, so the panels can draw in a
- * family that is not installed. A partial registration is undone, so a later call can try every file again.
- *
- * @param env
- *            - The JNI environment pointer
- * @param fontFiles
- *            - The font files to register, or null when there is nothing to register
- *
- * @return Whether the fonts are registered, which is also true when no files were supplied
- */
-static bool registerPrivateFonts(JNIEnv *env, jobjectArray fontFiles) {
-    if (!fontFiles) {
-        return true;
-    }
-
-    lock_guard<mutex> fontLock(fontMutex);
-
-    if (!privateFontResources.empty()) {
-        return true;
-    }
-
-    jsize fileCount = env->GetArrayLength(fontFiles);
-
-    for (jsize fileIndex = 0; fileIndex < fileCount; fileIndex++) {
-        jbyteArray fontFile = (jbyteArray) env->GetObjectArrayElement(fontFiles, fileIndex);
-
-        if (!fontFile) {
-            continue;
-        }
-
-        vector<jbyte> fontBytes(env->GetArrayLength(fontFile));
-        DWORD registeredFontCount = 0;
-
-        env->GetByteArrayRegion(fontFile, 0, (jsize) fontBytes.size(), fontBytes.data());
-        env->DeleteLocalRef(fontFile);
-
-        // The system keeps its own copy of the font, so the buffer can go as soon as this returns
-        HANDLE fontResource =
-            AddFontMemResourceEx(fontBytes.data(), (DWORD) fontBytes.size(), nullptr, &registeredFontCount);
-
-        if (!fontResource) {
-            for (HANDLE registeredResource : privateFontResources) {
-                RemoveFontMemResourceEx(registeredResource);
-            }
-
-            privateFontResources.clear();
-
-            return false;
-        }
-
-        privateFontResources.push_back(fontResource);
-    }
-
-    return true;
 }
 
 /**

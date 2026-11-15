@@ -64,7 +64,7 @@ This application will be distributed as a portable package and as an installer. 
 
 3. Release at least one of the keys to set the hot key.
 
-**Note:** A hot key cannot be a subset of another hot key. For example, you cannot have a hot key of "Ctrl + F1" and another hot key of "Ctrl + Shift + F1". However, a hot key can be the same as another hot key if they are for different displays. This will allow you to apply display settings for multiple displays with one hot key!
+**Note:** A hot key cannot be a subset of another hot key. For example, you cannot have a hot key of "Ctrl+F1" and another hot key of "Ctrl+Shift+F1". However, a hot key can be the same as another hot key if they are for different displays. This will allow you to apply display settings for multiple displays with one hot key!
 
 ### Changing the Selected Display
 
@@ -108,11 +108,53 @@ This application will be distributed as a portable package and as an installer. 
     
     * Select "Portrait" for a portrait orientation of 90 degrees rotation.
     
-    * Select "iLandscape" for an inverted landscape orientation of 180 degrees rotation.
+    * Select "Landscape (flipped)" for a flipped landscape orientation of 180 degrees rotation.
     
-    * Select "iPortrait" for an inverted portrait orientation of 270 degrees rotation.
+    * Select "Portrait (flipped)" for a flipped portrait orientation of 270 degrees rotation.
 	
 **Note:** Make sure you can rotate your display before changing the orientation; otherwise, it may be difficult to operate your computer.
+
+### Changing the Language
+
+1. Click the "Additional Settings" button.
+
+2. Click the "Language" drop-down box.
+
+3. Select a language, and confirm the change.
+
+The language works as follows:
+
+* After every install, the application uses the language chosen in the installer.
+
+* The first time the portable package starts, it uses your Windows display language. If that language is not supported, it uses English.
+
+* A language selected in the application is kept when the application restarts.
+
+* The uninstaller uses the language chosen in the installer.
+
+* The legal notices and the license are shown in English in every language.
+
+#### Supported Languages
+
+* English
+
+* Deutsch (German)
+
+* Español (Spanish)
+
+* Français (French)
+
+* Italiano (Italian)
+
+* Português (Brazilian Portuguese)
+
+* Русский (Russian)
+
+* 日本語 (Japanese)
+
+* 한국어 (Korean)
+
+* 简体中文 (Simplified Chinese)
 
 ### Button Interaction
 
@@ -143,6 +185,8 @@ Opens a window with additional app settings. The window can also be opened by cl
 * "Close to Tray" sends the application to the system tray instead of exiting when its window is closed. This option requires "Minimize to Tray" to be toggled on.
 
 * "Autoshow Info Overlay" shows each display's applied settings in its top-right corner whenever a hot key slot is applied or the display configuration changes.
+
+* "Language" changes the language of the application. See "Changing the Language" for details.
 
 * "Show Info Overlay" sets a hot key that shows each display's applied settings on demand. Set it with the "Change Hot Key" button, and clear it with the "Clear Hot Key" button.
 

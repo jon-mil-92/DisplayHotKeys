@@ -47,9 +47,9 @@ public class VersionRetriever {
     private static volatile long cachedAtNanos;
 
     /**
-     * Version text returned when a version cannot be resolved.
+     * Version text returned when a version cannot be resolved, which callers show in the selected language instead.
      */
-    private static final String UNKNOWN_VERSION = "Unknown";
+    public static final String UNKNOWN_VERSION = "Unknown";
 
     /**
      * GitHub API endpoint that returns the latest release of the application.

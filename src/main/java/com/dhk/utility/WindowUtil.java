@@ -448,15 +448,25 @@ public class WindowUtil {
     }
 
     /**
-     * Caps a packed dialog to the working area of its display the same way the main frame is fitted, then centers it on
-     * its owner while keeping it fully on screen. Its scroll bars settle once it is shown, as the main frame's do.
+     * Caps a packed dialog to the working area of its display the same way the main frame is fitted, then places it at
+     * the given location, or centers it on its owner, while keeping it fully on screen. Its scroll bars settle once it
+     * is shown, as the main frame's do.
      *
      * @param dialog
      *            - The packed dialog to fit and place
+     * @param location
+     *            - The top-left location to place the dialog at, or null to center it on its owner
      */
-    public static void fitDialogToWorkingArea(JDialog dialog) {
+    public static void fitDialogToWorkingArea(JDialog dialog, Point location) {
         JScrollPane scrollPane = contentScrollPane(dialog);
         GraphicsConfiguration configuration = dialog.getGraphicsConfiguration();
+
+        // A dialog placed at a location belongs to the display under its center, which need not be its owner's
+        if (location != null) {
+            configuration = getTargetGraphicsConfiguration(
+                    new Point(location.x + dialog.getWidth() / 2, location.y + dialog.getHeight() / 2));
+        }
+
         Rectangle workingArea = workingAreaBounds(configuration);
 
         if (workingArea == null) {
@@ -469,9 +479,15 @@ public class WindowUtil {
         cacheDisplayMetrics(dialog, configuration, workingAreaSize);
         capToWorkingArea(dialog, scrollPane, workingAreaSize);
 
-        // Centering on an owner near a display edge can push the dialog past it, so pull it back inside
-        dialog.setLocationRelativeTo(dialog.getOwner());
-        dialog.setLocation(clampToWorkingArea(workingArea, dialog.getSize(), dialog.getLocation()));
+        Point preferredLocation = location;
+
+        if (preferredLocation == null) {
+            dialog.setLocationRelativeTo(dialog.getOwner());
+            preferredLocation = dialog.getLocation();
+        }
+
+        // Centering on an owner near a display edge, or a kept location, can push the dialog past it, so pull it inside
+        dialog.setLocation(clampToWorkingArea(workingArea, dialog.getSize(), preferredLocation));
 
         // Queued before a modal show blocks, so the scroll bars settle once the dialog is on screen
         SwingUtilities.invokeLater(() -> settleScrollBars(dialog, scrollPane, workingAreaSize));

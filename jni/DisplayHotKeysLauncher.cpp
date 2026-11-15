@@ -61,6 +61,12 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
 
     wstring appExePath = launchDirectory + L"\\" + APP_EXE_NAME;
 
+    /*
+     * The scheduler starts the task's process itself, which leaves that process unable to take the foreground. This
+     * launcher was just started by the user, so it hands its own right on before either start path runs
+     */
+    AllowSetForegroundWindow(ASFW_ANY);
+
     if (runRegisteredTask(appExePath)) {
         return EXIT_STARTED;
     }

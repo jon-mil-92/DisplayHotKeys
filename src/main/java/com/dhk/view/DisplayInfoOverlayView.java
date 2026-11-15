@@ -16,8 +16,6 @@ package com.dhk.view;
 
 import java.awt.Color;
 import java.awt.Font;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,13 +23,13 @@ import javax.swing.UIManager;
 
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.DisplayInfoOverlay;
+import com.dhk.localization.Localizer;
 import com.dhk.model.ActiveDisplaySettings;
 import com.dhk.model.DhkModel;
 import com.dhk.model.DisplayMode;
 import com.dhk.model.RefreshRate;
 import com.dhk.model.Resolution;
 import com.dhk.utility.DisplayModeUtil;
-import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 
 /**
  * Shows the applied settings of every connected display in a translucent panel in the top-right corner of that display.
@@ -44,21 +42,10 @@ public class DisplayInfoOverlayView {
     private DisplayInfoOverlay displayInfoOverlay;
 
     /**
-     * Whether the native layer holds the Roboto fonts, which it keeps for the life of the process, so the font files
-     * are only read until then.
+     * Message key of each setting line's label, which reuses the matching slot table column header.
      */
-    private static boolean robotoFontsRegistered;
-
-    /**
-     * Label of each setting line, which reuses the matching slot table column header.
-     */
-    private static final String[] SETTING_LABELS = {DhkView.RESOLUTION_HEADER_TEXT, DhkView.REFRESH_RATE_HEADER_TEXT,
-            DhkView.DPI_SCALE_HEADER_TEXT, DhkView.SCALING_MODE_HEADER_TEXT, DhkView.ORIENTATION_HEADER_TEXT};
-
-    /**
-     * Regular and bold Roboto font files, read from beside the class that installs the font.
-     */
-    private static final String[] ROBOTO_FONT_FILES = {"Roboto-Regular.ttf", "Roboto-Bold.ttf"};
+    private static final String[] SETTING_LABEL_KEYS = {DhkView.RESOLUTION_HEADER_KEY, DhkView.REFRESH_RATE_HEADER_KEY,
+            DhkView.DPI_SCALE_HEADER_KEY, DhkView.SCALING_MODE_HEADER_KEY, DhkView.ORIENTATION_HEADER_KEY};
 
     /**
      * Text shown for a setting that could not be read.
@@ -151,7 +138,7 @@ public class DisplayInfoOverlayView {
                 continue;
             }
 
-            headers.add("Display " + displayNumber(model, displayIndex));
+            headers.add(Localizer.format("overlay.display", displayNumber(model, displayIndex)));
             values.addAll(List.of(settingValues(displayConfig, displayIds[displayIndex], settings)));
 
             anchorPoints.add(settings.getDesktopX());
@@ -181,14 +168,15 @@ public class DisplayInfoOverlayView {
         // The distance to the work area's edges stays the same at every overlay size
         overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_MARGIN] = MARGIN;
 
-        byte[][] fontFiles = fontFiles(font);
-        boolean accepted = displayInfoOverlay.show(headers.toArray(new String[0]), SETTING_LABELS,
-                values.toArray(new String[0]), anchorPoints.stream().mapToInt(Integer::intValue).toArray(),
-                overlayColors, overlayMetrics, font.getFamily(), fontFiles, OVERLAY_OPACITY, DISPLAY_DURATION_MS);
+        String[] settingLabels = new String[SETTING_LABEL_KEYS.length];
 
-        if (accepted && fontFiles != null) {
-            robotoFontsRegistered = true;
+        for (int labelIndex = 0; labelIndex < SETTING_LABEL_KEYS.length; labelIndex++) {
+            settingLabels[labelIndex] = Localizer.getText(SETTING_LABEL_KEYS[labelIndex]);
         }
+
+        displayInfoOverlay.show(headers.toArray(new String[0]), settingLabels, values.toArray(new String[0]),
+                anchorPoints.stream().mapToInt(Integer::intValue).toArray(), overlayColors, overlayMetrics,
+                font.getFamily(), OVERLAY_OPACITY, DISPLAY_DURATION_MS);
     }
 
     /**
@@ -217,11 +205,13 @@ public class DisplayInfoOverlayView {
         int dpiScalePercentage = settings.getDpiScalePercentage();
         String refreshRate = refreshRateText(displayConfig, displayId, orientationMode, displayMode);
 
-        String dpiScale = dpiScalePercentage > 0 ? dpiScalePercentage + DhkView.DPI_SCALE_SUFFIX : UNREADABLE_VALUE;
+        String dpiScale = dpiScalePercentage > 0
+                ? dpiScalePercentage + Localizer.getText("dpiScale.suffix")
+                : UNREADABLE_VALUE;
 
         return new String[]{displayMode.getResolution().toString(), refreshRate, dpiScale,
-                modeName(DhkView.SCALING_MODES, settings.getScalingMode()),
-                modeName(DhkView.ORIENTATION_MODES, orientationMode)};
+                modeName(DhkView.getScalingModeNames(), settings.getScalingMode()),
+                modeName(DhkView.getOrientationModeNames(), orientationMode)};
     }
 
     /**
@@ -332,38 +322,6 @@ public class DisplayInfoOverlayView {
         Color color = UIManager.getColor(colorKey);
 
         return color != null ? color : fallbackColor;
-    }
-
-    /**
-     * Returns the regular and bold font files for a font the system does not have installed, so the native layer can
-     * draw the panels in it.
-     *
-     * @param font
-     *            - The font the panels are drawn in
-     *
-     * @return The font files, or null when the font is not bundled or the native layer already registered it
-     */
-    private byte[][] fontFiles(Font font) {
-        if (robotoFontsRegistered || !FlatRobotoFont.FAMILY.equals(font.getFamily())) {
-            return null;
-        }
-
-        byte[][] fontFiles = new byte[ROBOTO_FONT_FILES.length][];
-
-        for (int fileIndex = 0; fileIndex < ROBOTO_FONT_FILES.length; fileIndex++) {
-            try (InputStream fontStream = FlatRobotoFont.class.getResourceAsStream(ROBOTO_FONT_FILES[fileIndex])) {
-                if (fontStream == null) {
-                    return null;
-                }
-
-                fontFiles[fileIndex] = fontStream.readAllBytes();
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-        return fontFiles;
     }
 
 }

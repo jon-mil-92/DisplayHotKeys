@@ -17,6 +17,7 @@ package com.dhk.controller;
 import javax.swing.JOptionPane;
 
 import com.dhk.io.SettingsManager;
+import com.dhk.localization.Localizer;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
 import com.dhk.model.DisplayMode;
@@ -37,22 +38,6 @@ public class OrientationController implements IController {
     private DhkController controller;
     private SettingsManager settingsMgr;
     private AppRefresher appRefresher;
-
-    /**
-     * Question the confirmation dialog asks before changing a slot's orientation.
-     */
-    private static final String CONFIRMATION_QUESTION = "Are you sure you want to change the display orientation for the slot?";
-
-    /**
-     * Warning shown in the confirmation dialog, since a rotated image is only usable on a display that can be
-     * physically rotated.
-     */
-    private static final String CONFIRMATION_WARNING = "Only do this if you can rotate your display!";
-
-    /**
-     * Title of the confirmation dialog shown before changing a slot's orientation.
-     */
-    private static final String TITLE_BAR_MESSAGE = "Confirm Display Orientation Change";
 
     /**
      * Constructor for the {@link OrientationController} class.
@@ -128,8 +113,9 @@ public class OrientationController implements IController {
      * @return The return value from the option pane
      */
     private int getUserConfirmation() {
-        ConfirmationDialog confirmationDialog = new ConfirmationDialog(view.getFrame(), TITLE_BAR_MESSAGE,
-                CONFIRMATION_QUESTION, CONFIRMATION_WARNING);
+        // The message warns that a rotated image is only usable on a display that can be physically rotated
+        ConfirmationDialog confirmationDialog = new ConfirmationDialog(view.getFrame(),
+                Localizer.getText("orientation.title"), Localizer.getText("orientation.message"));
 
         return confirmationDialog.showConfirmationDialog();
     }

@@ -24,6 +24,7 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 
+import com.dhk.localization.Localizer;
 import com.dhk.model.DisplayMode;
 import com.dhk.model.RefreshRate;
 import com.dhk.model.Resolution;
@@ -70,49 +71,41 @@ public class Slot {
      */
     public Slot(int slotIndex, int displayIndex, DisplayMode[] displayModes, Integer[] dpiScalePercentages,
             String[] scalingModes, String[] orientationModes) {
-        String slotId = Integer.toString(slotIndex + 1);
+        slotIndicatorLabel = new JLabel(Localizer.format("slot.label", slotIndex + 1), SwingConstants.CENTER);
 
-        slotIndicatorLabel = new JLabel("Slot " + slotId + " :", SwingConstants.CENTER);
-        slotIndicatorLabel.setPreferredSize(new Dimension(52, 28));
-
-        ButtonProperties applySlotButtonProps = new ButtonProperties("Apply Slot", new Dimension(20, 20), 0.80f, 0.68f);
+        ButtonProperties applySlotButtonProps = new ButtonProperties(Localizer.getText("slot.apply"),
+                new Dimension(20, 20), 0.80f, 0.68f);
         applySlotButton = new Button("/apply_slot_idle.svg", "/apply_slot_hover.svg", applySlotButtonProps, true);
 
         supportedDisplayModes = displayModes;
 
         Resolution[] resolutions = DisplayModeUtil.distinctResolutions(displayModes);
         slotResolutions = new CenteredComboBox<Resolution>(resolutions);
-        slotResolutions.setPreferredSize(new Dimension(138, 28));
 
         // Start with the first resolution's refresh rates; the view sets the real selection right after construction
         RefreshRate[] refreshRates = resolutions.length > 0
                 ? DisplayModeUtil.refreshRatesForResolution(displayModes, resolutions[0])
                 : new RefreshRate[0];
         slotRefreshRates = new CenteredComboBox<RefreshRate>(refreshRates);
-        slotRefreshRates.setPreferredSize(new Dimension(118, 28));
 
         slotDpiScalePercentages = new CenteredComboBox<Integer>(dpiScalePercentages);
-        slotDpiScalePercentages.setItemTextSuffix(DhkView.DPI_SCALE_SUFFIX);
-        slotDpiScalePercentages.setPreferredSize(new Dimension(88, 28));
+        slotDpiScalePercentages.setItemTextSuffix(Localizer.getText("dpiScale.suffix"));
 
         slotScalingModes = new CenteredComboBox<String>(scalingModes);
-        slotScalingModes.setPreferredSize(new Dimension(110, 28));
 
         slotOrientationModes = new CenteredComboBox<String>(orientationModes);
-        slotOrientationModes.setPreferredSize(new Dimension(118, 28));
 
         slotHotKey = new HotKeyLabel("");
 
-        ButtonProperties clearHotKeyButtonProps = new ButtonProperties("Clear Hot Key", new Dimension(18, 20), 0.70f,
-                0.60f);
+        ButtonProperties clearHotKeyButtonProps = new ButtonProperties(Localizer.getText("hotKey.clear"),
+                new Dimension(18, 20), 0.70f, 0.60f);
         clearHotKeyButton = new Button("/clear_hot_key_idle.svg", "/clear_hot_key_hover.svg", clearHotKeyButtonProps,
                 false);
 
-        slotChangeHotKeyButton = new JButton("Change Hot Key");
-        slotChangeHotKeyButton.setPreferredSize(new Dimension(148, 28));
-        slotChangeHotKeyButton.setFocusPainted(false);
+        slotChangeHotKeyButton = new ChangeHotKeyButton();
 
-        ButtonProperties clearSlotButtonProps = new ButtonProperties("Clear Slot", new Dimension(22, 20), 0.80f, 0.68f);
+        ButtonProperties clearSlotButtonProps = new ButtonProperties(Localizer.getText("slot.clear"),
+                new Dimension(22, 20), 0.80f, 0.68f);
         clearSlotButton = new Button("/clear_slot_idle.svg", "/clear_slot_hover.svg", clearSlotButtonProps, true);
 
         buttons = new ArrayList<>();

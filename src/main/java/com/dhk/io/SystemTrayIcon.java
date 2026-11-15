@@ -68,9 +68,10 @@ public class SystemTrayIcon {
     public static final int MENU_COLOR_COUNT = 5;
 
     /**
-     * Index of the item width in the metrics handed to {@link #setMenu}.
+     * Index of the distance from the end of an item's text to its trailing edge in the metrics handed to
+     * {@link #setMenu}, which the native layer adds to the text width it measures at the display's scale.
      */
-    public static final int MENU_METRIC_ITEM_WIDTH = 0;
+    public static final int MENU_METRIC_TRAILING_INSET = 0;
 
     /**
      * Index of the item height in the metrics handed to {@link #setMenu}.
@@ -177,15 +178,11 @@ public class SystemTrayIcon {
      * @param menuMetrics
      *            - The menu metrics in unscaled pixels, indexed by the MENU_METRIC constants
      * @param fontFamily
-     *            - The family of the font the items are drawn in
-     * @param fontData
-     *            - The font file to register privately for the family, or null when the family is installed or the font
-     *            was already registered, which lasts for the life of the process
+     *            - The family of the installed font the items are drawn in
      *
-     * @return Whether the menu was accepted and any supplied font is registered
+     * @return Whether the menu was accepted
      */
-    private native boolean nativeSetMenu(String[] itemTexts, int[] menuColors, int[] menuMetrics, String fontFamily,
-            byte[] fontData);
+    private native boolean nativeSetMenu(String[] itemTexts, int[] menuColors, int[] menuMetrics, String fontFamily);
 
     /**
      * Defines a JNI function to close the menu when one is open.
@@ -245,16 +242,12 @@ public class SystemTrayIcon {
      * @param menuMetrics
      *            - The menu metrics in unscaled pixels, indexed by the MENU_METRIC constants
      * @param fontFamily
-     *            - The family of the font the items are drawn in
-     * @param fontData
-     *            - The font file to register privately for the family, or null when the family is installed or the font
-     *            was already registered, which lasts for the life of the process
+     *            - The family of the installed font the items are drawn in
      *
-     * @return Whether the menu was accepted and any supplied font is registered
+     * @return Whether the menu was accepted
      */
-    public boolean setMenu(String[] itemTexts, int[] menuColors, int[] menuMetrics, String fontFamily,
-            byte[] fontData) {
-        return nativeSetMenu(itemTexts, menuColors, menuMetrics, fontFamily, fontData);
+    public boolean setMenu(String[] itemTexts, int[] menuColors, int[] menuMetrics, String fontFamily) {
+        return nativeSetMenu(itemTexts, menuColors, menuMetrics, fontFamily);
     }
 
     /**

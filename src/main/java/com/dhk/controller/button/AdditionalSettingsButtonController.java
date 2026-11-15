@@ -14,15 +14,22 @@
  */
 package com.dhk.controller.button;
 
+import java.awt.Window;
+
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+import com.dhk.controller.DhkController;
 import com.dhk.controller.HotKeysController;
 import com.dhk.controller.IController;
 import com.dhk.io.NativeInputHook;
 import com.dhk.io.RunOnStartupManager;
 import com.dhk.io.SettingsManager;
+import com.dhk.localization.Language;
+import com.dhk.localization.Localizer;
 import com.dhk.model.DhkModel;
 import com.dhk.view.AdditionalSettingsDialog;
+import com.dhk.view.ConfirmationDialog;
 import com.dhk.view.DhkView;
 import com.dhk.view.RunOnStartupNoticeDialog;
 
@@ -37,6 +44,7 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
 
     private DhkModel model;
     private DhkView view;
+    private DhkController controller;
     private SettingsManager settingsMgr;
     private HotKeysController hotKeysController;
     private NativeInputHook nativeInputHook;
@@ -52,6 +60,9 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
      *            - The model for the application
      * @param view
      *            - The view for the application
+     * @param controller
+     *            - The controller for the application, which rebuilds it in a newly selected language and reopens the
+     *            dialog after every rebuild
      * @param settingsMgr
      *            - The settings manager for the application
      * @param hotKeysController
@@ -59,10 +70,11 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
      * @param nativeInputHook
      *            - The shared native input hook the dialog uses to re-fit after a cross-display drag (may be null)
      */
-    public AdditionalSettingsButtonController(DhkModel model, DhkView view, SettingsManager settingsMgr,
-            HotKeysController hotKeysController, NativeInputHook nativeInputHook) {
+    public AdditionalSettingsButtonController(DhkModel model, DhkView view, DhkController controller,
+            SettingsManager settingsMgr, HotKeysController hotKeysController, NativeInputHook nativeInputHook) {
         this.model = model;
         this.view = view;
+        this.controller = controller;
         this.settingsMgr = settingsMgr;
         this.hotKeysController = hotKeysController;
         this.nativeInputHook = nativeInputHook;
@@ -100,12 +112,54 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
         dialog.getMinimizeToTraySwitch().addActionListener(e -> minimizeToTraySwitchAction(dialog));
         dialog.getCloseToTraySwitch().addActionListener(e -> closeToTraySwitchAction(dialog));
         dialog.getAutoShowInfoOverlaySwitch().addActionListener(e -> autoShowInfoOverlaySwitchAction(dialog));
+
+        // A click selects the language before the drop-down closes, so the confirmation waits until it has closed
+        dialog.getLanguageComboBox()
+                .addActionListener(e -> SwingUtilities.invokeLater(() -> languageComboBoxAction(dialog)));
+
         dialog.getChangeHotKeyButton().addActionListener(e -> hotKeysController.displayInfoHotKeyChangeEvent(dialog));
         dialog.getClearHotKeyButton().addActionListener(e -> clearDisplayInfoHotKeyButtonAction(dialog));
 
         initStateChangeListeners(dialog.getClearHotKeyButton(), dialog.getDefaultFocusComponent());
 
-        dialog.showAdditionalSettingsDialog(onCloseAction);
+        // A re-initialization destroys the dialog, so it reopens through the controller that replaced this one
+        Runnable reopenAction = () -> controller.showAdditionalSettingsDialog(onCloseAction);
+
+        dialog.showAdditionalSettingsDialog(onCloseAction, reopenAction);
+    }
+
+    /**
+     * Asks the user to confirm the selected language, then saves it and rebuilds the application in it, which reopens
+     * the dialog in the new language. A declined change puts the previous language back in the combo box.
+     *
+     * @param dialog
+     *            - The additional settings dialog showing the Language combo box
+     */
+    private void languageComboBoxAction(AdditionalSettingsDialog dialog) {
+        Language language = (Language) dialog.getLanguageComboBox().getSelectedItem();
+
+        // Putting the previous language back fires this action again, which then finds nothing to change
+        if (language == null || language == Localizer.getLanguage()) {
+            return;
+        }
+
+        String confirmationMessage = Localizer.format("language.message", language);
+
+        // The confirmation centers on the component it is given, so it gets the whole dialog rather than the combo box
+        Window settingsWindow = SwingUtilities.getWindowAncestor(dialog.getLanguageComboBox());
+        int answer = new ConfirmationDialog(settingsWindow, Localizer.getText("language.title"), confirmationMessage)
+                .showConfirmationDialog();
+
+        if (answer != JOptionPane.YES_OPTION) {
+            dialog.getLanguageComboBox().setSelectedItem(Localizer.getLanguage());
+            dialog.getDefaultFocusComponent().requestFocusInWindow();
+
+            return;
+        }
+
+        settingsMgr.saveIniLanguage(language);
+
+        controller.changeLanguage(language);
     }
 
     /**

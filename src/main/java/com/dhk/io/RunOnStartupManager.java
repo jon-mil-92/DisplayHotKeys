@@ -182,12 +182,16 @@ public class RunOnStartupManager {
 
     /**
      * Removes the run on startup file from the user's startup folder.
+     *
+     * @return True if a run on startup file was removed, false if there was none or it could not be removed
      */
-    private void removeStartupFile() {
+    public boolean removeStartupFile() {
         try {
-            Files.deleteIfExists(runOnStartupFile.toPath());
+            return Files.deleteIfExists(runOnStartupFile.toPath());
         } catch (IOException e) {
             e.printStackTrace();
+
+            return false;
         }
     }
 

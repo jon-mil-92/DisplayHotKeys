@@ -21,18 +21,20 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import org.ini4j.Wini;
 
+import com.dhk.localization.Language;
 import com.dhk.model.DisplayMode;
 import com.dhk.model.HotKey;
 import com.dhk.model.Key;
 
 /**
  * Saves the application settings to an ini file. It enables the saving of the active number of slots, the orientation
- * mode, the theme state, the minimize to tray state, the close to tray state, the run on startup state, the display
- * modes, the DPI scale percentages, the scaling modes, and the hot keys for each display
+ * mode, the theme state, the language, the minimize to tray state, the close to tray state, the run on startup state,
+ * the display modes, the DPI scale percentages, the scaling modes, and the hot keys for each display
  *
  * @author Jonathan R. Miller
  */
@@ -48,9 +50,141 @@ public class SettingsManager {
     private File settingsFile;
 
     /**
+     * Identifier the installer writes on every install, read once at launch so every later validation can record it
+     * without reading the installer's file again, or null when no installer set this copy up.
+     */
+    private static String installId;
+
+    /**
      * Most slots each display can show in the slot table.
      */
     private static final int MAX_NUM_OF_SLOTS = 12;
+
+    /**
+     * System property holding the user's home folder, which the settings file path starts from.
+     */
+    private static final String USER_HOME_SYSTEM_PROPERTY = "user.home";
+
+    /**
+     * Path of the settings file below the user's home folder, so every Windows account keeps its own settings.
+     */
+    private static final String SETTINGS_FILE_HOME_PATH = "\\Documents\\DisplayHotKeys\\settings.ini";
+
+    /**
+     * Section line found only in the settings files of early versions, whose format is rebuilt from scratch.
+     */
+    private static final String OLD_FORMAT_SECTION_LINE = "[Slot1]";
+
+    /**
+     * System property the packaged launcher sets to the application executable's path, which a development run lacks.
+     */
+    private static final String APP_PATH_SYSTEM_PROPERTY = "jpackage.app-path";
+
+    /**
+     * File beside the installed application where the installer records the default language picked during setup.
+     */
+    private static final String INSTALLER_DEFAULTS_FILE_NAME = "defaults.ini";
+
+    /**
+     * Installer defaults property holding the tag of the language picked during setup.
+     */
+    private static final String DEFAULT_LANGUAGE_PROPERTY = "defaultLanguage";
+
+    /**
+     * Section for the properties that apply to the whole application, in the settings file and the installer defaults.
+     */
+    static final String APPLICATION_SECTION = "Application";
+
+    /**
+     * Application property holding whether the dark theme is shown.
+     */
+    static final String DARK_MODE_PROPERTY = "darkMode";
+
+    /**
+     * Application property holding the tag of the language the application is showing.
+     */
+    static final String LANGUAGE_PROPERTY = "language";
+
+    /**
+     * Property holding an install's identifier, which the installer writes on every install and each account records
+     * once it adopts that install's language.
+     */
+    static final String INSTALL_ID_PROPERTY = "installId";
+
+    /**
+     * Application property holding whether minimizing the window hides the application in the system tray.
+     */
+    static final String MINIMIZE_TO_TRAY_PROPERTY = "minimizeToTray";
+
+    /**
+     * Application property holding whether closing the window hides the application in the system tray.
+     */
+    static final String CLOSE_TO_TRAY_PROPERTY = "closeToTray";
+
+    /**
+     * Application property holding whether the application starts upon login.
+     */
+    static final String RUN_ON_STARTUP_PROPERTY = "runOnStartup";
+
+    /**
+     * Application property holding whether the info overlay shows after every slot apply and display change.
+     */
+    static final String AUTO_SHOW_INFO_OVERLAY_PROPERTY = "autoShowInfoOverlay";
+
+    /**
+     * Start of the application property holding a display's number of active slots, which the display's ID completes.
+     */
+    private static final String NUM_OF_SLOTS_PROPERTY_PREFIX = "numOfSlotsFor--";
+
+    /**
+     * Text between a display's ID and a slot's number in the name of that slot's section.
+     */
+    private static final String SLOT_SECTION_INFIX = "--Slot";
+
+    /**
+     * Slot property holding the width of the slot's resolution.
+     */
+    static final String DISPLAY_MODE_WIDTH_PROPERTY = "displayModeWidth";
+
+    /**
+     * Slot property holding the height of the slot's resolution.
+     */
+    static final String DISPLAY_MODE_HEIGHT_PROPERTY = "displayModeHeight";
+
+    /**
+     * Slot property holding the numerator of the slot's exact refresh rate.
+     */
+    static final String DISPLAY_MODE_REFRESH_NUMERATOR_PROPERTY = "displayModeRefreshNumerator";
+
+    /**
+     * Slot property holding the denominator of the slot's exact refresh rate.
+     */
+    static final String DISPLAY_MODE_REFRESH_DENOMINATOR_PROPERTY = "displayModeRefreshDenominator";
+
+    /**
+     * Slot property holding the slot's DPI scale percentage.
+     */
+    static final String DPI_SCALE_PERCENTAGE_PROPERTY = "dpiScalePercentage";
+
+    /**
+     * Slot property holding the slot's scaling mode code.
+     */
+    static final String SCALING_MODE_PROPERTY = "scalingMode";
+
+    /**
+     * Slot property holding the slot's orientation mode code.
+     */
+    static final String ORIENTATION_MODE_PROPERTY = "orientationMode";
+
+    /**
+     * Hot key property holding the number of keys the hot key uses.
+     */
+    static final String HOT_KEY_SIZE_PROPERTY = "hotKeySize";
+
+    /**
+     * Start of a hot key property holding one key's code, which the key's 1-based number completes.
+     */
+    private static final String KEY_PROPERTY_PREFIX = "key";
 
     /**
      * Settings file section for the Display Info hot key, which reuses the property names of a slot's hot key so both
@@ -79,7 +213,7 @@ public class SettingsManager {
      * @return The value for the dark mode property
      */
     public boolean getIniDarkMode() {
-        return ini.get("Application", "darkMode", boolean.class);
+        return ini.get(APPLICATION_SECTION, DARK_MODE_PROPERTY, boolean.class);
     }
 
     /**
@@ -89,7 +223,7 @@ public class SettingsManager {
      *            - The new value for the dark mode property
      */
     public void saveIniDarkMode(boolean darkMode) {
-        ini.put("Application", "darkMode", darkMode);
+        ini.put(APPLICATION_SECTION, DARK_MODE_PROPERTY, darkMode);
 
         updateSettingsFile();
     }
@@ -101,20 +235,120 @@ public class SettingsManager {
      * @return The saved dark mode value, or false when it cannot be read
      */
     public static boolean getSavedDarkMode() {
-        File savedSettingsFile = new File(getSettingsFilePath());
+        return Boolean.parseBoolean(readApplicationSettings(new File(getSettingsFilePath())).get(DARK_MODE_PROPERTY));
+    }
 
-        if (!savedSettingsFile.exists()) {
-            return false;
+    /**
+     * Sets the language property value in the settings file object.
+     *
+     * @param language
+     *            - The new value for the language property
+     */
+    public void saveIniLanguage(Language language) {
+        ini.put(APPLICATION_SECTION, LANGUAGE_PROPERTY, language.getTag());
+
+        updateSettingsFile();
+    }
+
+    /**
+     * Picks the language to show at launch, which is the installer's language after a new install or when none is
+     * saved, then the saved language, and otherwise the Windows display language. It reads the files directly, since
+     * the language is needed before anything is shown.
+     *
+     * @return The language to show at launch
+     */
+    public static Language getStartupLanguage() {
+        Map<String, String> savedSettings = readApplicationSettings(new File(getSettingsFilePath()));
+        Map<String, String> installerDefaults = Map.of();
+
+        // Only the packaged launcher sets the executable path, and the installer writes its defaults beside it
+        String appExePath = System.getProperty(APP_PATH_SYSTEM_PROPERTY);
+
+        if (appExePath != null) {
+            installerDefaults = readApplicationSettings(
+                    new File(new File(appExePath).getParentFile(), INSTALLER_DEFAULTS_FILE_NAME));
         }
 
-        try {
-            Boolean darkMode = new Wini(savedSettingsFile).get("Application", "darkMode", Boolean.class);
+        Language savedLanguage = Language.fromTag(savedSettings.get(LANGUAGE_PROPERTY));
+        Language installerLanguage = Language.fromTag(installerDefaults.get(DEFAULT_LANGUAGE_PROPERTY));
+        installId = installerDefaults.get(INSTALL_ID_PROPERTY);
 
-            return darkMode != null && darkMode;
+        // Each account records the install whose language it adopted, so an install it has not recorded is a new one
+        boolean newInstall = installId != null && !installId.equals(savedSettings.get(INSTALL_ID_PROPERTY));
+
+        if (installerLanguage != null && (newInstall || savedLanguage == null)) {
+            return installerLanguage;
+        }
+
+        if (savedLanguage != null) {
+            return savedLanguage;
+        }
+
+        return Language.fromLocale(Locale.getDefault(Locale.Category.DISPLAY));
+    }
+
+    /**
+     * Gets the identifier the installer wrote on its latest install, as read at launch.
+     *
+     * @return The identifier of the latest install, or null when no installer set this copy up
+     */
+    static String getInstallId() {
+        return installId;
+    }
+
+    /**
+     * Determines whether a settings file has been saved.
+     *
+     * @return True if the settings file exists, otherwise false
+     */
+    public static boolean savedSettingsExist() {
+        return new File(getSettingsFilePath()).exists();
+    }
+
+    /**
+     * Deletes the saved settings file, then its folder when nothing else is left in it.
+     *
+     * @return True if the settings file is gone, otherwise false
+     */
+    public static boolean deleteSavedSettings() {
+        File savedSettingsFile = new File(getSettingsFilePath());
+
+        try {
+            Files.deleteIfExists(savedSettingsFile.toPath());
         } catch (IOException e) {
             e.printStackTrace();
 
             return false;
+        }
+
+        // Deleting a folder only succeeds once it is empty, so a folder still holding other files is left alone
+        savedSettingsFile.getParentFile().delete();
+
+        return true;
+    }
+
+    /**
+     * Reads the application section straight from an ini file, so a caller that needs several of its properties parses
+     * the file only once.
+     *
+     * @param iniFile
+     *            - The ini file to read
+     *
+     * @return The properties of the application section, empty when the file or section is missing or unreadable
+     */
+    private static Map<String, String> readApplicationSettings(File iniFile) {
+        if (!iniFile.exists()) {
+            return Map.of();
+        }
+
+        try {
+            Map<String, String> applicationSettings = new Wini(iniFile).get(APPLICATION_SECTION);
+
+            return applicationSettings != null ? applicationSettings : Map.of();
+        } catch (IOException e) {
+            e.printStackTrace();
+
+            return Map.of();
         }
     }
 
@@ -124,7 +358,7 @@ public class SettingsManager {
      * @return The value for the minimize to tray property
      */
     public boolean getIniMinimizeToTray() {
-        return ini.get("Application", "minimizeToTray", boolean.class);
+        return ini.get(APPLICATION_SECTION, MINIMIZE_TO_TRAY_PROPERTY, boolean.class);
     }
 
     /**
@@ -134,7 +368,7 @@ public class SettingsManager {
      *            - The new value for the minimize to tray property
      */
     public void saveIniMinimizeToTray(boolean minimizeToTray) {
-        ini.put("Application", "minimizeToTray", minimizeToTray);
+        ini.put(APPLICATION_SECTION, MINIMIZE_TO_TRAY_PROPERTY, minimizeToTray);
 
         updateSettingsFile();
     }
@@ -145,7 +379,7 @@ public class SettingsManager {
      * @return The value for the close to tray property
      */
     public boolean getIniCloseToTray() {
-        return ini.get("Application", "closeToTray", boolean.class);
+        return ini.get(APPLICATION_SECTION, CLOSE_TO_TRAY_PROPERTY, boolean.class);
     }
 
     /**
@@ -155,7 +389,7 @@ public class SettingsManager {
      *            - The new value for the close to tray property
      */
     public void saveIniCloseToTray(boolean closeToTray) {
-        ini.put("Application", "closeToTray", closeToTray);
+        ini.put(APPLICATION_SECTION, CLOSE_TO_TRAY_PROPERTY, closeToTray);
 
         updateSettingsFile();
     }
@@ -166,7 +400,7 @@ public class SettingsManager {
      * @return The value for the run on startup property
      */
     public boolean getIniRunOnStartup() {
-        return ini.get("Application", "runOnStartup", boolean.class);
+        return ini.get(APPLICATION_SECTION, RUN_ON_STARTUP_PROPERTY, boolean.class);
     }
 
     /**
@@ -176,7 +410,7 @@ public class SettingsManager {
      *            - The new value for the run on startup property
      */
     public void saveIniRunOnStartup(boolean runOnStartup) {
-        ini.put("Application", "runOnStartup", runOnStartup);
+        ini.put(APPLICATION_SECTION, RUN_ON_STARTUP_PROPERTY, runOnStartup);
 
         updateSettingsFile();
     }
@@ -187,7 +421,7 @@ public class SettingsManager {
      * @return The value for the auto show info overlay property
      */
     public boolean getIniAutoShowInfoOverlay() {
-        return ini.get("Application", "autoShowInfoOverlay", boolean.class);
+        return ini.get(APPLICATION_SECTION, AUTO_SHOW_INFO_OVERLAY_PROPERTY, boolean.class);
     }
 
     /**
@@ -197,7 +431,7 @@ public class SettingsManager {
      *            - The new value for the auto show info overlay property
      */
     public void saveIniAutoShowInfoOverlay(boolean autoShowInfoOverlay) {
-        ini.put("Application", "autoShowInfoOverlay", autoShowInfoOverlay);
+        ini.put(APPLICATION_SECTION, AUTO_SHOW_INFO_OVERLAY_PROPERTY, autoShowInfoOverlay);
 
         updateSettingsFile();
     }
@@ -211,7 +445,7 @@ public class SettingsManager {
      * @return The value for the number of slots property
      */
     public int getIniNumOfSlotsForDisplay(String displayId) {
-        return ini.get("Application", "numOfSlotsFor--" + displayId, int.class);
+        return ini.get(APPLICATION_SECTION, numOfSlotsProperty(displayId), int.class);
     }
 
     /**
@@ -223,7 +457,7 @@ public class SettingsManager {
      *            - The new value for the number of slots property
      */
     public void saveIniNumOfSlotsForDisplay(String displayId, int numOfSlots) {
-        ini.put("Application", "numOfSlotsFor--" + displayId, numOfSlots);
+        ini.put(APPLICATION_SECTION, numOfSlotsProperty(displayId), numOfSlots);
 
         updateSettingsFile();
     }
@@ -239,16 +473,16 @@ public class SettingsManager {
      * @return The display mode from the display property values for the specified slot ID
      */
     public DisplayMode getIniSlotDisplayMode(String displayId, int slotId) {
-        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+        String iniSection = slotSection(displayId, slotId);
 
         /*
          * The validator writes the exact refresh rate as a numerator/denominator pair before the model is built (a slot
          * missing it, such as a pre-fractional one, is reset to the default), so both are present here
          */
-        DisplayMode slotDisplayMode = new DisplayMode(ini.get(iniSection, "displayModeWidth", int.class),
-                ini.get(iniSection, "displayModeHeight", int.class),
-                ini.get(iniSection, "displayModeRefreshNumerator", int.class),
-                ini.get(iniSection, "displayModeRefreshDenominator", int.class));
+        DisplayMode slotDisplayMode = new DisplayMode(ini.get(iniSection, DISPLAY_MODE_WIDTH_PROPERTY, int.class),
+                ini.get(iniSection, DISPLAY_MODE_HEIGHT_PROPERTY, int.class),
+                ini.get(iniSection, DISPLAY_MODE_REFRESH_NUMERATOR_PROPERTY, int.class),
+                ini.get(iniSection, DISPLAY_MODE_REFRESH_DENOMINATOR_PROPERTY, int.class));
 
         return slotDisplayMode;
     }
@@ -265,12 +499,12 @@ public class SettingsManager {
      *            - The new display mode for the specified slot
      */
     public void saveIniSlotDisplayMode(String displayId, int slotId, DisplayMode displayMode) {
-        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+        String iniSection = slotSection(displayId, slotId);
 
-        ini.put(iniSection, "displayModeWidth", displayMode.getWidth());
-        ini.put(iniSection, "displayModeHeight", displayMode.getHeight());
-        ini.put(iniSection, "displayModeRefreshNumerator", displayMode.getRefreshNumerator());
-        ini.put(iniSection, "displayModeRefreshDenominator", displayMode.getRefreshDenominator());
+        ini.put(iniSection, DISPLAY_MODE_WIDTH_PROPERTY, displayMode.getWidth());
+        ini.put(iniSection, DISPLAY_MODE_HEIGHT_PROPERTY, displayMode.getHeight());
+        ini.put(iniSection, DISPLAY_MODE_REFRESH_NUMERATOR_PROPERTY, displayMode.getRefreshNumerator());
+        ini.put(iniSection, DISPLAY_MODE_REFRESH_DENOMINATOR_PROPERTY, displayMode.getRefreshDenominator());
 
         updateSettingsFile();
     }
@@ -286,9 +520,9 @@ public class SettingsManager {
      * @return The specified slot's DPI scale percentage property value
      */
     public int getIniSlotDpiScalePercentage(String displayId, int slotId) {
-        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+        String iniSection = slotSection(displayId, slotId);
 
-        return ini.get(iniSection, "dpiScalePercentage", int.class);
+        return ini.get(iniSection, DPI_SCALE_PERCENTAGE_PROPERTY, int.class);
     }
 
     /**
@@ -302,8 +536,8 @@ public class SettingsManager {
      *            - The specified slot's new value for the DPI scale percentage property
      */
     public void saveIniSlotDpiScalePercentage(String displayId, int slotId, int dpiScalePercentage) {
-        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
-        ini.put(iniSection, "dpiScalePercentage", dpiScalePercentage);
+        String iniSection = slotSection(displayId, slotId);
+        ini.put(iniSection, DPI_SCALE_PERCENTAGE_PROPERTY, dpiScalePercentage);
 
         updateSettingsFile();
     }
@@ -319,9 +553,9 @@ public class SettingsManager {
      * @return The specified slot's scaling mode property value
      */
     public int getIniSlotScalingMode(String displayId, int slotId) {
-        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+        String iniSection = slotSection(displayId, slotId);
 
-        return ini.get(iniSection, "scalingMode", int.class);
+        return ini.get(iniSection, SCALING_MODE_PROPERTY, int.class);
     }
 
     /**
@@ -335,8 +569,8 @@ public class SettingsManager {
      *            - The specified slot's new value for the scaling mode property
      */
     public void saveIniSlotScalingMode(String displayId, int slotId, int scalingMode) {
-        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
-        ini.put(iniSection, "scalingMode", scalingMode);
+        String iniSection = slotSection(displayId, slotId);
+        ini.put(iniSection, SCALING_MODE_PROPERTY, scalingMode);
 
         updateSettingsFile();
     }
@@ -352,9 +586,9 @@ public class SettingsManager {
      * @return The specified slot's orientation mode property value
      */
     public int getIniSlotOrientationMode(String displayId, int slotId) {
-        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+        String iniSection = slotSection(displayId, slotId);
 
-        return ini.get(iniSection, "orientationMode", int.class);
+        return ini.get(iniSection, ORIENTATION_MODE_PROPERTY, int.class);
     }
 
     /**
@@ -368,8 +602,8 @@ public class SettingsManager {
      *            - The specified slot's new value for the orientation mode property
      */
     public void saveIniSlotOrientationMode(String displayId, int slotId, int orientationMode) {
-        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
-        ini.put(iniSection, "orientationMode", orientationMode);
+        String iniSection = slotSection(displayId, slotId);
+        ini.put(iniSection, ORIENTATION_MODE_PROPERTY, orientationMode);
 
         updateSettingsFile();
     }
@@ -385,7 +619,7 @@ public class SettingsManager {
      * @return The specified slot's hot key
      */
     public HotKey getIniSlotHotKey(String displayId, int slotId) {
-        return getIniHotKey(displayId + "--Slot" + Integer.toString(slotId));
+        return getIniHotKey(slotSection(displayId, slotId));
     }
 
     /**
@@ -399,7 +633,7 @@ public class SettingsManager {
      *            - The specified slot's hot key
      */
     public void saveIniSlotHotKey(String displayId, int slotId, HotKey hotKey) {
-        saveIniHotKey(displayId + "--Slot" + Integer.toString(slotId), hotKey);
+        saveIniHotKey(slotSection(displayId, slotId), hotKey);
     }
 
     /**
@@ -431,10 +665,10 @@ public class SettingsManager {
      */
     private HotKey getIniHotKey(String iniSection) {
         HotKey hotKey = new HotKey(new ArrayList<Key>());
-        int hotKeySize = ini.get(iniSection, "hotKeySize", int.class);
+        int hotKeySize = ini.get(iniSection, HOT_KEY_SIZE_PROPERTY, int.class);
 
         for (int keyId = 1; keyId <= hotKeySize; keyId++) {
-            int keyCode = ini.get(iniSection, "key" + Integer.toString(keyId), int.class);
+            int keyCode = ini.get(iniSection, keyProperty(keyId), int.class);
             hotKey.getKeys().add(new Key(keyCode, KeyText.getKeyCodeText(keyCode), false));
         }
 
@@ -451,15 +685,15 @@ public class SettingsManager {
      */
     private void saveIniHotKey(String iniSection, HotKey hotKey) {
         int hotKeySize = hotKey.getKeys().size();
-        ini.put(iniSection, "hotKeySize", hotKeySize);
+        ini.put(iniSection, HOT_KEY_SIZE_PROPERTY, hotKeySize);
 
         for (int keyIndex = 0; keyIndex < 3; keyIndex++) {
             // Only update key codes for the active keys in the hot key
             if (keyIndex < hotKeySize) {
                 int keyCode = hotKey.getKeys().get(keyIndex).getKey();
-                ini.put(iniSection, "key" + Integer.toString(keyIndex + 1), keyCode);
+                ini.put(iniSection, keyProperty(keyIndex + 1), keyCode);
             } else {
-                ini.put(iniSection, "key" + Integer.toString(keyIndex + 1), 0);
+                ini.put(iniSection, keyProperty(keyIndex + 1), 0);
             }
         }
 
@@ -539,6 +773,44 @@ public class SettingsManager {
     }
 
     /**
+     * Builds the name of the section that holds a slot's properties.
+     *
+     * @param displayId
+     *            - The ID of the display the slot belongs to
+     * @param slotId
+     *            - The 1-based number of the slot
+     *
+     * @return The name of the slot's section
+     */
+    static String slotSection(String displayId, int slotId) {
+        return displayId + SLOT_SECTION_INFIX + slotId;
+    }
+
+    /**
+     * Builds the name of the application property that holds a display's number of active slots.
+     *
+     * @param displayId
+     *            - The ID of the display
+     *
+     * @return The name of the display's number of slots property
+     */
+    static String numOfSlotsProperty(String displayId) {
+        return NUM_OF_SLOTS_PROPERTY_PREFIX + displayId;
+    }
+
+    /**
+     * Builds the name of the hot key property that holds one key's code.
+     *
+     * @param keyId
+     *            - The 1-based number of the key in the hot key
+     *
+     * @return The name of the key's property
+     */
+    static String keyProperty(int keyId) {
+        return KEY_PROPERTY_PREFIX + keyId;
+    }
+
+    /**
      * Refreshes the connected displays and their supported display modes on the shared display configuration, then
      * caches the landscape and portrait display modes for each connected display by its ID.
      */
@@ -564,7 +836,7 @@ public class SettingsManager {
      * @return The settings file path
      */
     private static String getSettingsFilePath() {
-        return System.getProperty("user.home") + "\\Documents\\DisplayHotKeys\\settings.ini";
+        return System.getProperty(USER_HOME_SYSTEM_PROPERTY) + SETTINGS_FILE_HOME_PATH;
     }
 
     /**
@@ -609,7 +881,7 @@ public class SettingsManager {
                 String line;
 
                 while ((line = settingsFileReader.readLine()) != null) {
-                    if (line.equals("[Slot1]")) {
+                    if (line.equals(OLD_FORMAT_SECTION_LINE)) {
                         oldSettingsFileVersion = true;
                     }
                 }

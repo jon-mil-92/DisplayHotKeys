@@ -29,13 +29,14 @@ import java.util.Map;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JSeparator;
 import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
 import com.dhk.io.DisplayConfig;
+import com.dhk.localization.Localizer;
 import com.dhk.model.DhkModel;
 import com.dhk.model.DisplayMode;
 import com.dhk.model.FramePlacement;
@@ -108,44 +109,41 @@ public class DhkView implements IView {
     private static final int FIRST_SLOT_GRID_Y = 3;
 
     /**
-     * Name of each orientation mode, indexed by the orientation mode a slot stores.
+     * Message key of each orientation mode's name, indexed by the orientation mode a slot stores.
      */
-    static final String[] ORIENTATION_MODES = {"Landscape", "Portrait", "iLandscape", "iPortrait"};
+    private static final String[] ORIENTATION_MODE_KEYS = {"orientation.landscape", "orientation.portrait",
+            "orientation.landscapeFlipped", "orientation.portraitFlipped"};
 
     /**
-     * Name of each scaling mode, indexed by the scaling mode a slot stores.
+     * Message key of each scaling mode's name, indexed by the scaling mode a slot stores.
      */
-    static final String[] SCALING_MODES = new String[]{"Preserved", "Stretched", "Centered"};
+    private static final String[] SCALING_MODE_KEYS = {"scalingMode.preserved", "scalingMode.stretched",
+            "scalingMode.centered"};
 
     /**
-     * Text of the slot table's resolution column header, which the display info overlay reuses as a setting label.
+     * Message key of the slot table's resolution column header, which the display info overlay reuses as a label.
      */
-    static final String RESOLUTION_HEADER_TEXT = "Resolution";
+    static final String RESOLUTION_HEADER_KEY = "column.resolution";
 
     /**
-     * Text of the slot table's refresh rate column header, which the display info overlay reuses as a setting label.
+     * Message key of the slot table's refresh rate column header, which the display info overlay reuses as a label.
      */
-    static final String REFRESH_RATE_HEADER_TEXT = "Refresh Rate";
+    static final String REFRESH_RATE_HEADER_KEY = "column.refreshRate";
 
     /**
-     * Text of the slot table's DPI scale column header, which the display info overlay reuses as a setting label.
+     * Message key of the slot table's DPI scale column header, which the display info overlay reuses as a label.
      */
-    static final String DPI_SCALE_HEADER_TEXT = "DPI Scale";
+    static final String DPI_SCALE_HEADER_KEY = "column.dpiScale";
 
     /**
-     * Text of the slot table's scaling mode column header, which the display info overlay reuses as a setting label.
+     * Message key of the slot table's scaling mode column header, which the display info overlay reuses as a label.
      */
-    static final String SCALING_MODE_HEADER_TEXT = "Scaling Mode";
+    static final String SCALING_MODE_HEADER_KEY = "column.scalingMode";
 
     /**
-     * Text of the slot table's orientation column header, which the display info overlay reuses as a setting label.
+     * Message key of the slot table's orientation column header, which the display info overlay reuses as a label.
      */
-    static final String ORIENTATION_HEADER_TEXT = "Orientation";
-
-    /**
-     * Suffix shown after each DPI scale percentage in the slot table and the display info overlay.
-     */
-    static final String DPI_SCALE_SUFFIX = "%";
+    static final String ORIENTATION_HEADER_KEY = "column.orientation";
 
     /**
      * Constructor for the {@link DhkView} class.
@@ -240,6 +238,11 @@ public class DhkView implements IView {
         if (!startMinimizedToTray) {
             newFrame.setVisible(true);
 
+            // Showing alone cannot take the foreground at launch, while a rebuild must never take it from another app
+            if (previousFrame == null) {
+                newFrame.toFront();
+            }
+
             // Grow the frame to absorb any pack shortfall so scroll bars do not appear when the content fits on screen
             SwingUtilities.invokeLater(() -> WindowUtil.settleScrollBars(newFrame, scrollPane, workingAreaSize));
 
@@ -324,9 +327,12 @@ public class DhkView implements IView {
                 mainPanelConstraints.gridx = 6;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getOrientationModes(), mainPanelConstraints);
 
+                // The hot key outline stretches to the height of the row, so it matches the combo boxes beside it
+                mainPanelConstraints.fill = GridBagConstraints.VERTICAL;
                 mainPanelConstraints.gridx = 7;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getHotKey(), mainPanelConstraints);
 
+                mainPanelConstraints.fill = GridBagConstraints.NONE;
                 mainPanelConstraints.gridx = 8;
                 mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearHotKeyButton(), mainPanelConstraints);
 
@@ -505,35 +511,33 @@ public class DhkView implements IView {
      * Initializes the components and the initial selection for each interactive component.
      */
     private void initComponents() {
+        /*
+         * Every label and combo box takes the size of its own content, measured by the layout once the frame is on its
+         * display, so it fits exactly in every language at every display scale
+         */
         noDisplayIdsPlaceholder = new CenteredComboBox<Integer>(new Integer[]{-1});
-        noDisplayIdsPlaceholder.setPreferredSize(new Dimension(60, 28));
         noDisplayIdsPlaceholder.setEnabled(false);
 
         noActiveSlotsPlaceholder = new CenteredComboBox<Integer>(new Integer[]{0});
-        noActiveSlotsPlaceholder.setPreferredSize(new Dimension(60, 28));
         noActiveSlotsPlaceholder.setEnabled(false);
 
-        selectedDisplayLabel = new JLabel("Selected Display :", SwingConstants.LEFT);
-        selectedDisplayLabel.setPreferredSize(new Dimension(112, 28));
+        selectedDisplayLabel = new JLabel(Localizer.getText("main.selectedDisplay"), SwingConstants.LEFT);
 
         displayIds = model.getNumOfConnectedDisplays() > 0
                 ? new CenteredComboBox<Integer>(generateDisplayIds())
                 : noDisplayIdsPlaceholder;
-        displayIds.setPreferredSize(new Dimension(60, 28));
 
         // Select the preserved display before the dependent components are added so the view is built for it directly
         if (model.getNumOfConnectedDisplays() > 0) {
             displayIds.setSelectedIndex(previouslySelectedDisplayIndex);
         }
 
-        numberOfActiveSlotsLabel = new JLabel("Active Slots :", SwingConstants.LEFT);
-        numberOfActiveSlotsLabel.setPreferredSize(new Dimension(82, 28));
+        numberOfActiveSlotsLabel = new JLabel(Localizer.getText("main.activeSlots"), SwingConstants.LEFT);
 
         if (model.getNumOfConnectedDisplays() > 0) {
             for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
                 CenteredComboBox<Integer> numberOfActiveSlots = new CenteredComboBox<Integer>(
                         generateNumOfSlotsValues());
-                numberOfActiveSlots.setPreferredSize(new Dimension(60, 28));
                 numberOfActiveSlots.setSelectedItem(model.getNumOfSlotsForDisplay(displayIndex));
 
                 numberOfActiveSlotsMap.put(displayIndex, numberOfActiveSlots);
@@ -542,21 +546,23 @@ public class DhkView implements IView {
             numberOfActiveSlotsMap.put(-1, noActiveSlotsPlaceholder);
         }
 
-        ButtonProperties clearAllButtonProps = new ButtonProperties("Clear All Slots", new Dimension(50, 28), 0.70f,
-                0.60f);
+        ButtonProperties clearAllButtonProps = new ButtonProperties(Localizer.getText("main.clearAllSlots"),
+                new Dimension(50, 28), 0.70f, 0.60f);
         clearAllButton = new Button("/clear_all_idle.svg", "/clear_all_hover.svg", clearAllButtonProps, true);
 
-        ButtonProperties additionalSettingsButtonProps = new ButtonProperties("Additional Settings",
-                new Dimension(18, 40), 0.70f, 0.60f);
+        ButtonProperties additionalSettingsButtonProps = new ButtonProperties(
+                Localizer.getText("main.additionalSettings"), new Dimension(18, 40), 0.70f, 0.60f);
         additionalSettingsButton = new ThemeableButton("/additional_settings_idle.svg",
                 "/additional_settings_light_hover.svg", "/additional_settings_idle.svg",
                 "/additional_settings_dark_hover.svg", additionalSettingsButtonProps, true, model.isDarkMode());
 
-        ButtonProperties aboutButtonProps = new ButtonProperties("About App", new Dimension(36, 40), 0.70f, 0.60f);
+        ButtonProperties aboutButtonProps = new ButtonProperties(Localizer.getText("main.about"), new Dimension(36, 40),
+                0.70f, 0.60f);
         aboutButton = new ThemeableButton("/about_idle.svg", "/about_light_hover.svg", "/about_idle.svg",
                 "/about_dark_hover.svg", aboutButtonProps, true, model.isDarkMode());
 
-        ButtonProperties themeButtonProps = new ButtonProperties("Change Theme", new Dimension(40, 40), 0.70f, 0.60f);
+        ButtonProperties themeButtonProps = new ButtonProperties(Localizer.getText("main.changeTheme"),
+                new Dimension(40, 40), 0.70f, 0.60f);
         themeButton = new ThemeableButton("/light_mode_idle.svg", "/light_mode_hover.svg", "/dark_mode_idle.svg",
                 "/dark_mode_hover.svg", themeButtonProps, true, model.isDarkMode());
 
@@ -567,44 +573,36 @@ public class DhkView implements IView {
 
         slotTableSeparator = new JSeparator();
 
+        // The headers above the slot buttons are empty, so those columns take the width of their buttons
         applySlotHeader = new JLabel("", SwingConstants.CENTER);
-        applySlotHeader.setPreferredSize(new Dimension(20, 28));
         makeLabelBold(applySlotHeader);
 
-        resolutionHeader = new JLabel(RESOLUTION_HEADER_TEXT, SwingConstants.CENTER);
-        resolutionHeader.setPreferredSize(new Dimension(138, 28));
+        // A column is as wide as its header or its widest combo box, and the combo boxes stretch to fill it
+        resolutionHeader = new JLabel(Localizer.getText(RESOLUTION_HEADER_KEY), SwingConstants.CENTER);
         makeLabelBold(resolutionHeader);
 
-        refreshRateHeader = new JLabel(REFRESH_RATE_HEADER_TEXT, SwingConstants.CENTER);
-        refreshRateHeader.setPreferredSize(new Dimension(118, 28));
+        refreshRateHeader = new JLabel(Localizer.getText(REFRESH_RATE_HEADER_KEY), SwingConstants.CENTER);
         makeLabelBold(refreshRateHeader);
 
-        dpiScaleHeader = new JLabel(DPI_SCALE_HEADER_TEXT, SwingConstants.CENTER);
-        dpiScaleHeader.setPreferredSize(new Dimension(70, 28));
+        dpiScaleHeader = new JLabel(Localizer.getText(DPI_SCALE_HEADER_KEY), SwingConstants.CENTER);
         makeLabelBold(dpiScaleHeader);
 
-        scalingModeHeader = new JLabel(SCALING_MODE_HEADER_TEXT, SwingConstants.CENTER);
-        scalingModeHeader.setPreferredSize(new Dimension(110, 28));
+        scalingModeHeader = new JLabel(Localizer.getText(SCALING_MODE_HEADER_KEY), SwingConstants.CENTER);
         makeLabelBold(scalingModeHeader);
 
-        orientationHeader = new JLabel(ORIENTATION_HEADER_TEXT, SwingConstants.CENTER);
-        orientationHeader.setPreferredSize(new Dimension(118, 28));
+        orientationHeader = new JLabel(Localizer.getText(ORIENTATION_HEADER_KEY), SwingConstants.CENTER);
         makeLabelBold(orientationHeader);
 
-        hotKeyHeader = new JLabel("Hot Key", SwingConstants.CENTER);
-        hotKeyHeader.setPreferredSize(new Dimension(52, 28));
+        hotKeyHeader = new JLabel(Localizer.getText("column.hotKey"), SwingConstants.CENTER);
         makeLabelBold(hotKeyHeader);
 
         clearHotKeyHeader = new JLabel("", SwingConstants.CENTER);
-        clearHotKeyHeader.setPreferredSize(new Dimension(18, 28));
         makeLabelBold(clearHotKeyHeader);
 
         changeHotKeyHeader = new JLabel("", SwingConstants.CENTER);
-        changeHotKeyHeader.setPreferredSize(new Dimension(148, 28));
         makeLabelBold(changeHotKeyHeader);
 
         clearSlotHeader = new JLabel("", SwingConstants.CENTER);
-        clearSlotHeader.setPreferredSize(new Dimension(22, 28));
         makeLabelBold(clearSlotHeader);
 
         initSlotComponents();
@@ -657,11 +655,49 @@ public class DhkView implements IView {
     }
 
     /**
+     * Gets the name of each orientation mode in the selected language.
+     *
+     * @return The orientation mode names, indexed by the orientation mode a slot stores
+     */
+    static String[] getOrientationModeNames() {
+        return getTexts(ORIENTATION_MODE_KEYS);
+    }
+
+    /**
+     * Gets the name of each scaling mode in the selected language.
+     *
+     * @return The scaling mode names, indexed by the scaling mode a slot stores
+     */
+    static String[] getScalingModeNames() {
+        return getTexts(SCALING_MODE_KEYS);
+    }
+
+    /**
+     * Looks up the messages of the given keys in the selected language.
+     *
+     * @param keys
+     *            - The message keys to look up
+     *
+     * @return The messages, in the same order as their keys
+     */
+    private static String[] getTexts(String[] keys) {
+        String[] texts = new String[keys.length];
+
+        for (int keyIndex = 0; keyIndex < keys.length; keyIndex++) {
+            texts[keyIndex] = Localizer.getText(keys[keyIndex]);
+        }
+
+        return texts;
+    }
+
+    /**
      * Initializes the components for each slot.
      */
     private void initSlotComponents() {
         if (model.getNumOfConnectedDisplays() > 0) {
             String[] displayIds = model.getDisplayIds();
+            String[] scalingModeNames = getScalingModeNames();
+            String[] orientationModeNames = getOrientationModeNames();
 
             for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
                 List<Slot> slots = new ArrayList<Slot>();
@@ -684,8 +720,8 @@ public class DhkView implements IView {
                      */
                     Resolution slotResolution = slotDisplayMode.getResolution();
 
-                    slots.add(new Slot(slotIndex, displayIndex, displayModes, dpiScalePercentages, SCALING_MODES,
-                            ORIENTATION_MODES));
+                    slots.add(new Slot(slotIndex, displayIndex, displayModes, dpiScalePercentages, scalingModeNames,
+                            orientationModeNames));
 
                     slots.get(slotIndex).getResolutions().setSelectedItem(slotResolution);
 

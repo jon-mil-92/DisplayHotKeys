@@ -21,8 +21,8 @@ extern "C" {
 #define com_dhk_io_SystemTrayIcon_MENU_COLOR_BORDER 4L
 #undef com_dhk_io_SystemTrayIcon_MENU_COLOR_COUNT
 #define com_dhk_io_SystemTrayIcon_MENU_COLOR_COUNT 5L
-#undef com_dhk_io_SystemTrayIcon_MENU_METRIC_ITEM_WIDTH
-#define com_dhk_io_SystemTrayIcon_MENU_METRIC_ITEM_WIDTH 0L
+#undef com_dhk_io_SystemTrayIcon_MENU_METRIC_TRAILING_INSET
+#define com_dhk_io_SystemTrayIcon_MENU_METRIC_TRAILING_INSET 0L
 #undef com_dhk_io_SystemTrayIcon_MENU_METRIC_ITEM_HEIGHT
 #define com_dhk_io_SystemTrayIcon_MENU_METRIC_ITEM_HEIGHT 1L
 #undef com_dhk_io_SystemTrayIcon_MENU_METRIC_TEXT_INSET
@@ -74,10 +74,10 @@ JNIEXPORT jintArray JNICALL Java_com_dhk_io_SystemTrayIcon_nativeGetIconSize
 /*
  * Class:     com_dhk_io_SystemTrayIcon
  * Method:    nativeSetMenu
- * Signature: ([Ljava/lang/String;[I[ILjava/lang/String;[B)Z
+ * Signature: ([Ljava/lang/String;[I[ILjava/lang/String;)Z
  */
 JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetMenu
-  (JNIEnv *, jobject, jobjectArray, jintArray, jintArray, jstring, jbyteArray);
+  (JNIEnv *, jobject, jobjectArray, jintArray, jintArray, jstring);
 
 /*
  * Class:     com_dhk_io_SystemTrayIcon

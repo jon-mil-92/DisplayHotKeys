@@ -156,6 +156,19 @@ public class MinimizeToTray {
     }
 
     /**
+     * Gives a running tray icon its menu in the newly selected language, since the menu is otherwise only built when
+     * the icon starts.
+     */
+    public void languageChanged() {
+        if (systemTrayIcon == null) {
+            return;
+        }
+
+        new TrayMenu(systemTrayIcon, this::restoreAction, this::settingsAction, this::aboutAction, this::exitAction)
+                .install();
+    }
+
+    /**
      * Restores the application from the system tray.
      */
     private void restoreAction() {

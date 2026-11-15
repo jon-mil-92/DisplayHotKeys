@@ -121,6 +121,27 @@ public class LaunchTaskUtility {
     }
 
     /**
+     * Determines whether the task is registered for the current account.
+     *
+     * @return True if the task is registered, false otherwise
+     */
+    public static boolean isTaskRegistered() {
+        return queryTaskXml() != null;
+    }
+
+    /**
+     * Deletes the task, which takes the same rights the task was registered with.
+     *
+     * @return True if the task is no longer registered, false if it could not be deleted
+     */
+    public static boolean deleteTask() {
+        runTaskCommand("/Delete", "/TN", TASK_NAME, "/F");
+
+        // A delete this account lacks the rights for still leaves the task behind, so confirm it is really gone
+        return !isTaskRegistered();
+    }
+
+    /**
      * Reads the logon trigger state the registered task currently carries, which is the state the system will actually
      * act on rather than the one that was last requested.
      *

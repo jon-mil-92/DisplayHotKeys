@@ -35,6 +35,7 @@ public class MenuController implements IController {
 
     private DhkModel model;
     private DhkView view;
+    private DhkController controller;
     private SettingsManager settingsMgr;
     private HotKeysController hotKeysController;
     private NativeInputHook nativeInputHook;
@@ -49,6 +50,8 @@ public class MenuController implements IController {
      *            - The model for the application
      * @param view
      *            - The view for the application
+     * @param controller
+     *            - The controller for the application
      * @param settingsMgr
      *            - The settings manager for the application
      * @param hotKeysController
@@ -56,10 +59,11 @@ public class MenuController implements IController {
      * @param nativeInputHook
      *            - The shared native input hook the dialogs use to re-fit after a cross-display drag (may be null)
      */
-    public MenuController(DhkModel model, DhkView view, SettingsManager settingsMgr,
+    public MenuController(DhkModel model, DhkView view, DhkController controller, SettingsManager settingsMgr,
             HotKeysController hotKeysController, NativeInputHook nativeInputHook) {
         this.model = model;
         this.view = view;
+        this.controller = controller;
         this.settingsMgr = settingsMgr;
         this.hotKeysController = hotKeysController;
         this.nativeInputHook = nativeInputHook;
@@ -67,8 +71,8 @@ public class MenuController implements IController {
 
     @Override
     public void initController() {
-        additionalSettingsButtonController = new AdditionalSettingsButtonController(model, view, settingsMgr,
-                hotKeysController, nativeInputHook);
+        additionalSettingsButtonController = new AdditionalSettingsButtonController(model, view, controller,
+                settingsMgr, hotKeysController, nativeInputHook);
         aboutButtonController = new AboutButtonController(view, nativeInputHook);
 
         menuButtonControllers = new ArrayList<IController>();

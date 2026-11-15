@@ -26,6 +26,8 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 
+import com.dhk.localization.Localizer;
+
 /**
  * Shows a modal, icon-free dialog centered on the application frame, reporting why the run on startup setting could not
  * be changed, or why it was corrected on launch to match what really starts the application.
@@ -37,49 +39,9 @@ public class RunOnStartupNoticeDialog {
     private JFrame parentFrame;
 
     /**
-     * Message shown when a requested Run on Startup change could not be made.
+     * Product name shown as the dialog's title, which is never translated.
      */
-    private static final String FAILED_MESSAGE_TEXT = "Run on Startup could not be changed!";
-
-    /**
-     * Message shown when the saved setting was corrected on launch rather than changed by a click.
-     */
-    private static final String CHANGED_MESSAGE_TEXT = "Run on Startup was changed to match the scheduled task!";
-
-    /**
-     * First reason line shown when the setting could not be turned off.
-     */
-    private static final String DISABLE_REASON_LINE_1 = "A scheduled task still starts the app upon login,";
-
-    /**
-     * Second reason line shown when the setting could not be turned off.
-     */
-    private static final String DISABLE_REASON_LINE_2 = "and removing it requires administrator rights.";
-
-    /**
-     * First reason line shown when the setting could not be turned on.
-     */
-    private static final String ENABLE_REASON_LINE_1 = "The scheduled task could not be registered,";
-
-    /**
-     * Second reason line shown when the setting could not be turned on.
-     */
-    private static final String ENABLE_REASON_LINE_2 = "and the startup folder could not be written to.";
-
-    /**
-     * First reason line shown when the setting was corrected on launch, which both corrections share.
-     */
-    private static final String CHANGED_REASON_LINE_1 = "The task that starts the app upon login could not be";
-
-    /**
-     * Second reason line shown when the setting was turned on because the task could not be turned off.
-     */
-    private static final String CHANGED_ON_REASON_LINE_2 = "turned off without administrator rights.";
-
-    /**
-     * Second reason line shown when the setting was turned off because the task could not be created.
-     */
-    private static final String CHANGED_OFF_REASON_LINE_2 = "created without administrator rights.";
+    private static final String DIALOG_TITLE = "Display Hot Keys";
 
     /**
      * Constructor for the {@link RunOnStartupNoticeDialog} class.
@@ -98,8 +60,8 @@ public class RunOnStartupNoticeDialog {
      *            - The state the user asked for, which decides the reason shown
      */
     public void showFailedNotice(boolean runOnStartup) {
-        showDialog(FAILED_MESSAGE_TEXT, runOnStartup ? ENABLE_REASON_LINE_1 : DISABLE_REASON_LINE_1,
-                runOnStartup ? ENABLE_REASON_LINE_2 : DISABLE_REASON_LINE_2);
+        showDialog(Localizer.getText("runOnStartup.failed"),
+                Localizer.getText(runOnStartup ? "runOnStartup.failedOn" : "runOnStartup.failedOff"));
     }
 
     /**
@@ -110,21 +72,19 @@ public class RunOnStartupNoticeDialog {
      *            - The state the setting was corrected to, which decides the reason shown
      */
     public void showChangedNotice(boolean startsOnLogon) {
-        showDialog(CHANGED_MESSAGE_TEXT, CHANGED_REASON_LINE_1,
-                startsOnLogon ? CHANGED_ON_REASON_LINE_2 : CHANGED_OFF_REASON_LINE_2);
+        showDialog(Localizer.getText("runOnStartup.changed"),
+                Localizer.getText(startsOnLogon ? "runOnStartup.changedOn" : "runOnStartup.changedOff"));
     }
 
     /**
      * Shows the modal dialog, centered on the parent frame, with centered message lines above a centered OK button.
      *
      * @param messageText
-     *            - The message shown above the reason lines
-     * @param reasonText1
-     *            - The first reason line
-     * @param reasonText2
-     *            - The second reason line
+     *            - The message shown above the reason
+     * @param reasonText
+     *            - The reason, where each line break starts a new centered line
      */
-    private void showDialog(String messageText, String reasonText1, String reasonText2) {
+    private void showDialog(String messageText, String reasonText) {
         /*
          * A frame hidden for the tray or minimized has no on-screen bounds to center on, which can happen to the notice
          * shown on launch, so the dialog then stands alone at the center of the screen
@@ -132,15 +92,14 @@ public class RunOnStartupNoticeDialog {
         boolean frameShowing = parentFrame.isShowing() && (parentFrame.getExtendedState() & JFrame.ICONIFIED) == 0;
         JFrame owner = frameShowing ? parentFrame : null;
 
-        final JDialog dialog = new JDialog(owner, "Display Hot Keys", true);
+        final JDialog dialog = new JDialog(owner, DIALOG_TITLE, true);
         dialog.setResizable(false);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setLayout(new GridBagLayout());
 
         JLabel message = new JLabel(messageText, SwingConstants.CENTER);
-        JLabel reasonLine1 = new JLabel(reasonText1, SwingConstants.CENTER);
-        JLabel reasonLine2 = new JLabel(reasonText2, SwingConstants.CENTER);
-        JButton okButton = new JButton("OK");
+        String[] reasonLines = reasonText.split("\n");
+        JButton okButton = new JButton(Localizer.getText("dialog.ok"));
 
         // Suppress the focus ring
         okButton.setFocusPainted(false);
@@ -158,17 +117,17 @@ public class RunOnStartupNoticeDialog {
 
         dialog.add(message, constraints);
 
-        constraints.gridy = 1;
-        constraints.insets = new Insets(0, 36, 2, 36);
+        // Each reason line sits close below the one before it, and the last one keeps the gap above the button
+        for (int lineIndex = 0; lineIndex < reasonLines.length; lineIndex++) {
+            int bottomInset = lineIndex == reasonLines.length - 1 ? 24 : 2;
 
-        dialog.add(reasonLine1, constraints);
+            constraints.gridy = lineIndex + 1;
+            constraints.insets = new Insets(0, 36, bottomInset, 36);
 
-        constraints.gridy = 2;
-        constraints.insets = new Insets(0, 36, 24, 36);
+            dialog.add(new JLabel(reasonLines[lineIndex], SwingConstants.CENTER), constraints);
+        }
 
-        dialog.add(reasonLine2, constraints);
-
-        constraints.gridy = 3;
+        constraints.gridy = reasonLines.length + 1;
         constraints.insets = new Insets(0, 0, 22, 0);
 
         dialog.add(okButton, constraints);

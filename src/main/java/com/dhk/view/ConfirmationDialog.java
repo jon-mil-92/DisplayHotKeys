@@ -14,38 +14,41 @@
  */
 package com.dhk.view;
 
+import java.awt.Component;
+
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingConstants;
 
+import com.dhk.localization.Localizer;
+
 /**
- * Asks the user to confirm an action with a modal Yes/No dialog owned by the application frame. Each line of the
+ * Asks the user to confirm an action with a modal Yes/No dialog owned by the given component's window. Each line of the
  * message is centered, so the text lines up with the centered Yes and No buttons.
  *
  * @author Jonathan R. Miller
  */
 public class ConfirmationDialog {
 
-    private JFrame parentFrame;
+    private Component parentComponent;
     private String title;
-    private String[] messageLines;
+    private String message;
 
     /**
      * Constructor for the {@link ConfirmationDialog} class.
      *
-     * @param parentFrame
-     *            - The frame that owns the dialog
+     * @param parentComponent
+     *            - The component whose window owns the dialog, or null to center the dialog on the screen
      * @param title
      *            - The title of the dialog, shown in its title bar
-     * @param messageLines
-     *            - The lines of the message, each shown centered on its own line
+     * @param message
+     *            - The message, where each line break starts a new centered line
      */
-    public ConfirmationDialog(JFrame parentFrame, String title, String... messageLines) {
-        this.parentFrame = parentFrame;
+    public ConfirmationDialog(Component parentComponent, String title, String message) {
+        this.parentComponent = parentComponent;
         this.title = title;
-        this.messageLines = messageLines;
+        this.message = message;
     }
 
     /**
@@ -55,21 +58,31 @@ public class ConfirmationDialog {
      */
     public int showConfirmationDialog() {
         // The option pane stretches each label across the message area, so a centered label centers its line
+        String[] messageLines = message.split("\n");
         JLabel[] messageLabels = new JLabel[messageLines.length];
 
         for (int lineIndex = 0; lineIndex < messageLines.length; lineIndex++) {
             messageLabels[lineIndex] = new JLabel(messageLines[lineIndex], SwingConstants.CENTER);
         }
 
-        JOptionPane optionPane = new JOptionPane(messageLabels, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION);
-        JDialog dialog = optionPane.createDialog(parentFrame, title);
+        // The buttons take the selected language's text, since the built-in text only follows the Windows language
+        String yesText = Localizer.getText("dialog.yes");
+        String[] options = {yesText, Localizer.getText("dialog.no")};
+
+        JOptionPane optionPane = new JOptionPane(messageLabels, JOptionPane.PLAIN_MESSAGE, JOptionPane.YES_NO_OPTION,
+                null, options, yesText);
+        JDialog dialog = optionPane.createDialog(parentComponent, title);
         dialog.setModal(true);
         dialog.setResizable(false);
         dialog.setVisible(true);
 
         Object selectedValue = optionPane.getValue();
 
-        return selectedValue instanceof Integer ? (Integer) selectedValue : JOptionPane.CLOSED_OPTION;
+        if (selectedValue == options[0]) {
+            return JOptionPane.YES_OPTION;
+        }
+
+        return selectedValue == options[1] ? JOptionPane.NO_OPTION : JOptionPane.CLOSED_OPTION;
     }
 
 }

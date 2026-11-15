@@ -16,6 +16,8 @@ package com.dhk.model;
 
 import java.util.List;
 
+import com.dhk.localization.Localizer;
+
 /**
  * Defines the model for a Hot Key. States and the string representation of the Hot Key are defined here.
  *
@@ -51,14 +53,14 @@ public class HotKey {
 
         for (int keyIndex = 0; keyIndex < keys.size(); keyIndex++) {
             if (keyIndex != (keys.size() - 1)) {
-                hotKeyString += (keys.get(keyIndex).getName() + " + ");
+                hotKeyString += (keys.get(keyIndex).getName() + "+");
             } else {
                 hotKeyString += (keys.get(keyIndex).getName());
             }
         }
 
         if (keys.size() == 0) {
-            hotKeyString = "Not Set";
+            hotKeyString = Localizer.getText("hotKey.notSet");
         }
 
         return hotKeyString;

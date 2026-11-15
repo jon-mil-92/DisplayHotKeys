@@ -3,7 +3,7 @@
 $ErrorActionPreference = 'Stop'
 $distDir = $PSScriptRoot
 $projectDir = Split-Path $distDir -Parent
-$version = '4.4.0'
+$version = '4.5.0'
 $jarName = "DisplayHotKeys-$version.jar"
 $copyright = "Copyright $([char]0x00A9) 2024-2026 Jonathan R. Miller"
 $inputDir = Join-Path $distDir 'input'
@@ -20,6 +20,8 @@ $dllNames = @('SetDisplay.dll', 'GetDisplay.dll', 'DisplayEventNotifier.dll', 'S
 $startLauncherName = 'DisplayHotKeysLauncher.exe'
 $startLauncher = Join-Path $distDir $startLauncherName
 $uninstallScript = Join-Path $distDir 'uninstall.bat'
+$messagesDir = Join-Path $projectDir 'src\main\resources\localization'
+$installerLanguagesDir = Join-Path $distDir 'languages'
 
 # The license and its additional terms live at the project root, while the readme and third-party licenses ship from
 # the distribution folder
@@ -30,6 +32,53 @@ $docFiles = @(
     (Join-Path $distDir 'MIT_LICENSE_3RD_PARTY.txt'),
     (Join-Path $distDir 'APACHE_2.0_LICENSE_3RD_PARTY.txt')
 )
+
+# Reads the key and value of every message in a messages file, skipping comments and blank lines. An Inno Setup messages
+# file is read only within the given section, while a properties file has no sections and passes an empty one
+function Read-Messages([string] $messagesFile, [string] $section) {
+    $messages = @{}
+    $currentSection = ''
+
+    foreach ($line in [IO.File]::ReadAllLines($messagesFile)) {
+        if ($line -match '^\[(.+)\]\s*$') {
+            $currentSection = $Matches[1]
+        } elseif ($currentSection -eq $section -and $line -match '^\s*([^#;\s][^=]*?)\s*=(.*)$') {
+            $messages[$Matches[1]] = $Matches[2]
+        }
+    }
+
+    return $messages
+}
+
+# Lists every way a language's messages differ from the English ones they translate, so no language ships incomplete
+function Compare-Messages([hashtable] $englishMessages, [hashtable] $messages, [string] $languageName) {
+    foreach ($key in $englishMessages.Keys) {
+        if (-not $messages.ContainsKey($key)) {
+            "$languageName is missing $key"
+
+            continue
+        }
+
+        # A translation must fill in exactly the placeholders the English message has
+        $englishPlaceholders = ([regex]::Matches($englishMessages[$key], '\{\d+\}') | Sort-Object Value) -join ','
+        $placeholders = ([regex]::Matches($messages[$key], '\{\d+\}') | Sort-Object Value) -join ','
+
+        if ($englishPlaceholders -ne $placeholders) {
+            "$languageName has different placeholders in $key"
+        }
+
+        # The message formatter treats an ASCII apostrophe as a quote, which would swallow the placeholders after it
+        if ($placeholders -and $messages[$key].Contains("'")) {
+            "$languageName uses an ASCII apostrophe beside a placeholder in $key"
+        }
+    }
+
+    foreach ($key in $messages.Keys) {
+        if (-not $englishMessages.ContainsKey($key)) {
+            "$languageName has the unknown key $key"
+        }
+    }
+}
 
 try {
     # Resolve required tools without assuming a fixed drive or PATH layout
@@ -109,6 +158,45 @@ try {
 
     if ($LASTEXITCODE -ne 0) {
         throw 'Native DLL build (make) failed'
+    }
+
+    # Check every translation before the slow build, so an incomplete language never reaches a package
+    Write-Host 'Checking the translations...'
+
+    $translationProblems = @()
+    $englishMessages = Read-Messages (Join-Path $messagesDir 'Messages.properties') ''
+    $appLanguageTags = @('en')
+
+    foreach ($messagesFile in Get-ChildItem (Join-Path $messagesDir 'Messages_*.properties')) {
+        $languageSuffix = $messagesFile.BaseName.Substring('Messages_'.Length)
+        $appLanguageTags += $languageSuffix.Replace('_', '-')
+
+        $messages = Read-Messages $messagesFile.FullName ''
+        $translationProblems += @(Compare-Messages $englishMessages $messages $messagesFile.Name)
+    }
+
+    $englishInstallerFile = Join-Path $installerLanguagesDir 'DisplayHotKeys.English.isl'
+    $englishInstallerMessages = Read-Messages $englishInstallerFile 'CustomMessages'
+    $installerLanguageTags = @()
+
+    foreach ($languageFile in Get-ChildItem (Join-Path $installerLanguagesDir 'DisplayHotKeys.*.isl')) {
+        $installerMessages = Read-Messages $languageFile.FullName 'CustomMessages'
+        $installerLanguageTags += $installerMessages['AppLanguageTag']
+        $translationProblems += @(Compare-Messages $englishInstallerMessages $installerMessages $languageFile.Name)
+    }
+
+    # The installer can only offer a default language the app is translated into, and the reverse
+    $languageMismatches = Compare-Object ($appLanguageTags | Sort-Object) ($installerLanguageTags | Sort-Object)
+
+    foreach ($languageMismatch in $languageMismatches) {
+        $side = if ($languageMismatch.SideIndicator -eq '<=') { 'the installer' } else { 'the app' }
+        $translationProblems += "Language $($languageMismatch.InputObject) is missing from $side"
+    }
+
+    if ($translationProblems) {
+        $translationProblems | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+
+        throw 'The translations are incomplete'
     }
 
     # Verify the remaining packaging inputs exist before building

@@ -1,10 +1,11 @@
 #define MyAppName "Display Hot Keys"
 #define MySettingsDirName "DisplayHotKeys"
 #define MySettingsFileName "settings.ini"
+#define MyDefaultsFileName "defaults.ini"
 #define MyLockFileName "DisplayHotKeys.lock"
 #define MyStartupFilePath "AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\StartDisplayHotKeys.bat"
 #define ProfileListKey "SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList"
-#define MyAppVersion "4.4.0"
+#define MyAppVersion "4.5.0"
 #define MyAppCopyright "Copyright (C) 2024-2026 Jonathan R. Miller"
 #define MyAppPublisher "Jonathan R. Miller"
 #define MyAppURL "https://github.com/jon-mil-92/DisplayHotKeys"
@@ -40,7 +41,16 @@ CloseApplicationsFilter=*.exe,*.dll
 RestartApplications=no
 
 [Languages]
-Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl,{#DistDir}\languages\DisplayHotKeys.English.isl"
+Name: "german"; MessagesFile: "compiler:Languages\German.isl,{#DistDir}\languages\DisplayHotKeys.German.isl"
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl,{#DistDir}\languages\DisplayHotKeys.Spanish.isl"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl,{#DistDir}\languages\DisplayHotKeys.French.isl"
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl,{#DistDir}\languages\DisplayHotKeys.Italian.isl"
+Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl,{#DistDir}\languages\DisplayHotKeys.BrazilianPortuguese.isl"
+Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl,{#DistDir}\languages\DisplayHotKeys.Russian.isl"
+Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl,{#DistDir}\languages\DisplayHotKeys.Japanese.isl"
+Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl,{#DistDir}\languages\DisplayHotKeys.Korean.isl"
+Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl,{#DistDir}\languages\DisplayHotKeys.ChineseSimplified.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -48,6 +58,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 // The portable cleanup script ships only in the portable package, so exclude it
 Source: "{#DistDir}\jpackage-out\DisplayHotKeys\*"; DestDir: "{app}"; Excludes: "uninstall.bat"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[INI]
+// The app switches to the language picked for setup after every install, which the new install ID marks
+Filename: "{app}\{#MyDefaultsFileName}"; Section: "Application"; Key: "defaultLanguage"; String: "{cm:AppLanguageTag}"
+Filename: "{app}\{#MyDefaultsFileName}"; Section: "Application"; Key: "installId"; String: "{code:GetInstallId}"
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppLauncherExeName}"
@@ -77,10 +92,6 @@ Type: filesandordirs; Name: {app}\NativeInputHook.dll;
 Type: filesandordirs; Name: {app}\DisplayInfoOverlay.dll;
 
 [Code]
-const
-  // Blank line between message box paragraphs, since Pascal strings carry no escape sequence for a line break
-  NewParagraph = #13#10#13#10;
-
 procedure ForceCloseRunningApp;
 var
   TaskKillResultCode: Integer;
@@ -184,9 +195,8 @@ begin
     if SettingsDirs.Count = 0 then
       Exit;
 
-    SettingsPrompt := 'Do you also want to delete the saved {#MyAppName} settings for all users?';
-    SettingsPrompt := SettingsPrompt + NewParagraph;
-    SettingsPrompt := SettingsPrompt + 'Keeping them preserves saved slots if you reinstall.';
+    // The prompt comes in the language picked for setup, which the uninstaller keeps using
+    SettingsPrompt := CustomMessage('RemoveSettingsPrompt');
 
     if SuppressibleMsgBox(SettingsPrompt, mbConfirmation, MB_YESNO or MB_DEFBUTTON2, IDNO) <> IDYES then
       Exit;
@@ -204,6 +214,18 @@ begin
   finally
     SettingsDirs.Free;
   end;
+end;
+
+function GetInstallId(Param: String): String;
+begin
+  // Every install writes a new value, so the app can tell a reinstall in the same language from no install at all
+  Result := GetDateTimeString('yyyymmddhhnnss', #0, #0);
+end;
+
+procedure RemoveInstallerDefaults;
+begin
+  // The [INI] uninstall flags would only empty this file, and the leftover file would keep the app folder in place
+  DeleteFile(ExpandConstant('{app}\{#MyDefaultsFileName}'));
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
@@ -229,5 +251,6 @@ begin
     RemoveTask;
     RemoveStartupFiles;
     RemoveSettings;
+    RemoveInstallerDefaults;
   end;
 end;

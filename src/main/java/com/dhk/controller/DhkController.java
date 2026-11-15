@@ -29,7 +29,11 @@ import com.dhk.io.DisplayEventNotifier;
 import com.dhk.io.NativeInputHook;
 import com.dhk.io.SettingsManager;
 import com.dhk.io.ShellRestartHandler;
+import com.dhk.localization.Language;
+import com.dhk.localization.Localizer;
+import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
+import com.dhk.theme.ThemeUpdater;
 import com.dhk.view.DhkView;
 import com.dhk.view.DisplayInfoOverlayView;
 import com.dhk.view.MinimizeToTray;
@@ -126,7 +130,7 @@ public class DhkController implements IController {
         controllers.add(new DisplayModeController(model, view, settingsMgr));
         controllers.add(new DpiScaleController(model, view, settingsMgr));
         controllers.add(new FrameDragController(view, inputHook));
-        menuController = new MenuController(model, view, settingsMgr, hotKeysController, inputHook);
+        menuController = new MenuController(model, view, this, settingsMgr, hotKeysController, inputHook);
         controllers.add(menuController);
         controllers.add(new NumberOfSlotsController(model, view, settingsMgr));
         controllers.add(new OrientationController(model, view, this, settingsMgr));
@@ -270,6 +274,23 @@ public class DhkController implements IController {
      */
     public void showAdditionalSettingsDialog(Runnable onCloseAction) {
         menuController.getAdditionalSettingsButtonController().showAdditionalSettingsDialog(onCloseAction);
+    }
+
+    /**
+     * Shows the application in the given language by rebuilding it, which reopens the "Additional Settings" dialog the
+     * language was chosen in.
+     *
+     * @param language
+     *            - The language to show the application in
+     */
+    public void changeLanguage(Language language) {
+        Localizer.setLanguage(language);
+
+        // The theme is set up before the rebuild, so the view measures its text in the new language's font
+        new ThemeUpdater().useDarkMode(model.isDarkMode());
+        new AppRefresher(model, view, this, settingsMgr).reInitApp();
+
+        minimizeToTray.languageChanged();
     }
 
     /**

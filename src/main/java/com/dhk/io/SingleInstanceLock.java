@@ -45,6 +45,13 @@ public class SingleInstanceLock {
     }
 
     /**
+     * Deletes the lock file the application leaves behind on exit, which no running instance may be holding.
+     */
+    public static void deleteLockFile() {
+        new File(LOCK_FILE_PATH).delete();
+    }
+
+    /**
      * Attempts to acquire the exclusive single-instance lock and, on success, registers a shutdown hook to release it.
      * The hook also keeps this instance reachable so the held lock is never released early.
      *

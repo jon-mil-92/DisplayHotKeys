@@ -36,10 +36,10 @@ extern "C" {
 /*
  * Class:     com_dhk_io_DisplayInfoOverlay
  * Method:    nativeShow
- * Signature: ([Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/String;[I[I[ILjava/lang/String;[[BII)Z
+ * Signature: ([Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/String;[I[I[ILjava/lang/String;II)Z
  */
 JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeShow
-  (JNIEnv *, jobject, jobjectArray, jobjectArray, jobjectArray, jintArray, jintArray, jintArray, jstring, jobjectArray, jint, jint);
+  (JNIEnv *, jobject, jobjectArray, jobjectArray, jobjectArray, jintArray, jintArray, jintArray, jstring, jint, jint);
 
 /*
  * Class:     com_dhk_io_DisplayInfoOverlay
