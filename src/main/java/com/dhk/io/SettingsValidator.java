@@ -23,7 +23,6 @@ import java.util.Map;
 
 import org.ini4j.Wini;
 
-import com.dhk.localization.Language;
 import com.dhk.localization.Localizer;
 import com.dhk.model.DisplayMode;
 
@@ -185,10 +184,10 @@ public class SettingsValidator {
      * of a boolean, then it writes the default value for the darkMode property.
      */
     private void validateDarkMode() {
-        String darkMode = ini.get("Application", "darkMode");
+        String darkMode = ini.get(SettingsManager.APPLICATION_SECTION, SettingsManager.DARK_MODE_PROPERTY);
 
         if (darkMode == null || !(darkMode.equals("false") || darkMode.equals("true"))) {
-            repairProperty("Application", "darkMode", false);
+            repairProperty(SettingsManager.APPLICATION_SECTION, SettingsManager.DARK_MODE_PROPERTY, false);
         }
     }
 
@@ -197,10 +196,10 @@ public class SettingsValidator {
      * representation of a boolean, then it writes the default value for the minimizeToTray property.
      */
     private void validateMinimizeToTray() {
-        String minimizeToTray = ini.get("Application", "minimizeToTray");
+        String minimizeToTray = ini.get(SettingsManager.APPLICATION_SECTION, SettingsManager.MINIMIZE_TO_TRAY_PROPERTY);
 
         if (minimizeToTray == null || !(minimizeToTray.equals("false") || minimizeToTray.equals("true"))) {
-            repairProperty("Application", "minimizeToTray", false);
+            repairProperty(SettingsManager.APPLICATION_SECTION, SettingsManager.MINIMIZE_TO_TRAY_PROPERTY, false);
         }
     }
 
@@ -209,10 +208,10 @@ public class SettingsValidator {
      * representation of a boolean, then it writes the default value for the closeToTray property.
      */
     private void validateCloseToTray() {
-        String closeToTray = ini.get("Application", "closeToTray");
+        String closeToTray = ini.get(SettingsManager.APPLICATION_SECTION, SettingsManager.CLOSE_TO_TRAY_PROPERTY);
 
         if (closeToTray == null || !(closeToTray.equals("false") || closeToTray.equals("true"))) {
-            repairProperty("Application", "closeToTray", false);
+            repairProperty(SettingsManager.APPLICATION_SECTION, SettingsManager.CLOSE_TO_TRAY_PROPERTY, false);
         }
     }
 
@@ -221,11 +220,11 @@ public class SettingsValidator {
      * representation of a boolean, then it writes the default value for the runOnStartup property.
      */
     private void validateRunOnStartup() {
-        String runOnStartup = ini.get("Application", "runOnStartup");
+        String runOnStartup = ini.get(SettingsManager.APPLICATION_SECTION, SettingsManager.RUN_ON_STARTUP_PROPERTY);
 
         // Only repair the stored value here; the repaired state reaches the system through applySavedRunOnStartup
         if (runOnStartup == null || !(runOnStartup.equals("false") || runOnStartup.equals("true"))) {
-            repairProperty("Application", "runOnStartup", false);
+            repairProperty(SettingsManager.APPLICATION_SECTION, SettingsManager.RUN_ON_STARTUP_PROPERTY, false);
         }
     }
 
@@ -234,36 +233,37 @@ public class SettingsValidator {
      * representation of a boolean, then it writes the default value for the autoShowInfoOverlay property.
      */
     private void validateAutoShowInfoOverlay() {
-        String autoShowInfoOverlay = ini.get("Application", "autoShowInfoOverlay");
+        String autoShowInfoOverlay = ini.get(SettingsManager.APPLICATION_SECTION,
+                SettingsManager.AUTO_SHOW_INFO_OVERLAY_PROPERTY);
 
         if (autoShowInfoOverlay == null
                 || !(autoShowInfoOverlay.equals("false") || autoShowInfoOverlay.equals("true"))) {
-            repairProperty("Application", "autoShowInfoOverlay", false);
+            repairProperty(SettingsManager.APPLICATION_SECTION, SettingsManager.AUTO_SHOW_INFO_OVERLAY_PROPERTY, false);
         }
     }
 
     /**
      * Validates the language property, which must always hold the tag of the language the application is showing, so a
-     * missing or unsupported tag is replaced as well. It also records the installer's language once it is adopted, so
-     * it never overrides a later pick in the app.
+     * missing or unsupported tag is replaced as well. It also records the install whose language was adopted, so that
+     * install never overrides a later pick in the app.
      */
     private void validateLanguage() {
         String shownLanguageTag = Localizer.getLanguage().getTag();
 
         // The shown language is always supported, and launch may have picked it over the saved one for a newer install
-        if (!shownLanguageTag.equals(ini.get("Application", "language"))) {
-            repairProperty("Application", "language", shownLanguageTag);
+        if (!shownLanguageTag.equals(ini.get(SettingsManager.APPLICATION_SECTION, SettingsManager.LANGUAGE_PROPERTY))) {
+            repairProperty(SettingsManager.APPLICATION_SECTION, SettingsManager.LANGUAGE_PROPERTY, shownLanguageTag);
         }
 
-        Language installerLanguage = SettingsManager.getInstallerLanguage();
+        String installId = SettingsManager.getInstallId();
 
-        // A copy that no installer set up, such as a portable one, has no installer language to record
-        if (installerLanguage == null) {
+        // A copy that no installer set up, such as a portable one, has no install to record
+        if (installId == null) {
             return;
         }
 
-        if (!installerLanguage.getTag().equals(ini.get("Application", "installerLanguage"))) {
-            repairProperty("Application", "installerLanguage", installerLanguage.getTag());
+        if (!installId.equals(ini.get(SettingsManager.APPLICATION_SECTION, SettingsManager.INSTALL_ID_PROPERTY))) {
+            repairProperty(SettingsManager.APPLICATION_SECTION, SettingsManager.INSTALL_ID_PROPERTY, installId);
         }
     }
 
@@ -274,12 +274,12 @@ public class SettingsValidator {
     private void validateNumOfSlots() {
         for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
             String displayId = displayIds[displayIndex];
-            String iniProperty = "numOfSlotsFor--" + displayId;
-            String numOfSlots = ini.get("Application", iniProperty);
+            String iniProperty = SettingsManager.numOfSlotsProperty(displayId);
+            String numOfSlots = ini.get(SettingsManager.APPLICATION_SECTION, iniProperty);
 
             if (numOfSlots == null || !isPositiveInt(numOfSlots) || Integer.valueOf(numOfSlots) < 1
                     || Integer.valueOf(numOfSlots) > settingsMgr.getMaxNumOfSlots()) {
-                repairProperty("Application", iniProperty, 4);
+                repairProperty(SettingsManager.APPLICATION_SECTION, iniProperty, 4);
             }
         }
     }
@@ -293,12 +293,12 @@ public class SettingsValidator {
             String displayId = displayIds[displayIndex];
 
             for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
-                String iniSection = displayId + "--Slot" + Integer.toString(slotId);
-                String orientationMode = ini.get(iniSection, "orientationMode");
+                String iniSection = SettingsManager.slotSection(displayId, slotId);
+                String orientationMode = ini.get(iniSection, SettingsManager.ORIENTATION_MODE_PROPERTY);
 
                 if (orientationMode == null || !isPositiveInt(orientationMode)
                         || Integer.valueOf(orientationMode) > 3) {
-                    repairProperty(iniSection, "orientationMode", 0);
+                    repairProperty(iniSection, SettingsManager.ORIENTATION_MODE_PROPERTY, 0);
                 }
             }
         }
@@ -314,11 +314,12 @@ public class SettingsValidator {
             String displayId = displayIds[displayIndex];
 
             for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
-                String iniSection = displayId + "--Slot" + Integer.toString(slotId);
-                String width = ini.get(iniSection, "displayModeWidth");
-                String height = ini.get(iniSection, "displayModeHeight");
-                String refreshNumerator = ini.get(iniSection, "displayModeRefreshNumerator");
-                String refreshDenominator = ini.get(iniSection, "displayModeRefreshDenominator");
+                String iniSection = SettingsManager.slotSection(displayId, slotId);
+                String width = ini.get(iniSection, SettingsManager.DISPLAY_MODE_WIDTH_PROPERTY);
+                String height = ini.get(iniSection, SettingsManager.DISPLAY_MODE_HEIGHT_PROPERTY);
+                String refreshNumerator = ini.get(iniSection, SettingsManager.DISPLAY_MODE_REFRESH_NUMERATOR_PROPERTY);
+                String refreshDenominator = ini.get(iniSection,
+                        SettingsManager.DISPLAY_MODE_REFRESH_DENOMINATOR_PROPERTY);
 
                 if (width != null && isPositiveInt(width) && height != null && isPositiveInt(height)
                         && refreshNumerator != null && isPositiveInt(refreshNumerator) && refreshDenominator != null
@@ -355,12 +356,14 @@ public class SettingsValidator {
             defaultDisplayMode = portraitDisplayModes[0];
         }
 
-        String iniSection = displayId + "--Slot" + Integer.toString(slotId);
+        String iniSection = SettingsManager.slotSection(displayId, slotId);
 
-        repairProperty(iniSection, "displayModeWidth", defaultDisplayMode.getWidth());
-        repairProperty(iniSection, "displayModeHeight", defaultDisplayMode.getHeight());
-        repairProperty(iniSection, "displayModeRefreshNumerator", defaultDisplayMode.getRefreshNumerator());
-        repairProperty(iniSection, "displayModeRefreshDenominator", defaultDisplayMode.getRefreshDenominator());
+        repairProperty(iniSection, SettingsManager.DISPLAY_MODE_WIDTH_PROPERTY, defaultDisplayMode.getWidth());
+        repairProperty(iniSection, SettingsManager.DISPLAY_MODE_HEIGHT_PROPERTY, defaultDisplayMode.getHeight());
+        repairProperty(iniSection, SettingsManager.DISPLAY_MODE_REFRESH_NUMERATOR_PROPERTY,
+                defaultDisplayMode.getRefreshNumerator());
+        repairProperty(iniSection, SettingsManager.DISPLAY_MODE_REFRESH_DENOMINATOR_PROPERTY,
+                defaultDisplayMode.getRefreshDenominator());
     }
 
     /**
@@ -375,12 +378,12 @@ public class SettingsValidator {
             String displayId = displayIds[displayIndex];
 
             for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
-                String iniSection = displayId + "--Slot" + Integer.toString(slotId);
-                String dpiScalePercentage = ini.get(iniSection, "dpiScalePercentage");
+                String iniSection = SettingsManager.slotSection(displayId, slotId);
+                String dpiScalePercentage = ini.get(iniSection, SettingsManager.DPI_SCALE_PERCENTAGE_PROPERTY);
 
                 if (dpiScalePercentage == null || !isPositiveInt(dpiScalePercentage)
                         || !isSupportedDpiScalePercentage(iniSection, dpiScalePercentage)) {
-                    repairProperty(iniSection, "dpiScalePercentage", 100);
+                    repairProperty(iniSection, SettingsManager.DPI_SCALE_PERCENTAGE_PROPERTY, 100);
                 }
             }
         }
@@ -399,8 +402,8 @@ public class SettingsValidator {
      * @return Whether or not the given DPI scale percentage is supported for the slot's stored resolution
      */
     private boolean isSupportedDpiScalePercentage(String iniSection, String dpiScalePercentage) {
-        String width = ini.get(iniSection, "displayModeWidth");
-        String height = ini.get(iniSection, "displayModeHeight");
+        String width = ini.get(iniSection, SettingsManager.DISPLAY_MODE_WIDTH_PROPERTY);
+        String height = ini.get(iniSection, SettingsManager.DISPLAY_MODE_HEIGHT_PROPERTY);
 
         if (width == null || !isPositiveInt(width) || height == null || !isPositiveInt(height)) {
             return false;
@@ -421,12 +424,12 @@ public class SettingsValidator {
             String displayId = displayIds[displayIndex];
 
             for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
-                String iniSection = displayId + "--Slot" + Integer.toString(slotId);
-                String scalingMode = ini.get(iniSection, "scalingMode");
+                String iniSection = SettingsManager.slotSection(displayId, slotId);
+                String scalingMode = ini.get(iniSection, SettingsManager.SCALING_MODE_PROPERTY);
 
                 if (scalingMode == null || !isPositiveInt(scalingMode)
                         || !Arrays.asList(VALID_SCALING_MODES).contains(scalingMode)) {
-                    repairProperty(iniSection, "scalingMode", 0);
+                    repairProperty(iniSection, SettingsManager.SCALING_MODE_PROPERTY, 0);
                 }
             }
         }
@@ -441,7 +444,7 @@ public class SettingsValidator {
             String displayId = displayIds[displayIndex];
 
             for (int slotId = 1; slotId <= settingsMgr.getMaxNumOfSlots(); slotId++) {
-                validateHotKey(displayId + "--Slot" + Integer.toString(slotId));
+                validateHotKey(SettingsManager.slotSection(displayId, slotId));
             }
         }
 
@@ -458,30 +461,30 @@ public class SettingsValidator {
     private void validateHotKey(String iniSection) {
         validateKeys(iniSection);
 
-        String hotKeySize = ini.get(iniSection, "hotKeySize");
+        String hotKeySize = ini.get(iniSection, SettingsManager.HOT_KEY_SIZE_PROPERTY);
 
         if (hotKeySize == null || !isPositiveInt(hotKeySize) || Integer.valueOf(hotKeySize) < 0
                 || Integer.valueOf(hotKeySize) > 3) {
-            repairProperty(iniSection, "hotKeySize", 0);
+            repairProperty(iniSection, SettingsManager.HOT_KEY_SIZE_PROPERTY, 0);
         }
 
-        int validatedHotKeySize = ini.get(iniSection, "hotKeySize", int.class);
+        int validatedHotKeySize = ini.get(iniSection, SettingsManager.HOT_KEY_SIZE_PROPERTY, int.class);
         int numOfSetKeys = 0;
 
         for (int keyId = 1; keyId <= 3; keyId++) {
-            int validatedKeyCode = ini.get(iniSection, "key" + keyId, int.class);
+            int validatedKeyCode = ini.get(iniSection, SettingsManager.keyProperty(keyId), int.class);
 
             if (validatedKeyCode != UNSET_KEY_CODE) {
                 numOfSetKeys++;
             }
 
             if (numOfSetKeys > validatedHotKeySize) {
-                repairProperty(iniSection, "key" + keyId, UNSET_KEY_CODE);
+                repairProperty(iniSection, SettingsManager.keyProperty(keyId), UNSET_KEY_CODE);
             }
         }
 
         if (validatedHotKeySize > numOfSetKeys) {
-            repairProperty(iniSection, "hotKeySize", numOfSetKeys);
+            repairProperty(iniSection, SettingsManager.HOT_KEY_SIZE_PROPERTY, numOfSetKeys);
         }
     }
 
@@ -494,12 +497,12 @@ public class SettingsValidator {
      */
     private void validateKeys(String iniSection) {
         for (int keyId = 1; keyId <= 3; keyId++) {
-            String key = ini.get(iniSection, "key" + keyId);
+            String key = ini.get(iniSection, SettingsManager.keyProperty(keyId));
 
             // An unset key persists as UNSET_KEY_CODE, so that value must pass validation without a repair
             if (key == null || !isPositiveInt(key)
                     || !(Integer.valueOf(key) == UNSET_KEY_CODE || validkeyCodes.contains(Integer.valueOf(key)))) {
-                repairProperty(iniSection, "key" + keyId, UNSET_KEY_CODE);
+                repairProperty(iniSection, SettingsManager.keyProperty(keyId), UNSET_KEY_CODE);
             }
         }
     }

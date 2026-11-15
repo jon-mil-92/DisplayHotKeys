@@ -60,8 +60,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#DistDir}\jpackage-out\DisplayHotKeys\*"; DestDir: "{app}"; Excludes: "uninstall.bat"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [INI]
-// The app switches to the language picked for setup whenever it differs from the one the previous setup picked
+// The app switches to the language picked for setup after every install, which the new install ID marks
 Filename: "{app}\{#MyDefaultsFileName}"; Section: "Application"; Key: "defaultLanguage"; String: "{cm:AppLanguageTag}"
+Filename: "{app}\{#MyDefaultsFileName}"; Section: "Application"; Key: "installId"; String: "{code:GetInstallId}"
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppLauncherExeName}"
@@ -213,6 +214,12 @@ begin
   finally
     SettingsDirs.Free;
   end;
+end;
+
+function GetInstallId(Param: String): String;
+begin
+  // Every install writes a new value, so the app can tell a reinstall in the same language from no install at all
+  Result := GetDateTimeString('yyyymmddhhnnss', #0, #0);
 end;
 
 procedure RemoveInstallerDefaults;
