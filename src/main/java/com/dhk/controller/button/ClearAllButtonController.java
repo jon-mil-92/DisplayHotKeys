@@ -20,6 +20,7 @@ import com.dhk.controller.DhkController;
 import com.dhk.controller.IController;
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.SettingsManager;
+import com.dhk.localization.Localizer;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
 import com.dhk.model.DisplayMode;
@@ -41,16 +42,6 @@ public class ClearAllButtonController extends AbstractButtonController implement
     private SettingsManager settingsMgr;
     private DisplayConfig displayConfig;
     private AppRefresher appRefresher;
-
-    /**
-     * Question the confirmation dialog asks before clearing every slot of the selected display.
-     */
-    private static final String CONFIRMATION_MESSAGE = "Are you sure you want to clear all slots for the selected display?";
-
-    /**
-     * Title of the confirmation dialog shown before clearing all slots.
-     */
-    private static final String TITLE_BAR_MESSAGE = "Confirm Clear All Slots";
 
     /**
      * Constructor for the {@link ClearAllButtonController} class.
@@ -112,8 +103,8 @@ public class ClearAllButtonController extends AbstractButtonController implement
      * @return The return value from the option pane
      */
     private int getUserConfirmation() {
-        ConfirmationDialog confirmationDialog = new ConfirmationDialog(view.getFrame(), TITLE_BAR_MESSAGE,
-                CONFIRMATION_MESSAGE);
+        ConfirmationDialog confirmationDialog = new ConfirmationDialog(view.getFrame(),
+                Localizer.getText("clearAll.title"), Localizer.getText("clearAll.message"));
 
         return confirmationDialog.showConfirmationDialog();
     }
@@ -199,7 +190,8 @@ public class ClearAllButtonController extends AbstractButtonController implement
             int slotId = slotIndex + 1;
 
             model.getSlot(displayIndex, slotIndex).getHotKey().getKeys().clear();
-            view.getSlot(displayIndex, slotIndex).getHotKey().setText("Not Set");
+            view.getSlot(displayIndex, slotIndex).getHotKey()
+                    .setText(model.getSlot(displayIndex, slotIndex).getHotKey().getHotKeyString());
             view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().setEnabled(false);
             settingsMgr.saveIniSlotHotKey(displayId, slotId, model.getSlot(displayIndex, slotIndex).getHotKey());
         }

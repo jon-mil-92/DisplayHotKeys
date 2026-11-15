@@ -61,7 +61,7 @@ struct DisplayInfoOverlayDefinition {
     COLORREF borderColor;
 
     /**
-     * Family of the font the panels are drawn in.
+     * Family of the installed font the panels are drawn in.
      */
     std::wstring fontFamily;
 

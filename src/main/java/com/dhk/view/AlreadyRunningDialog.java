@@ -26,6 +26,8 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 
+import com.dhk.localization.Localizer;
+
 /**
  * Shows a modal, icon-free dialog reporting that another instance is already running.
  *
@@ -34,9 +36,9 @@ import javax.swing.SwingConstants;
 public class AlreadyRunningDialog {
 
     /**
-     * Message shown when another instance already holds the single instance lock.
+     * Product name shown as the dialog's title, which is never translated.
      */
-    private static final String MESSAGE_TEXT = "Display Hot Keys is already running!";
+    private static final String DIALOG_TITLE = "Display Hot Keys";
 
     /**
      * Default constructor for the {@link AlreadyRunningDialog} class.
@@ -48,13 +50,13 @@ public class AlreadyRunningDialog {
      * Shows the modal "already running" dialog with a centered message above a centered OK button.
      */
     public void showAlreadyRunningDialog() {
-        final JDialog dialog = new JDialog((JFrame) null, "Display Hot Keys", true);
+        final JDialog dialog = new JDialog((JFrame) null, DIALOG_TITLE, true);
         dialog.setResizable(false);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setLayout(new GridBagLayout());
 
-        JLabel message = new JLabel(MESSAGE_TEXT, SwingConstants.CENTER);
-        JButton okButton = new JButton("OK");
+        JLabel message = new JLabel(Localizer.getText("alreadyRunning.message"), SwingConstants.CENTER);
+        JButton okButton = new JButton(Localizer.getText("dialog.ok"));
 
         // Suppress the focus ring
         okButton.setFocusPainted(false);

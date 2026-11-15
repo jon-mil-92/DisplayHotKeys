@@ -17,6 +17,7 @@ package com.dhk.view;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Insets;
+import java.awt.Point;
 import java.awt.Window;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,6 +30,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
 import com.dhk.io.NativeInputHook;
+import com.dhk.localization.Localizer;
 import com.dhk.utility.WindowDragRefitter;
 import com.dhk.utility.WindowUtil;
 
@@ -42,6 +44,7 @@ public class LicenseDialog {
 
     private Window owner;
     private NativeInputHook nativeInputHook;
+    private int viewportHeight;
 
     /**
      * Resource path of the GNU General Public License text shown in the dialog.
@@ -64,11 +67,6 @@ public class LicenseDialog {
     private static final int TEXT_MARGIN = 28;
 
     /**
-     * Text shown in place of a license document when its resource cannot be read.
-     */
-    private static final String UNAVAILABLE_TEXT = "License text is unavailable.";
-
-    /**
      * Constructor for the {@link LicenseDialog} class.
      *
      * @param owner
@@ -82,18 +80,33 @@ public class LicenseDialog {
     }
 
     /**
-     * Shows the bundled additional terms followed by the license in a modal dialog owned by the owner window.
+     * Shows the bundled additional terms followed by the license in a modal dialog owned by the owner window, and waits
+     * for it to close.
+     *
+     * @param location
+     *            - The top-left location to show the dialog at, or null to center it on its owner
+     *
+     * @return The location the dialog was at when it closed
      */
-    public void showLicenseDialog() {
-        JDialog licenseDialog = new JDialog(owner, "License", JDialog.ModalityType.APPLICATION_MODAL);
+    public Point showLicenseDialog(Point location) {
+        JDialog licenseDialog = new JDialog(owner, Localizer.getText("license.title"),
+                JDialog.ModalityType.APPLICATION_MODAL);
         licenseDialog.setResizable(false);
         licenseDialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 
         String additionalTerms = readLicenseText(ADDITIONAL_TERMS_RESOURCE);
         String licenseText = additionalTerms + TEXT_SEPARATOR + readLicenseText(LICENSE_RESOURCE);
 
-        // The bundled text is hard-wrapped, so the text area sizes its width to the content for a DPI-correct fit
-        JTextArea licenseTextArea = new JTextArea(licenseText);
+        /*
+         * The bundled text is hard-wrapped, so the viewport takes the text's own width, measured whenever the layout
+         * asks once the dialog is on its display, so no line is cut off at any display scale
+         */
+        JTextArea licenseTextArea = new JTextArea(licenseText) {
+            @Override
+            public Dimension getPreferredScrollableViewportSize() {
+                return new Dimension(getPreferredSize().width, viewportHeight);
+            }
+        };
         licenseTextArea.setEditable(false);
 
         // The read-only text is display-only, so drop focusability to suppress the leading caret
@@ -106,9 +119,7 @@ public class LicenseDialog {
         licenseScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         // A viewport shorter than the text makes the pack count the vertical scroll bar's width alongside the text
-        Dimension textSize = licenseTextArea.getPreferredSize();
-        int viewportHeight = Math.min(textSize.height, owner.getHeight());
-        licenseScrollPane.getViewport().setPreferredSize(new Dimension(textSize.width, viewportHeight));
+        viewportHeight = Math.min(licenseTextArea.getPreferredSize().height, owner.getHeight());
 
         // The margin panel lets the scroll pane absorb any size cut, so a capped dialog shrinks the text view only
         JPanel contentPanel = new JPanel(new BorderLayout());
@@ -119,12 +130,12 @@ public class LicenseDialog {
         licenseDialog.pack();
 
         // Shift the viewport by the pack's height gap, so this and every later pack land exactly at the owner's height
-        int heightGap = owner.getHeight() - licenseDialog.getHeight();
-        licenseScrollPane.getViewport().setPreferredSize(new Dimension(textSize.width, viewportHeight + heightGap));
+        viewportHeight += owner.getHeight() - licenseDialog.getHeight();
+        licenseTextArea.invalidate();
         licenseDialog.pack();
 
         // The text scrolls on its own, so the shared fit only caps the dialog and reserves no outer scroll bars
-        WindowUtil.fitDialogToWorkingArea(licenseDialog);
+        WindowUtil.fitDialogToWorkingArea(licenseDialog, location);
         updateHorizontalScrolling(licenseDialog, licenseScrollPane);
 
         // A drag onto another display refreshes the dialog there once the drag ends, matching the main frame
@@ -132,6 +143,8 @@ public class LicenseDialog {
         new WindowDragRefitter(licenseDialog, nativeInputHook, refreshAction).install();
 
         licenseDialog.setVisible(true);
+
+        return licenseDialog.getLocation();
     }
 
     /**
@@ -177,14 +190,14 @@ public class LicenseDialog {
     private String readLicenseText(String resource) {
         try (InputStream in = LicenseDialog.class.getResourceAsStream(resource)) {
             if (in == null) {
-                return UNAVAILABLE_TEXT;
+                return Localizer.getText("license.unavailable");
             }
 
             // Trailing line breaks are dropped so the separator alone sets the gap between the two documents
             return new String(in.readAllBytes(), StandardCharsets.UTF_8).replace("\r\n", "\n").stripTrailing();
         } catch (IOException e) {
             e.printStackTrace();
-            return UNAVAILABLE_TEXT;
+            return Localizer.getText("license.unavailable");
         }
     }
 

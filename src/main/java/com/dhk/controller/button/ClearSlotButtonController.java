@@ -191,7 +191,8 @@ public class ClearSlotButtonController extends AbstractButtonController implemen
         int slotId = slotIndex + 1;
 
         model.getSlot(displayIndex, slotIndex).getHotKey().getKeys().clear();
-        view.getSlot(displayIndex, slotIndex).getHotKey().setText("Not Set");
+        view.getSlot(displayIndex, slotIndex).getHotKey()
+                .setText(model.getSlot(displayIndex, slotIndex).getHotKey().getHotKeyString());
         view.getSlot(displayIndex, slotIndex).getClearHotKeyButton().setEnabled(false);
         settingsMgr.saveIniSlotHotKey(displayId, slotId, model.getSlot(displayIndex, slotIndex).getHotKey());
     }

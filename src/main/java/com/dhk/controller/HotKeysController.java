@@ -35,6 +35,7 @@ import com.dhk.io.NativeKeyEvent;
 import com.dhk.io.NativeKeyListener;
 import com.dhk.io.SetDisplay;
 import com.dhk.io.SettingsManager;
+import com.dhk.localization.Localizer;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
 import com.dhk.model.FramePlacement;
@@ -75,34 +76,34 @@ public class HotKeysController implements IController, NativeKeyListener {
     private HeldKeyTracker heldKeyTracker;
 
     /**
-     * Text of the Change Hot Key button while no hot key is being recorded.
+     * Message key of the Change Hot Key button's text while no hot key is being recorded.
      */
-    private static final String CHANGE_HOT_KEY_TEXT = "Change Hot Key";
+    private static final String CHANGE_HOT_KEY_KEY = "hotKey.change";
 
     /**
-     * Button text prompting the user to press the keys of the new hot key.
+     * Message key of the button text prompting the user to press the keys of the new hot key.
      */
-    private static final String PRESS_HOT_KEY_TEXT = "Press Hot Key";
+    private static final String PRESS_HOT_KEY_KEY = "hotKey.press";
 
     /**
-     * Button text prompting the user to release the pressed keys to set the hot key.
+     * Message key of the button text prompting the user to release the pressed keys to set the hot key.
      */
-    private static final String RELEASE_TO_SET_TEXT = "Release To Set";
+    private static final String RELEASE_TO_SET_KEY = "hotKey.release";
 
     /**
-     * Button text shown when the pressed keys are a subset of another hot key, or the reverse.
+     * Message key of the button text shown when the pressed keys are a subset of another hot key, or the reverse.
      */
-    private static final String NO_SUBSETS_TEXT = "No Subsets";
+    private static final String NO_SUBSETS_KEY = "hotKey.noSubsets";
 
     /**
-     * Button text confirming that the new hot key was set.
+     * Message key of the button text confirming that the new hot key was set.
      */
-    private static final String HOT_KEY_SET_TEXT = "Hot Key Set";
+    private static final String HOT_KEY_SET_KEY = "hotKey.set";
 
     /**
-     * Button text reporting that the hot key was left unchanged.
+     * Message key of the button text reporting that the hot key was left unchanged.
      */
-    private static final String HOT_KEY_NOT_SET_TEXT = "Hot Key Not Set";
+    private static final String HOT_KEY_NOT_SET_KEY = "hotKey.notChanged";
 
     /**
      * Time without key input after which hot key recording is abandoned.
@@ -240,12 +241,12 @@ public class HotKeysController implements IController, NativeKeyListener {
 
                     if (anyHotKeyConflict()) {
                         // Notify the user that hot keys cannot be a subset of another hot key
-                        recordingTarget.getChangeHotKeyButton().setText(NO_SUBSETS_TEXT);
+                        recordingTarget.getChangeHotKeyButton().setText(Localizer.getText(NO_SUBSETS_KEY));
 
                         anyHotKeySubset = true;
                     } else {
                         // Update the Change Hot Key button text to notify the user to release keys
-                        recordingTarget.getChangeHotKeyButton().setText(RELEASE_TO_SET_TEXT);
+                        recordingTarget.getChangeHotKeyButton().setText(Localizer.getText(RELEASE_TO_SET_KEY));
 
                         anyHotKeySubset = false;
                     }
@@ -456,7 +457,7 @@ public class HotKeysController implements IController, NativeKeyListener {
         hotKeyBackup.getKeys().addAll(target.getHotKey().getKeys());
 
         target.getHotKey().setKeys(new ArrayList<Key>());
-        target.getChangeHotKeyButton().setText(PRESS_HOT_KEY_TEXT);
+        target.getChangeHotKeyButton().setText(Localizer.getText(PRESS_HOT_KEY_KEY));
         target.showRecording(true);
         target.disableControls();
         target.getHotKey().setChangingHotKey(true);
@@ -813,14 +814,14 @@ public class HotKeysController implements IController, NativeKeyListener {
         // If the user did not type any keys before the idle timeout or any hot key is a subset of another
         if (target.getHotKey().getKeys().size() == 0 || anyHotKeySubset) {
             if (anyHotKeySubset) {
-                target.getChangeHotKeyButton().setText(HOT_KEY_NOT_SET_TEXT);
+                target.getChangeHotKeyButton().setText(Localizer.getText(HOT_KEY_NOT_SET_KEY));
             }
 
             target.setHotKey(hotKeyBackup);
             target.showHotKeyText();
             anyHotKeySubset = false;
         } else {
-            target.getChangeHotKeyButton().setText(HOT_KEY_SET_TEXT);
+            target.getChangeHotKeyButton().setText(Localizer.getText(HOT_KEY_SET_KEY));
         }
 
         target.getHotKey().setChangingHotKey(false);
@@ -834,7 +835,7 @@ public class HotKeysController implements IController, NativeKeyListener {
         rebuildActiveKeyCodes();
 
         if (!showReleaseMessage) {
-            target.getChangeHotKeyButton().setText(CHANGE_HOT_KEY_TEXT);
+            target.getChangeHotKeyButton().setText(Localizer.getText(CHANGE_HOT_KEY_KEY));
             target.enableControls();
         }
     }
@@ -853,7 +854,7 @@ public class HotKeysController implements IController, NativeKeyListener {
             public void actionPerformed(ActionEvent e) {
                 showReleaseMessage = false;
 
-                target.getChangeHotKeyButton().setText(CHANGE_HOT_KEY_TEXT);
+                target.getChangeHotKeyButton().setText(Localizer.getText(CHANGE_HOT_KEY_KEY));
                 target.enableControls();
             }
         });

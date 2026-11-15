@@ -14,7 +14,6 @@
  */
 package com.dhk.view;
 
-import java.awt.Dimension;
 import java.awt.Insets;
 
 import javax.swing.JLabel;
@@ -37,11 +36,6 @@ public class HotKeyLabel extends JLabel {
      * Serialization version of the {@link HotKeyLabel} class.
      */
     private static final long serialVersionUID = 1L;
-
-    /**
-     * Height of the outline, which matches the combo boxes and buttons beside a hot key.
-     */
-    private static final int OUTLINE_HEIGHT = 28;
 
     /**
      * Space between the hot key text and the left and right edges of the outline.
@@ -77,11 +71,6 @@ public class HotKeyLabel extends JLabel {
 
         // A theme change replaces the theme colors, so the outline is rebuilt from them instead of keeping stale ones
         applyOutline();
-    }
-
-    @Override
-    public Dimension getPreferredSize() {
-        return new Dimension(super.getPreferredSize().width, OUTLINE_HEIGHT);
     }
 
     /**

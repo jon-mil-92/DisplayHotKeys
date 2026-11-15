@@ -23,6 +23,8 @@ import java.util.Map;
 
 import org.ini4j.Wini;
 
+import com.dhk.localization.Language;
+import com.dhk.localization.Localizer;
 import com.dhk.model.DisplayMode;
 
 /**
@@ -86,6 +88,7 @@ public class SettingsValidator {
         validateCloseToTray();
         validateRunOnStartup();
         validateAutoShowInfoOverlay();
+        validateLanguage();
         validateNumOfSlots();
         validateOrientationModes();
         validateDisplayModes();
@@ -236,6 +239,19 @@ public class SettingsValidator {
         if (autoShowInfoOverlay == null
                 || !(autoShowInfoOverlay.equals("false") || autoShowInfoOverlay.equals("true"))) {
             repairProperty("Application", "autoShowInfoOverlay", false);
+        }
+    }
+
+    /**
+     * Validates the value for the language property from the settings file. If the value is not the tag of a language
+     * the application is translated into, then it writes the tag of the language the application is showing.
+     */
+    private void validateLanguage() {
+        String language = ini.get("Application", "language");
+
+        // The language shown was picked at launch from the installer default or Windows, so a new file stores that one
+        if (Language.fromTag(language) == null) {
+            repairProperty("Application", "language", Localizer.getLanguage().getTag());
         }
     }
 

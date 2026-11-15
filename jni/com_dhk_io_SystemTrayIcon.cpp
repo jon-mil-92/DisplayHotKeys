@@ -200,14 +200,9 @@ static int pendingIconHeight = 0;
 static shared_ptr<const TrayMenuDefinition> menuDefinition;
 
 /**
- * Guards the menu definition and the private font backing it.
+ * Guards the menu definition.
  */
 static mutex menuDefinitionMutex;
-
-/**
- * Font file registered privately for this process so the menu can draw in a family that is not installed.
- */
-static HANDLE privateFontResource = NULL;
 
 /**
  * Whether a menu is open or opening, so a click arriving meanwhile never opens a second one.
@@ -307,9 +302,9 @@ static constexpr int MENU_COLOR_BORDER = com_dhk_io_SystemTrayIcon_MENU_COLOR_BO
 static constexpr int MENU_COLOR_COUNT = com_dhk_io_SystemTrayIcon_MENU_COLOR_COUNT;
 
 /**
- * Index of the item width in the metrics the caller supplies.
+ * Index of the distance from the end of an item's text to its trailing edge in the metrics the caller supplies.
  */
-static constexpr int MENU_METRIC_ITEM_WIDTH = com_dhk_io_SystemTrayIcon_MENU_METRIC_ITEM_WIDTH;
+static constexpr int MENU_METRIC_TRAILING_INSET = com_dhk_io_SystemTrayIcon_MENU_METRIC_TRAILING_INSET;
 
 /**
  * Index of the item height in the metrics the caller supplies.
@@ -580,16 +575,12 @@ extern "C" JNIEXPORT jintArray JNICALL Java_com_dhk_io_SystemTrayIcon_nativeGetI
  * @param menuMetrics
  *            - The menu metrics in unscaled pixels, indexed by the MENU_METRIC constants
  * @param fontFamily
- *            - The family of the font the items are drawn in
- * @param fontData
- *            - The font file to register privately for the family, or null when the family is installed or the font
- *            was already registered, which lasts for the life of the process
+ *            - The family of the installed font the items are drawn in
  *
- * @return Whether the menu was accepted and any supplied font is registered
+ * @return Whether the menu was accepted
  */
-extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dhk_io_SystemTrayIcon_nativeSetMenu(JNIEnv *env, jobject obj, jobjectArray itemTexts, jintArray menuColors,
-                                             jintArray menuMetrics, jstring fontFamily, jbyteArray fontData) {
+extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_SystemTrayIcon_nativeSetMenu(
+    JNIEnv *env, jobject obj, jobjectArray itemTexts, jintArray menuColors, jintArray menuMetrics, jstring fontFamily) {
     (void) obj;
 
     if (!itemTexts || !menuColors || !menuMetrics || env->GetArrayLength(menuColors) < MENU_COLOR_COUNT ||
@@ -623,28 +614,15 @@ Java_com_dhk_io_SystemTrayIcon_nativeSetMenu(JNIEnv *env, jobject obj, jobjectAr
     definition->borderColor = colorFromArgb(colors[MENU_COLOR_BORDER]);
     definition->fontFamily = readWideString(env, fontFamily);
     definition->fontSize = metrics[MENU_METRIC_FONT_SIZE];
-    definition->itemWidth = metrics[MENU_METRIC_ITEM_WIDTH];
+    definition->trailingInset = metrics[MENU_METRIC_TRAILING_INSET];
     definition->itemHeight = metrics[MENU_METRIC_ITEM_HEIGHT];
     definition->textInset = metrics[MENU_METRIC_TEXT_INSET];
 
     lock_guard<mutex> definitionLock(menuDefinitionMutex);
 
-    // Registered once and before the definition is published, so no menu is ever drawn before its font exists
-    if (fontData && !privateFontResource) {
-        vector<jbyte> fontBytes(env->GetArrayLength(fontData));
-        DWORD registeredFontCount = 0;
-
-        env->GetByteArrayRegion(fontData, 0, (jsize) fontBytes.size(), fontBytes.data());
-
-        // The system keeps its own copy of the font, so the buffer can go as soon as this returns
-        privateFontResource =
-            AddFontMemResourceEx(fontBytes.data(), (DWORD) fontBytes.size(), nullptr, &registeredFontCount);
-    }
-
     menuDefinition = definition;
 
-    // A failed registration reports false, so the caller supplies the font again with its next menu
-    return !fontData || privateFontResource ? JNI_TRUE : JNI_FALSE;
+    return JNI_TRUE;
 }
 
 /**
@@ -664,7 +642,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_SystemTrayIcon_nativeDismissMe
 
 /**
  * Called when the native library is unloaded. Stops the icon and releases everything this library still holds, which
- * is the menu, the private font, and the reference to the registered instance.
+ * is the menu and the reference to the registered instance.
  *
  * @param vm
  *            - The JavaVM pointer
@@ -680,11 +658,6 @@ extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
         lock_guard<mutex> definitionLock(menuDefinitionMutex);
 
         menuDefinition.reset();
-
-        if (privateFontResource) {
-            RemoveFontMemResourceEx(privateFontResource);
-            privateFontResource = NULL;
-        }
     }
 
     JNIEnv *env = nullptr;
@@ -1396,7 +1369,20 @@ LRESULT CALLBACK handleMenuEvents(HWND windowHandle, UINT message, WPARAM eventT
     case WM_MEASUREITEM: {
         MEASUREITEMSTRUCT *measureItem = (MEASUREITEMSTRUCT *) eventData;
         const TrayMenuDefinition &definition = *activeMenuDefinition;
-        int itemWidth = MulDiv(definition.itemWidth, activeMenuDpi, USER_DEFAULT_SCREEN_DPI);
+        const wstring &itemText = definition.itemTexts[measureItem->itemID - 1];
+
+        // The text is measured in the menu's own font at the display's DPI, so the item fits it exactly at any scale
+        HDC measureDC = GetDC(windowHandle);
+        HGDIOBJ previousFont = SelectObject(measureDC, activeMenuFont);
+        SIZE textSize = {};
+
+        GetTextExtentPoint32W(measureDC, itemText.c_str(), (int) itemText.size(), &textSize);
+        SelectObject(measureDC, previousFont);
+        ReleaseDC(windowHandle, measureDC);
+
+        int insetWidth =
+            MulDiv(definition.textInset + definition.trailingInset, activeMenuDpi, USER_DEFAULT_SCREEN_DPI);
+        int itemWidth = insetWidth + textSize.cx;
 
         // The system pads the width of every owner drawn item by about a check mark, so that much is taken back here
         int measuredWidth = itemWidth - GetSystemMetricsForDpi(SM_CXMENUCHECK, activeMenuDpi) + 1;

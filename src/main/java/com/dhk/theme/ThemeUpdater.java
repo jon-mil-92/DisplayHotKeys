@@ -18,7 +18,6 @@ import com.formdev.flatlaf.FlatDarculaLaf;
 import com.formdev.flatlaf.FlatIntelliJLaf;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.extras.FlatAnimatedLafChange;
-import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 
 /**
  * Sets the theme for the application. It allows the theme of the application to be switched between Light and Dark
@@ -29,8 +28,7 @@ import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 public class ThemeUpdater {
 
     /**
-     * Whether the JVM-wide theme setup has run, since repeating its expensive font install on every construction is
-     * wasted work.
+     * Whether the JVM-wide theme setup has run, since repeating it on every construction is wasted work.
      */
     private static boolean globalThemeSetupDone;
 
@@ -38,18 +36,14 @@ public class ThemeUpdater {
      * Constructor for the {@link ThemeUpdater} class.
      */
     public ThemeUpdater() {
-        // The font install and defaults-source registration are global and idempotent, so only run them once per JVM
+        // The defaults-source registration is global and idempotent, so only run it once per JVM
         if (globalThemeSetupDone) {
             return;
         }
 
         globalThemeSetupDone = true;
 
-        // Set the Roboto font style
-        FlatRobotoFont.install();
-        FlatLaf.setPreferredFontFamily(FlatRobotoFont.FAMILY);
-
-        // Set the package for theme properties
+        // Set the package for theme properties, whose default font takes the selected language's font family
         FlatLaf.registerCustomDefaultsSource("com.dhk.theme");
     }
 

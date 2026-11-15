@@ -17,15 +17,13 @@ package com.dhk.view;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.io.IOException;
-import java.io.InputStream;
 
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.UIManager;
 
 import com.dhk.io.SystemTrayIcon;
-import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
+import com.dhk.localization.Localizer;
 import com.formdev.flatlaf.util.UIScale;
 
 /**
@@ -40,20 +38,9 @@ public class TrayMenu {
     private Runnable[] itemActions;
 
     /**
-     * Whether the native layer holds the Roboto font, which it keeps for the life of the process, so the font file is
-     * only read until then.
+     * Message key of each menu item's text, in the order the items are shown and their actions are indexed.
      */
-    private static boolean robotoFontRegistered;
-
-    /**
-     * Text of each menu item, in the order the items are shown and their actions are indexed.
-     */
-    private static final String[] ITEM_TEXTS = {"Restore", "Settings", "About", "Exit"};
-
-    /**
-     * Roboto font file, read from beside the class that installs the font.
-     */
-    private static final String ROBOTO_FONT_FILE = "Roboto-Regular.ttf";
+    private static final String[] ITEM_TEXT_KEYS = {"tray.restore", "tray.settings", "tray.about", "tray.exit"};
 
     /**
      * Constructor for the {@link TrayMenu} class.
@@ -76,22 +63,20 @@ public class TrayMenu {
     }
 
     /**
-     * Hands the items and the current theme's menu look to the tray icon and routes chosen items to their actions. The
-     * theme is only read here because it can only change while the application window is showing.
+     * Hands the items in the selected language and the current theme's menu look to the tray icon, and routes chosen
+     * items to their actions. It is installed again whenever the language or the theme changes.
      */
     public void install() {
         systemTrayIcon.registerTrayIconListener(this::runItemAction);
 
-        // Laid out by the theme's own menu items, so the native menu takes the size and insets the theme gives one
+        // Laid out by the theme's own menu items, so the native menu takes the height and insets the theme gives one
         JPopupMenu layoutMenu = new JPopupMenu();
-        int itemWidth = 0;
+        String[] itemTexts = new String[ITEM_TEXT_KEYS.length];
         int itemHeight = 0;
 
-        for (String itemText : ITEM_TEXTS) {
-            Dimension itemSize = layoutMenu.add(itemText).getPreferredSize();
-
-            itemWidth = Math.max(itemWidth, itemSize.width);
-            itemHeight = Math.max(itemHeight, itemSize.height);
+        for (int itemIndex = 0; itemIndex < ITEM_TEXT_KEYS.length; itemIndex++) {
+            itemTexts[itemIndex] = Localizer.getText(ITEM_TEXT_KEYS[itemIndex]);
+            itemHeight = Math.max(itemHeight, layoutMenu.add(itemTexts[itemIndex]).getPreferredSize().height);
         }
 
         JMenuItem firstItem = (JMenuItem) layoutMenu.getComponent(0);
@@ -108,18 +93,19 @@ public class TrayMenu {
                 background);
         menuColors[SystemTrayIcon.MENU_COLOR_BORDER] = themeColor("PopupMenu.borderColor", foreground);
 
+        int textInset = textInset(firstItem);
+
+        // Only the space around the text is sent, since the native layer measures the text at the display's scale
+        int textWidth = firstItem.getFontMetrics(itemFont).stringWidth(firstItem.getText());
+        int trailingInset = firstItem.getPreferredSize().width - textInset - textWidth;
+
         int[] menuMetrics = new int[SystemTrayIcon.MENU_METRIC_COUNT];
-        menuMetrics[SystemTrayIcon.MENU_METRIC_ITEM_WIDTH] = itemWidth;
+        menuMetrics[SystemTrayIcon.MENU_METRIC_TRAILING_INSET] = trailingInset;
         menuMetrics[SystemTrayIcon.MENU_METRIC_ITEM_HEIGHT] = itemHeight;
-        menuMetrics[SystemTrayIcon.MENU_METRIC_TEXT_INSET] = textInset(firstItem);
+        menuMetrics[SystemTrayIcon.MENU_METRIC_TEXT_INSET] = textInset;
         menuMetrics[SystemTrayIcon.MENU_METRIC_FONT_SIZE] = itemFont.getSize();
 
-        byte[] fontData = fontData(itemFont);
-        boolean accepted = systemTrayIcon.setMenu(ITEM_TEXTS, menuColors, menuMetrics, itemFont.getFamily(), fontData);
-
-        if (accepted && fontData != null) {
-            robotoFontRegistered = true;
-        }
+        systemTrayIcon.setMenu(itemTexts, menuColors, menuMetrics, itemFont.getFamily());
     }
 
     /**
@@ -166,27 +152,6 @@ public class TrayMenu {
         int iconWidth = minimumIconSize != null ? minimumIconSize.width : 0;
 
         return menuItem.getInsets().left + UIScale.scale(iconWidth) + UIScale.scale(menuItem.getIconTextGap());
-    }
-
-    /**
-     * Returns the font file for a font the system does not have installed, so the native layer can draw in it.
-     *
-     * @param font
-     *            - The font the items are drawn in
-     *
-     * @return The font file, or null when the font is not bundled or the native layer already registered it
-     */
-    private byte[] fontData(Font font) {
-        if (robotoFontRegistered || !FlatRobotoFont.FAMILY.equals(font.getFamily())) {
-            return null;
-        }
-
-        try (InputStream fontStream = FlatRobotoFont.class.getResourceAsStream(ROBOTO_FONT_FILE)) {
-            return fontStream != null ? fontStream.readAllBytes() : null;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
     }
 
 }

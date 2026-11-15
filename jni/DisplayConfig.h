@@ -207,7 +207,7 @@ struct TrayMenuDefinition {
     COLORREF borderColor;
 
     /**
-     * Family of the font the items are drawn in.
+     * Family of the installed font the items are drawn in.
      */
     std::wstring fontFamily;
 
@@ -217,9 +217,9 @@ struct TrayMenuDefinition {
     int fontSize;
 
     /**
-     * Width of every item.
+     * Distance from the end of an item's text to its trailing edge.
      */
-    int itemWidth;
+    int trailingInset;
 
     /**
      * Height of every item.

@@ -19,6 +19,7 @@ import com.dhk.model.DhkModel;
 import com.dhk.model.DisplayMode;
 import com.dhk.model.RefreshRate;
 import com.dhk.model.Resolution;
+import com.dhk.utility.WindowUtil;
 import com.dhk.view.DhkView;
 
 /**
@@ -91,6 +92,9 @@ public class DisplayModeController implements IController {
 
         // Refresh the DPI Scale combo box for the new resolution, falling back to a supported percentage if needed
         view.updateSlotDpiScalePercentages(displayIndex, slotIndex);
+
+        // Each combo box is as wide as its items, so the new rates and percentages can change the width of the window
+        WindowUtil.refitWindow(view.getFrame());
 
         // Persist the recombined display mode, since repopulating the rate combo box may not fire its listener
         saveSlotDisplayMode(displayIndex, slotIndex);

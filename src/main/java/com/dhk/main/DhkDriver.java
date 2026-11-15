@@ -14,6 +14,8 @@
  */
 package com.dhk.main;
 
+import java.util.Arrays;
+
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 
@@ -21,6 +23,7 @@ import com.dhk.controller.DhkController;
 import com.dhk.controller.NativeHookInstaller;
 import com.dhk.io.SettingsManager;
 import com.dhk.io.SingleInstanceLock;
+import com.dhk.localization.Localizer;
 import com.dhk.model.DhkModel;
 import com.dhk.theme.ThemeUpdater;
 import com.dhk.view.AlreadyRunningDialog;
@@ -32,6 +35,12 @@ import com.dhk.view.DhkView;
  * @author Jonathan R. Miller
  */
 public class DhkDriver {
+
+    /**
+     * Command line argument that runs the cleanup of a portable copy instead of the application, which the portable
+     * package's uninstall script passes.
+     */
+    private static final String UNINSTALL_ARGUMENT = "--uninstall";
 
     /**
      * Default constructor for the {@link DhkDriver} class.
@@ -53,6 +62,17 @@ public class DhkDriver {
         System.setProperty("sun.java2d.d3d", "false");
         System.setProperty("sun.java2d.noddraw", "true");
         ToolTipManager.sharedInstance().setEnabled(false);
+
+        // Pick the language before anything is shown, since it also decides the font the theme is set up with
+        Localizer.setLanguage(SettingsManager.getStartupLanguage());
+
+        // The cleanup needs no lock or hooks, and it closes any running copy itself
+        if (Arrays.asList(args).contains(UNINSTALL_ARGUMENT)) {
+            new ThemeUpdater().useDarkMode(SettingsManager.getSavedDarkMode());
+            new PortableUninstaller().uninstall();
+
+            System.exit(0);
+        }
 
         // Check the lock before any slow setup so only the winning instance installs the native hooks
         boolean lockAcquired = new SingleInstanceLock().tryLock();

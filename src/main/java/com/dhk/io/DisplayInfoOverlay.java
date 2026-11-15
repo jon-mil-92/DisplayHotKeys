@@ -125,20 +125,16 @@ public class DisplayInfoOverlay {
      * @param overlayMetrics
      *            - The panel metrics in unscaled pixels, indexed by the OVERLAY_METRIC constants
      * @param fontFamily
-     *            - The family of the font the panels are drawn in
-     * @param fontFiles
-     *            - The font files to register privately for the family, or null when the family is installed or the
-     *            fonts were already registered, which lasts for the life of the process
+     *            - The family of the installed font the panels are drawn in
      * @param opacity
      *            - The opacity of the panels, from 0 (invisible) to 255 (opaque)
      * @param durationMs
      *            - How long the panels stay visible, in milliseconds
      *
-     * @return Whether the panels were accepted and any supplied fonts are registered
+     * @return Whether the panels were accepted
      */
     private native boolean nativeShow(String[] headers, String[] labels, String[] values, int[] anchorPoints,
-            int[] overlayColors, int[] overlayMetrics, String fontFamily, byte[][] fontFiles, int opacity,
-            int durationMs);
+            int[] overlayColors, int[] overlayMetrics, String fontFamily, int opacity, int durationMs);
 
     /**
      * Defines a JNI function to hide every panel that is showing.
@@ -162,25 +158,22 @@ public class DisplayInfoOverlay {
      * @param overlayMetrics
      *            - The panel metrics in unscaled pixels, indexed by the OVERLAY_METRIC constants
      * @param fontFamily
-     *            - The family of the font the panels are drawn in
-     * @param fontFiles
-     *            - The font files to register privately for the family, or null when the family is installed or the
-     *            fonts were already registered, which lasts for the life of the process
+     *            - The family of the installed font the panels are drawn in
      * @param opacity
      *            - The opacity of the panels, from 0 (invisible) to 255 (opaque)
      * @param durationMs
      *            - How long the panels stay visible, in milliseconds
      *
-     * @return Whether the panels were accepted and any supplied fonts are registered
+     * @return Whether the panels were accepted
      */
     public boolean show(String[] headers, String[] labels, String[] values, int[] anchorPoints, int[] overlayColors,
-            int[] overlayMetrics, String fontFamily, byte[][] fontFiles, int opacity, int durationMs) {
+            int[] overlayMetrics, String fontFamily, int opacity, int durationMs) {
         if (!libraryLoaded) {
             return false;
         }
 
-        return nativeShow(headers, labels, values, anchorPoints, overlayColors, overlayMetrics, fontFamily, fontFiles,
-                opacity, durationMs);
+        return nativeShow(headers, labels, values, anchorPoints, overlayColors, overlayMetrics, fontFamily, opacity,
+                durationMs);
     }
 
     /**

@@ -21,18 +21,20 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import org.ini4j.Wini;
 
+import com.dhk.localization.Language;
 import com.dhk.model.DisplayMode;
 import com.dhk.model.HotKey;
 import com.dhk.model.Key;
 
 /**
  * Saves the application settings to an ini file. It enables the saving of the active number of slots, the orientation
- * mode, the theme state, the minimize to tray state, the close to tray state, the run on startup state, the display
- * modes, the DPI scale percentages, the scaling modes, and the hot keys for each display
+ * mode, the theme state, the language, the minimize to tray state, the close to tray state, the run on startup state,
+ * the display modes, the DPI scale percentages, the scaling modes, and the hot keys for each display
  *
  * @author Jonathan R. Miller
  */
@@ -51,6 +53,11 @@ public class SettingsManager {
      * Most slots each display can show in the slot table.
      */
     private static final int MAX_NUM_OF_SLOTS = 12;
+
+    /**
+     * File beside the installed application where the installer records the default language picked during setup.
+     */
+    private static final String INSTALLER_DEFAULTS_FILE_NAME = "defaults.ini";
 
     /**
      * Settings file section for the Display Info hot key, which reuses the property names of a slot's hot key so both
@@ -101,20 +108,102 @@ public class SettingsManager {
      * @return The saved dark mode value, or false when it cannot be read
      */
     public static boolean getSavedDarkMode() {
-        File savedSettingsFile = new File(getSettingsFilePath());
+        return Boolean.parseBoolean(readApplicationSetting(new File(getSettingsFilePath()), "darkMode"));
+    }
 
-        if (!savedSettingsFile.exists()) {
-            return false;
+    /**
+     * Sets the language property value in the settings file object.
+     *
+     * @param language
+     *            - The new value for the language property
+     */
+    public void saveIniLanguage(Language language) {
+        ini.put("Application", "language", language.getTag());
+
+        updateSettingsFile();
+    }
+
+    /**
+     * Picks the language to show at launch, which is the saved language, then the default language picked in the
+     * installer, and otherwise the Windows display language. It reads the files straight away, without initializing
+     * displays or validating the settings file, since the language is needed before anything is shown.
+     *
+     * @return The language to show at launch
+     */
+    public static Language getStartupLanguage() {
+        Language savedLanguage = Language.fromTag(readApplicationSetting(new File(getSettingsFilePath()), "language"));
+
+        if (savedLanguage != null) {
+            return savedLanguage;
         }
 
-        try {
-            Boolean darkMode = new Wini(savedSettingsFile).get("Application", "darkMode", Boolean.class);
+        // Only the packaged launcher sets the executable path, and the installer writes its defaults beside it
+        String appExePath = System.getProperty("jpackage.app-path");
 
-            return darkMode != null && darkMode;
+        if (appExePath != null) {
+            File defaultsFile = new File(new File(appExePath).getParentFile(), INSTALLER_DEFAULTS_FILE_NAME);
+            Language installerLanguage = Language.fromTag(readApplicationSetting(defaultsFile, "defaultLanguage"));
+
+            if (installerLanguage != null) {
+                return installerLanguage;
+            }
+        }
+
+        return Language.fromLocale(Locale.getDefault(Locale.Category.DISPLAY));
+    }
+
+    /**
+     * Determines whether a settings file has been saved.
+     *
+     * @return True if the settings file exists, otherwise false
+     */
+    public static boolean savedSettingsExist() {
+        return new File(getSettingsFilePath()).exists();
+    }
+
+    /**
+     * Deletes the saved settings file, then its folder when nothing else is left in it.
+     *
+     * @return True if the settings file is gone, otherwise false
+     */
+    public static boolean deleteSavedSettings() {
+        File savedSettingsFile = new File(getSettingsFilePath());
+
+        try {
+            Files.deleteIfExists(savedSettingsFile.toPath());
         } catch (IOException e) {
             e.printStackTrace();
 
             return false;
+        }
+
+        // Deleting a folder only succeeds once it is empty, so a folder still holding other files is left alone
+        savedSettingsFile.getParentFile().delete();
+
+        return true;
+    }
+
+    /**
+     * Reads a property of the application section straight from an ini file.
+     *
+     * @param iniFile
+     *            - The ini file to read
+     * @param key
+     *            - The name of the property to read
+     *
+     * @return The property value, or null when the file or the property is missing or cannot be read
+     */
+    private static String readApplicationSetting(File iniFile, String key) {
+        if (!iniFile.exists()) {
+            return null;
+        }
+
+        try {
+            return new Wini(iniFile).get("Application", key);
+        } catch (IOException e) {
+            e.printStackTrace();
+
+            return null;
         }
     }
 

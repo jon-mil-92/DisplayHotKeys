@@ -19,8 +19,11 @@ import java.awt.Desktop;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -35,6 +38,7 @@ import javax.swing.SwingUtilities;
 
 import com.dhk.controller.button.DonateButtonController;
 import com.dhk.io.NativeInputHook;
+import com.dhk.localization.Localizer;
 import com.dhk.utility.VersionRetriever;
 
 /**
@@ -66,11 +70,8 @@ public class AboutDialog extends OverlayDialog {
     private JButton licenseButton;
     private JButton donateButton;
     private JButton releasesButton;
-
-    /**
-     * Title shown in the dialog's title bar.
-     */
-    private static final String DIALOG_TITLE = "About App";
+    private Point licenseReopenLocation;
+    private String latestVersion;
 
     /**
      * Domain of the GitHub releases link.
@@ -89,7 +90,7 @@ public class AboutDialog extends OverlayDialog {
 
     /**
      * Appropriate Legal Notices the GNU General Public License requires the app to display, including the notice the
-     * additional terms require every modified version to keep word for word. The body width wraps them into a column.
+     * additional terms require word for word, so they stay in English in every language like the license itself.
      */
     private static final String LEGAL_NOTICES = "<html><body style='width: 320px'>Copyright © 2024-2026 Jonathan R. "
             + "Miller<br><br>Display Hot Keys is free software. You may redistribute it and modify it under the terms "
@@ -119,7 +120,7 @@ public class AboutDialog extends OverlayDialog {
      *            - The shared native input hook used to re-fit the dialog after a cross-display drag (may be null)
      */
     public AboutDialog(DhkView view, NativeInputHook nativeInputHook) {
-        super(view, nativeInputHook, DIALOG_TITLE);
+        super(view, nativeInputHook, Localizer.getText("about.title"));
     }
 
     /**
@@ -129,6 +130,8 @@ public class AboutDialog extends OverlayDialog {
      *            - The action to run when the dialog closes (not required)
      */
     public void showAboutDialog(Runnable onCloseAction) {
+        // A re-initialization reopens the dialog without coming through here, so only the user's open looks it up
+        fetchLatestVersion();
         showDialog(onCloseAction);
     }
 
@@ -145,36 +148,21 @@ public class AboutDialog extends OverlayDialog {
         addAboutComponents(contentPanel);
     }
 
-    @Override
-    protected void beforeShow() {
-        // Start off-EDT before the modal setVisible blocks, so the label updates while the dialog is shown
-        fetchLatestVersion();
-    }
-
     /**
-     * Fetches the latest released version on a background daemon thread and updates the latest-version label on the AWT
-     * event dispatching thread, keeping the blocking network request off the AWT event dispatching thread.
+     * Fetches the latest released version on a background daemon thread, keeping the blocking network request off the
+     * AWT event dispatching thread, and shows it on the AWT event dispatching thread.
      */
     private void fetchLatestVersion() {
         Thread fetchThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                final String latestVersion = VersionRetriever.getLatestVersion();
+                final String fetchedVersion = VersionRetriever.getLatestVersion();
 
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
                     public void run() {
-                        // The fetch outlives the dialog, which a close or re-initialization may already have released
-                        if (latestVersionLabel == null || !latestVersionLabel.isDisplayable()) {
-                            return;
-                        }
-
-                        latestVersionLabel.setText("Latest: " + latestVersion);
-
-                        // Emphasize the label when a newer release is available than the current version
-                        if (isNewerVersion(latestVersion, VersionRetriever.getVersion())) {
-                            latestVersionLabel.putClientProperty("FlatLaf.style", "font: bold; foreground: #00993f");
-                        }
+                        latestVersion = fetchedVersion;
+                        showLatestVersion();
                     }
                 });
             }
@@ -182,6 +170,24 @@ public class AboutDialog extends OverlayDialog {
 
         fetchThread.setDaemon(true);
         fetchThread.start();
+    }
+
+    /**
+     * Shows the fetched latest version on the latest-version label, which a dialog rebuilt by a re-initialization
+     * reuses rather than fetching it again.
+     */
+    private void showLatestVersion() {
+        // The fetch can finish before the label is built, which then shows the result as it is built
+        if (latestVersion == null || latestVersionLabel == null) {
+            return;
+        }
+
+        latestVersionLabel.setText(Localizer.format("about.latestVersion", versionText(latestVersion)));
+
+        // Emphasize the label when a newer release is available than the current version
+        if (isNewerVersion(latestVersion, VersionRetriever.getVersion())) {
+            latestVersionLabel.putClientProperty("FlatLaf.style", "font: bold; foreground: #00993f");
+        }
     }
 
     /**
@@ -220,6 +226,18 @@ public class AboutDialog extends OverlayDialog {
     }
 
     /**
+     * Gets a version as the dialog shows it, naming an unresolved version in the selected language.
+     *
+     * @param version
+     *            - The version in "MAJOR.MINOR.PATCH" form, or the unknown version text when it could not be resolved
+     *
+     * @return The version as the dialog shows it
+     */
+    private String versionText(String version) {
+        return VersionRetriever.UNKNOWN_VERSION.equals(version) ? Localizer.getText("about.unknownVersion") : version;
+    }
+
+    /**
      * Initializes panels for an about dialog.
      *
      * @param contentPanel
@@ -255,32 +273,34 @@ public class AboutDialog extends OverlayDialog {
      * Initializes components for an about dialog.
      */
     private void initAboutComponents() {
-        versionSectionLabel = new JLabel("Version", SwingConstants.LEFT);
+        versionSectionLabel = new JLabel(Localizer.getText("about.version"), SwingConstants.LEFT);
         versionSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
         versionSeparator = new JSeparator();
 
-        versionLabel = new JLabel("Current: " + VersionRetriever.getVersion(), SwingConstants.LEFT);
+        versionLabel = new JLabel(Localizer.format("about.currentVersion", versionText(VersionRetriever.getVersion())),
+                SwingConstants.LEFT);
 
         // Placeholder text is the widest state, so the async result never clips in the non-resizable dialog
-        latestVersionLabel = new JLabel("Latest: checking…", SwingConstants.LEFT);
+        latestVersionLabel = new JLabel(Localizer.getText("about.checkingVersion"), SwingConstants.LEFT);
+        showLatestVersion();
 
-        developerSectionLabel = new JLabel("Original Developer", SwingConstants.LEFT);
+        developerSectionLabel = new JLabel(Localizer.getText("about.originalDeveloper"), SwingConstants.LEFT);
         developerSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
         developerSeparator = new JSeparator();
 
         developedByLabel = new JLabel("Jonathan R. Miller", SwingConstants.LEFT);
 
-        legalSectionLabel = new JLabel("Legal Notices", SwingConstants.LEFT);
+        legalSectionLabel = new JLabel(Localizer.getText("about.legalNotices"), SwingConstants.LEFT);
         legalSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
         legalSeparator = new JSeparator();
 
         legalNoticesLabel = new JLabel(LEGAL_NOTICES, SwingConstants.LEFT);
 
-        licenseButton = new JButton("License");
+        licenseButton = new JButton(Localizer.getText("about.license"));
         licenseButton.setFocusPainted(false);
-        donateButton = new JButton("Donate");
+        donateButton = new JButton(Localizer.getText("about.donate"));
         donateButton.setFocusPainted(false);
-        releasesButton = new JButton("Releases");
+        releasesButton = new JButton(Localizer.getText("about.releases"));
         releasesButton.setFocusPainted(false);
     }
 
@@ -293,6 +313,16 @@ public class AboutDialog extends OverlayDialog {
     private void initAboutComponentListeners(JDialog aboutDialog) {
         licenseButton.addActionListener(createLicenseActionListener(aboutDialog));
         releasesButton.addActionListener(createReleasesActionListener());
+
+        // A License dialog a re-initialization closed opens again where it was, once this dialog is open to own it
+        if (licenseReopenLocation != null) {
+            aboutDialog.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowOpened(WindowEvent e) {
+                    SwingUtilities.invokeLater(() -> showLicenseDialog(aboutDialog, licenseReopenLocation));
+                }
+            });
+        }
 
         // The donation provider lives entirely in this controller, so switching providers never touches the dialog
         DonateButtonController donateButtonController = new DonateButtonController(this, donateButton);
@@ -416,11 +446,27 @@ public class AboutDialog extends OverlayDialog {
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
                     public void run() {
-                        new LicenseDialog(aboutDialog, getNativeInputHook()).showLicenseDialog();
+                        showLicenseDialog(aboutDialog, null);
                     }
                 });
             }
         };
+    }
+
+    /**
+     * Shows the bundled license text in its own dialog, then records where it was if a re-initialization closed it, so
+     * the rebuilt about dialog can show it again there.
+     *
+     * @param aboutDialog
+     *            - The about dialog that owns the license dialog
+     * @param location
+     *            - The top-left location to show the license dialog at, or null to center it on the about dialog
+     */
+    private void showLicenseDialog(JDialog aboutDialog, Point location) {
+        Point closedLocation = new LicenseDialog(aboutDialog, getNativeInputHook()).showLicenseDialog(location);
+
+        // The user can only close the license dialog, so a destroyed about dialog means a re-initialization closed both
+        licenseReopenLocation = aboutDialog.isDisplayable() ? null : closedLocation;
     }
 
     /**
