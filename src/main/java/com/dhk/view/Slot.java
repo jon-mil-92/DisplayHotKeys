@@ -14,6 +14,7 @@
  */
 package com.dhk.view;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,6 +53,7 @@ public class Slot {
     private JButton slotChangeHotKeyButton;
     private Button clearSlotButton;
     private List<Button> buttons;
+    private List<Component> rowComponents;
 
     /**
      * Constructor for the {@link Slot} class.
@@ -112,15 +114,10 @@ public class Slot {
         buttons.add(clearSlotButton);
         buttons.add(applySlotButton);
         buttons.add(clearHotKeyButton);
-    }
 
-    /**
-     * Gets the indicator label of the slot.
-     *
-     * @return The indicator label of the slot
-     */
-    public JLabel getIndicatorLabel() {
-        return slotIndicatorLabel;
+        rowComponents = List.of(slotIndicatorLabel, applySlotButton, slotResolutions, slotRefreshRates,
+                slotDpiScalePercentages, slotScalingModes, slotOrientationModes, slotHotKey, clearHotKeyButton,
+                slotChangeHotKeyButton, clearSlotButton);
     }
 
     /**
@@ -268,6 +265,28 @@ public class Slot {
      */
     public List<Button> getButtons() {
         return buttons;
+    }
+
+    /**
+     * Gets the components of the slot in the order of the slot table's columns.
+     *
+     * @return The components of the slot, in column order
+     */
+    public List<Component> getRowComponents() {
+        return rowComponents;
+    }
+
+    /**
+     * Shows or hides every component of the slot. A hidden slot stays in its panel, so its combo boxes are still
+     * measured at the panel's display scale and keep sizing their columns.
+     *
+     * @param visible
+     *            - Whether the slot is shown
+     */
+    public void setVisible(boolean visible) {
+        for (Component rowComponent : rowComponents) {
+            rowComponent.setVisible(visible);
+        }
     }
 
 }

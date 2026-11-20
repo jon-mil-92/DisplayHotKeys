@@ -64,12 +64,7 @@ public class DhkView implements IView {
     private JPanel mainPanel;
     private JPanel displayPanel;
     private JPanel menuPanel;
-    private GridBagLayout mainPanelLayout;
-    private FlowLayout displayPanelLayout;
-    private FlowLayout menuPanelLayout;
     private GridBagConstraints mainPanelConstraints;
-    private GridBagConstraints displayPanelConstraints;
-    private GridBagConstraints menuPanelConstraints;
     private JLabel selectedDisplayLabel;
     private JLabel numberOfActiveSlotsLabel;
     private JLabel clearSlotHeader;
@@ -93,14 +88,8 @@ public class DhkView implements IView {
     private ThemeableButton aboutButton;
     private ThemeableButton themeButton;
     private List<Button> buttons;
-    private int previouslySelectedDisplayIndex;
-    private int gridYPosForSlotInPanel;
+    private int shownDisplayIndex;
     private boolean startMinimizedToTray;
-
-    /**
-     * Number of components in each slot row of the main panel.
-     */
-    private static final int NUM_OF_SLOT_COMPONENTS = 11;
 
     /**
      * Main panel row of the first slot, which sits below the top controls, the slot table separator, and the column
@@ -157,9 +146,6 @@ public class DhkView implements IView {
 
         // Disable logging for icons
         FlatSVGIcon.setLoggingEnabled(false);
-
-        // The starting Y-coordinate for slots
-        gridYPosForSlotInPanel = FIRST_SLOT_GRID_Y;
     }
 
     @Override
@@ -200,8 +186,7 @@ public class DhkView implements IView {
         displayConfig = model.getDisplayConfig();
         displayMap = new HashMap<>();
         numberOfActiveSlotsMap = new HashMap<>();
-        previouslySelectedDisplayIndex = desiredDisplayIndex;
-        gridYPosForSlotInPanel = FIRST_SLOT_GRID_Y;
+        shownDisplayIndex = desiredDisplayIndex;
 
         // Build and populate the frame
         final JFrame newFrame = new JFrame("Display Hot Keys");
@@ -292,219 +277,60 @@ public class DhkView implements IView {
     }
 
     /**
-     * Adds slots to the main panel until the number of active slots for the given display is reached.
+     * Shows the given display's active slots and hides its inactive slots. Hidden slots stay in the main panel, so
+     * their combo boxes keep sizing the columns and showing a slot never resizes a column.
      *
      * @param displayIndex
-     *            - The index of the display to add slots in the view for
-     * @param startIndex
-     *            - The index in which to start adding slots to the view
+     *            - The index of the display whose slots are in the main panel
      */
-    public void pushSlots(int displayIndex, int startIndex) {
-        if (model.getNumOfConnectedDisplays() > 0) {
-            for (int slotIndex = startIndex; slotIndex < model.getNumOfSlotsForDisplay(displayIndex); slotIndex++) {
-                mainPanelConstraints.anchor = GridBagConstraints.CENTER;
-                mainPanelConstraints.gridwidth = 1;
-                mainPanelConstraints.gridx = 0;
-                mainPanelConstraints.gridy = gridYPosForSlotInPanel;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getIndicatorLabel(), mainPanelConstraints);
+    public void showActiveSlots(int displayIndex) {
+        List<Slot> slots = displayMap.get(displayIndex);
+        int numOfActiveSlots = model.getNumOfSlotsForDisplay(displayIndex);
 
-                mainPanelConstraints.gridx = 1;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplySlotButton(), mainPanelConstraints);
-
-                mainPanelConstraints.gridx = 2;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getResolutions(), mainPanelConstraints);
-
-                mainPanelConstraints.gridx = 3;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getRefreshRates(), mainPanelConstraints);
-
-                mainPanelConstraints.gridx = 4;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDpiScalePercentages(),
-                        mainPanelConstraints);
-
-                mainPanelConstraints.gridx = 5;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getScalingModes(), mainPanelConstraints);
-
-                mainPanelConstraints.gridx = 6;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getOrientationModes(), mainPanelConstraints);
-
-                // The hot key outline stretches to the height of the row, so it matches the combo boxes beside it
-                mainPanelConstraints.fill = GridBagConstraints.VERTICAL;
-                mainPanelConstraints.gridx = 7;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getHotKey(), mainPanelConstraints);
-
-                mainPanelConstraints.fill = GridBagConstraints.NONE;
-                mainPanelConstraints.gridx = 8;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearHotKeyButton(), mainPanelConstraints);
-
-                mainPanelConstraints.gridx = 9;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getChangeHotKeyButton(),
-                        mainPanelConstraints);
-
-                mainPanelConstraints.gridx = 10;
-                mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearSlotButton(), mainPanelConstraints);
-
-                // Add the next slot to the following row in the layout
-                gridYPosForSlotInPanel++;
-            }
+        for (int slotIndex = 0; slotIndex < slots.size(); slotIndex++) {
+            slots.get(slotIndex).setVisible(slotIndex < numOfActiveSlots);
         }
     }
 
     /**
-     * Removes the specified number of slots from the end of the main panel.
-     *
-     * @param numOfSlotsToRemove
-     *            - The number of slots to remove from the end of the main panel
-     */
-    public void popSlots(int numOfSlotsToRemove) {
-        int lastSlotComponentIndex = mainPanel.getComponentCount() - 1;
-
-        for (int slotIndex = 0; slotIndex < numOfSlotsToRemove; slotIndex++) {
-            for (int componentIndex = 0; componentIndex < NUM_OF_SLOT_COMPONENTS; componentIndex++) {
-                mainPanel.remove(lastSlotComponentIndex);
-
-                lastSlotComponentIndex--;
-            }
-        }
-
-        // Update the Y-coordinate of the next slot to add
-        gridYPosForSlotInPanel -= numOfSlotsToRemove;
-    }
-
-    /**
-     * Replaces the active slots from the previously selected display with the active slots for the newly selected
-     * display.
-     */
-    public void replaceActiveSlots() {
-        int numOfPrevActiveSlotsToReplace = model.getNumOfSlotsForDisplay(previouslySelectedDisplayIndex);
-        int displayIndex = displayIds.getSelectedIndex();
-
-        for (int slotIndex = 0; slotIndex < numOfPrevActiveSlotsToReplace; slotIndex++) {
-            GridBagConstraints prevIndicatorLabelConstraints = mainPanelLayout
-                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getIndicatorLabel());
-
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getIndicatorLabel());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getIndicatorLabel(),
-                    prevIndicatorLabelConstraints);
-
-            GridBagConstraints prevApplySlotButtonConstraints = mainPanelLayout
-                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getApplySlotButton());
-
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getApplySlotButton());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getApplySlotButton(),
-                    prevApplySlotButtonConstraints);
-
-            GridBagConstraints prevResolutionsConstraints = mainPanelLayout
-                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getResolutions());
-
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getResolutions());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getResolutions(), prevResolutionsConstraints);
-
-            GridBagConstraints prevRefreshRatesConstraints = mainPanelLayout
-                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getRefreshRates());
-
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getRefreshRates());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getRefreshRates(), prevRefreshRatesConstraints);
-
-            GridBagConstraints prevDpiScalePercentagesConstraints = mainPanelLayout.getConstraints(
-                    displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getDpiScalePercentages());
-
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getDpiScalePercentages());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getDpiScalePercentages(),
-                    prevDpiScalePercentagesConstraints);
-
-            GridBagConstraints prevScalingModesConstraints = mainPanelLayout
-                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getScalingModes());
-
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getScalingModes());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getScalingModes(), prevScalingModesConstraints);
-
-            GridBagConstraints prevOrientationModeConstraints = mainPanelLayout.getConstraints(
-                    displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getOrientationModes());
-
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getOrientationModes());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getOrientationModes(),
-                    prevOrientationModeConstraints);
-
-            GridBagConstraints prevHotKeyConstraints = mainPanelLayout
-                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getHotKey());
-
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getHotKey());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getHotKey(), prevHotKeyConstraints);
-
-            GridBagConstraints prevClearHotKeyButtonConstraints = mainPanelLayout.getConstraints(
-                    displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getClearHotKeyButton());
-
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getClearHotKeyButton());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearHotKeyButton(),
-                    prevClearHotKeyButtonConstraints);
-
-            GridBagConstraints prevChangeHotKeyButtonConstraints = mainPanelLayout.getConstraints(
-                    displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getChangeHotKeyButton());
-
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getChangeHotKeyButton());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getChangeHotKeyButton(),
-                    prevChangeHotKeyButtonConstraints);
-
-            GridBagConstraints prevClearSlotButtonConstraints = mainPanelLayout
-                    .getConstraints(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getClearSlotButton());
-
-            mainPanel.remove(displayMap.get(previouslySelectedDisplayIndex).get(slotIndex).getClearSlotButton());
-            mainPanel.add(displayMap.get(displayIndex).get(slotIndex).getClearSlotButton(),
-                    prevClearSlotButtonConstraints);
-        }
-    }
-
-    /**
-     * Removes the current number of active slots combo box and adds the correct one for the selected display.
+     * Shows the given display's number of active slots combo box and slots in place of the shown display's, then
+     * refreshes the frame. Nothing changes when the given display is already shown.
      *
      * @param displayIndex
-     *            - The index of the display to show the number of active slots combo box for
+     *            - The index of the display to show
      */
-    public void showNumberOfActiveSlotsForDisplay(int displayIndex) {
-        Component oldActiveSlots = numberOfActiveSlotsMap.get(previouslySelectedDisplayIndex);
-        Component newActiveSlots = numberOfActiveSlotsMap.get(displayIndex);
-        int oldActiveSlotsPanelIndex = -1;
+    public void showDisplay(int displayIndex) {
+        if (displayIndex == shownDisplayIndex) {
+            return;
+        }
 
-        for (int i = 0; i < displayPanel.getComponentCount(); i++) {
-            if (displayPanel.getComponent(i) == oldActiveSlots) {
-                oldActiveSlotsPanelIndex = i;
-                break;
+        // The number of active slots combo box is the display panel's last component, so the new one is appended
+        displayPanel.remove(numberOfActiveSlotsMap.get(shownDisplayIndex));
+        displayPanel.add(numberOfActiveSlotsMap.get(displayIndex));
+
+        for (Slot shownSlot : displayMap.get(shownDisplayIndex)) {
+            for (Component rowComponent : shownSlot.getRowComponents()) {
+                mainPanel.remove(rowComponent);
             }
         }
 
-        if (oldActiveSlotsPanelIndex != -1) {
-            displayPanel.remove(oldActiveSlots);
-            displayPanel.add(newActiveSlots, oldActiveSlotsPanelIndex);
-            displayPanel.revalidate();
-            displayPanel.repaint();
-        }
+        addSlots(displayIndex);
+        shownDisplayIndex = displayIndex;
+
+        WindowUtil.refreshWindow(frame);
     }
 
     /**
      * Initializes all of the panels that will hold the view components.
      */
     private void initPanels() {
-        mainPanel = new JPanel();
-        displayPanel = new JPanel();
-        menuPanel = new JPanel();
-
-        mainPanelLayout = new GridBagLayout();
-        displayPanelLayout = new FlowLayout(FlowLayout.LEFT, 16, 8);
-        menuPanelLayout = new FlowLayout(FlowLayout.RIGHT, 16, 8);
-
-        mainPanel.setLayout(mainPanelLayout);
-        displayPanel.setLayout(displayPanelLayout);
-        menuPanel.setLayout(menuPanelLayout);
+        mainPanel = new JPanel(new GridBagLayout());
+        displayPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 8));
+        menuPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 8));
 
         mainPanelConstraints = new GridBagConstraints();
         mainPanelConstraints.fill = GridBagConstraints.NONE;
         mainPanelConstraints.insets = new Insets(8, 8, 8, 8);
-
-        displayPanelConstraints = new GridBagConstraints();
-        displayPanelConstraints.fill = GridBagConstraints.NONE;
-
-        menuPanelConstraints = new GridBagConstraints();
-        menuPanelConstraints.fill = GridBagConstraints.NONE;
     }
 
     /**
@@ -529,7 +355,7 @@ public class DhkView implements IView {
 
         // Select the preserved display before the dependent components are added so the view is built for it directly
         if (model.getNumOfConnectedDisplays() > 0) {
-            displayIds.setSelectedIndex(previouslySelectedDisplayIndex);
+            displayIds.setSelectedIndex(shownDisplayIndex);
         }
 
         numberOfActiveSlotsLabel = new JLabel(Localizer.getText("main.activeSlots"), SwingConstants.LEFT);
@@ -577,7 +403,7 @@ public class DhkView implements IView {
         applySlotHeader = new JLabel("", SwingConstants.CENTER);
         makeLabelBold(applySlotHeader);
 
-        // A column is as wide as its header or its widest combo box, and the combo boxes stretch to fill it
+        // A column is as wide as its header or its widest combo box, whose width every combo box in it shares
         resolutionHeader = new JLabel(Localizer.getText(RESOLUTION_HEADER_KEY), SwingConstants.CENTER);
         makeLabelBold(resolutionHeader);
 
@@ -607,7 +433,10 @@ public class DhkView implements IView {
 
         initSlotComponents();
         addNonSlotComponents();
-        pushSlots(previouslySelectedDisplayIndex, 0);
+
+        if (model.getNumOfConnectedDisplays() > 0) {
+            addSlots(shownDisplayIndex);
+        }
     }
 
     /**
@@ -702,6 +531,16 @@ public class DhkView implements IView {
             for (int displayIndex = 0; displayIndex < model.getNumOfConnectedDisplays(); displayIndex++) {
                 List<Slot> slots = new ArrayList<Slot>();
 
+                /*
+                 * Every combo box in a column takes the width of the column's widest combo box, shown or hidden. Each
+                 * display gets its own columns, since only one display's slots are in the main panel at a time
+                 */
+                List<CenteredComboBox<?>> resolutionColumn = new ArrayList<>();
+                List<CenteredComboBox<?>> refreshRateColumn = new ArrayList<>();
+                List<CenteredComboBox<?>> dpiScaleColumn = new ArrayList<>();
+                List<CenteredComboBox<?>> scalingModeColumn = new ArrayList<>();
+                List<CenteredComboBox<?>> orientationColumn = new ArrayList<>();
+
                 for (int slotIndex = 0; slotIndex < model.getMaxNumOfSlots(); slotIndex++) {
                     int slotOrientationMode = model.getSlot(displayIndex, slotIndex).getOrientationMode();
                     boolean landscapeOrientation = slotOrientationMode == 0 || slotOrientationMode == 2;
@@ -722,6 +561,12 @@ public class DhkView implements IView {
 
                     slots.add(new Slot(slotIndex, displayIndex, displayModes, dpiScalePercentages, scalingModeNames,
                             orientationModeNames));
+
+                    slots.get(slotIndex).getResolutions().joinColumn(resolutionColumn);
+                    slots.get(slotIndex).getRefreshRates().joinColumn(refreshRateColumn);
+                    slots.get(slotIndex).getDpiScalePercentages().joinColumn(dpiScaleColumn);
+                    slots.get(slotIndex).getScalingModes().joinColumn(scalingModeColumn);
+                    slots.get(slotIndex).getOrientationModes().joinColumn(orientationColumn);
 
                     slots.get(slotIndex).getResolutions().setSelectedItem(slotResolution);
 
@@ -752,35 +597,19 @@ public class DhkView implements IView {
      * Adds the labels and sub-panels to the main panel.
      */
     private void addNonSlotComponents() {
-        displayPanelConstraints.gridwidth = 1;
-        displayPanelConstraints.gridx = 0;
-        displayPanelConstraints.gridy = 0;
-        displayPanel.add(selectedDisplayLabel, displayPanelConstraints);
-
-        displayPanelConstraints.gridx = 1;
-        displayPanel.add(displayIds, displayPanelConstraints);
-
-        displayPanelConstraints.gridx = 2;
-        displayPanel.add(numberOfActiveSlotsLabel, displayPanelConstraints);
-
-        displayPanelConstraints.gridx = 3;
+        displayPanel.add(selectedDisplayLabel);
+        displayPanel.add(displayIds);
+        displayPanel.add(numberOfActiveSlotsLabel);
 
         if (model.getNumOfConnectedDisplays() > 0) {
-            displayPanel.add(numberOfActiveSlotsMap.get(displayIds.getSelectedIndex()), displayPanelConstraints);
+            displayPanel.add(numberOfActiveSlotsMap.get(displayIds.getSelectedIndex()));
         } else {
-            displayPanel.add(numberOfActiveSlotsMap.get(displayIds.getSelectedItem()), displayPanelConstraints);
+            displayPanel.add(numberOfActiveSlotsMap.get(displayIds.getSelectedItem()));
         }
 
-        menuPanelConstraints.gridwidth = 1;
-        menuPanelConstraints.gridx = 0;
-        menuPanelConstraints.gridy = 0;
-        menuPanel.add(additionalSettingsButton, menuPanelConstraints);
-
-        menuPanelConstraints.gridx = 1;
-        menuPanel.add(aboutButton, menuPanelConstraints);
-
-        menuPanelConstraints.gridx = 2;
-        menuPanel.add(themeButton, menuPanelConstraints);
+        menuPanel.add(additionalSettingsButton);
+        menuPanel.add(aboutButton);
+        menuPanel.add(themeButton);
 
         mainPanelConstraints.anchor = GridBagConstraints.WEST;
         mainPanelConstraints.gridwidth = 11;
@@ -833,6 +662,39 @@ public class DhkView implements IView {
 
         mainPanelConstraints.gridx = 10;
         mainPanel.add(clearSlotHeader, mainPanelConstraints);
+    }
+
+    /**
+     * Adds every slot of the given display to the main panel, one row per slot, and shows only its active slots.
+     *
+     * @param displayIndex
+     *            - The index of the display to add the slots of
+     */
+    private void addSlots(int displayIndex) {
+        List<Slot> slots = displayMap.get(displayIndex);
+
+        mainPanelConstraints.anchor = GridBagConstraints.CENTER;
+        mainPanelConstraints.gridwidth = 1;
+
+        for (int slotIndex = 0; slotIndex < slots.size(); slotIndex++) {
+            Slot slot = slots.get(slotIndex);
+            List<Component> rowComponents = slot.getRowComponents();
+
+            mainPanelConstraints.gridy = FIRST_SLOT_GRID_Y + slotIndex;
+
+            for (int columnIndex = 0; columnIndex < rowComponents.size(); columnIndex++) {
+                Component rowComponent = rowComponents.get(columnIndex);
+
+                // The hot key outline stretches to the height of the row, so it matches the combo boxes beside it
+                mainPanelConstraints.fill = (rowComponent == slot.getHotKey())
+                        ? GridBagConstraints.VERTICAL
+                        : GridBagConstraints.NONE;
+                mainPanelConstraints.gridx = columnIndex;
+                mainPanel.add(rowComponent, mainPanelConstraints);
+            }
+        }
+
+        showActiveSlots(displayIndex);
     }
 
     /**
@@ -908,25 +770,6 @@ public class DhkView implements IView {
      */
     public CenteredComboBox<Integer> getDisplayIds() {
         return displayIds;
-    }
-
-    /**
-     * Gets the previously selected display index.
-     *
-     * @return The previously selected display index
-     */
-    public int getPreviouslySelectedDisplayIndex() {
-        return previouslySelectedDisplayIndex;
-    }
-
-    /**
-     * Sets the previously selected display index.
-     *
-     * @param previouslySelectedDisplayIndex
-     *            - The previously selected display index
-     */
-    public void setPreviouslySelectedDisplayIndex(int previouslySelectedDisplayIndex) {
-        this.previouslySelectedDisplayIndex = previouslySelectedDisplayIndex;
     }
 
     /**

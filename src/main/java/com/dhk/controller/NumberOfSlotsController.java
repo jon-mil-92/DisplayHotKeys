@@ -73,22 +73,12 @@ public class NumberOfSlotsController implements IController {
      */
     private void saveNumberOfSlots(int displayIndex) {
         String displayId = model.getDisplayIds()[displayIndex];
-        int oldNumOfSlots = model.getNumOfSlotsForDisplay(displayIndex);
         int newNumOfSlots = (int) view.getNumberOfActiveSlots(displayIndex).getSelectedItem();
-        int slotsToRemove = oldNumOfSlots - newNumOfSlots;
 
         model.setNumOfSlotsForDisplay(displayIndex, newNumOfSlots);
         settingsMgr.saveIniNumOfSlotsForDisplay(displayId, newNumOfSlots);
 
-        // If decreasing the number of slots
-        if (oldNumOfSlots > newNumOfSlots) {
-            view.popSlots(slotsToRemove);
-        }
-        // Else, if increasing the number of slots
-        else if (oldNumOfSlots < newNumOfSlots) {
-            // Add slots to the view starting at the last ending slot index
-            view.pushSlots(displayIndex, oldNumOfSlots);
-        }
+        view.showActiveSlots(displayIndex);
 
         WindowUtil.refreshWindow(view.getFrame());
     }

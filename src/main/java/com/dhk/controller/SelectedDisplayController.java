@@ -14,8 +14,6 @@
  */
 package com.dhk.controller;
 
-import com.dhk.model.DhkModel;
-import com.dhk.utility.WindowUtil;
 import com.dhk.view.DhkView;
 
 /**
@@ -27,18 +25,14 @@ import com.dhk.view.DhkView;
 public class SelectedDisplayController implements IController {
 
     private DhkView view;
-    private DhkModel model;
 
     /**
      * Constructor for the {@link SelectedDisplayController} class.
      *
-     * @param model
-     *            - The model for the application
      * @param view
      *            - The view for the application
      */
-    public SelectedDisplayController(DhkModel model, DhkView view) {
-        this.model = model;
+    public SelectedDisplayController(DhkView view) {
         this.view = view;
     }
 
@@ -48,36 +42,11 @@ public class SelectedDisplayController implements IController {
 
     @Override
     public void initListeners() {
-        view.getDisplayIds().addActionListener(e -> updateSlots());
+        view.getDisplayIds().addActionListener(e -> view.showDisplay(view.getDisplayIds().getSelectedIndex()));
     }
 
     @Override
     public void cleanUp() {
-    }
-
-    /**
-     * Updates the view with the slot components for the selected display ID.
-     */
-    private void updateSlots() {
-        int displayIndex = view.getDisplayIds().getSelectedIndex();
-        int prevSelectedDisplayIndex = view.getPreviouslySelectedDisplayIndex();
-
-        if (displayIndex != prevSelectedDisplayIndex) {
-            int newNumOfActiveSlots = model.getNumOfSlotsForDisplay(displayIndex);
-            int oldNumOfActiveSlots = model.getNumOfSlotsForDisplay(prevSelectedDisplayIndex);
-
-            view.showNumberOfActiveSlotsForDisplay(displayIndex);
-            view.replaceActiveSlots();
-
-            if (oldNumOfActiveSlots > newNumOfActiveSlots) {
-                view.popSlots(oldNumOfActiveSlots - newNumOfActiveSlots);
-            } else {
-                view.pushSlots(displayIndex, oldNumOfActiveSlots);
-            }
-
-            view.setPreviouslySelectedDisplayIndex(view.getDisplayIds().getSelectedIndex());
-            WindowUtil.refreshWindow(view.getFrame());
-        }
     }
 
 }
