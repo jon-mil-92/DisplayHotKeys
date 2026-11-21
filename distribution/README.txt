@@ -24,7 +24,7 @@ This project was created to circumvent the tedious navigation of the Windows set
 
 This application was made only for the Windows platform. Display Hot Keys also uses elevated privileges to set display settings while in video games and when an app with elevated privileges has focus. Therefore, if you have UAC enabled, you will get a UAC prompt the first time you launch the application. That first launch registers a Windows task that starts Display Hot Keys with the privileges it needs, so every launch after that starts the application without a UAC prompt. The sections that follow will help you get the application up and running on your PC!
 
-**Note:** Always start Display Hot Keys from the shortcut created by the installer, or from DisplayHotKeysLauncher.exe in the install directory. Only the launcher can start the application through the Windows task, which is what avoids the prompt. Starting DisplayHotKeys.exe yourself asks Windows for elevated privileges directly, so it prompts every time no matter how often you run it.
+**Note:** Always start Display Hot Keys from the shortcut created by the installer, or from DisplayHotKeysLauncher.exe in the application folder. Only the launcher can start the application through the Windows task, which is what avoids the prompt. Starting DisplayHotKeys.exe yourself asks Windows for elevated privileges directly, so it prompts every time no matter how often you run it.
 
 **Note:** Registering the Windows task requires administrator rights. If you are signed in with a standard user account, the task cannot be registered and you will get a UAC prompt on every launch. If you no longer wish to see this prompt, you can [disable UAC].
 
@@ -34,7 +34,7 @@ This application was made only for the Windows platform. Display Hot Keys also u
 
 ### Installation
 
-This application will be distributed as a portable package and as an installer. Only one of either the portable package or installer is needed.
+This application is distributed as a portable package and as an installer. You only need one of them.
 
 #### Portable
 
@@ -54,6 +54,26 @@ This application will be distributed as a portable package and as an installer. 
 
 4. Double-click the created shortcut or the DisplayHotKeysLauncher executable file in the install directory to run the application.
 
+### Uninstalling
+
+#### Portable
+
+1. Double-click the uninstall.bat file in the application folder, and accept the UAC prompt.
+
+2. Choose whether to also delete the saved settings. Keeping them preserves your saved slots.
+
+3. Delete the application folder once the cleanup is complete.
+
+**Note:** The uninstall.bat file closes the running application and removes the Windows task and the "Run on Startup" entry, which deleting the folder alone would leave behind.
+
+#### Installer
+
+1. Open "Installed apps" (Windows 11) or "Apps & features" (Windows 10) in the Windows settings.
+
+2. Uninstall Display Hot Keys.
+
+3. Choose whether to also delete the saved settings for all users. Keeping them preserves your saved slots if you reinstall.
+
 ## Usage
 
 ### Setting Hot Keys
@@ -72,13 +92,13 @@ This application will be distributed as a portable package and as an installer. 
 
 2. Select the display number you want to change hot keys for.
 
-**Note:** The application will automatically detect newly disconnected and connected displays, and the application will refresh to reflect the display configuration change.
+**Note:** The application automatically detects when a display is connected or disconnected, and it refreshes to reflect the new display configuration.
 
 ### Changing the Number of Active Hot Key Slots for a Display
 
 1. Click the "Active Slots" drop-down box.
 
-2. Select one of the values.
+2. Select the number of hot key slots to show.
 
 **Note:** There can be up to 12 active hot key slots for each connected display.
 
@@ -92,26 +112,26 @@ This application will be distributed as a portable package and as an installer. 
 
 4. Select a scaling mode value in the "Scaling Mode" drop-down box for the hot key slot.
 
-	* Select "Preserved" to preserve the aspect ratio of the image.
-	
-	* Select "Stretched" to stretch the image to the edges of the panel.
-	
-	* Select "Centered" to center the image in the middle of the panel without scaling.
-	
+    * Select "Preserved" to preserve the aspect ratio of the image.
+
+    * Select "Stretched" to stretch the image to the edges of the panel.
+
+    * Select "Centered" to center the image in the middle of the panel without scaling.
+
 **Note:** You may need to use GPU Scaling in your display driver settings to prevent the display from overriding the scaling mode.
 
 **Note:** Scaling modes that only exist in a display driver, such as NVIDIA's "Integer Scaling", are reported to Windows as aspect ratio scaling. Display Hot Keys shows these modes as "Preserved".
 
 5. Select a display orientation value in the "Orientation" drop-down box for the hot key slot.
 
-	* Select "Landscape" for a landscape orientation of no rotation.
-    
+    * Select "Landscape" for a landscape orientation of no rotation.
+
     * Select "Portrait" for a portrait orientation of 90 degrees rotation.
-    
+
     * Select "Landscape (flipped)" for a flipped landscape orientation of 180 degrees rotation.
-    
+
     * Select "Portrait (flipped)" for a flipped portrait orientation of 270 degrees rotation.
-	
+
 **Note:** Make sure you can rotate your display before changing the orientation; otherwise, it may be difficult to operate your computer.
 
 ### Changing the Language
@@ -130,7 +150,9 @@ The language works as follows:
 
 * A language selected in the application is kept when the application restarts.
 
-* The uninstaller uses the language chosen in the installer.
+* Uninstalling through the Windows settings uses the language chosen in the installer.
+
+* The uninstall.bat file in the portable package uses the same language as the application.
 
 * The legal notices and the license are shown in English in every language.
 
@@ -160,53 +182,57 @@ The language works as follows:
 
 #### Apply Slot
 
-The display settings can be immediately applied by clicking on the "Apply Slot" button for a hot key slot.
+The display settings can be immediately applied by clicking the "Apply Slot" button for a hot key slot.
 
 #### Clear Hot Key
 
-Individual hot keys can be cleared by clicking on the "Clear Hot Key" button for a hot key slot when a hot key is set.
+Individual hot keys can be cleared by clicking the "Clear Hot Key" button for a hot key slot when a hot key is set.
 
 #### Clear Slot
 
-Individual hot key slots can be reset by clicking on the "Clear Slot" button for a hot key slot.
+Individual hot key slots can be reset by clicking the "Clear Slot" button for a hot key slot.
 
 #### Clear All Slots
 
-All hot key slots for the selected display can be reset by clicking on the "Clear All Slots" button.
+All hot key slots for the selected display can be reset by clicking the "Clear All Slots" button.
 
 #### Additional Settings
 
 Opens a window with additional app settings. The window can also be opened by clicking the system tray icon and selecting "Settings".
 
-* "Run on Startup" starts the application automatically when the user logs into Windows.
+* "Run on Startup" starts the application automatically when you sign in to Windows.
 
 * "Minimize to Tray" sends the application to the system tray when its window is minimized. To restore the application, click the system tray icon and select "Restore".
 
 * "Close to Tray" sends the application to the system tray instead of exiting when its window is closed. This option requires "Minimize to Tray" to be toggled on.
 
-* "Autoshow Info Overlay" shows each display's applied settings in its top-right corner whenever a hot key slot is applied or the display configuration changes.
+* "Autoshow Info Overlay" shows each display's applied settings in an info overlay whenever a hot key slot is applied or the display configuration changes.
 
 * "Language" changes the language of the application. See "Changing the Language" for details.
 
-* "Show Info Overlay" sets a hot key that shows each display's applied settings on demand. Set it with the "Change Hot Key" button, and clear it with the "Clear Hot Key" button.
+* "Info Overlay Position" chooses whether the info overlay appears in the top-left corner, top-right corner, center, bottom-left corner, or bottom-right corner of each display. The default is the top-right corner.
+
+* "Info Overlay Scale" changes the size of the info overlay from 100% to 200% in steps of 10%. The default is 130%.
+
+* "Info Overlay Duration" changes how long the info overlay stays visible, from 1 to 20 seconds. The default is 6 seconds.
+
+* "Show Info Overlay" sets a hot key that shows each display's applied settings on demand. Set it with the "Change Hot Key" button, and clear it with the "Clear Hot Key" button. It cannot be the same as a slot's hot key on any display, and neither can be a subset of the other.
+
+**Note:** Changing the info overlay position, scale, or duration shows the info overlay so the change can be previewed.
 
 #### About App
 
-Opens a window to display the current version, the original developer, the legal notices, a license button, a donate button, and a releases button.
+Opens a window to display the current version, the original developer, and the legal notices. The window also has the following buttons.
+
+* "License" shows the GNU General Public License and the additional terms.
+
+* "Donate" opens a donation web page in the default browser for anyone who finds the application useful and wishes to donate.
+
+* "Releases" opens a web page in the default browser to display the releases for Display Hot Keys in descending order.
 
 #### Change Theme
 
-The theme can be changed between "Light Mode" and "Dark Mode" by clicking on the "Change Theme" button. The icon will change to indicate the current theme.
-
-#### Donate
-
-If you find the application useful and wish to donate, the "Donate" button in the "About App" window opens a donation web page.
-
-#### Releases
-
-Opens a web page in the default browser to display the releases for Display Hot Keys in descending order.
-
-See [open issues] for a full list of proposed features (and known issues).
+The theme can be changed between "Light Mode" and "Dark Mode" by clicking the "Change Theme" button. The icon will change to indicate the current theme.
 
 ## License
 
@@ -223,6 +249,8 @@ See LICENSE.txt for the GNU General Public License and ADDITIONAL_TERMS.txt for 
 ## Contact
 
 Jonathan R. Miller - jonRock1992@gmail.com
+
+See [open issues] for a full list of proposed features (and known issues).
 
 ## Dependencies
 
@@ -250,31 +278,47 @@ An antivirus engine may flag Display Hot Keys as malicious. **This is a false po
 
 These detections come from **machine-learning heuristics** rather than signatures matching known malware. Such heuristics tend to distrust small, independent utilities that legitimately need low-level system access — which is exactly what Display Hot Keys requires.
 
-### Why it gets flagged
+### Why It Gets Flagged
 
 * **The executable is not yet code-signed** — An unsigned binary is the single strongest trigger for these heuristics.
 
 * **Low reputation / low prevalence** — Newly released or freshly built binaries have no download history, so reputation-based scanners treat them as unknown.
 
-* **It installs a global keyboard hook** — The core hot key feature requires a keyboard hook, which heuristics can mistake for keylogger behavior.
+* **It reads keyboard and mouse input system-wide** — Hot keys have to work while other applications have focus, and the mouse input tells the app when its window is dragged to another display. Heuristics can mistake this for keylogger behavior.
 
-* **It requests administrator elevation** — Elevation is needed so hot keys work over full-screen games and other elevated applications.
+* **It runs with administrator privileges** — Elevation is needed so hot keys work over full-screen games and other elevated applications.
 
-* **It registers to optionally run at startup** — The app supports optionally launching at startup, but scanners weigh any startup entry as persistence.
+* **It creates a scheduled task** — The first launch registers a Windows task so later launches start without a UAC prompt, and "Run on Startup" uses the same task to start the application when you sign in. Scanners weigh any elevated task or startup entry as persistence.
+
+* **It changes system-wide display settings** — Applying a resolution, refresh rate, DPI scale, scaling mode, or orientation uses low-level Windows display APIs that few applications call.
 
 * **It's a packaged Java application bundling native libraries** — Native launchers that load a runtime and native DLLs pattern-match to "packed" software.
 
 None of these are malicious — they are simply what Display Hot Keys must do to function.
 
+### What Display Hot Keys Does Not Do
+
+* It never records, saves, or sends your key presses. Each key press is only compared with your hot keys.
+
+* It never sends any of your data anywhere. Its only network request is the latest version check that the "About App" window makes to GitHub.
+
+* It never downloads or runs code from the internet.
+
+* It can be removed completely. Uninstalling removes the scheduled task and the startup entry, and it offers to delete the saved settings.
+
 ### How to Verify for Yourself
 
-* Check the [VirusTotal] report: only an isolated engine or two flags the file while the rest of the field reports it clean. That is the classic false-positive signature — genuine malware is caught by many engines in agreement, not by a lone heuristic.
+* Check the [VirusTotal] report. Nearly every engine reports the installer clean. An engine that does flag it reports a machine-learning or generic detection rather than a match to a known threat. Genuine malware is typically matched to a specific known threat, with many engines agreeing on what it is.
 
 * The full source code is available in this repository for inspection.
+
+* Download Display Hot Keys only from the [GitHub releases page]. A copy from anywhere else may have been modified, and it is not covered by this notice.
 
 ### Resolving the Warning
 
 If your antivirus quarantines the app, you can restore it and add an exclusion. You can also report the detection as a false positive to the vendor — for Windows Defender, use the [Microsoft Security Intelligence submission portal].
+
+If Microsoft Defender SmartScreen shows "Windows protected your PC" when you run the installer or launcher, select "More info" and then "Run anyway". SmartScreen shows this for unsigned applications that few people have downloaded yet.
 
 **Note:** Code signing is planned for a future release, which should resolve the majority of these warnings.
 
@@ -282,6 +326,7 @@ If your antivirus quarantines the app, you can restore it and add an exclusion. 
 
 [disable UAC]: https://pureinfotech.com/disable-user-account-control-uac-windows-11/
 [VirusTotal]: https://www.virustotal.com/
+[GitHub releases page]: https://github.com/jon-mil-92/DisplayHotKeys/releases
 [Microsoft Security Intelligence submission portal]: https://www.microsoft.com/en-us/wdsi/filesubmission
 [open issues]: https://github.com/jon-mil-92/DisplayHotKeys/issues
 [FlatLaf - Flat Look and Feel]: https://github.com/JFormDesigner/FlatLaf
@@ -290,7 +335,7 @@ If your antivirus quarantines the app, you can restore it and add an exclusion. 
 [Ini4j]: https://ini4j.sourceforge.net/
 [Apache Maven Assembly Plugin]: https://maven.apache.org/plugins/maven-assembly-plugin/index.html
 [Maven Compiler Plugin]: https://maven.apache.org/plugins/maven-compiler-plugin/index.html
-[jpackage]: https://docs.oracle.com/en/java/javase/17/docs/specs/man/jpackage.html
+[jpackage]: https://docs.oracle.com/en/java/javase/21/docs/specs/man/jpackage.html
 [Inno Setup]: https://jrsoftware.org/isinfo.php
 [GNU General Public License v3.0]: https://www.gnu.org/licenses/gpl-3.0.html
 [MIT License]: https://mit-license.org
