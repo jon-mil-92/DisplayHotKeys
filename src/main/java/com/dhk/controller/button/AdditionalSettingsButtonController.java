@@ -427,7 +427,7 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
             // The saved value follows the switch, so store the state left in place rather than the one asked for
             settingsMgr.saveIniRunOnStartup(!runOnStartup);
 
-            new RunOnStartupNoticeDialog(view.getFrame()).showFailedNotice(runOnStartup);
+            new RunOnStartupNoticeDialog(getNoticeOwner()).showFailedNotice(runOnStartup);
 
             return;
         }
@@ -447,6 +447,20 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
         if (additionalSettingsDialog != null) {
             additionalSettingsDialog.getRunOnStartupSwitch().setSelected(runOnStartup);
         }
+    }
+
+    /**
+     * Gets the window a notice about a switch in the latest dialog centers on, which is that dialog while it is still
+     * open, as for the language confirmation, and the main frame once it has closed.
+     *
+     * @return The window to center the notice on
+     */
+    private Window getNoticeOwner() {
+        Window settingsWindow = (additionalSettingsDialog != null)
+                ? SwingUtilities.getWindowAncestor(additionalSettingsDialog.getRunOnStartupSwitch())
+                : null;
+
+        return (settingsWindow != null && settingsWindow.isShowing()) ? settingsWindow : view.getFrame();
     }
 
     /**

@@ -25,7 +25,6 @@ import com.dhk.io.SetDisplay;
 import com.dhk.io.SettingsManager;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
-import com.dhk.model.FramePlacement;
 import com.dhk.utility.WindowUtil;
 import com.dhk.view.DhkView;
 
@@ -114,9 +113,6 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
 
         // If the connected displays have not changed
         if (Arrays.equals(model.getDisplayIds(), displayConfig.getDisplayIds())) {
-            // Capture the frame placement before the display reconfiguration relocates the window
-            FramePlacement placement = WindowUtil.capturePlacement(view.getFrame());
-
             // Dismiss a showing tray menu and display info panels, since both were placed against the old geometry
             controller.displayConfigurationChanged();
 
@@ -136,7 +132,7 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
             /*
              * Re-initialize the app to prevent window corruption, but defer briefly so the display reconfiguration
              * settles first; otherwise the rebuilt frame is placed against stale display bounds. Rapid successive
-             * applies coalesce into one refresh that reproduces the placement captured before the first apply
+             * applies coalesce into one refresh
              */
             if (reInitTimer != null && reInitTimer.isRunning()) {
                 reInitTimer.restart();
@@ -144,7 +140,7 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
                 return;
             }
 
-            reInitTimer = new Timer(WindowUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp(placement));
+            reInitTimer = new Timer(WindowUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp());
             reInitTimer.setRepeats(false);
             reInitTimer.start();
         }

@@ -17,7 +17,6 @@ package com.dhk.view;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Insets;
-import java.awt.Point;
 import java.awt.Window;
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,6 +30,7 @@ import javax.swing.JTextArea;
 
 import com.dhk.io.NativeInputHook;
 import com.dhk.localization.Localizer;
+import com.dhk.model.FramePlacement;
 import com.dhk.utility.WindowDragRefitter;
 import com.dhk.utility.WindowUtil;
 
@@ -83,12 +83,12 @@ public class LicenseDialog {
      * Shows the bundled additional terms followed by the license in a modal dialog owned by the owner window, and waits
      * for it to close.
      *
-     * @param location
-     *            - The top-left location to show the dialog at, or null to center it on its owner
+     * @param placement
+     *            - The placement to reproduce, or null to center the dialog on its owner
      *
-     * @return The location the dialog was at when it closed
+     * @return The placement a re-initialization retained when it destroyed the dialog, or null if the user closed it
      */
-    public Point showLicenseDialog(Point location) {
+    public FramePlacement showLicenseDialog(FramePlacement placement) {
         JDialog licenseDialog = new JDialog(owner, Localizer.getText("license.title"),
                 JDialog.ModalityType.APPLICATION_MODAL);
         licenseDialog.setResizable(false);
@@ -135,7 +135,7 @@ public class LicenseDialog {
         licenseDialog.pack();
 
         // The text scrolls on its own, so the shared fit only caps the dialog and reserves no outer scroll bars
-        WindowUtil.fitDialogToWorkingArea(licenseDialog, location);
+        WindowUtil.fitDialogToPlacement(licenseDialog, placement);
         updateHorizontalScrolling(licenseDialog, licenseScrollPane);
 
         // A drag onto another display refreshes the dialog there once the drag ends, matching the main frame
@@ -144,7 +144,7 @@ public class LicenseDialog {
 
         licenseDialog.setVisible(true);
 
-        return licenseDialog.getLocation();
+        return WindowUtil.getRetainedPlacement(licenseDialog);
     }
 
     /**

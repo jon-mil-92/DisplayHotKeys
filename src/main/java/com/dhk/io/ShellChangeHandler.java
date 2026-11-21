@@ -22,34 +22,35 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import com.dhk.utility.WindowUtil;
-import com.dhk.view.DhkView;
 
 /**
- * Re-fits the application's windows when the native layer reports a Windows shell restart. A restart rebroadcasts theme
- * and working-area changes that leave already-shown windows with stray as-needed scroll bars or clipped content, so
- * this re-fits in place rather than triggering a full re-initialization.
+ * Re-fits the application's windows when the native layer reports a Windows shell restart or a working area change.
+ * Both can leave already-shown windows with stray as-needed scroll bars, clipped content, or a part under the task bar,
+ * so this re-fits in place rather than triggering a full re-initialization.
  *
  * @author Jonathan R. Miller
  */
-public class ShellRestartHandler implements ShellRestartListener {
+public class ShellChangeHandler implements ShellRestartListener, WorkingAreaChangeListener {
 
-    private final DhkView view;
     private final Timer refitTimer;
 
     /**
-     * Constructor for the {@link ShellRestartHandler} class.
-     *
-     * @param view
-     *            - The view for the application
+     * Constructor for the {@link ShellChangeHandler} class.
      */
-    public ShellRestartHandler(DhkView view) {
-        this.view = view;
+    public ShellChangeHandler() {
         refitTimer = new Timer(WindowUtil.REFRESH_DELAY_MS, e -> refitAllWindows());
         refitTimer.setRepeats(false);
     }
 
     @Override
     public void shellRestarted() {
+        refitTimer.restart();
+    }
+
+    @Override
+    public void workingAreaChanged() {
+        // Stale working areas are dropped at once, so a placement captured before the re-fit already measures afresh
+        WindowUtil.invalidateDisplayMetrics();
         refitTimer.restart();
     }
 
@@ -67,17 +68,17 @@ public class ShellRestartHandler implements ShellRestartListener {
      * re-laid-out and fixed-size ones re-packed.
      */
     private void refitAllWindows() {
+        // A restarted shell may bring its task bar back at a different size, so every window measures its display again
+        WindowUtil.invalidateDisplayMetrics();
+
         for (Window window : Window.getWindows()) {
             if (!window.isShowing()) {
                 continue;
             }
 
-            if (window == view.getFrame()) {
-                WindowUtil.refreshWindow(view.getFrame());
-            } else if (WindowUtil.isFittedToWorkingArea(window)) {
-                // A fitted dialog keeps its working-area cap, then re-centers over its owner as other dialogs do
+            // The main frame and the dialogs fitted like it keep their place and their working-area cap
+            if (WindowUtil.isFittedToWorkingArea(window)) {
                 WindowUtil.refreshWindow(window);
-                window.setLocationRelativeTo(window.getOwner());
             } else {
                 refitWindow(window);
             }

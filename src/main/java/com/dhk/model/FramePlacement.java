@@ -14,77 +14,79 @@
  */
 package com.dhk.model;
 
-import java.awt.GraphicsConfiguration;
-import java.awt.Point;
+import java.awt.Window;
+import java.util.Map;
 
 /**
- * Captured placement intent for a frame.
+ * Captured placement intent for a frame or dialog, along with the placements of the dialogs open over a frame so they
+ * are placed again the same way the frame is.
  *
  * @author Jonathan R. Miller
  */
 public final class FramePlacement {
 
-    private final GraphicsConfiguration configuration;
+    private final String screenDeviceId;
     private final double leftFraction;
     private final double topFraction;
-    private final Point absoluteCenter;
+    private final Map<Window, FramePlacement> dialogPlacements;
 
     /**
      * Constructor for the {@link FramePlacement} class.
      *
-     * @param configuration
-     *            - The graphics configuration of the display the frame was on (may be null)
+     * @param screenDeviceId
+     *            - The ID of the screen device the window is on. AWT renumbers its devices when a display is added or
+     *            removed, so the ID is read in the same re-initialization that reproduces the placement
      * @param leftFraction
-     *            - The frame's left edge as a fraction of the available horizontal space (0 = flush left, 1 = flush
-     *            right, 0.5 = centered)
+     *            - The window's left edge as a fraction of the working area's available horizontal space (0 = flush
+     *            left, 1 = flush right, 0.5 = centered)
      * @param topFraction
-     *            - The frame's top edge as a fraction of the available vertical space (0 = flush top, 1 = flush bottom,
-     *            0.5 = centered)
-     * @param absoluteCenter
-     *            - The absolute screen center of the frame, used as a fallback (may be null)
+     *            - The window's top edge as a fraction of the working area's available vertical space (0 = flush top, 1
+     *            = flush bottom, 0.5 = centered)
+     * @param dialogPlacements
+     *            - The placements of the dialogs open over the frame, keyed by dialog
      */
-    public FramePlacement(GraphicsConfiguration configuration, double leftFraction, double topFraction,
-            Point absoluteCenter) {
-        this.configuration = configuration;
+    public FramePlacement(String screenDeviceId, double leftFraction, double topFraction,
+            Map<Window, FramePlacement> dialogPlacements) {
+        this.screenDeviceId = screenDeviceId;
         this.leftFraction = leftFraction;
         this.topFraction = topFraction;
-        this.absoluteCenter = absoluteCenter;
+        this.dialogPlacements = Map.copyOf(dialogPlacements);
     }
 
     /**
-     * Gets the graphics configuration of the display the frame was on.
+     * Gets the ID of the screen device the window is on.
      *
-     * @return The graphics configuration of the display the frame was on (may be null)
+     * @return The ID of the screen device the window is on
      */
-    public GraphicsConfiguration getConfiguration() {
-        return configuration;
+    public String getScreenDeviceId() {
+        return screenDeviceId;
     }
 
     /**
-     * Gets the frame's left edge as a fraction of the available horizontal space.
+     * Gets the window's left edge as a fraction of the working area's available horizontal space.
      *
-     * @return The frame's left edge as a fraction of the available horizontal space
+     * @return The window's left edge as a fraction of the working area's available horizontal space
      */
     public double getLeftFraction() {
         return leftFraction;
     }
 
     /**
-     * Gets the frame's top edge as a fraction of the available vertical space.
+     * Gets the window's top edge as a fraction of the working area's available vertical space.
      *
-     * @return The frame's top edge as a fraction of the available vertical space
+     * @return The window's top edge as a fraction of the working area's available vertical space
      */
     public double getTopFraction() {
         return topFraction;
     }
 
     /**
-     * Gets the absolute screen center of the frame, used as a fallback.
+     * Gets the placements of the dialogs that were open over the frame when its placement was captured.
      *
-     * @return The absolute screen center of the frame (may be null)
+     * @return The placements of the dialogs open over the frame, keyed by dialog
      */
-    public Point getAbsoluteCenter() {
-        return absoluteCenter;
+    public Map<Window, FramePlacement> getDialogPlacements() {
+        return dialogPlacements;
     }
 
 }

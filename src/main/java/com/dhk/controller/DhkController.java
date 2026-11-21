@@ -28,7 +28,7 @@ import com.dhk.io.DisplayConfigUpdater;
 import com.dhk.io.DisplayEventNotifier;
 import com.dhk.io.NativeInputHook;
 import com.dhk.io.SettingsManager;
-import com.dhk.io.ShellRestartHandler;
+import com.dhk.io.ShellChangeHandler;
 import com.dhk.localization.Language;
 import com.dhk.localization.Localizer;
 import com.dhk.main.AppRefresher;
@@ -57,7 +57,7 @@ public class DhkController implements IController {
     private int frameState;
     private DisplayConfigUpdater displayConfigUpdater;
     private DisplayEventNotifier displayNotifications;
-    private ShellRestartHandler shellRestartHandler;
+    private ShellChangeHandler shellChangeHandler;
     private MinimizeToTray minimizeToTray;
     private DisplayInfoOverlayView displayInfoOverlayView;
     private boolean displayInfoAutoShowPending;
@@ -145,10 +145,11 @@ public class DhkController implements IController {
 
         // Start event-driven display notifications
         displayConfigUpdater = new DisplayConfigUpdater(model, view, this, settingsMgr);
-        shellRestartHandler = new ShellRestartHandler(view);
+        shellChangeHandler = new ShellChangeHandler();
         displayNotifications = new DisplayEventNotifier();
         displayNotifications.registerDisplayChangeListener(displayConfigUpdater);
-        displayNotifications.registerShellRestartListener(shellRestartHandler);
+        displayNotifications.registerShellRestartListener(shellChangeHandler);
+        displayNotifications.registerWorkingAreaChangeListener(shellChangeHandler);
         displayNotifications.start();
 
         // Attach the new dispatch listener; the persistent held-key tracker remains attached across re-inits
@@ -219,7 +220,7 @@ public class DhkController implements IController {
             }
         }
 
-        // Stop any pending deferred re-initialization so the Timer cannot fire against a disposed view
+        // Retire the updater so a late notification callback cannot re-initialize a disposed view
         if (displayConfigUpdater != null) {
             try {
                 displayConfigUpdater.cleanUp();
@@ -231,13 +232,13 @@ public class DhkController implements IController {
         }
 
         // Stop any pending deferred re-fit so the Timer cannot fire against a disposed view
-        if (shellRestartHandler != null) {
+        if (shellChangeHandler != null) {
             try {
-                shellRestartHandler.cleanUp();
+                shellChangeHandler.cleanUp();
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
-                shellRestartHandler = null;
+                shellChangeHandler = null;
             }
         }
     }

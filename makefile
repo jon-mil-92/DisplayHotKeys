@@ -60,9 +60,10 @@ header:
 	rm -f $(IO_DIR)/SetDisplay.class
 
 	$(JAVAC) -h jni $(IO_DIR)/DisplayChangeListener.java $(IO_DIR)/ShellRestartListener.java \
-		$(IO_DIR)/DisplayEventNotifier.java
+		$(IO_DIR)/WorkingAreaChangeListener.java $(IO_DIR)/DisplayEventNotifier.java
 	rm -f $(IO_DIR)/DisplayChangeListener.class
 	rm -f $(IO_DIR)/ShellRestartListener.class
+	rm -f $(IO_DIR)/WorkingAreaChangeListener.class
 	rm -f $(IO_DIR)/DisplayEventNotifier.class
 
 	$(JAVAC) -h jni $(IO_DIR)/TrayIconListener.java $(IO_DIR)/TrayIconRenderer.java $(IO_DIR)/SystemTrayIcon.java

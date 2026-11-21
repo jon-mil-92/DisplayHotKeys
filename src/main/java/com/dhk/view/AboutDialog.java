@@ -19,7 +19,6 @@ import java.awt.Desktop;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
@@ -39,6 +38,7 @@ import javax.swing.SwingUtilities;
 import com.dhk.controller.button.DonateButtonController;
 import com.dhk.io.NativeInputHook;
 import com.dhk.localization.Localizer;
+import com.dhk.model.FramePlacement;
 import com.dhk.utility.VersionRetriever;
 
 /**
@@ -70,7 +70,7 @@ public class AboutDialog extends OverlayDialog {
     private JButton licenseButton;
     private JButton donateButton;
     private JButton releasesButton;
-    private Point licenseReopenLocation;
+    private FramePlacement licenseReopenPlacement;
     private String latestVersion;
 
     /**
@@ -314,12 +314,12 @@ public class AboutDialog extends OverlayDialog {
         licenseButton.addActionListener(createLicenseActionListener(aboutDialog));
         releasesButton.addActionListener(createReleasesActionListener());
 
-        // A License dialog a re-initialization closed opens again where it was, once this dialog is open to own it
-        if (licenseReopenLocation != null) {
+        // A License dialog a re-initialization closed opens again as it was placed, once this dialog is open to own it
+        if (licenseReopenPlacement != null) {
             aboutDialog.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowOpened(WindowEvent e) {
-                    SwingUtilities.invokeLater(() -> showLicenseDialog(aboutDialog, licenseReopenLocation));
+                    SwingUtilities.invokeLater(() -> showLicenseDialog(aboutDialog, licenseReopenPlacement));
                 }
             });
         }
@@ -454,19 +454,16 @@ public class AboutDialog extends OverlayDialog {
     }
 
     /**
-     * Shows the bundled license text in its own dialog, then records where it was if a re-initialization closed it, so
-     * the rebuilt about dialog can show it again there.
+     * Shows the bundled license text in its own dialog, then records its placement if a re-initialization closed it, so
+     * the rebuilt about dialog can show it again the same way.
      *
      * @param aboutDialog
      *            - The about dialog that owns the license dialog
-     * @param location
-     *            - The top-left location to show the license dialog at, or null to center it on the about dialog
+     * @param placement
+     *            - The placement to reproduce, or null to center the license dialog on the about dialog
      */
-    private void showLicenseDialog(JDialog aboutDialog, Point location) {
-        Point closedLocation = new LicenseDialog(aboutDialog, getNativeInputHook()).showLicenseDialog(location);
-
-        // The user can only close the license dialog, so a destroyed about dialog means a re-initialization closed both
-        licenseReopenLocation = aboutDialog.isDisplayable() ? null : closedLocation;
+    private void showLicenseDialog(JDialog aboutDialog, FramePlacement placement) {
+        licenseReopenPlacement = new LicenseDialog(aboutDialog, getNativeInputHook()).showLicenseDialog(placement);
     }
 
     /**

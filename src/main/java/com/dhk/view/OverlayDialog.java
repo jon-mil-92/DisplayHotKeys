@@ -17,7 +17,6 @@ package com.dhk.view;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
-import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -28,6 +27,7 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
 import com.dhk.io.NativeInputHook;
+import com.dhk.model.FramePlacement;
 import com.dhk.utility.WindowDragRefitter;
 import com.dhk.utility.WindowUtil;
 
@@ -50,10 +50,10 @@ public abstract class OverlayDialog implements IView {
     private boolean dialogClosed;
 
     /**
-     * Location of a dialog a re-initialization destroyed, set only while its reopen action runs, so the dialog that
-     * action shows takes the same place on screen.
+     * Placement of a dialog a re-initialization destroyed, set only while its reopen action runs, so the dialog that
+     * action shows is placed the same way the main frame is.
      */
-    private static Point reopenLocation;
+    private static FramePlacement reopenPlacement;
 
     /**
      * Translucent black painted over the main frame while a dialog is open, which dims the frame without hiding it.
@@ -99,8 +99,8 @@ public abstract class OverlayDialog implements IView {
      *            - The action that shows the dialog again after a re-initialization destroys it with the main frame
      */
     protected void showDialog(Runnable onCloseAction, Runnable reopenAction) {
-        // A reopened dialog is shown where the destroyed one was, and any other dialog is centered on the main frame
-        Point location = reopenLocation;
+        // A reopened dialog reproduces the destroyed one's placement, and any other is centered on the main frame
+        FramePlacement placement = reopenPlacement;
 
         SwingUtilities.invokeLater(new Runnable() {
             @Override
@@ -126,7 +126,7 @@ public abstract class OverlayDialog implements IView {
 
                 // Pack to the content, then cap to the display's working area and center, as the main frame is fitted
                 dialog.pack();
-                WindowUtil.fitDialogToWorkingArea(dialog, location);
+                WindowUtil.fitDialogToPlacement(dialog, placement);
 
                 // A drag onto another display refreshes the dialog there once the drag ends, matching the main frame
                 new WindowDragRefitter(dialog, nativeInputHook, () -> WindowUtil.refreshWindow(dialog)).install();
@@ -225,10 +225,10 @@ public abstract class OverlayDialog implements IView {
 
                 dialogClosed = true;
 
-                // Every reopen action calls showDialog before returning, so its dialog reads the location set here
-                reopenLocation = dialog.getLocation();
+                // Every reopen action calls showDialog before returning, so its dialog reads the placement set here
+                reopenPlacement = WindowUtil.getRetainedPlacement(dialog);
                 reopenAction.run();
-                reopenLocation = null;
+                reopenPlacement = null;
             }
         });
     }

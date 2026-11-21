@@ -38,7 +38,6 @@ import com.dhk.io.SettingsManager;
 import com.dhk.localization.Localizer;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
-import com.dhk.model.FramePlacement;
 import com.dhk.model.HotKey;
 import com.dhk.model.Key;
 import com.dhk.model.button.Button;
@@ -258,11 +257,6 @@ public class HotKeysController implements IController, NativeKeyListener {
                     controller.getDisplayInfoOverlayView().show(model);
                 }
 
-                // Capture the frame placement before any display reconfiguration relocates the window
-                FramePlacement placement = displayToSlotMap.isEmpty()
-                        ? null
-                        : WindowUtil.capturePlacement(view.getFrame());
-
                 // Apply settings for all collected slots, capturing the arrangement first so it is reflowed once after
                 boolean displaySettingsApplied = false;
 
@@ -284,7 +278,7 @@ public class HotKeysController implements IController, NativeKeyListener {
 
                 // Re-initialize the app once, after every targeted display has been updated
                 if (displaySettingsApplied) {
-                    scheduleReInit(placement);
+                    scheduleReInit();
                 }
             }
         });
@@ -775,20 +769,16 @@ public class HotKeysController implements IController, NativeKeyListener {
     /**
      * Schedules a single, deferred re-initialization of the app after display settings are applied. The refresh is
      * delayed so the asynchronous display reconfiguration settles first, and rapid successive applies coalesce into one
-     * refresh that reproduces the placement captured before the first apply.
-     *
-     * @param placement
-     *            - The frame placement captured before applying the display settings, reproduced after
-     *            re-initialization because the OS will have moved the existing frame during the reconfiguration
+     * refresh.
      */
-    private void scheduleReInit(FramePlacement placement) {
-        // Restarting extends the settle delay past the latest apply; the pending timer keeps the earlier placement
+    private void scheduleReInit() {
+        // Restarting extends the settle delay past the latest apply
         if (reInitTimer != null && reInitTimer.isRunning()) {
             reInitTimer.restart();
             return;
         }
 
-        reInitTimer = new Timer(WindowUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp(placement));
+        reInitTimer = new Timer(WindowUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp());
         reInitTimer.setRepeats(false);
         reInitTimer.start();
     }

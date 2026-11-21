@@ -24,6 +24,7 @@ public class DisplayEventNotifier {
 
     private DisplayChangeListener displayChangeListener;
     private ShellRestartListener shellRestartListener;
+    private WorkingAreaChangeListener workingAreaChangeListener;
 
     /**
      * Default constructor for the {@link DisplayEventNotifier} class.
@@ -60,6 +61,16 @@ public class DisplayEventNotifier {
     }
 
     /**
+     * Register a listener that will be notified when the native layer detects a working area change.
+     *
+     * @param listener
+     *            - the listener to notify
+     */
+    public void registerWorkingAreaChangeListener(WorkingAreaChangeListener listener) {
+        this.workingAreaChangeListener = listener;
+    }
+
+    /**
      * Defines a JNI function to start the native display event notifier.
      */
     private native void nativeStart();
@@ -83,6 +94,7 @@ public class DisplayEventNotifier {
         nativeStop();
         this.displayChangeListener = null;
         this.shellRestartListener = null;
+        this.workingAreaChangeListener = null;
     }
 
     /**
@@ -106,6 +118,18 @@ public class DisplayEventNotifier {
         if (listener != null) {
             // Forward to the EDT to run UI updates safely
             SwingUtilities.invokeLater(() -> listener.shellRestarted());
+        }
+    }
+
+    /**
+     * Called from native code when a display's working area changes, such as when the task bar moves or resizes.
+     */
+    private void onWorkingAreaChange() {
+        final WorkingAreaChangeListener listener = this.workingAreaChangeListener;
+
+        if (listener != null) {
+            // Forward to the EDT to run UI updates safely
+            SwingUtilities.invokeLater(() -> listener.workingAreaChanged());
         }
     }
 

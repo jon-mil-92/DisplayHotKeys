@@ -55,6 +55,11 @@ static jmethodID onNativeNotifyMethodId = nullptr;
 static jmethodID onShellRestartMethodId = nullptr;
 
 /**
+ * Cached method ID for the onWorkingAreaChange() callback; null when the method is unavailable.
+ */
+static jmethodID onWorkingAreaChangeMethodId = nullptr;
+
+/**
  * Thread that runs the Windows message loop and polling logic.
  */
 static thread messageLoopThread;
@@ -65,7 +70,7 @@ static thread messageLoopThread;
 static atomic_bool isRunning(false);
 
 /**
- * Hidden message window used to receive broadcasts such as WM_DEVICECHANGE and WM_DISPLAYCHANGE.
+ * Hidden message window used to receive broadcasts such as WM_DEVICECHANGE, WM_DISPLAYCHANGE, and WM_SETTINGCHANGE.
  */
 static HWND messageWindow = NULL;
 
@@ -162,9 +167,9 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 }
 
 /**
- * Starts native display event notifications. Stores a global reference to the registered notifier instance,
- * resolves the onNativeNotify callback and the optional onShellRestart callback, and launches the message loop thread.
- * Performs basic JNI error checks and does not start the thread if setup fails.
+ * Starts native display event notifications. Stores a global reference to the registered notifier instance, resolves
+ * the onNativeNotify callback and the optional onShellRestart and onWorkingAreaChange callbacks, and launches the
+ * message loop thread. Performs basic JNI error checks and does not start the thread if setup fails.
  *
  * @param env
  *            - The JNI environment pointer
@@ -204,10 +209,18 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeSta
         env->ExceptionClear();
     }
 
+    // The working area callback is optional in the same way, so a null id simply skips it
+    jmethodID workingAreaChangeMethodId = env->GetMethodID(notifierClass, "onWorkingAreaChange", "()V");
+
+    if (!workingAreaChangeMethodId) {
+        env->ExceptionClear();
+    }
+
     // All JNI setup succeeded; commit to globals and start thread
     displayEventNotifierGlobalRef = globalRef;
     onNativeNotifyMethodId = nativeNotifyMethodId;
     onShellRestartMethodId = shellRestartMethodId;
+    onWorkingAreaChangeMethodId = workingAreaChangeMethodId;
 
     isRunning.store(true);
     messageLoopThread = thread(runMessageLoopThread);
@@ -245,6 +258,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeSto
 
     onNativeNotifyMethodId = nullptr;
     onShellRestartMethodId = nullptr;
+    onWorkingAreaChangeMethodId = nullptr;
 }
 
 /**
@@ -278,13 +292,14 @@ extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
 
     onNativeNotifyMethodId = nullptr;
     onShellRestartMethodId = nullptr;
+    onWorkingAreaChangeMethodId = nullptr;
     jvm = nullptr;
 }
 
 /**
  * Message loop runner executed on a dedicated thread. Creates a hidden top-level window to receive WM_DISPLAYCHANGE,
- * WM_DEVICECHANGE, and the shell's TaskbarCreated broadcasts, registers for monitor device interface notifications, and
- * periodically polls the visible display configuration via getVisibleDisplaySignatures().
+ * WM_DEVICECHANGE, WM_SETTINGCHANGE, and the shell's TaskbarCreated broadcasts, registers for monitor device interface
+ * notifications, and periodically polls the visible display configuration via getVisibleDisplaySignatures().
  */
 static void runMessageLoopThread() {
     WNDCLASSW windowClass = {};
@@ -327,6 +342,9 @@ static void runMessageLoopThread() {
     if (taskbarCreatedMessage != 0) {
         ChangeWindowMessageFilterEx(messageWindow, taskbarCreatedMessage, MSGFLT_ALLOW, NULL);
     }
+
+    // The shell broadcasts the working area change of a moved or resized task bar, which UIPI would drop the same way
+    ChangeWindowMessageFilterEx(messageWindow, WM_SETTINGCHANGE, MSGFLT_ALLOW, NULL);
 
     // Initialize timers so first notify is not blocked by debounce or poll
     lastNotifyTime = chrono::steady_clock::now() - chrono::milliseconds(DEBOUNCE_MS);
@@ -391,7 +409,7 @@ static void runMessageLoopThread() {
 /**
  * Window procedure for the hidden message window. Handles display arrival/removal and display change broadcasts,
  * forwarding meaningful changes through the common display-change processing logic, and forwards the shell's
- * TaskbarCreated broadcast as a separate shell-restart callback.
+ * TaskbarCreated broadcast and working area changes as their own callbacks.
  *
  * @param windowHandle
  *            - The handle to the hidden message window
@@ -427,6 +445,14 @@ LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType,
 
     case WM_DISPLAYCHANGE:
         processPotentialDisplayChange();
+        return 0;
+
+    case WM_SETTINGCHANGE:
+        // Only a working area change matters, which the shell reports when the task bar moves, resizes, or auto-hides
+        if (eventType == SPI_SETWORKAREA) {
+            invokeJavaCallback(onWorkingAreaChangeMethodId);
+        }
+
         return 0;
 
     case WM_DESTROY:

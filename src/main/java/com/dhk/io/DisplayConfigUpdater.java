@@ -14,12 +14,9 @@
  */
 package com.dhk.io;
 
-import javax.swing.Timer;
-
 import com.dhk.controller.DhkController;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
-import com.dhk.utility.WindowUtil;
 import com.dhk.view.DhkView;
 
 /**
@@ -33,7 +30,6 @@ public class DisplayConfigUpdater implements DisplayChangeListener {
 
     private final AppRefresher appRefresher;
     private final DhkController controller;
-    private final Timer reInitTimer;
     private boolean cleanedUp;
 
     /**
@@ -52,15 +48,13 @@ public class DisplayConfigUpdater implements DisplayChangeListener {
         this.controller = controller;
 
         appRefresher = new AppRefresher(model, view, controller, settingsMgr);
-        reInitTimer = new Timer(WindowUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp());
-        reInitTimer.setRepeats(false);
     }
 
     @Override
     public void displayConfigurationChanged() {
         /*
-         * A callback queued on the EDT before the notifier stopped can arrive after teardown; restarting the timer then
-         * would duplicate the re-initialization that already absorbed the change, so swallow it
+         * A callback queued on the EDT before the notifier stopped can arrive after teardown. Re-initializing then
+         * would duplicate the re-initialization that already absorbed the change, so it is swallowed
          */
         if (cleanedUp) {
             return;
@@ -69,17 +63,16 @@ public class DisplayConfigUpdater implements DisplayChangeListener {
         // Covers changes made outside the app, which reach the tray and the display info panels through no other path
         controller.displayConfigurationChanged();
 
-        reInitTimer.restart();
+        // The native layer reports a change only once it has settled, so the app re-initializes without further delay
+        appRefresher.reInitApp();
     }
 
     /**
-     * Stops any pending deferred re-initialization and permanently retires this updater. Called when the owning
-     * controller is torn down (on app re-init or shutdown) so the Timer cannot fire against a disposed view and a late
-     * notification callback cannot re-arm it.
+     * Permanently retires this updater. Called when the owning controller is torn down (on app re-init or shutdown) so
+     * a late notification callback cannot re-initialize a disposed view.
      */
     public void cleanUp() {
         cleanedUp = true;
-        reInitTimer.stop();
     }
 
 }

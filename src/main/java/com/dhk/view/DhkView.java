@@ -29,7 +29,6 @@ import java.util.Map;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
@@ -196,8 +195,7 @@ public class DhkView implements IView {
         initComponents();
 
         // The content scrolls when the frame is capped to a small display, and a press on empty space clears focus
-        JScrollPane scrollPane = WindowUtil.setScrollingContent(newFrame, mainPanel,
-                () -> getDefaultFocusComponent().requestFocusInWindow());
+        WindowUtil.setScrollingContent(newFrame, mainPanel, () -> getDefaultFocusComponent().requestFocusInWindow());
 
         frame = newFrame;
         newFrame.pack();
@@ -206,11 +204,7 @@ public class DhkView implements IView {
          * Cap the packed size to the display's working area (reserving room for any needed scroll bars) before
          * computing the location, so the frame fits on screen immediately and the location uses the final size
          */
-        final Dimension workingAreaSize = WindowUtil.workingAreaSize(previousPlacement);
-        WindowUtil.capToWorkingArea(newFrame, scrollPane, workingAreaSize);
-
-        final Dimension expectedFrameSize = newFrame.getSize();
-        newFrame.setLocation(WindowUtil.computeLocation(previousPlacement, expectedFrameSize));
+        WindowUtil.fitFrameToPlacement(newFrame, previousPlacement);
 
         // Set the taskbar icon
         newFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
@@ -228,18 +222,16 @@ public class DhkView implements IView {
                 newFrame.toFront();
             }
 
-            // Grow the frame to absorb any pack shortfall so scroll bars do not appear when the content fits on screen
-            SwingUtilities.invokeLater(() -> WindowUtil.settleScrollBars(newFrame, scrollPane, workingAreaSize));
-
             /*
-             * Re-assert the placement after the frame is shown, in case the OS positioned it elsewhere. Both fix-ups
-             * only mean something for a frame on screen, so a frame held back for the tray corrects them when restored
+             * Settle the scroll bars and re-assert the placement once the frame is on screen. Both only mean something
+             * for a frame on screen, so a frame held back for the tray is re-fitted when it is restored
              */
-            SwingUtilities.invokeLater(() -> WindowUtil.correctLocation(newFrame, previousPlacement));
+            SwingUtilities.invokeLater(() -> WindowUtil.settleShownFrame(newFrame, previousPlacement));
         }
 
-        // Dispose of the previous frame
+        // Dispose of the previous frame, after handing its open dialogs their placements to reopen with
         if (previousFrame != null) {
+            WindowUtil.retainDialogPlacements(previousPlacement);
             previousFrame.setVisible(false);
             previousFrame.dispose();
         }
@@ -248,26 +240,11 @@ public class DhkView implements IView {
     }
 
     /**
-     * Re-initialize the view by creating a new frame and disposing the old one. Captures the current frame's placement
-     * live and reproduces it. Suitable when the display geometry is unchanged.
-     */
-    public void reInitView() {
-        reInitView(null);
-    }
-
-    /**
      * Re-initialize the view by creating a new frame and disposing the old one. Preserves the previous frame's
      * on-screen placement and selected display, even when the display it was on has just been reconfigured.
-     *
-     * @param preCapturedPlacement
-     *            - A frame placement captured before a display reconfiguration, or null to capture the current frame's
-     *            placement live. A pre-captured placement is required after a resolution or DPI change, because the OS
-     *            moves the existing frame as part of the change, so capturing here would record the wrong position.
      */
-    public void reInitView(FramePlacement preCapturedPlacement) {
-        FramePlacement previousPlacement = (preCapturedPlacement != null)
-                ? preCapturedPlacement
-                : WindowUtil.capturePlacement(frame);
+    public void reInitView() {
+        FramePlacement previousPlacement = WindowUtil.capturePlacement(frame);
 
         // Capture the currently selected display so it stays selected after the view is rebuilt
         int previousSelectedDisplayIndex = (displayIds != null) ? displayIds.getSelectedIndex() : 0;

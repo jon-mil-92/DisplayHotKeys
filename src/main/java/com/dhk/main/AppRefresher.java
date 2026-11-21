@@ -18,7 +18,6 @@ import com.dhk.controller.DhkController;
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
-import com.dhk.model.FramePlacement;
 import com.dhk.view.DhkView;
 import com.formdev.flatlaf.FlatDarculaLaf;
 import com.formdev.flatlaf.FlatIntelliJLaf;
@@ -60,24 +59,10 @@ public class AppRefresher {
 
     /**
      * Re-initializes the settings manager, model, view, and controllers for the application, and then sets up the "look
-     * and feel" for the GUI. The view captures its own frame placement during re-initialization.
-     */
-    public void reInitApp() {
-        reInitApp(null);
-    }
-
-    /**
-     * Re-initializes the settings manager, model, view, and controllers for the application, and then sets up the "look
      * and feel" for the GUI. The app is only re-initialized if there is an active display to prevent a JVM error from
      * occurring.
-     *
-     * @param capturedPlacement
-     *            - A frame placement captured before a display reconfiguration, used to reproduce the frame's position;
-     *            or null to have the view capture the placement live during re-initialization. Callers that change the
-     *            display geometry (resolution or DPI scale) must capture before applying, because the OS relocates the
-     *            existing frame as part of the change, making a live capture during re-initialization unreliable
      */
-    public void reInitApp(FramePlacement capturedPlacement) {
+    public void reInitApp() {
         displayConfig.updateConnectedDisplays();
 
         if (displayConfig.getNumOfConnectedDisplays() == 0) {
@@ -89,7 +74,7 @@ public class AppRefresher {
         controller.cleanUp();
         settingsMgr.initSettingsManager();
         model.initModel(settingsMgr);
-        view.reInitView(capturedPlacement);
+        view.reInitView();
         controller.reInitController(previousFrameState);
 
         if (model.isDarkMode()) {
