@@ -32,7 +32,7 @@ import com.dhk.model.Resolution;
 import com.dhk.utility.DisplayModeUtil;
 
 /**
- * Shows the applied settings of every connected display in a translucent panel at the chosen position on that display.
+ * Shows the applied settings of every connected display in a panel at the chosen position and opacity on that display.
  * Every label and value reads exactly as the slot table shows it, and the panels take the current theme's look.
  *
  * @author Jonathan R. Miller
@@ -57,11 +57,6 @@ public class DisplayInfoOverlayView {
      * reports can differ slightly from the table's.
      */
     private static final double REFRESH_RATE_MATCH_TOLERANCE_HZ = 0.01;
-
-    /**
-     * Opacity of the panels, from 0 for invisible to 255 for opaque.
-     */
-    private static final int OVERLAY_OPACITY = 224;
 
     /**
      * Size of the header line font relative to the setting line font.
@@ -163,9 +158,11 @@ public class DisplayInfoOverlayView {
         // The distance to the work area's edges stays the same at every overlay size
         overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_MARGIN] = MARGIN;
 
+        int overlayOpacity = Math.round(model.getInfoOverlayOpacity() * DisplayInfoOverlay.MAX_OVERLAY_OPACITY / 100f);
+
         displayInfoOverlay.show(headers.toArray(new String[0]), Localizer.getTexts(SETTING_LABEL_KEYS),
                 values.toArray(new String[0]), anchorPoints.stream().mapToInt(Integer::intValue).toArray(),
-                model.getInfoOverlayPosition(), overlayColors, overlayMetrics, font.getFamily(), OVERLAY_OPACITY,
+                model.getInfoOverlayPosition(), overlayColors, overlayMetrics, font.getFamily(), overlayOpacity,
                 model.getInfoOverlayDuration() * 1000);
     }
 

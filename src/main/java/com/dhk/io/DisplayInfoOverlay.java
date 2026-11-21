@@ -107,6 +107,11 @@ public class DisplayInfoOverlay {
     public static final int OVERLAY_POSITION_COUNT = 5;
 
     /**
+     * Opacity handed to {@link #show} at which the panels are fully opaque, while an opacity of 0 makes them invisible.
+     */
+    public static final int MAX_OVERLAY_OPACITY = 255;
+
+    /**
      * Default constructor for the {@link DisplayInfoOverlay} class.
      */
     public DisplayInfoOverlay() {

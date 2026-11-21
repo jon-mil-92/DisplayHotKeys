@@ -37,6 +37,8 @@ extern "C" {
 #define com_dhk_io_DisplayInfoOverlay_OVERLAY_POSITION_TOP_RIGHT 1L
 #undef com_dhk_io_DisplayInfoOverlay_OVERLAY_POSITION_COUNT
 #define com_dhk_io_DisplayInfoOverlay_OVERLAY_POSITION_COUNT 5L
+#undef com_dhk_io_DisplayInfoOverlay_MAX_OVERLAY_OPACITY
+#define com_dhk_io_DisplayInfoOverlay_MAX_OVERLAY_OPACITY 255L
 /*
  * Class:     com_dhk_io_DisplayInfoOverlay
  * Method:    nativeShow

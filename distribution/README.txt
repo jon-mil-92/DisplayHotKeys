@@ -214,11 +214,13 @@ Opens a window with additional app settings. The window can also be opened by cl
 
 * "Info Overlay Scale" changes the size of the info overlay from 100% to 200% in steps of 10%. The default is 130%.
 
+* "Info Overlay Opacity" changes the opacity of the info overlay from 0% to 100% in steps of 10%, where 0% makes it invisible. The default is 80%.
+
 * "Info Overlay Duration" changes how long the info overlay stays visible, from 1 to 20 seconds. The default is 6 seconds.
 
 * "Show Info Overlay" sets a hot key that shows each display's applied settings on demand. Set it with the "Change Hot Key" button, and clear it with the "Clear Hot Key" button. It cannot be the same as a slot's hot key on any display, and neither can be a subset of the other.
 
-**Note:** Changing the info overlay position, scale, or duration shows the info overlay so the change can be previewed.
+**Note:** Changing the info overlay position, scale, opacity, or duration shows the info overlay so the change can be previewed.
 
 #### About App
 

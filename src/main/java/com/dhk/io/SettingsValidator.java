@@ -89,6 +89,7 @@ public class SettingsValidator {
         validateAutoShowInfoOverlay();
         validateInfoOverlayPosition();
         validateInfoOverlayScale();
+        validateInfoOverlayOpacity();
         validateInfoOverlayDuration();
         validateLanguage();
         validateNumOfSlots();
@@ -273,6 +274,22 @@ public class SettingsValidator {
                 || Integer.valueOf(infoOverlayScale) > SettingsManager.MAX_INFO_OVERLAY_SCALE
                 || Integer.valueOf(infoOverlayScale) % SettingsManager.INFO_OVERLAY_SCALE_STEP != 0) {
             repairProperty(SettingsManager.APPLICATION_SECTION, SettingsManager.INFO_OVERLAY_SCALE_PROPERTY, 130);
+        }
+    }
+
+    /**
+     * Validates the value for the infoOverlayOpacity property from the settings file. If the value is not a step of the
+     * info overlay's opacity range, then it writes the default 80% opacity for the infoOverlayOpacity property.
+     */
+    private void validateInfoOverlayOpacity() {
+        String infoOverlayOpacity = ini.get(SettingsManager.APPLICATION_SECTION,
+                SettingsManager.INFO_OVERLAY_OPACITY_PROPERTY);
+
+        if (infoOverlayOpacity == null || !isPositiveInt(infoOverlayOpacity)
+                || Integer.valueOf(infoOverlayOpacity) < SettingsManager.MIN_INFO_OVERLAY_OPACITY
+                || Integer.valueOf(infoOverlayOpacity) > SettingsManager.MAX_INFO_OVERLAY_OPACITY
+                || Integer.valueOf(infoOverlayOpacity) % SettingsManager.INFO_OVERLAY_OPACITY_STEP != 0) {
+            repairProperty(SettingsManager.APPLICATION_SECTION, SettingsManager.INFO_OVERLAY_OPACITY_PROPERTY, 80);
         }
     }
 

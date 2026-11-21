@@ -83,6 +83,9 @@ public class AdditionalSettingsDialog extends OverlayDialog {
     private JLabel infoOverlayScaleLabel;
     private JSlider infoOverlayScaleSlider;
     private JLabel infoOverlayScaleValueLabel;
+    private JLabel infoOverlayOpacityLabel;
+    private JSlider infoOverlayOpacitySlider;
+    private JLabel infoOverlayOpacityValueLabel;
     private JLabel infoOverlayDurationLabel;
     private JSlider infoOverlayDurationSlider;
     private JLabel infoOverlayDurationValueLabel;
@@ -238,6 +241,24 @@ public class AdditionalSettingsDialog extends OverlayDialog {
     }
 
     /**
+     * Gets the slider that selects the opacity percentage of the info overlay.
+     *
+     * @return The Info Overlay Opacity slider
+     */
+    public JSlider getInfoOverlayOpacitySlider() {
+        return infoOverlayOpacitySlider;
+    }
+
+    /**
+     * Gets the percentage the Info Overlay Opacity slider is set to.
+     *
+     * @return The selected info overlay opacity, as a percentage
+     */
+    public int getInfoOverlayOpacity() {
+        return infoOverlayOpacitySlider.getValue() * SettingsManager.INFO_OVERLAY_OPACITY_STEP;
+    }
+
+    /**
      * Gets the slider that selects the number of seconds the info overlay stays visible, which is its value.
      *
      * @return The Info Overlay Duration slider
@@ -312,6 +333,7 @@ public class AdditionalSettingsDialog extends OverlayDialog {
         languageComboBox.setEnabled(enabled);
         infoOverlayPositionComboBox.setEnabled(enabled);
         infoOverlayScaleSlider.setEnabled(enabled);
+        infoOverlayOpacitySlider.setEnabled(enabled);
         infoOverlayDurationSlider.setEnabled(enabled);
         changeHotKeyButton.setEnabled(enabled);
         clearHotKeyButton.setEnabled(enabled && model.getDisplayInfoHotKey().getKeys().size() > 0);
@@ -435,6 +457,19 @@ public class AdditionalSettingsDialog extends OverlayDialog {
         infoOverlayScaleValueLabel = createSliderValueLabel(infoOverlayScaleSlider,
                 step -> step * scaleStep + Localizer.getText("dpiScale.suffix"));
 
+        infoOverlayOpacityLabel = new JLabel(Localizer.getText("settings.infoOverlayOpacity"), SwingConstants.LEFT);
+        new LightweightTooltip(infoOverlayOpacityLabel)
+                .setText(Localizer.getText("settings.infoOverlayOpacity.tooltip"));
+
+        int opacityStep = SettingsManager.INFO_OVERLAY_OPACITY_STEP;
+
+        // The slider counts steps rather than percentages, so a drag can only ever land on a valid opacity
+        infoOverlayOpacitySlider = new JSlider(SettingsManager.MIN_INFO_OVERLAY_OPACITY / opacityStep,
+                SettingsManager.MAX_INFO_OVERLAY_OPACITY / opacityStep, model.getInfoOverlayOpacity() / opacityStep);
+
+        infoOverlayOpacityValueLabel = createSliderValueLabel(infoOverlayOpacitySlider,
+                step -> step * opacityStep + Localizer.getText("dpiScale.suffix"));
+
         infoOverlayDurationLabel = new JLabel(Localizer.getText("settings.infoOverlayDuration"), SwingConstants.LEFT);
         new LightweightTooltip(infoOverlayDurationLabel)
                 .setText(Localizer.getText("settings.infoOverlayDuration.tooltip"));
@@ -528,11 +563,17 @@ public class AdditionalSettingsDialog extends OverlayDialog {
                 GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
         addSetting(customizationPanel, customizationPanelConstraints, infoOverlayScaleValueLabel, 2, 2, 1,
                 GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
-        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayDurationLabel, 0, 3, 1,
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayOpacityLabel, 0, 3, 1,
                 GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
-        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayDurationSlider, 1, 3, 1,
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayOpacitySlider, 1, 3, 1,
                 GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
-        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayDurationValueLabel, 2, 3, 1,
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayOpacityValueLabel, 2, 3, 1,
+                GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayDurationLabel, 0, 4, 1,
+                GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayDurationSlider, 1, 4, 1,
+                GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayDurationValueLabel, 2, 4, 1,
                 GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
 
         // The hot key outline is drawn at its own edge, so the whole gap below the last row comes from its inset

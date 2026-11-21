@@ -215,7 +215,7 @@ static constexpr int VERTICAL_ALIGNMENTS[OVERLAY_POSITION_COUNT] = {0, 0, 1, 2, 
 /**
  * Highest opacity a panel can have, at which it is fully opaque.
  */
-static constexpr jint MAX_OPACITY = 255;
+static constexpr jint MAX_OVERLAY_OPACITY = com_dhk_io_DisplayInfoOverlay_MAX_OVERLAY_OPACITY;
 
 /**
  * Unscaled thickness of a panel's border and of the line separating its header line from its setting lines.
@@ -313,7 +313,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeS
     definition->lineGap = metrics[OVERLAY_METRIC_LINE_GAP];
     definition->columnGap = metrics[OVERLAY_METRIC_COLUMN_GAP];
     definition->margin = metrics[OVERLAY_METRIC_MARGIN];
-    definition->opacity = (BYTE) (opacity < 0 ? 0 : (opacity > MAX_OPACITY ? MAX_OPACITY : opacity));
+    definition->opacity = (BYTE) (opacity < 0 ? 0 : (opacity > MAX_OVERLAY_OPACITY ? MAX_OVERLAY_OPACITY : opacity));
     definition->durationMs = (UINT) durationMs;
 
     if (!startOverlayThread()) {

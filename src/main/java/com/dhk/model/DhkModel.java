@@ -41,6 +41,7 @@ public class DhkModel {
     private boolean autoShowInfoOverlay;
     private int infoOverlayPosition;
     private int infoOverlayScale;
+    private int infoOverlayOpacity;
     private int infoOverlayDuration;
 
     /**
@@ -64,6 +65,7 @@ public class DhkModel {
         autoShowInfoOverlay = settingsMgr.getIniAutoShowInfoOverlay();
         infoOverlayPosition = settingsMgr.getIniInfoOverlayPosition();
         infoOverlayScale = settingsMgr.getIniInfoOverlayScale();
+        infoOverlayOpacity = settingsMgr.getIniInfoOverlayOpacity();
         infoOverlayDuration = settingsMgr.getIniInfoOverlayDuration();
         displayConfig = settingsMgr.getDisplayConfig();
         maxNumOfSlots = settingsMgr.getMaxNumOfSlots();
@@ -325,6 +327,25 @@ public class DhkModel {
      */
     public void setInfoOverlayScale(int infoOverlayScale) {
         this.infoOverlayScale = infoOverlayScale;
+    }
+
+    /**
+     * Gets the opacity percentage of the info overlay's panels.
+     *
+     * @return The opacity of the info overlay, as a percentage
+     */
+    public int getInfoOverlayOpacity() {
+        return infoOverlayOpacity;
+    }
+
+    /**
+     * Sets the opacity percentage of the info overlay's panels.
+     *
+     * @param infoOverlayOpacity
+     *            - The opacity of the info overlay to set, as a percentage
+     */
+    public void setInfoOverlayOpacity(int infoOverlayOpacity) {
+        this.infoOverlayOpacity = infoOverlayOpacity;
     }
 
     /**

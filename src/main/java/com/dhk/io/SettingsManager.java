@@ -157,6 +157,26 @@ public class SettingsManager {
     public static final int INFO_OVERLAY_SCALE_STEP = 10;
 
     /**
+     * Application property holding the opacity percentage of the info overlay's panels.
+     */
+    static final String INFO_OVERLAY_OPACITY_PROPERTY = "infoOverlayOpacity";
+
+    /**
+     * Smallest opacity percentage of the info overlay, at which its panels are invisible.
+     */
+    public static final int MIN_INFO_OVERLAY_OPACITY = 0;
+
+    /**
+     * Largest opacity percentage of the info overlay, at which its panels are fully opaque.
+     */
+    public static final int MAX_INFO_OVERLAY_OPACITY = 100;
+
+    /**
+     * Difference between neighboring info overlay opacities, which every saved opacity is a multiple of.
+     */
+    public static final int INFO_OVERLAY_OPACITY_STEP = 10;
+
+    /**
      * Application property holding the number of seconds the info overlay stays visible.
      */
     static final String INFO_OVERLAY_DURATION_PROPERTY = "infoOverlayDuration";
@@ -514,6 +534,27 @@ public class SettingsManager {
      */
     public void saveIniInfoOverlayScale(int infoOverlayScale) {
         ini.put(APPLICATION_SECTION, INFO_OVERLAY_SCALE_PROPERTY, infoOverlayScale);
+
+        updateSettingsFile();
+    }
+
+    /**
+     * Gets the info overlay opacity property value from the settings file object.
+     *
+     * @return The value for the info overlay opacity property
+     */
+    public int getIniInfoOverlayOpacity() {
+        return ini.get(APPLICATION_SECTION, INFO_OVERLAY_OPACITY_PROPERTY, int.class);
+    }
+
+    /**
+     * Sets the info overlay opacity property value in the settings file object.
+     *
+     * @param infoOverlayOpacity
+     *            - The new value for the info overlay opacity property
+     */
+    public void saveIniInfoOverlayOpacity(int infoOverlayOpacity) {
+        ini.put(APPLICATION_SECTION, INFO_OVERLAY_OPACITY_PROPERTY, infoOverlayOpacity);
 
         updateSettingsFile();
     }
