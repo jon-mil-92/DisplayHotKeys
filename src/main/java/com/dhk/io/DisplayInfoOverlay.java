@@ -15,7 +15,7 @@
 package com.dhk.io;
 
 /**
- * Shows a translucent panel in the top-right corner of each given display through the native library. The native layer
+ * Shows a translucent panel at the chosen position on each given display through the native library. The native layer
  * owns the panels, scales them for the display each one sits on, and hides them on its own once their time is up.
  *
  * @author Jonathan R. Miller
@@ -95,6 +95,18 @@ public class DisplayInfoOverlay {
     public static final int ANCHOR_FIELD_COUNT = 2;
 
     /**
+     * Position handed to {@link #show} that places the panels in the top-right corner of each display, which is the
+     * default position.
+     */
+    public static final int OVERLAY_POSITION_TOP_RIGHT = 1;
+
+    /**
+     * Number of positions handed to {@link #show}, which are top left, top right, center, bottom left, and bottom right
+     * in that order.
+     */
+    public static final int OVERLAY_POSITION_COUNT = 5;
+
+    /**
      * Default constructor for the {@link DisplayInfoOverlay} class.
      */
     public DisplayInfoOverlay() {
@@ -120,10 +132,12 @@ public class DisplayInfoOverlay {
      *            - The value of each setting line, panel by panel, with one value per label for each header
      * @param anchorPoints
      *            - The desktop x and y coordinates of a point on each panel's display, in physical pixels
+     * @param position
+     *            - Where the panels sit on each display, below {@link #OVERLAY_POSITION_COUNT}
      * @param overlayColors
      *            - The panel colors in packed ARGB order, indexed by the OVERLAY_COLOR constants
      * @param overlayMetrics
-     *            - The panel metrics in unscaled pixels, indexed by the OVERLAY_METRIC constants
+     *            - The panel metrics in unscaled, possibly fractional pixels, indexed by the OVERLAY_METRIC constants
      * @param fontFamily
      *            - The family of the installed font the panels are drawn in
      * @param opacity
@@ -134,7 +148,7 @@ public class DisplayInfoOverlay {
      * @return Whether the panels were accepted
      */
     private native boolean nativeShow(String[] headers, String[] labels, String[] values, int[] anchorPoints,
-            int[] overlayColors, int[] overlayMetrics, String fontFamily, int opacity, int durationMs);
+            int position, int[] overlayColors, float[] overlayMetrics, String fontFamily, int opacity, int durationMs);
 
     /**
      * Defines a JNI function to hide every panel that is showing.
@@ -142,7 +156,7 @@ public class DisplayInfoOverlay {
     private native void nativeHide();
 
     /**
-     * Shows one panel per header in the top-right corner of its display, replacing any panels already showing and
+     * Shows one panel per header at the given position on its display, replacing any panels already showing and
      * restarting the time they stay visible. The native layer copies everything, so the panels never call back here.
      *
      * @param headers
@@ -153,10 +167,12 @@ public class DisplayInfoOverlay {
      *            - The value of each setting line, panel by panel, with one value per label for each header
      * @param anchorPoints
      *            - The desktop x and y coordinates of a point on each panel's display, in physical pixels
+     * @param position
+     *            - Where the panels sit on each display, below {@link #OVERLAY_POSITION_COUNT}
      * @param overlayColors
      *            - The panel colors in packed ARGB order, indexed by the OVERLAY_COLOR constants
      * @param overlayMetrics
-     *            - The panel metrics in unscaled pixels, indexed by the OVERLAY_METRIC constants
+     *            - The panel metrics in unscaled, possibly fractional pixels, indexed by the OVERLAY_METRIC constants
      * @param fontFamily
      *            - The family of the installed font the panels are drawn in
      * @param opacity
@@ -166,14 +182,14 @@ public class DisplayInfoOverlay {
      *
      * @return Whether the panels were accepted
      */
-    public boolean show(String[] headers, String[] labels, String[] values, int[] anchorPoints, int[] overlayColors,
-            int[] overlayMetrics, String fontFamily, int opacity, int durationMs) {
+    public boolean show(String[] headers, String[] labels, String[] values, int[] anchorPoints, int position,
+            int[] overlayColors, float[] overlayMetrics, String fontFamily, int opacity, int durationMs) {
         if (!libraryLoaded) {
             return false;
         }
 
-        return nativeShow(headers, labels, values, anchorPoints, overlayColors, overlayMetrics, fontFamily, opacity,
-                durationMs);
+        return nativeShow(headers, labels, values, anchorPoints, position, overlayColors, overlayMetrics, fontFamily,
+                opacity, durationMs);
     }
 
     /**

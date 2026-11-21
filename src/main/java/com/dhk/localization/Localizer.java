@@ -94,6 +94,24 @@ public class Localizer {
     }
 
     /**
+     * Gets the messages of the given keys in the selected language.
+     *
+     * @param keys
+     *            - The keys of the messages
+     *
+     * @return The messages in the selected language, in the same order as their keys
+     */
+    public static String[] getTexts(String[] keys) {
+        String[] texts = new String[keys.length];
+
+        for (int keyIndex = 0; keyIndex < keys.length; keyIndex++) {
+            texts[keyIndex] = messages.getString(keys[keyIndex]);
+        }
+
+        return texts;
+    }
+
+    /**
      * Gets a message in the selected language with its numbered placeholders filled in, where {0} takes the first
      * argument.
      *

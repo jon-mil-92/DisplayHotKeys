@@ -87,6 +87,9 @@ public class SettingsValidator {
         validateCloseToTray();
         validateRunOnStartup();
         validateAutoShowInfoOverlay();
+        validateInfoOverlayPosition();
+        validateInfoOverlayScale();
+        validateInfoOverlayDuration();
         validateLanguage();
         validateNumOfSlots();
         validateOrientationModes();
@@ -239,6 +242,52 @@ public class SettingsValidator {
         if (autoShowInfoOverlay == null
                 || !(autoShowInfoOverlay.equals("false") || autoShowInfoOverlay.equals("true"))) {
             repairProperty(SettingsManager.APPLICATION_SECTION, SettingsManager.AUTO_SHOW_INFO_OVERLAY_PROPERTY, false);
+        }
+    }
+
+    /**
+     * Validates the value for the infoOverlayPosition property from the settings file. If the value is not one of the
+     * overlay's positions, then it writes the default top-right position for the infoOverlayPosition property.
+     */
+    private void validateInfoOverlayPosition() {
+        String infoOverlayPosition = ini.get(SettingsManager.APPLICATION_SECTION,
+                SettingsManager.INFO_OVERLAY_POSITION_PROPERTY);
+
+        if (infoOverlayPosition == null || !isPositiveInt(infoOverlayPosition)
+                || Integer.valueOf(infoOverlayPosition) >= DisplayInfoOverlay.OVERLAY_POSITION_COUNT) {
+            repairProperty(SettingsManager.APPLICATION_SECTION, SettingsManager.INFO_OVERLAY_POSITION_PROPERTY,
+                    DisplayInfoOverlay.OVERLAY_POSITION_TOP_RIGHT);
+        }
+    }
+
+    /**
+     * Validates the value for the infoOverlayScale property from the settings file. If the value is not a step of the
+     * info overlay's scale range, then it writes the default 130% scale for the infoOverlayScale property.
+     */
+    private void validateInfoOverlayScale() {
+        String infoOverlayScale = ini.get(SettingsManager.APPLICATION_SECTION,
+                SettingsManager.INFO_OVERLAY_SCALE_PROPERTY);
+
+        if (infoOverlayScale == null || !isPositiveInt(infoOverlayScale)
+                || Integer.valueOf(infoOverlayScale) < SettingsManager.MIN_INFO_OVERLAY_SCALE
+                || Integer.valueOf(infoOverlayScale) > SettingsManager.MAX_INFO_OVERLAY_SCALE
+                || Integer.valueOf(infoOverlayScale) % SettingsManager.INFO_OVERLAY_SCALE_STEP != 0) {
+            repairProperty(SettingsManager.APPLICATION_SECTION, SettingsManager.INFO_OVERLAY_SCALE_PROPERTY, 130);
+        }
+    }
+
+    /**
+     * Validates the value for the infoOverlayDuration property from the settings file. If the value is not within the
+     * info overlay's duration range, then it writes the default 6 seconds for the infoOverlayDuration property.
+     */
+    private void validateInfoOverlayDuration() {
+        String infoOverlayDuration = ini.get(SettingsManager.APPLICATION_SECTION,
+                SettingsManager.INFO_OVERLAY_DURATION_PROPERTY);
+
+        if (infoOverlayDuration == null || !isPositiveInt(infoOverlayDuration)
+                || Integer.valueOf(infoOverlayDuration) < SettingsManager.MIN_INFO_OVERLAY_DURATION
+                || Integer.valueOf(infoOverlayDuration) > SettingsManager.MAX_INFO_OVERLAY_DURATION) {
+            repairProperty(SettingsManager.APPLICATION_SECTION, SettingsManager.INFO_OVERLAY_DURATION_PROPERTY, 6);
         }
     }
 

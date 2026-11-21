@@ -32,7 +32,7 @@ import com.dhk.model.Resolution;
 import com.dhk.utility.DisplayModeUtil;
 
 /**
- * Shows the applied settings of every connected display in a translucent panel in the top-right corner of that display.
+ * Shows the applied settings of every connected display in a translucent panel at the chosen position on that display.
  * Every label and value reads exactly as the slot table shows it, and the panels take the current theme's look.
  *
  * @author Jonathan R. Miller
@@ -59,11 +59,6 @@ public class DisplayInfoOverlayView {
     private static final double REFRESH_RATE_MATCH_TOLERANCE_HZ = 0.01;
 
     /**
-     * Time the panels stay visible after the hot key is pressed.
-     */
-    private static final int DISPLAY_DURATION_MS = 6000;
-
-    /**
      * Opacity of the panels, from 0 for invisible to 255 for opaque.
      */
     private static final int OVERLAY_OPACITY = 224;
@@ -72,11 +67,6 @@ public class DisplayInfoOverlayView {
      * Size of the header line font relative to the setting line font.
      */
     private static final float HEADER_FONT_SCALE = 1.15f;
-
-    /**
-     * Scale applied to the overlay's fonts and to the spacing inside its panels, which sets the size of the overlay.
-     */
-    private static final float OVERLAY_SCALE = 1.3f;
 
     /**
      * Unscaled space between a panel's edges and its text.
@@ -145,9 +135,10 @@ public class DisplayInfoOverlayView {
             anchorPoints.add(settings.getDesktopY());
         }
 
+        // The chosen scale sizes the fonts and the spacing inside the panels, which sets the size of the overlay
+        float overlayScale = model.getInfoOverlayScale() / 100f;
         Font font = UIManager.getFont("Label.font");
-        int fontSize = scaleToOverlaySize(font.getSize());
-        int headerFontSize = Math.round(fontSize * HEADER_FONT_SCALE);
+        float fontSize = font.getSize() * overlayScale;
         Color background = themeColor("Panel.background", Color.WHITE);
         Color foreground = themeColor("Label.foreground", Color.BLACK);
         Color border = themeColor("Component.borderColor", foreground);
@@ -157,26 +148,25 @@ public class DisplayInfoOverlayView {
         overlayColors[DisplayInfoOverlay.OVERLAY_COLOR_FOREGROUND] = foreground.getRGB();
         overlayColors[DisplayInfoOverlay.OVERLAY_COLOR_BORDER] = border.getRGB();
 
-        int[] overlayMetrics = new int[DisplayInfoOverlay.OVERLAY_METRIC_COUNT];
+        /*
+         * The metrics stay fractional, so each is rounded only once, after it is scaled for its display. Rounding here
+         * as well would make some scale steps grow the panels by more than others
+         */
+        float[] overlayMetrics = new float[DisplayInfoOverlay.OVERLAY_METRIC_COUNT];
         overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_FONT_SIZE] = fontSize;
-        overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_HEADER_FONT_SIZE] = headerFontSize;
-        overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_PADDING] = scaleToOverlaySize(PADDING);
-        overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_HEADER_GAP] = scaleToOverlaySize(HEADER_GAP);
-        overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_LINE_GAP] = scaleToOverlaySize(LINE_GAP);
-        overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_COLUMN_GAP] = scaleToOverlaySize(COLUMN_GAP);
+        overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_HEADER_FONT_SIZE] = fontSize * HEADER_FONT_SCALE;
+        overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_PADDING] = PADDING * overlayScale;
+        overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_HEADER_GAP] = HEADER_GAP * overlayScale;
+        overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_LINE_GAP] = LINE_GAP * overlayScale;
+        overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_COLUMN_GAP] = COLUMN_GAP * overlayScale;
 
         // The distance to the work area's edges stays the same at every overlay size
         overlayMetrics[DisplayInfoOverlay.OVERLAY_METRIC_MARGIN] = MARGIN;
 
-        String[] settingLabels = new String[SETTING_LABEL_KEYS.length];
-
-        for (int labelIndex = 0; labelIndex < SETTING_LABEL_KEYS.length; labelIndex++) {
-            settingLabels[labelIndex] = Localizer.getText(SETTING_LABEL_KEYS[labelIndex]);
-        }
-
-        displayInfoOverlay.show(headers.toArray(new String[0]), settingLabels, values.toArray(new String[0]),
-                anchorPoints.stream().mapToInt(Integer::intValue).toArray(), overlayColors, overlayMetrics,
-                font.getFamily(), OVERLAY_OPACITY, DISPLAY_DURATION_MS);
+        displayInfoOverlay.show(headers.toArray(new String[0]), Localizer.getTexts(SETTING_LABEL_KEYS),
+                values.toArray(new String[0]), anchorPoints.stream().mapToInt(Integer::intValue).toArray(),
+                model.getInfoOverlayPosition(), overlayColors, overlayMetrics, font.getFamily(), OVERLAY_OPACITY,
+                model.getInfoOverlayDuration() * 1000);
     }
 
     /**
@@ -294,18 +284,6 @@ public class DisplayInfoOverlayView {
         return displayNumbers != null && displayIndex < displayNumbers.length
                 ? displayNumbers[displayIndex]
                 : displayIndex + 1;
-    }
-
-    /**
-     * Scales a font size or spacing to the overlay's size.
-     *
-     * @param metric
-     *            - The unscaled font size or spacing
-     *
-     * @return The font size or spacing at the overlay's size
-     */
-    private int scaleToOverlaySize(int metric) {
-        return Math.round(metric * OVERLAY_SCALE);
     }
 
     /**

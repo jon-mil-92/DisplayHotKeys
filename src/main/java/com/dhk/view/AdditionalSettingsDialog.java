@@ -16,18 +16,24 @@ package com.dhk.view;
 
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.FontMetrics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.IntFunction;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
+import javax.swing.JSlider;
 import javax.swing.SwingConstants;
 
 import com.dhk.io.NativeInputHook;
+import com.dhk.io.SettingsManager;
 import com.dhk.localization.Language;
 import com.dhk.localization.Localizer;
 import com.dhk.model.DhkModel;
@@ -72,6 +78,14 @@ public class AdditionalSettingsDialog extends OverlayDialog {
     private JSeparator customizationSeparator;
     private JLabel languageLabel;
     private CenteredComboBox<Language> languageComboBox;
+    private JLabel infoOverlayPositionLabel;
+    private CenteredComboBox<String> infoOverlayPositionComboBox;
+    private JLabel infoOverlayScaleLabel;
+    private JSlider infoOverlayScaleSlider;
+    private JLabel infoOverlayScaleValueLabel;
+    private JLabel infoOverlayDurationLabel;
+    private JSlider infoOverlayDurationSlider;
+    private JLabel infoOverlayDurationValueLabel;
     private JLabel hotKeysSectionLabel;
     private JSeparator hotKeysSeparator;
     private JLabel displayInfoHotKeyLabel;
@@ -95,6 +109,13 @@ public class AdditionalSettingsDialog extends OverlayDialog {
      * from the inset beside it.
      */
     private static final int INNER_PADDING = 2;
+
+    /**
+     * Message key of each info overlay position's name, in the order of the overlay's positions, so a combo box index
+     * is the position itself.
+     */
+    private static final String[] OVERLAY_POSITION_KEYS = {"overlayPosition.topLeft", "overlayPosition.topRight",
+            "overlayPosition.center", "overlayPosition.bottomLeft", "overlayPosition.bottomRight"};
 
     /**
      * Constructor for the {@link AdditionalSettingsDialog} class.
@@ -190,6 +211,42 @@ public class AdditionalSettingsDialog extends OverlayDialog {
     }
 
     /**
+     * Gets the combo box that selects where the info overlay sits on each display.
+     *
+     * @return The Info Overlay Position combo box
+     */
+    public CenteredComboBox<String> getInfoOverlayPositionComboBox() {
+        return infoOverlayPositionComboBox;
+    }
+
+    /**
+     * Gets the slider that selects the percentage the info overlay is scaled by.
+     *
+     * @return The Info Overlay Scale slider
+     */
+    public JSlider getInfoOverlayScaleSlider() {
+        return infoOverlayScaleSlider;
+    }
+
+    /**
+     * Gets the percentage the Info Overlay Scale slider is set to.
+     *
+     * @return The selected info overlay scale, as a percentage
+     */
+    public int getInfoOverlayScale() {
+        return infoOverlayScaleSlider.getValue() * SettingsManager.INFO_OVERLAY_SCALE_STEP;
+    }
+
+    /**
+     * Gets the slider that selects the number of seconds the info overlay stays visible, which is its value.
+     *
+     * @return The Info Overlay Duration slider
+     */
+    public JSlider getInfoOverlayDurationSlider() {
+        return infoOverlayDurationSlider;
+    }
+
+    /**
      * Gets the button that starts recording a new Display Info hot key.
      *
      * @return The Change Hot Key button
@@ -253,6 +310,9 @@ public class AdditionalSettingsDialog extends OverlayDialog {
         closeToTraySwitch.setEnabled(enabled && model.isMinimizeToTray());
         autoShowInfoOverlaySwitch.setEnabled(enabled);
         languageComboBox.setEnabled(enabled);
+        infoOverlayPositionComboBox.setEnabled(enabled);
+        infoOverlayScaleSlider.setEnabled(enabled);
+        infoOverlayDurationSlider.setEnabled(enabled);
         changeHotKeyButton.setEnabled(enabled);
         clearHotKeyButton.setEnabled(enabled && model.getDisplayInfoHotKey().getKeys().size() > 0);
 
@@ -351,6 +411,39 @@ public class AdditionalSettingsDialog extends OverlayDialog {
         languageComboBox = new CenteredComboBox<Language>(Language.values());
         languageComboBox.setSelectedItem(Localizer.getLanguage());
 
+        infoOverlayPositionLabel = new JLabel(Localizer.getText("settings.infoOverlayPosition"), SwingConstants.LEFT);
+        new LightweightTooltip(infoOverlayPositionLabel)
+                .setText(Localizer.getText("settings.infoOverlayPosition.tooltip"));
+
+        infoOverlayPositionComboBox = new CenteredComboBox<String>(Localizer.getTexts(OVERLAY_POSITION_KEYS));
+        infoOverlayPositionComboBox.setSelectedIndex(model.getInfoOverlayPosition());
+
+        // The combo boxes share a column, so each takes the width of the widest combo box in it like the slot table's
+        List<CenteredComboBox<?>> customizationColumn = new ArrayList<>();
+        languageComboBox.joinColumn(customizationColumn);
+        infoOverlayPositionComboBox.joinColumn(customizationColumn);
+
+        infoOverlayScaleLabel = new JLabel(Localizer.getText("settings.infoOverlayScale"), SwingConstants.LEFT);
+        new LightweightTooltip(infoOverlayScaleLabel).setText(Localizer.getText("settings.infoOverlayScale.tooltip"));
+
+        int scaleStep = SettingsManager.INFO_OVERLAY_SCALE_STEP;
+
+        // The slider counts steps rather than percentages, so a drag can only ever land on a valid scale
+        infoOverlayScaleSlider = new JSlider(SettingsManager.MIN_INFO_OVERLAY_SCALE / scaleStep,
+                SettingsManager.MAX_INFO_OVERLAY_SCALE / scaleStep, model.getInfoOverlayScale() / scaleStep);
+
+        infoOverlayScaleValueLabel = createSliderValueLabel(infoOverlayScaleSlider,
+                step -> step * scaleStep + Localizer.getText("dpiScale.suffix"));
+
+        infoOverlayDurationLabel = new JLabel(Localizer.getText("settings.infoOverlayDuration"), SwingConstants.LEFT);
+        new LightweightTooltip(infoOverlayDurationLabel)
+                .setText(Localizer.getText("settings.infoOverlayDuration.tooltip"));
+
+        infoOverlayDurationSlider = new JSlider(SettingsManager.MIN_INFO_OVERLAY_DURATION,
+                SettingsManager.MAX_INFO_OVERLAY_DURATION, model.getInfoOverlayDuration());
+        infoOverlayDurationValueLabel = createSliderValueLabel(infoOverlayDurationSlider,
+                seconds -> Localizer.format("settings.infoOverlayDuration.value", seconds));
+
         hotKeysSectionLabel = new JLabel(Localizer.getText("settings.hotKeys"), SwingConstants.LEFT);
         hotKeysSectionLabel.putClientProperty("FlatLaf.styleClass", "h4");
 
@@ -425,6 +518,22 @@ public class AdditionalSettingsDialog extends OverlayDialog {
                 GridBagConstraints.NONE, labelInsets);
         addSetting(customizationPanel, customizationPanelConstraints, languageComboBox, 1, 0, 1,
                 GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayPositionLabel, 0, 1, 1,
+                GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayPositionComboBox, 1, 1, 1,
+                GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayScaleLabel, 0, 2, 1,
+                GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayScaleSlider, 1, 2, 1,
+                GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayScaleValueLabel, 2, 2, 1,
+                GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayDurationLabel, 0, 3, 1,
+                GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayDurationSlider, 1, 3, 1,
+                GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
+        addSetting(customizationPanel, customizationPanelConstraints, infoOverlayDurationValueLabel, 2, 3, 1,
+                GridBagConstraints.WEST, GridBagConstraints.NONE, labelInsets);
 
         // The hot key outline is drawn at its own edge, so the whole gap below the last row comes from its inset
         Insets hotKeyRowInsets = new Insets(leadingInset, leadingInset, SECTION_GAP, trailingInset);
@@ -456,7 +565,7 @@ public class AdditionalSettingsDialog extends OverlayDialog {
         addSetting(settingsPanel, settingsPanelConstraints, customizationPanel, 0, 5, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(0, 0, 0, 0));
 
-        // The language combo box sits the trailing inset above the next heading like a switch track, so the gap matches
+        // The slider row sits the trailing inset above the next heading like a switch track, so the gap matches
         addSetting(settingsPanel, settingsPanelConstraints, hotKeysSectionLabel, 0, 6, 1, GridBagConstraints.WEST,
                 GridBagConstraints.NONE, new Insets(sectionInset, leadingInset, 8, trailingInset));
         addSetting(settingsPanel, settingsPanelConstraints, hotKeysSeparator, 0, 7, 1, GridBagConstraints.CENTER,
@@ -501,6 +610,49 @@ public class AdditionalSettingsDialog extends OverlayDialog {
         constraints.insets = insets;
 
         panel.add(component, constraints);
+    }
+
+    /**
+     * Creates a label showing the text of a slider's value, which follows the slider as it moves. The label is as wide
+     * as the widest of its texts, measured whenever the layout asks, so moving the slider never resizes the dialog.
+     *
+     * @param slider
+     *            - The slider whose value the label shows
+     * @param formatValue
+     *            - Formats the text of a slider value
+     *
+     * @return The label showing the slider's value
+     */
+    private JLabel createSliderValueLabel(JSlider slider, IntFunction<String> formatValue) {
+        int minValue = slider.getMinimum();
+        String[] valueTexts = new String[slider.getMaximum() - minValue + 1];
+
+        // Each value's text is formatted once, so every layout can measure the widest of them
+        for (int textIndex = 0; textIndex < valueTexts.length; textIndex++) {
+            valueTexts[textIndex] = formatValue.apply(minValue + textIndex);
+        }
+
+        JLabel valueLabel = new JLabel(valueTexts[slider.getValue() - minValue], SwingConstants.LEFT) {
+            @Override
+            public Dimension getPreferredSize() {
+                FontMetrics fontMetrics = getFontMetrics(getFont());
+                int widestTextWidth = 0;
+
+                for (String valueText : valueTexts) {
+                    widestTextWidth = Math.max(widestTextWidth, fontMetrics.stringWidth(valueText));
+                }
+
+                // The padding around the shown text stays the same whichever value is shown
+                Dimension shownTextSize = super.getPreferredSize();
+                int paddingWidth = shownTextSize.width - fontMetrics.stringWidth(getText());
+
+                return new Dimension(paddingWidth + widestTextWidth, shownTextSize.height);
+            }
+        };
+
+        slider.addChangeListener(e -> valueLabel.setText(valueTexts[slider.getValue() - minValue]));
+
+        return valueLabel;
     }
 
 }

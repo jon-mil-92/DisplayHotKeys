@@ -132,6 +132,46 @@ public class SettingsManager {
     static final String AUTO_SHOW_INFO_OVERLAY_PROPERTY = "autoShowInfoOverlay";
 
     /**
+     * Application property holding where the info overlay sits on each display, as one of the overlay's positions.
+     */
+    static final String INFO_OVERLAY_POSITION_PROPERTY = "infoOverlayPosition";
+
+    /**
+     * Application property holding the percentage the info overlay's fonts and spacing are scaled by.
+     */
+    static final String INFO_OVERLAY_SCALE_PROPERTY = "infoOverlayScale";
+
+    /**
+     * Smallest percentage the info overlay can be scaled by, at which it is drawn at its unscaled size.
+     */
+    public static final int MIN_INFO_OVERLAY_SCALE = 100;
+
+    /**
+     * Largest percentage the info overlay can be scaled by.
+     */
+    public static final int MAX_INFO_OVERLAY_SCALE = 200;
+
+    /**
+     * Difference between neighboring info overlay scales, which every saved scale is a multiple of.
+     */
+    public static final int INFO_OVERLAY_SCALE_STEP = 10;
+
+    /**
+     * Application property holding the number of seconds the info overlay stays visible.
+     */
+    static final String INFO_OVERLAY_DURATION_PROPERTY = "infoOverlayDuration";
+
+    /**
+     * Fewest seconds the info overlay can stay visible.
+     */
+    public static final int MIN_INFO_OVERLAY_DURATION = 1;
+
+    /**
+     * Most seconds the info overlay can stay visible.
+     */
+    public static final int MAX_INFO_OVERLAY_DURATION = 20;
+
+    /**
      * Start of the application property holding a display's number of active slots, which the display's ID completes.
      */
     private static final String NUM_OF_SLOTS_PROPERTY_PREFIX = "numOfSlotsFor--";
@@ -432,6 +472,69 @@ public class SettingsManager {
      */
     public void saveIniAutoShowInfoOverlay(boolean autoShowInfoOverlay) {
         ini.put(APPLICATION_SECTION, AUTO_SHOW_INFO_OVERLAY_PROPERTY, autoShowInfoOverlay);
+
+        updateSettingsFile();
+    }
+
+    /**
+     * Gets the info overlay position property value from the settings file object.
+     *
+     * @return The value for the info overlay position property
+     */
+    public int getIniInfoOverlayPosition() {
+        return ini.get(APPLICATION_SECTION, INFO_OVERLAY_POSITION_PROPERTY, int.class);
+    }
+
+    /**
+     * Sets the info overlay position property value in the settings file object.
+     *
+     * @param infoOverlayPosition
+     *            - The new value for the info overlay position property
+     */
+    public void saveIniInfoOverlayPosition(int infoOverlayPosition) {
+        ini.put(APPLICATION_SECTION, INFO_OVERLAY_POSITION_PROPERTY, infoOverlayPosition);
+
+        updateSettingsFile();
+    }
+
+    /**
+     * Gets the info overlay scale property value from the settings file object.
+     *
+     * @return The value for the info overlay scale property
+     */
+    public int getIniInfoOverlayScale() {
+        return ini.get(APPLICATION_SECTION, INFO_OVERLAY_SCALE_PROPERTY, int.class);
+    }
+
+    /**
+     * Sets the info overlay scale property value in the settings file object.
+     *
+     * @param infoOverlayScale
+     *            - The new value for the info overlay scale property
+     */
+    public void saveIniInfoOverlayScale(int infoOverlayScale) {
+        ini.put(APPLICATION_SECTION, INFO_OVERLAY_SCALE_PROPERTY, infoOverlayScale);
+
+        updateSettingsFile();
+    }
+
+    /**
+     * Gets the info overlay duration property value from the settings file object.
+     *
+     * @return The value for the info overlay duration property
+     */
+    public int getIniInfoOverlayDuration() {
+        return ini.get(APPLICATION_SECTION, INFO_OVERLAY_DURATION_PROPERTY, int.class);
+    }
+
+    /**
+     * Sets the info overlay duration property value in the settings file object.
+     *
+     * @param infoOverlayDuration
+     *            - The new value for the info overlay duration property
+     */
+    public void saveIniInfoOverlayDuration(int infoOverlayDuration) {
+        ini.put(APPLICATION_SECTION, INFO_OVERLAY_DURATION_PROPERTY, infoOverlayDuration);
 
         updateSettingsFile();
     }

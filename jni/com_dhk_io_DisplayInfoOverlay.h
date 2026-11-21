@@ -33,13 +33,17 @@ extern "C" {
 #define com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_COUNT 7L
 #undef com_dhk_io_DisplayInfoOverlay_ANCHOR_FIELD_COUNT
 #define com_dhk_io_DisplayInfoOverlay_ANCHOR_FIELD_COUNT 2L
+#undef com_dhk_io_DisplayInfoOverlay_OVERLAY_POSITION_TOP_RIGHT
+#define com_dhk_io_DisplayInfoOverlay_OVERLAY_POSITION_TOP_RIGHT 1L
+#undef com_dhk_io_DisplayInfoOverlay_OVERLAY_POSITION_COUNT
+#define com_dhk_io_DisplayInfoOverlay_OVERLAY_POSITION_COUNT 5L
 /*
  * Class:     com_dhk_io_DisplayInfoOverlay
  * Method:    nativeShow
- * Signature: ([Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/String;[I[I[ILjava/lang/String;II)Z
+ * Signature: ([Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/String;[II[I[FLjava/lang/String;II)Z
  */
 JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeShow
-  (JNIEnv *, jobject, jobjectArray, jobjectArray, jobjectArray, jintArray, jintArray, jintArray, jstring, jint, jint);
+  (JNIEnv *, jobject, jobjectArray, jobjectArray, jobjectArray, jintArray, jint, jintArray, jfloatArray, jstring, jint, jint);
 
 /*
  * Class:     com_dhk_io_DisplayInfoOverlay

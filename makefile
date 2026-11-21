@@ -104,7 +104,7 @@ dll:
 
 	$(WINDRES) $(RCFLAGS) jni/DisplayInfoOverlay.rc DisplayInfoOverlay.res.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) jni/com_dhk_io_DisplayInfoOverlay.cpp DisplayInfoOverlay.res.o \
-		-lgdi32 -lshcore -ldwmapi -o DisplayInfoOverlay.dll
+		-lgdi32 -lshcore -o DisplayInfoOverlay.dll
 
 	# The resources are linked in by now, so drop the intermediates instead of leaving them in the project root
 	rm -f GetDisplay.res.o SetDisplay.res.o DisplayEventNotifier.res.o SystemTrayIcon.res.o NativeInputHook.res.o \

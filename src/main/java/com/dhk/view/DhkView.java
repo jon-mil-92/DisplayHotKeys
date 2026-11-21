@@ -489,7 +489,7 @@ public class DhkView implements IView {
      * @return The orientation mode names, indexed by the orientation mode a slot stores
      */
     static String[] getOrientationModeNames() {
-        return getTexts(ORIENTATION_MODE_KEYS);
+        return Localizer.getTexts(ORIENTATION_MODE_KEYS);
     }
 
     /**
@@ -498,25 +498,7 @@ public class DhkView implements IView {
      * @return The scaling mode names, indexed by the scaling mode a slot stores
      */
     static String[] getScalingModeNames() {
-        return getTexts(SCALING_MODE_KEYS);
-    }
-
-    /**
-     * Looks up the messages of the given keys in the selected language.
-     *
-     * @param keys
-     *            - The message keys to look up
-     *
-     * @return The messages, in the same order as their keys
-     */
-    private static String[] getTexts(String[] keys) {
-        String[] texts = new String[keys.length];
-
-        for (int keyIndex = 0; keyIndex < keys.length; keyIndex++) {
-            texts[keyIndex] = Localizer.getText(keys[keyIndex]);
-        }
-
-        return texts;
+        return Localizer.getTexts(SCALING_MODE_KEYS);
     }
 
     /**

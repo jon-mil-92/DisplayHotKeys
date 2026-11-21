@@ -116,6 +116,9 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
         // A click selects the language before the drop-down closes, so the confirmation waits until it has closed
         dialog.getLanguageComboBox()
                 .addActionListener(e -> SwingUtilities.invokeLater(() -> languageComboBoxAction(dialog)));
+        dialog.getInfoOverlayPositionComboBox().addActionListener(e -> infoOverlayPositionComboBoxAction(dialog));
+        dialog.getInfoOverlayScaleSlider().addChangeListener(e -> infoOverlayScaleSliderAction(dialog));
+        dialog.getInfoOverlayDurationSlider().addChangeListener(e -> infoOverlayDurationSliderAction(dialog));
 
         dialog.getChangeHotKeyButton().addActionListener(e -> hotKeysController.displayInfoHotKeyChangeEvent(dialog));
         dialog.getClearHotKeyButton().addActionListener(e -> clearDisplayInfoHotKeyButtonAction(dialog));
@@ -236,6 +239,58 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
         settingsMgr.saveIniAutoShowInfoOverlay(autoShowInfoOverlay);
 
         dialog.getDefaultFocusComponent().requestFocusInWindow();
+    }
+
+    /**
+     * Saves where the info overlay sits on each display, and shows the overlay there as a preview of the position.
+     *
+     * @param dialog
+     *            - The additional settings dialog showing the Info Overlay Position combo box
+     */
+    private void infoOverlayPositionComboBoxAction(AdditionalSettingsDialog dialog) {
+        int infoOverlayPosition = dialog.getInfoOverlayPositionComboBox().getSelectedIndex();
+
+        model.setInfoOverlayPosition(infoOverlayPosition);
+        settingsMgr.saveIniInfoOverlayPosition(infoOverlayPosition);
+        controller.getDisplayInfoOverlayView().show(model);
+
+        dialog.getDefaultFocusComponent().requestFocusInWindow();
+    }
+
+    /**
+     * Previews the info overlay at the selected scale, and saves the scale once the slider settles so a drag writes the
+     * settings file only once. The slider keeps the focus, so its arrow keys keep adjusting the scale.
+     *
+     * @param dialog
+     *            - The additional settings dialog showing the Info Overlay Scale slider
+     */
+    private void infoOverlayScaleSliderAction(AdditionalSettingsDialog dialog) {
+        int infoOverlayScale = dialog.getInfoOverlayScale();
+
+        model.setInfoOverlayScale(infoOverlayScale);
+        controller.getDisplayInfoOverlayView().show(model);
+
+        if (!dialog.getInfoOverlayScaleSlider().getValueIsAdjusting()) {
+            settingsMgr.saveIniInfoOverlayScale(infoOverlayScale);
+        }
+    }
+
+    /**
+     * Previews the info overlay for the selected duration, and saves the duration once the slider settles so a drag
+     * writes the settings file only once. Each preview restarts the overlay's timer, so it stays for the new duration.
+     *
+     * @param dialog
+     *            - The additional settings dialog showing the Info Overlay Duration slider
+     */
+    private void infoOverlayDurationSliderAction(AdditionalSettingsDialog dialog) {
+        int infoOverlayDuration = dialog.getInfoOverlayDurationSlider().getValue();
+
+        model.setInfoOverlayDuration(infoOverlayDuration);
+        controller.getDisplayInfoOverlayView().show(model);
+
+        if (!dialog.getInfoOverlayDurationSlider().getValueIsAdjusting()) {
+            settingsMgr.saveIniInfoOverlayDuration(infoOverlayDuration);
+        }
     }
 
     /**

@@ -17,8 +17,8 @@
 
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <condition_variable>
-#include <dwmapi.h>
 #include <jni.h>
 #include <memory>
 #include <mutex>
@@ -37,14 +37,18 @@ static bool startOverlayThread();
 static void runOverlayThread();
 static LRESULT CALLBACK handleControlEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData);
 static void showPanels();
-static SIZE layoutPanel(const DisplayInfoOverlayDefinition &definition, size_t panelIndex, DisplayInfoPanel &panel);
+static void layoutPanel(const DisplayInfoOverlayDefinition &definition, size_t panelIndex, DisplayInfoPanel &panel);
 static DisplayInfoPanelFonts createPanelFonts(const DisplayInfoOverlayDefinition &definition, UINT dpi);
 static SIZE measureTexts(HDC measureDC, const vector<wstring> &texts, size_t firstIndex, size_t count);
-static int scaleMetric(int metric, UINT dpi);
-static void stylePanelWindow(const DisplayInfoOverlayDefinition &definition, DisplayInfoPanel &panel);
+static int scaleMetric(float metric, UINT dpi);
+static void updatePanelWindow(const DisplayInfoOverlayDefinition &definition, size_t panelIndex,
+                              const DisplayInfoPanel &panel, POINT panelOrigin);
+static void paintPanel(HDC paintDC, const DisplayInfoOverlayDefinition &definition, size_t panelIndex,
+                       const DisplayInfoPanel &panel);
+static void shapePanel(BYTE *pixels, const DisplayInfoPanel &panel, COLORREF borderColor);
+static float outlineCoverage(float distance);
 static void hidePanels();
 static LRESULT CALLBACK handlePanelEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData);
-static void paintPanel(HWND windowHandle);
 static void stopOverlayThread();
 
 /**
@@ -84,12 +88,7 @@ static shared_ptr<const DisplayInfoOverlayDefinition> pendingDefinition;
 static mutex definitionMutex;
 
 /**
- * Definition of the panels being shown, read only by the thread owning the panels.
- */
-static shared_ptr<const DisplayInfoOverlayDefinition> shownDefinition;
-
-/**
- * Panels being shown, indexed the same as the headers of the shown definition and read only by the thread owning them.
+ * Panels being shown, indexed the same as the headers they show and read only by the thread owning them.
  */
 static vector<DisplayInfoPanel> panels;
 
@@ -197,17 +196,39 @@ static constexpr int OVERLAY_METRIC_COUNT = com_dhk_io_DisplayInfoOverlay_OVERLA
 static constexpr int ANCHOR_FIELD_COUNT = com_dhk_io_DisplayInfoOverlay_ANCHOR_FIELD_COUNT;
 
 /**
+ * Number of positions the caller can place the panels at on each display.
+ */
+static constexpr int OVERLAY_POSITION_COUNT = com_dhk_io_DisplayInfoOverlay_OVERLAY_POSITION_COUNT;
+
+/**
+ * Halves of the free space left of the panels at each position, so 0 aligns them left, 1 centers them, and 2 aligns
+ * them right. The positions are in the order top left, top right, center, bottom left, and bottom right.
+ */
+static constexpr int HORIZONTAL_ALIGNMENTS[OVERLAY_POSITION_COUNT] = {0, 2, 1, 0, 2};
+
+/**
+ * Halves of the free space above the panels at each position, so 0 aligns them to the top, 1 centers them, and 2
+ * aligns them to the bottom. The positions are in the same order as the horizontal alignments.
+ */
+static constexpr int VERTICAL_ALIGNMENTS[OVERLAY_POSITION_COUNT] = {0, 0, 1, 2, 2};
+
+/**
  * Highest opacity a panel can have, at which it is fully opaque.
  */
 static constexpr jint MAX_OPACITY = 255;
 
 /**
- * Unscaled thickness of the line separating a panel's header line from its setting lines.
+ * Unscaled thickness of a panel's border and of the line separating its header line from its setting lines.
  */
-static constexpr int SEPARATOR_THICKNESS = 1;
+static constexpr int LINE_THICKNESS = 1;
 
 /**
- * Shows one panel per header in the top-right corner of its display, replacing any panels already showing and
+ * Unscaled radius of a panel's rounded corners, which matches the corners Windows 11 gives its windows.
+ */
+static constexpr int CORNER_RADIUS = 8;
+
+/**
+ * Shows one panel per header at the given position on its display, replacing any panels already showing and
  * restarting the time they stay visible. Everything is copied here, so the panels never call back for any of it.
  *
  * @param env
@@ -222,10 +243,12 @@ static constexpr int SEPARATOR_THICKNESS = 1;
  *            - The value of each setting line, panel by panel, with one value per label for each header
  * @param anchorPoints
  *            - The desktop x and y coordinates of a point on each panel's display, in physical pixels
+ * @param position
+ *            - Where the panels sit on each display, below OVERLAY_POSITION_COUNT
  * @param overlayColors
  *            - The panel colors in packed ARGB order, indexed by the OVERLAY_COLOR constants
  * @param overlayMetrics
- *            - The panel metrics in unscaled pixels, indexed by the OVERLAY_METRIC constants
+ *            - The panel metrics in unscaled, possibly fractional pixels, indexed by the OVERLAY_METRIC constants
  * @param fontFamily
  *            - The family of the installed font the panels are drawn in
  * @param opacity
@@ -237,12 +260,14 @@ static constexpr int SEPARATOR_THICKNESS = 1;
  */
 extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeShow(
     JNIEnv *env, jobject obj, jobjectArray headers, jobjectArray labels, jobjectArray values, jintArray anchorPoints,
-    jintArray overlayColors, jintArray overlayMetrics, jstring fontFamily, jint opacity, jint durationMs) {
+    jint position, jintArray overlayColors, jfloatArray overlayMetrics, jstring fontFamily, jint opacity,
+    jint durationMs) {
     (void) obj;
 
     if (!headers || !labels || !values || !anchorPoints || !overlayColors || !overlayMetrics || durationMs <= 0 ||
         env->GetArrayLength(labels) == 0 || env->GetArrayLength(overlayColors) < OVERLAY_COLOR_COUNT ||
-        env->GetArrayLength(overlayMetrics) < OVERLAY_METRIC_COUNT) {
+        env->GetArrayLength(overlayMetrics) < OVERLAY_METRIC_COUNT || position < 0 ||
+        position >= OVERLAY_POSITION_COUNT) {
         return JNI_FALSE;
     }
 
@@ -255,11 +280,11 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeS
     }
 
     jint colors[OVERLAY_COLOR_COUNT];
-    jint metrics[OVERLAY_METRIC_COUNT];
+    jfloat metrics[OVERLAY_METRIC_COUNT];
     vector<jint> anchors(panelCount * ANCHOR_FIELD_COUNT);
 
     env->GetIntArrayRegion(overlayColors, 0, OVERLAY_COLOR_COUNT, colors);
-    env->GetIntArrayRegion(overlayMetrics, 0, OVERLAY_METRIC_COUNT, metrics);
+    env->GetFloatArrayRegion(overlayMetrics, 0, OVERLAY_METRIC_COUNT, metrics);
 
     if (!anchors.empty()) {
         env->GetIntArrayRegion(anchorPoints, 0, (jsize) anchors.size(), anchors.data());
@@ -274,6 +299,8 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeS
         definition->anchorPoints.push_back(
             {anchors[panelIndex * ANCHOR_FIELD_COUNT], anchors[panelIndex * ANCHOR_FIELD_COUNT + 1]});
     }
+
+    definition->position = position;
 
     definition->backgroundColor = colorFromArgb(colors[OVERLAY_COLOR_BACKGROUND]);
     definition->foregroundColor = colorFromArgb(colors[OVERLAY_COLOR_FOREGROUND]);
@@ -555,8 +582,8 @@ static LRESULT CALLBACK handleControlEvents(HWND windowHandle, UINT message, WPA
 }
 
 /**
- * Shows the panels waiting to be shown in the top-right corner of each one's display work area, scaled for that
- * display, and restarts the timer that hides them. Panels already showing are reused, so a repeat only updates them.
+ * Shows the panels waiting to be shown at their position in each one's display work area, scaled for that display,
+ * and restarts the timer that hides them. Panels already showing are reused, so a repeat only updates them.
  */
 static void showPanels() {
     shared_ptr<const DisplayInfoOverlayDefinition> definition;
@@ -572,27 +599,25 @@ static void showPanels() {
 
     size_t panelCount = definition->headers.size();
 
-    // Only surplus panels are destroyed, so every remaining panel keeps the index its window was tagged with
+    // Only surplus panels are destroyed, so every remaining panel window is reused rather than created again
     while (panels.size() > panelCount) {
         DestroyWindow(panels.back().window);
         panels.pop_back();
     }
 
     panels.resize(panelCount, DisplayInfoPanel{});
-    shownDefinition = definition;
 
-    // Panels sharing a display stack downwards, so the bottom edge of the last panel placed on each display is kept
-    vector<pair<HMONITOR, LONG>> stackBottoms;
-
+    // Every panel is laid out before any is placed, since the panels sharing a display are aligned as one block
     for (size_t panelIndex = 0; panelIndex < panelCount; panelIndex++) {
         DisplayInfoPanel &panel = panels[panelIndex];
-        HMONITOR monitor = MonitorFromPoint(definition->anchorPoints[panelIndex], MONITOR_DEFAULTTONEAREST);
         MONITORINFO monitorInfo = {};
         monitorInfo.cbSize = sizeof(monitorInfo);
         UINT dpiY = 0;
 
+        panel.monitor = MonitorFromPoint(definition->anchorPoints[panelIndex], MONITOR_DEFAULTTONEAREST);
+
         // A display that vanished since the settings were read has nowhere to show its panel
-        if (!GetMonitorInfoW(monitor, &monitorInfo)) {
+        if (!GetMonitorInfoW(panel.monitor, &monitorInfo)) {
             if (panel.window) {
                 DestroyWindow(panel.window);
             }
@@ -601,44 +626,68 @@ static void showPanels() {
             continue;
         }
 
-        if (GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &panel.dpi, &dpiY) != S_OK) {
+        if (GetDpiForMonitor(panel.monitor, MDT_EFFECTIVE_DPI, &panel.dpi, &dpiY) != S_OK) {
             panel.dpi = USER_DEFAULT_SCREEN_DPI;
         }
 
-        SIZE panelSize = layoutPanel(*definition, panelIndex, panel);
-        int margin = scaleMetric(definition->margin, panel.dpi);
-        LONG panelTop = monitorInfo.rcWork.top + margin;
+        panel.workArea = monitorInfo.rcWork;
+        layoutPanel(*definition, panelIndex, panel);
+    }
 
-        for (const pair<HMONITOR, LONG> &stackBottom : stackBottoms) {
-            if (stackBottom.first == monitor && stackBottom.second + margin > panelTop) {
-                panelTop = stackBottom.second + margin;
-            }
-        }
+    int horizontalAlignment = HORIZONTAL_ALIGNMENTS[definition->position];
+    int verticalAlignment = VERTICAL_ALIGNMENTS[definition->position];
 
-        stackBottoms.push_back({monitor, panelTop + panelSize.cy});
+    for (size_t panelIndex = 0; panelIndex < panelCount; panelIndex++) {
+        DisplayInfoPanel &panel = panels[panelIndex];
 
-        LONG panelLeft = monitorInfo.rcWork.right - margin - panelSize.cx;
-
-        if (panel.window) {
-            stylePanelWindow(*definition, panel);
-
-            // Raised above other topmost windows again, since one may have been shown over the panel meanwhile
-            SetWindowPos(panel.window, HWND_TOPMOST, panelLeft, panelTop, panelSize.cx, panelSize.cy,
-                         SWP_NOACTIVATE | SWP_SHOWWINDOW);
-            InvalidateRect(panel.window, nullptr, FALSE);
+        if (!panel.monitor) {
             continue;
         }
 
-        panel.window = CreateWindowExW(PANEL_EXTENDED_STYLE, PANEL_CLASS_NAME, L"", WS_POPUP, panelLeft, panelTop,
-                                       panelSize.cx, panelSize.cy, NULL, NULL, GetModuleHandleW(NULL), NULL);
+        const RECT &workArea = panel.workArea;
+        int margin = scaleMetric(definition->margin, panel.dpi);
+
+        // Panels sharing a display stack downward in panel order, with a margin after every panel but the last
+        LONG stackHeight = -margin;
+        LONG stackOffset = 0;
+
+        for (size_t stackedIndex = 0; stackedIndex < panelCount; stackedIndex++) {
+            if (panels[stackedIndex].monitor != panel.monitor) {
+                continue;
+            }
+
+            LONG stackedHeight = panels[stackedIndex].size.cy + margin;
+            stackHeight += stackedHeight;
+
+            if (stackedIndex < panelIndex) {
+                stackOffset += stackedHeight;
+            }
+        }
+
+        LONG freeWidth = workArea.right - workArea.left - 2 * margin - panel.size.cx;
+        LONG freeHeight = workArea.bottom - workArea.top - 2 * margin - stackHeight;
+
+        // A stack too large for its display keeps to the work area's top-left edge, so its header stays visible
+        freeWidth = freeWidth > 0 ? freeWidth : 0;
+        freeHeight = freeHeight > 0 ? freeHeight : 0;
+
+        LONG panelLeft = workArea.left + margin + freeWidth * horizontalAlignment / 2;
+        LONG panelTop = workArea.top + margin + freeHeight * verticalAlignment / 2 + stackOffset;
+
+        // A new panel window starts hidden and takes its position, size, and content from its first update
+        if (!panel.window) {
+            panel.window = CreateWindowExW(PANEL_EXTENDED_STYLE, PANEL_CLASS_NAME, L"", WS_POPUP, 0, 0, 0, 0, NULL,
+                                           NULL, GetModuleHandleW(NULL), NULL);
+        }
 
         if (!panel.window) {
             continue;
         }
 
-        SetWindowLongPtrW(panel.window, GWLP_USERDATA, (LONG_PTR) panelIndex);
-        stylePanelWindow(*definition, panel);
-        ShowWindow(panel.window, SW_SHOWNOACTIVATE);
+        updatePanelWindow(*definition, panelIndex, panel, {panelLeft, panelTop});
+
+        // Raised above other topmost windows again, since one may have been shown over the panel meanwhile
+        SetWindowPos(panel.window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
     }
 
     // Setting the timer again replaces the running one, so a repeated show restarts the time the panels stay visible
@@ -646,19 +695,17 @@ static void showPanels() {
 }
 
 /**
- * Lays out a panel in fonts scaled for its display, storing every position the panel paints at so painting never has
- * to measure or scale anything.
+ * Lays out a panel in fonts scaled for its display, storing its size and every position it paints at so placing and
+ * painting it never has to measure anything.
  *
  * @param definition
  *            - The definition of the panels being shown
  * @param panelIndex
  *            - The index of the panel to lay out
  * @param panel
- *            - The panel to lay out, whose DPI is already set and whose positions are filled in
- *
- * @return The size of the panel's window, in physical pixels
+ *            - The panel to lay out, whose DPI is already set and whose size and positions are filled in
  */
-static SIZE layoutPanel(const DisplayInfoOverlayDefinition &definition, size_t panelIndex, DisplayInfoPanel &panel) {
+static void layoutPanel(const DisplayInfoOverlayDefinition &definition, size_t panelIndex, DisplayInfoPanel &panel) {
     DisplayInfoPanelFonts fonts = createPanelFonts(definition, panel.dpi);
     HDC measureDC = CreateCompatibleDC(NULL);
     size_t lineCount = definition.labels.size();
@@ -690,7 +737,7 @@ static SIZE layoutPanel(const DisplayInfoOverlayDefinition &definition, size_t p
 
     panel.headerOrigin = {padding, padding};
     panel.separatorRect = {padding, separatorTop, padding + contentWidth,
-                           separatorTop + scaleMetric(SEPARATOR_THICKNESS, panel.dpi)};
+                           separatorTop + scaleMetric(LINE_THICKNESS, panel.dpi)};
     panel.firstLineTop = panel.separatorRect.bottom + headerGap;
     panel.lineSpacing = lineHeight + scaleMetric(definition.lineGap, panel.dpi);
     panel.valueColumnLeft = padding + valueColumnOffset;
@@ -698,7 +745,7 @@ static SIZE layoutPanel(const DisplayInfoOverlayDefinition &definition, size_t p
     // The last setting line ends one line height below its top, without the gap that follows every other line
     LONG contentBottom = panel.firstLineTop + ((LONG) lineCount - 1) * panel.lineSpacing + lineHeight;
 
-    return {contentWidth + 2 * padding, contentBottom + padding};
+    panel.size = {contentWidth + 2 * padding, contentBottom + padding};
 }
 
 /**
@@ -769,129 +816,101 @@ static SIZE measureTexts(HDC measureDC, const vector<wstring> &texts, size_t fir
 }
 
 /**
- * Scales a metric given in unscaled pixels to the given DPI.
+ * Scales a metric given in unscaled pixels to the given DPI, rounding only the scaled result so a fractional metric
+ * keeps its precision.
  *
  * @param metric
- *            - The metric in unscaled pixels
+ *            - The metric in unscaled, possibly fractional pixels
  * @param dpi
  *            - The DPI to scale the metric to
  *
- * @return The metric in physical pixels at the given DPI
+ * @return The metric in whole physical pixels at the given DPI
  */
-static int scaleMetric(int metric, UINT dpi) {
-    return MulDiv(metric, dpi, USER_DEFAULT_SCREEN_DPI);
+static int scaleMetric(float metric, UINT dpi) {
+    return (int) lroundf(metric * dpi / USER_DEFAULT_SCREEN_DPI);
 }
 
 /**
- * Applies the panels' opacity to a panel window, and asks the system to round its corners and color its border.
- * Windows 10 rejects both requests, so there the panel keeps square corners and draws its own border.
+ * Draws a panel into a bitmap and hands it to the panel's window together with the window's position and size, which
+ * the system applies in one step, so a moved or resized panel never shows its old content for a frame.
  *
  * @param definition
  *            - The definition of the panels being shown
+ * @param panelIndex
+ *            - The index of the panel to draw
  * @param panel
- *            - The panel to style, whose window exists
+ *            - The laid out panel to draw, whose window exists
+ * @param panelOrigin
+ *            - The top-left corner of the panel's window on the desktop, in physical pixels
  */
-static void stylePanelWindow(const DisplayInfoOverlayDefinition &definition, DisplayInfoPanel &panel) {
-    COLORREF borderColor = definition.borderColor;
-    DWM_WINDOW_CORNER_PREFERENCE cornerPreference = DWMWCP_ROUND;
+static void updatePanelWindow(const DisplayInfoOverlayDefinition &definition, size_t panelIndex,
+                              const DisplayInfoPanel &panel, POINT panelOrigin) {
+    BITMAPINFO bitmapInfo = {};
+    bitmapInfo.bmiHeader.biSize = sizeof(bitmapInfo.bmiHeader);
+    bitmapInfo.bmiHeader.biWidth = panel.size.cx;
+    bitmapInfo.bmiHeader.biPlanes = 1;
+    bitmapInfo.bmiHeader.biBitCount = 32;
+    bitmapInfo.bmiHeader.biCompression = BI_RGB;
 
-    SetLayeredWindowAttributes(panel.window, 0, definition.opacity, LWA_ALPHA);
-    DwmSetWindowAttribute(panel.window, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPreference, sizeof(cornerPreference));
+    // A negative height stores the rows top down, so the pixels run in the same order as the panel's rows
+    bitmapInfo.bmiHeader.biHeight = -panel.size.cy;
 
-    panel.drawFrame =
-        FAILED(DwmSetWindowAttribute(panel.window, DWMWA_BORDER_COLOR, &borderColor, sizeof(borderColor)));
-}
+    HDC paintDC = CreateCompatibleDC(NULL);
+    void *pixels = nullptr;
+    HBITMAP bitmap = CreateDIBSection(paintDC, &bitmapInfo, DIB_RGB_COLORS, &pixels, NULL, 0);
 
-/**
- * Stops the timer that hides the panels and destroys every panel window.
- */
-static void hidePanels() {
-    HWND timerWindow = controlWindow.load();
-
-    if (timerWindow) {
-        KillTimer(timerWindow, HIDE_TIMER_ID);
-    }
-
-    for (const DisplayInfoPanel &panel : panels) {
-        if (panel.window) {
-            DestroyWindow(panel.window);
-        }
-    }
-
-    panels.clear();
-    shownDefinition.reset();
-}
-
-/**
- * Handles the messages of a panel window, which paints itself and lets every click fall through to what is beneath.
- *
- * @param windowHandle
- *            - The panel window
- * @param message
- *            - The message identifier
- * @param eventType
- *            - The message's WPARAM
- * @param eventData
- *            - The message's LPARAM
- *
- * @return The result of the message processing
- */
-static LRESULT CALLBACK handlePanelEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData) {
-    switch (message) {
-    case WM_PAINT:
-        paintPanel(windowHandle);
-        return 0;
-    case WM_ERASEBKGND:
-        // The paint fills the whole panel, so skipping the erase avoids a flash of an unpainted background
-        return 1;
-    case WM_NCHITTEST:
-        return HTTRANSPARENT;
-    case WM_MOUSEACTIVATE:
-        return MA_NOACTIVATE;
-    case WM_DPICHANGED:
-        // Each show sizes the panel for its display, so the size suggested when it moves between displays is ignored
-        return 0;
-    default:
-        return DefWindowProcW(windowHandle, message, eventType, eventData);
-    }
-}
-
-/**
- * Paints a panel's background, its border where the system does not draw one, its bold header line with a separator
- * beneath, and its setting lines as labels beside bold values, at the positions laid out when the panel was shown.
- *
- * @param windowHandle
- *            - The panel window to paint
- */
-static void paintPanel(HWND windowHandle) {
-    PAINTSTRUCT paint;
-    HDC paintDC = BeginPaint(windowHandle, &paint);
-    size_t panelIndex = (size_t) GetWindowLongPtrW(windowHandle, GWLP_USERDATA);
-
-    if (!shownDefinition || panelIndex >= panels.size()) {
-        EndPaint(windowHandle, &paint);
+    if (!bitmap) {
+        DeleteDC(paintDC);
         return;
     }
 
-    const DisplayInfoOverlayDefinition &definition = *shownDefinition;
-    const DisplayInfoPanel &panel = panels[panelIndex];
+    HGDIOBJ previousBitmap = SelectObject(paintDC, bitmap);
+
+    paintPanel(paintDC, definition, panelIndex, panel);
+
+    // GDI may still be drawing into the bitmap, so it finishes before the pixels are reshaped directly
+    GdiFlush();
+    shapePanel((BYTE *) pixels, panel, definition.borderColor);
+
+    // The panels' opacity applies on top of each pixel's own coverage of the rounded panel
+    POINT sourceOrigin = {0, 0};
+    SIZE panelSize = panel.size;
+    BLENDFUNCTION blend = {AC_SRC_OVER, 0, definition.opacity, AC_SRC_ALPHA};
+
+    UpdateLayeredWindow(panel.window, NULL, &panelOrigin, &panelSize, paintDC, &sourceOrigin, 0, &blend, ULW_ALPHA);
+
+    SelectObject(paintDC, previousBitmap);
+    DeleteObject(bitmap);
+    DeleteDC(paintDC);
+}
+
+/**
+ * Paints a panel's background, its bold header line with a separator beneath, and its setting lines as labels beside
+ * bold values, at the positions laid out when the panel was shown. Its rounded corners and border are added afterward.
+ *
+ * @param paintDC
+ *            - The device context holding the panel's bitmap
+ * @param definition
+ *            - The definition of the panels being shown
+ * @param panelIndex
+ *            - The index of the panel to paint
+ * @param panel
+ *            - The laid out panel to paint, whose bitmap is the panel's size
+ */
+static void paintPanel(HDC paintDC, const DisplayInfoOverlayDefinition &definition, size_t panelIndex,
+                       const DisplayInfoPanel &panel) {
     DisplayInfoPanelFonts fonts = createPanelFonts(definition, panel.dpi);
     HBRUSH colorBrush = (HBRUSH) GetStockObject(DC_BRUSH);
     const wstring &header = definition.headers[panelIndex];
     size_t lineCount = definition.labels.size();
-    RECT clientRect = {};
+    RECT panelRect = {0, 0, panel.size.cx, panel.size.cy};
 
-    GetClientRect(windowHandle, &clientRect);
     SaveDC(paintDC);
 
     SetDCBrushColor(paintDC, definition.backgroundColor);
-    FillRect(paintDC, &clientRect, colorBrush);
+    FillRect(paintDC, &panelRect, colorBrush);
     SetDCBrushColor(paintDC, definition.borderColor);
     FillRect(paintDC, &panel.separatorRect, colorBrush);
-
-    if (panel.drawFrame) {
-        FrameRect(paintDC, &clientRect, colorBrush);
-    }
 
     SetBkMode(paintDC, TRANSPARENT);
     SetTextColor(paintDC, definition.foregroundColor);
@@ -911,7 +930,114 @@ static void paintPanel(HWND windowHandle) {
 
     // Restoring the device context deselects the fonts, so they can be deleted when they go out of scope
     RestoreDC(paintDC, -1);
-    EndPaint(windowHandle, &paint);
+}
+
+/**
+ * Rounds a painted panel's corners and draws its border, smoothing both edges by how much of each pixel they cover.
+ * Every pixel ends up premultiplied by its coverage, which is the form the system blends a layered window's pixels in.
+ *
+ * @param pixels
+ *            - The panel's pixels, top row first, with four bytes each in blue, green, red, and alpha order
+ * @param panel
+ *            - The laid out panel, whose size the pixels span and whose DPI the corners and border are scaled to
+ * @param borderColor
+ *            - The color of the border
+ */
+static void shapePanel(BYTE *pixels, const DisplayInfoPanel &panel, COLORREF borderColor) {
+    float cornerRadius = (float) scaleMetric(CORNER_RADIUS, panel.dpi);
+    float borderThickness = (float) scaleMetric(LINE_THICKNESS, panel.dpi);
+    float halfWidth = panel.size.cx / 2.0f;
+    float halfHeight = panel.size.cy / 2.0f;
+    BYTE borderChannels[] = {GetBValue(borderColor), GetGValue(borderColor), GetRValue(borderColor)};
+    BYTE *pixel = pixels;
+
+    for (LONG y = 0; y < panel.size.cy; y++) {
+        for (LONG x = 0; x < panel.size.cx; x++, pixel += 4) {
+            // How far the pixel's center lies past the center of the nearest corner's arc along each axis
+            float cornerOffsetX = fabsf(x + 0.5f - halfWidth) - (halfWidth - cornerRadius);
+            float cornerOffsetY = fabsf(y + 0.5f - halfHeight) - (halfHeight - cornerRadius);
+            float outlineDistance;
+
+            // Only a pixel beyond both edges of a corner measures to its arc, while every other pixel measures straight
+            if (cornerOffsetX > 0 && cornerOffsetY > 0) {
+                outlineDistance = sqrtf(cornerOffsetX * cornerOffsetX + cornerOffsetY * cornerOffsetY) - cornerRadius;
+            } else {
+                outlineDistance = (cornerOffsetX > cornerOffsetY ? cornerOffsetX : cornerOffsetY) - cornerRadius;
+            }
+
+            // The border is the band between the panel's outline and the same outline moved inward by its thickness
+            float panelCoverage = outlineCoverage(outlineDistance);
+            float fillCoverage = outlineCoverage(outlineDistance + borderThickness);
+            float borderCoverage = panelCoverage - fillCoverage;
+
+            // A pixel wholly inside the border keeps its painted color, so only the pixels near the edge are blended
+            if (fillCoverage < 1) {
+                for (int channel = 0; channel < 3; channel++) {
+                    pixel[channel] =
+                        (BYTE) (pixel[channel] * fillCoverage + borderChannels[channel] * borderCoverage + 0.5f);
+                }
+            }
+
+            pixel[3] = (BYTE) (panelCoverage * 255 + 0.5f);
+        }
+    }
+}
+
+/**
+ * Estimates how much of a pixel lies inside an outline from the distance between the pixel's center and the outline.
+ *
+ * @param distance
+ *            - The distance from the pixel's center to the outline, negative inside it
+ *
+ * @return The share of the pixel inside the outline, from 0 (none of it) to 1 (all of it)
+ */
+static float outlineCoverage(float distance) {
+    float coverage = 0.5f - distance;
+
+    return coverage < 0 ? 0 : (coverage > 1 ? 1 : coverage);
+}
+
+/**
+ * Stops the timer that hides the panels and destroys every panel window.
+ */
+static void hidePanels() {
+    HWND timerWindow = controlWindow.load();
+
+    if (timerWindow) {
+        KillTimer(timerWindow, HIDE_TIMER_ID);
+    }
+
+    for (const DisplayInfoPanel &panel : panels) {
+        if (panel.window) {
+            DestroyWindow(panel.window);
+        }
+    }
+
+    panels.clear();
+}
+
+/**
+ * Handles the messages of a panel window, which keeps the size each show gives it when it moves to another display.
+ *
+ * @param windowHandle
+ *            - The panel window
+ * @param message
+ *            - The message identifier
+ * @param eventType
+ *            - The message's WPARAM
+ * @param eventData
+ *            - The message's LPARAM
+ *
+ * @return The result of the message processing
+ */
+static LRESULT CALLBACK handlePanelEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData) {
+    switch (message) {
+    case WM_DPICHANGED:
+        // Each show sizes the panel for its display, so the size suggested when it moves between displays is ignored
+        return 0;
+    default:
+        return DefWindowProcW(windowHandle, message, eventType, eventData);
+    }
 }
 
 /**
