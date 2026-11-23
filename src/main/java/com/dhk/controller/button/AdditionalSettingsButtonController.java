@@ -22,7 +22,6 @@ import javax.swing.SwingUtilities;
 import com.dhk.controller.DhkController;
 import com.dhk.controller.HotKeysController;
 import com.dhk.controller.IController;
-import com.dhk.io.NativeInputHook;
 import com.dhk.io.RunOnStartupManager;
 import com.dhk.io.SettingsManager;
 import com.dhk.localization.Language;
@@ -47,7 +46,6 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
     private DhkController controller;
     private SettingsManager settingsMgr;
     private HotKeysController hotKeysController;
-    private NativeInputHook nativeInputHook;
     private RunOnStartupManager runOnStartupManager;
     private AdditionalSettingsDialog additionalSettingsDialog;
     private boolean applyingRunOnStartup;
@@ -61,23 +59,20 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
      * @param view
      *            - The view for the application
      * @param controller
-     *            - The controller for the application, which rebuilds it in a newly selected language and reopens the
-     *            dialog after every rebuild
+     *            - The controller for the application, which rebuilds it in a newly selected language and rebuilds the
+     *            dialog with it
      * @param settingsMgr
      *            - The settings manager for the application
      * @param hotKeysController
      *            - The controller for hot key management
-     * @param nativeInputHook
-     *            - The shared native input hook the dialog uses to re-fit after a cross-display drag (may be null)
      */
     public AdditionalSettingsButtonController(DhkModel model, DhkView view, DhkController controller,
-            SettingsManager settingsMgr, HotKeysController hotKeysController, NativeInputHook nativeInputHook) {
+            SettingsManager settingsMgr, HotKeysController hotKeysController) {
         this.model = model;
         this.view = view;
         this.controller = controller;
         this.settingsMgr = settingsMgr;
         this.hotKeysController = hotKeysController;
-        this.nativeInputHook = nativeInputHook;
     }
 
     @Override
@@ -105,7 +100,7 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
      *            - The action to run when the dialog closes (not required)
      */
     public void showAdditionalSettingsDialog(Runnable onCloseAction) {
-        AdditionalSettingsDialog dialog = new AdditionalSettingsDialog(model, view, nativeInputHook);
+        AdditionalSettingsDialog dialog = new AdditionalSettingsDialog(model, view);
         additionalSettingsDialog = dialog;
 
         dialog.getRunOnStartupSwitch().addActionListener(e -> runOnStartupSwitchAction(dialog));
@@ -126,14 +121,14 @@ public class AdditionalSettingsButtonController extends AbstractButtonController
 
         initStateChangeListeners(dialog.getClearHotKeyButton(), dialog.getDefaultFocusComponent());
 
-        // A re-initialization destroys the dialog, so it reopens through the controller that replaced this one
+        // A re-initialization rebuilds the dialog in its window through the controller that replaced this one
         Runnable reopenAction = () -> controller.showAdditionalSettingsDialog(onCloseAction);
 
         dialog.showAdditionalSettingsDialog(onCloseAction, reopenAction);
     }
 
     /**
-     * Asks the user to confirm the selected language, then saves it and rebuilds the application in it, which reopens
+     * Asks the user to confirm the selected language, then saves it and rebuilds the application in it, which rebuilds
      * the dialog in the new language. A declined change puts the previous language back in the combo box.
      *
      * @param dialog

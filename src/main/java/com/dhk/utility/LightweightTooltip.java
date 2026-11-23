@@ -30,6 +30,8 @@ import javax.swing.RootPaneContainer;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.UIManager;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
 
 /**
  * Shows a tooltip for a component in its window's layered pane rather than in a heavyweight popup window, which can
@@ -88,6 +90,23 @@ public class LightweightTooltip {
      */
     public LightweightTooltip(JComponent owner) {
         this.owner = owner;
+
+        // A rebuild can remove the component while its tooltip shows, and then the mouse never leaves it
+        owner.addAncestorListener(new AncestorListener() {
+            @Override
+            public void ancestorRemoved(AncestorEvent ancestorEvent) {
+                cancelScheduledShow();
+                hide();
+            }
+
+            @Override
+            public void ancestorAdded(AncestorEvent ancestorEvent) {
+            }
+
+            @Override
+            public void ancestorMoved(AncestorEvent ancestorEvent) {
+            }
+        });
     }
 
     /**

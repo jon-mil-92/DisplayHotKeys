@@ -19,58 +19,40 @@ import java.awt.Frame;
 import java.awt.Window;
 
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 
 import com.dhk.utility.WindowUtil;
 
 /**
- * Re-fits the application's windows when the native layer reports a Windows shell restart or a working area change.
- * Both can leave already-shown windows with stray as-needed scroll bars, clipped content, or a part under the task bar,
- * so this re-fits in place rather than triggering a full re-initialization.
+ * Re-fits the application's windows as soon as the native layer reports a Windows shell restart or a working area
+ * change. Both can leave already-shown windows with stray as-needed scroll bars, clipped content, or a part under the
+ * task bar, so this re-fits in place rather than triggering a full re-initialization.
  *
  * @author Jonathan R. Miller
  */
 public class ShellChangeHandler implements ShellRestartListener, WorkingAreaChangeListener {
 
-    private final Timer refitTimer;
-
     /**
-     * Constructor for the {@link ShellChangeHandler} class.
+     * Default constructor for the {@link ShellChangeHandler} class.
      */
     public ShellChangeHandler() {
-        refitTimer = new Timer(WindowUtil.REFRESH_DELAY_MS, e -> refitAllWindows());
-        refitTimer.setRepeats(false);
     }
 
     @Override
     public void shellRestarted() {
-        refitTimer.restart();
+        refitAllWindows();
     }
 
     @Override
     public void workingAreaChanged() {
-        // Stale working areas are dropped at once, so a placement captured before the re-fit already measures afresh
-        WindowUtil.invalidateDisplayMetrics();
-        refitTimer.restart();
+        refitAllWindows();
     }
 
     /**
-     * Stops any pending deferred re-fit. Called when the owning controller is torn down (on app re-init or shutdown) so
-     * the Timer cannot fire against a disposed view and is released for garbage collection.
-     */
-    public void cleanUp() {
-        refitTimer.stop();
-    }
-
-    /**
-     * Re-fits every currently showing window. The main frame and the dialogs fitted like it refresh through the
-     * working-area-aware refresh, so they stay capped to their display and their scroll bars settle. Other windows are
-     * re-laid-out and fixed-size ones re-packed.
+     * Re-fits every currently showing window. The main frame and the dialogs fitted like it re-fit through the
+     * working-area-aware re-fit, so they keep their placement on the changed working area and their scroll bars settle.
+     * Other windows are re-laid-out and fixed-size ones re-packed.
      */
     private void refitAllWindows() {
-        // A restarted shell may bring its task bar back at a different size, so every window measures its display again
-        WindowUtil.invalidateDisplayMetrics();
-
         for (Window window : Window.getWindows()) {
             if (!window.isShowing()) {
                 continue;
@@ -78,7 +60,7 @@ public class ShellChangeHandler implements ShellRestartListener, WorkingAreaChan
 
             // The main frame and the dialogs fitted like it keep their place and their working-area cap
             if (WindowUtil.isFittedToWorkingArea(window)) {
-                WindowUtil.refreshWindow(window);
+                WindowUtil.refitWindow(window);
             } else {
                 refitWindow(window);
             }

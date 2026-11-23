@@ -22,38 +22,40 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
-import com.dhk.io.NativeInputHook;
-import com.dhk.model.FramePlacement;
-import com.dhk.utility.WindowDragRefitter;
 import com.dhk.utility.WindowUtil;
 
 /**
- * Base for the modal dialogs that darken the main frame while they are open. It builds a scrolling dialog fitted to its
- * display's working area like the main frame, re-fits it after a cross-display drag, closes it exactly once, and
- * reopens it when a re-initialization destroys it.
+ * Base for the modal dialogs that darken the main frame while they are open. It builds a scrolling dialog that is
+ * fitted and re-fitted to its display's working area like the main frame, closes it exactly once, and rebuilds it
+ * inside its window when a re-initialization replaces the controllers it is wired to.
  *
  * @author Jonathan R. Miller
  */
 public abstract class OverlayDialog implements IView {
 
     private DhkView view;
-    private NativeInputHook nativeInputHook;
     private String title;
-    private JFrame parentFrame;
     private Component originalGlassPane;
     private Component darkeningGlassPane;
     private JDialog dialog;
+    private WindowAdapter windowListener;
+    private Runnable reopenAction;
     private boolean dialogClosed;
 
     /**
-     * Placement of a dialog a re-initialization destroyed, set only while its reopen action runs, so the dialog that
-     * action shows is placed the same way the main frame is.
+     * Overlay dialog on screen, so a re-initialization can rebuild it inside its window. At most one is open, because
+     * the main frame is blocked and the tray hides while a dialog opened from it shows.
      */
-    private static FramePlacement reopenPlacement;
+    private static OverlayDialog shownDialog;
+
+    /**
+     * Overlay dialog a re-initialization is replacing, set only while its reopen action runs, so the dialog that action
+     * shows takes over its window instead of opening a new one.
+     */
+    private static OverlayDialog replacedDialog;
 
     /**
      * Translucent black painted over the main frame while a dialog is open, which dims the frame without hiding it.
@@ -65,14 +67,11 @@ public abstract class OverlayDialog implements IView {
      *
      * @param view
      *            - The view for the application
-     * @param nativeInputHook
-     *            - The shared native input hook used to re-fit the dialog after a cross-display drag (may be null)
      * @param title
      *            - The title shown in the dialog's title bar
      */
-    protected OverlayDialog(DhkView view, NativeInputHook nativeInputHook, String title) {
+    protected OverlayDialog(DhkView view, String title) {
         this.view = view;
-        this.nativeInputHook = nativeInputHook;
         this.title = title;
 
         darkeningGlassPane = createDarkeningGlassPane();
@@ -80,8 +79,7 @@ public abstract class OverlayDialog implements IView {
 
     /**
      * Shows the dialog on the AWT event dispatching thread, darkening the main frame until the dialog closes. A
-     * re-initialization that destroys it with the main frame shows it again, which suits a dialog that builds all of
-     * its content when shown.
+     * re-initialization rebuilds it by showing it again, which suits a dialog that builds its whole content when shown.
      *
      * @param onCloseAction
      *            - The action to run when the dialog closes (not required)
@@ -96,40 +94,30 @@ public abstract class OverlayDialog implements IView {
      * @param onCloseAction
      *            - The action to run when the dialog closes (not required)
      * @param reopenAction
-     *            - The action that shows the dialog again after a re-initialization destroys it with the main frame
+     *            - The action that shows the dialog again, which a re-initialization runs to rebuild it in its window
      */
     protected void showDialog(Runnable onCloseAction, Runnable reopenAction) {
-        // A reopened dialog reproduces the destroyed one's placement, and any other is centered on the main frame
-        FramePlacement placement = reopenPlacement;
+        this.reopenAction = reopenAction;
+
+        // A re-initialization hands over the window of the dialog it replaces, which stays on screen throughout
+        if (replacedDialog != null) {
+            takeOverWindow(replacedDialog, onCloseAction);
+            return;
+        }
 
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                // Bind to the main frame on every show, since a re-initialization replaces it
-                parentFrame = view.getFrame();
-                originalGlassPane = parentFrame.getGlassPane();
-                dialogClosed = false;
+                originalGlassPane = view.getFrame().getGlassPane();
 
-                // Create the dialog with scrolling content, then let the subclass lay out its components in it
-                dialog = new JDialog(parentFrame, title, true);
+                dialog = new JDialog(view.getFrame(), title, true);
                 dialog.setResizable(false);
-
-                JPanel contentPanel = new JPanel();
-                WindowUtil.setScrollingContent(dialog, contentPanel,
-                        () -> getDefaultFocusComponent().requestFocusInWindow());
-                installWindowListeners(onCloseAction, reopenAction);
-                buildContent(dialog, contentPanel);
-
+                buildWindowContent(onCloseAction);
                 view.getDefaultFocusComponent().requestFocusInWindow();
-                parentFrame.setGlassPane(darkeningGlassPane);
-                darkeningGlassPane.setVisible(true);
 
                 // Pack to the content, then cap to the display's working area and center, as the main frame is fitted
                 dialog.pack();
-                WindowUtil.fitDialogToPlacement(dialog, placement);
-
-                // A drag onto another display refreshes the dialog there once the drag ends, matching the main frame
-                new WindowDragRefitter(dialog, nativeInputHook, () -> WindowUtil.refreshWindow(dialog)).install();
+                WindowUtil.fitDialog(dialog, null);
                 dialog.setVisible(true);
             }
         });
@@ -143,6 +131,70 @@ public abstract class OverlayDialog implements IView {
     }
 
     /**
+     * Rebuilds the overlay dialog on screen inside its window through its reopen action, so its content wires to the
+     * controllers a re-initialization just replaced. The window stays on screen, so nothing closes or reopens.
+     */
+    public static void rebuildShownDialog() {
+        if (shownDialog == null) {
+            return;
+        }
+
+        replacedDialog = shownDialog;
+        replacedDialog.releaseWindow();
+
+        // Every reopen action calls showDialog before returning, so its dialog takes over the window handed over here
+        replacedDialog.reopenAction.run();
+        replacedDialog = null;
+    }
+
+    /**
+     * Takes over the window of the dialog a re-initialization is replacing and rebuilds this dialog's content in it.
+     * The window keeps showing, and the re-initialization re-fits it once every window is rebuilt.
+     *
+     * @param previousDialog
+     *            - The dialog whose window to take over
+     * @param onCloseAction
+     *            - The action to run when the dialog closes (not required)
+     */
+    private void takeOverWindow(OverlayDialog previousDialog, Runnable onCloseAction) {
+        dialog = previousDialog.dialog;
+        originalGlassPane = previousDialog.originalGlassPane;
+
+        // The title is set again, since a language change rebuilds the dialog in its new language
+        dialog.setTitle(title);
+        buildWindowContent(onCloseAction);
+
+        getDefaultFocusComponent().requestFocusInWindow();
+    }
+
+    /**
+     * Detaches this dialog's window listener from its window, which stays on screen for the dialog that takes it over.
+     */
+    private void releaseWindow() {
+        dialog.removeWindowListener(windowListener);
+    }
+
+    /**
+     * Builds the dialog's scrolling content and window listener in its window, then darkens the main frame behind it.
+     *
+     * @param onCloseAction
+     *            - The action to run when the dialog closes (not required)
+     */
+    private void buildWindowContent(Runnable onCloseAction) {
+        dialogClosed = false;
+        shownDialog = this;
+
+        // Let the subclass lay out its components in the scrolling content panel
+        JPanel contentPanel = new JPanel();
+        WindowUtil.setScrollingContent(dialog, contentPanel, () -> getDefaultFocusComponent().requestFocusInWindow());
+        installWindowListener(onCloseAction);
+        buildContent(dialog, contentPanel);
+
+        view.getFrame().setGlassPane(darkeningGlassPane);
+        darkeningGlassPane.setVisible(true);
+    }
+
+    /**
      * Re-fits a showing dialog to its changed content within its display's working area. The dialog keeps its location,
      * so a dialog the user moved is not pulled back.
      */
@@ -152,15 +204,6 @@ public abstract class OverlayDialog implements IView {
         }
 
         WindowUtil.refitWindow(dialog);
-    }
-
-    /**
-     * Gets the shared native input hook, so a dialog this one opens can re-fit after a cross-display drag as well.
-     *
-     * @return The shared native input hook, or null if it could not be installed
-     */
-    protected NativeInputHook getNativeInputHook() {
-        return nativeInputHook;
     }
 
     /**
@@ -184,18 +227,16 @@ public abstract class OverlayDialog implements IView {
     }
 
     /**
-     * Installs the listeners that bring the dialog forward when it opens, close it exactly once, and reopen it when a
-     * re-initialization destroys it.
+     * Installs the listener that brings the dialog forward when it opens and closes it exactly once.
      *
      * @param onCloseAction
      *            - The action to run when the dialog closes (not required)
-     * @param reopenAction
-     *            - The action that shows the dialog again after a re-initialization destroys it with the main frame
      */
-    private void installWindowListeners(Runnable onCloseAction, Runnable reopenAction) {
+    private void installWindowListener(Runnable onCloseAction) {
         // Prevent default close and handle the title-bar close ourselves
         dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
-        dialog.addWindowListener(new WindowAdapter() {
+
+        windowListener = new WindowAdapter() {
             // Take the foreground when opened from the tray, since the hidden owner cannot bring the dialog forward
             @Override
             public void windowOpened(WindowEvent e) {
@@ -211,26 +252,9 @@ public abstract class OverlayDialog implements IView {
 
                 closeDialog(onCloseAction);
             }
+        };
 
-            /*
-             * A re-initialization disposes the parent frame, destroying this dialog without any close request. The
-             * dialog is shown again against the new frame instead, so the close action waits for that one to close
-             */
-            @Override
-            public void windowClosed(WindowEvent e) {
-                // Disposing a dialog that has already closed lands here as well
-                if (dialogClosed) {
-                    return;
-                }
-
-                dialogClosed = true;
-
-                // Every reopen action calls showDialog before returning, so its dialog reads the placement set here
-                reopenPlacement = WindowUtil.getRetainedPlacement(dialog);
-                reopenAction.run();
-                reopenPlacement = null;
-            }
-        });
+        dialog.addWindowListener(windowListener);
     }
 
     /**
@@ -240,12 +264,13 @@ public abstract class OverlayDialog implements IView {
      *            - The action to run when the dialog closes (not required)
      */
     private void closeDialog(Runnable onCloseAction) {
-        // Disposing fires the close path again, and the title-bar close can land after it has already run
+        // The title-bar close can land after the dialog has already closed
         if (dialogClosed) {
             return;
         }
 
         dialogClosed = true;
+        shownDialog = null;
 
         getDefaultFocusComponent().requestFocusInWindow();
 
@@ -254,7 +279,7 @@ public abstract class OverlayDialog implements IView {
         }
 
         darkeningGlassPane.setVisible(false);
-        parentFrame.setGlassPane(originalGlassPane);
+        view.getFrame().setGlassPane(originalGlassPane);
 
         dialog.dispose();
     }

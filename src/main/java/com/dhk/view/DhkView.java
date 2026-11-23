@@ -21,24 +21,25 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
+import javax.swing.MenuSelectionManager;
 import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
 import com.dhk.io.DisplayConfig;
 import com.dhk.localization.Localizer;
 import com.dhk.model.DhkModel;
 import com.dhk.model.DisplayMode;
-import com.dhk.model.FramePlacement;
 import com.dhk.model.RefreshRate;
 import com.dhk.model.Resolution;
 import com.dhk.model.button.Button;
@@ -141,7 +142,6 @@ public class DhkView implements IView {
      */
     public DhkView(DhkModel model) {
         this.model = model;
-        buttons = new ArrayList<>();
 
         // Disable logging for icons
         FlatSVGIcon.setLoggingEnabled(false);
@@ -153,17 +153,15 @@ public class DhkView implements IView {
     }
 
     /**
-     * Initializes the view of the application. It creates a new frame, sets the frame properties, initializes the
-     * panels, and initializes the view components.
+     * Initializes the view of the application. The first call creates the frame, and every later call rebuilds the
+     * panels and view components inside that same frame, so a re-initialization never replaces the window on screen.
      *
-     * @param previousPlacement
-     *            - The captured placement of the previous frame, or null to center on the default screen
      * @param selectedDisplayIndex
      *            - The index of the display to select in the new view; clamped to the current number of connected
      *            displays so the selection is preserved across re-initialization even if displays were added or removed
      */
-    public void initView(FramePlacement previousPlacement, int selectedDisplayIndex) {
-        final JFrame previousFrame = frame;
+    public void initView(int selectedDisplayIndex) {
+        boolean firstBuild = (frame == null);
 
         /*
          * Clamp the requested selection to a valid display index. When displays were removed since the previous view
@@ -174,83 +172,91 @@ public class DhkView implements IView {
                 : 0;
 
         /*
-         * Decide the tray handoff before the frame is ever shown, so a frame bound for the tray is never flashed. The
-         * launch follows the minimize to tray setting, but a rebuild keeps the frame off screen whenever it was already
-         * away, so it comes back exactly as the user left it even if the setting was turned off from the tray
+         * Decide the tray handoff before the frame is ever shown, so a frame bound for the tray is never flashed. Only
+         * the launch hands off, since a rebuild never shows or hides the frame, and handing off again would hide a
+         * dialog open from the tray along with its hidden owner and bring the tray icon back while that dialog shows
          */
-        boolean previousFrameWasAway = (previousFrame != null) && !previousFrame.isShowing();
-        startMinimizedToTray = (previousFrame == null) ? model.isMinimizeToTray() : previousFrameWasAway;
+        startMinimizedToTray = firstBuild && model.isMinimizeToTray();
 
-        // Reset view state used by component initialization
+        // Reset view state used by component initialization, so no rebuild keeps the components it replaced
         displayConfig = model.getDisplayConfig();
         displayMap = new HashMap<>();
         numberOfActiveSlotsMap = new HashMap<>();
+        buttons = new ArrayList<>();
         shownDisplayIndex = desiredDisplayIndex;
 
-        // Build and populate the frame
-        final JFrame newFrame = new JFrame("Display Hot Keys");
-        newFrame.setResizable(false);
+        if (firstBuild) {
+            frame = new JFrame("Display Hot Keys");
+            frame.setResizable(false);
+            frame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
+        }
 
         initPanels();
         initComponents();
 
         // The content scrolls when the frame is capped to a small display, and a press on empty space clears focus
-        WindowUtil.setScrollingContent(newFrame, mainPanel, () -> getDefaultFocusComponent().requestFocusInWindow());
+        WindowUtil.setScrollingContent(frame, mainPanel, () -> getDefaultFocusComponent().requestFocusInWindow());
 
-        frame = newFrame;
-        newFrame.pack();
-
-        /*
-         * Cap the packed size to the display's working area (reserving room for any needed scroll bars) before
-         * computing the location, so the frame fits on screen immediately and the location uses the final size
-         */
-        WindowUtil.fitFrameToPlacement(newFrame, previousPlacement);
-
-        // Set the taskbar icon
-        newFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/tray_icon.png")));
-
-        /*
-         * Make the frame visible after all components are added and the frame is packed. Showing the frame earlier can
-         * cause transient artifacts (ghost copies) during repaint. A frame bound for the tray is never shown at all,
-         * since showing and then hiding it flashes an unpainted window for as long as the tray takes to come up
-         */
-        if (!startMinimizedToTray) {
-            newFrame.setVisible(true);
-
-            // Showing alone cannot take the foreground at launch, while a rebuild must never take it from another app
-            if (previousFrame == null) {
-                newFrame.toFront();
-            }
-
-            /*
-             * Settle the scroll bars and re-assert the placement once the frame is on screen. Both only mean something
-             * for a frame on screen, so a frame held back for the tray is re-fitted when it is restored
-             */
-            SwingUtilities.invokeLater(() -> WindowUtil.settleShownFrame(newFrame, previousPlacement));
-        }
-
-        // Dispose of the previous frame, after handing its open dialogs their placements to reopen with
-        if (previousFrame != null) {
-            WindowUtil.retainDialogPlacements(previousPlacement);
-            previousFrame.setVisible(false);
-            previousFrame.dispose();
+        // A rebuilt frame stays on screen, and the re-initialization re-fits it once every window is rebuilt
+        if (firstBuild) {
+            showNewFrame();
         }
 
         getDefaultFocusComponent().requestFocusInWindow();
     }
 
     /**
-     * Re-initialize the view by creating a new frame and disposing the old one. Preserves the previous frame's
-     * on-screen placement and selected display, even when the display it was on has just been reconfigured.
+     * Packs the newly created frame and fits it to the default display, then shows it unless it is bound for the tray.
+     */
+    private void showNewFrame() {
+        frame.pack();
+
+        /*
+         * Cap the packed size to the display's working area (reserving room for any needed scroll bars) before
+         * computing the location, so the frame fits on screen immediately. The fit settles once the frame is on screen
+         */
+        WindowUtil.fitFrame(frame);
+
+        /*
+         * Make the frame visible after all components are added and the frame is packed. Showing the frame earlier can
+         * cause transient artifacts (ghost copies) during repaint. A frame bound for the tray is never shown at all,
+         * since showing and then hiding it flashes an unpainted window for as long as the tray takes to come up
+         */
+        if (startMinimizedToTray) {
+            return;
+        }
+
+        frame.setVisible(true);
+
+        // Showing alone cannot take the foreground at launch
+        frame.toFront();
+    }
+
+    /**
+     * Re-initializes the view inside the existing frame, keeping the selected display. Any drop-down, confirmation, or
+     * notice still open is closed first, since it would act on the state the re-initialization replaces.
      */
     public void reInitView() {
-        FramePlacement previousPlacement = WindowUtil.capturePlacement(frame);
+        // An open drop-down belongs to a combo box the rebuild replaces, so it closes rather than act on the old one
+        MenuSelectionManager.defaultManager().clearSelectedPath();
+        closeTransientDialogs();
 
         // Capture the currently selected display so it stays selected after the view is rebuilt
         int previousSelectedDisplayIndex = (displayIds != null) ? displayIds.getSelectedIndex() : 0;
 
-        // Re-initialize the view, reproducing the previous frame's placement and selected display
-        initView(previousPlacement, previousSelectedDisplayIndex);
+        initView(previousSelectedDisplayIndex);
+    }
+
+    /**
+     * Closes every confirmation and notice still open, each of which then reports that it closed unanswered. The frame
+     * and the dialogs fitted like it are rebuilt in place instead, so they are left open.
+     */
+    private void closeTransientDialogs() {
+        for (Window window : Window.getWindows()) {
+            if (window instanceof JDialog && window.isShowing() && !WindowUtil.isFittedToWorkingArea(window)) {
+                window.dispose();
+            }
+        }
     }
 
     /**
@@ -294,7 +300,7 @@ public class DhkView implements IView {
         addSlots(displayIndex);
         shownDisplayIndex = displayIndex;
 
-        WindowUtil.refreshWindow(frame);
+        WindowUtil.refitWindow(frame);
     }
 
     /**
@@ -714,7 +720,8 @@ public class DhkView implements IView {
     }
 
     /**
-     * Gets whether this build left the frame hidden for the tray, which means the tray still has to be brought up.
+     * Gets whether the launch left the frame hidden for the tray, which means the tray still has to be brought up. A
+     * rebuild never does, since it leaves the frame and the tray exactly as they were.
      *
      * @return True if the frame was never shown because it starts minimized to the tray, false otherwise
      */

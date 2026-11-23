@@ -21,8 +21,6 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -36,9 +34,7 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
 import com.dhk.controller.button.DonateButtonController;
-import com.dhk.io.NativeInputHook;
 import com.dhk.localization.Localizer;
-import com.dhk.model.FramePlacement;
 import com.dhk.utility.VersionRetriever;
 
 /**
@@ -70,7 +66,6 @@ public class AboutDialog extends OverlayDialog {
     private JButton licenseButton;
     private JButton donateButton;
     private JButton releasesButton;
-    private FramePlacement licenseReopenPlacement;
     private String latestVersion;
 
     /**
@@ -116,11 +111,9 @@ public class AboutDialog extends OverlayDialog {
      *
      * @param view
      *            - The view for the application
-     * @param nativeInputHook
-     *            - The shared native input hook used to re-fit the dialog after a cross-display drag (may be null)
      */
-    public AboutDialog(DhkView view, NativeInputHook nativeInputHook) {
-        super(view, nativeInputHook, Localizer.getText("about.title"));
+    public AboutDialog(DhkView view) {
+        super(view, Localizer.getText("about.title"));
     }
 
     /**
@@ -130,7 +123,7 @@ public class AboutDialog extends OverlayDialog {
      *            - The action to run when the dialog closes (not required)
      */
     public void showAboutDialog(Runnable onCloseAction) {
-        // A re-initialization reopens the dialog without coming through here, so only the user's open looks it up
+        // A re-initialization rebuilds the dialog without coming through here, so only the user's open looks it up
         fetchLatestVersion();
         showDialog(onCloseAction);
     }
@@ -314,16 +307,6 @@ public class AboutDialog extends OverlayDialog {
         licenseButton.addActionListener(createLicenseActionListener(aboutDialog));
         releasesButton.addActionListener(createReleasesActionListener());
 
-        // A License dialog a re-initialization closed opens again as it was placed, once this dialog is open to own it
-        if (licenseReopenPlacement != null) {
-            aboutDialog.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowOpened(WindowEvent e) {
-                    SwingUtilities.invokeLater(() -> showLicenseDialog(aboutDialog, licenseReopenPlacement));
-                }
-            });
-        }
-
         // The donation provider lives entirely in this controller, so switching providers never touches the dialog
         DonateButtonController donateButtonController = new DonateButtonController(this, donateButton);
         donateButtonController.initController();
@@ -446,24 +429,11 @@ public class AboutDialog extends OverlayDialog {
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
                     public void run() {
-                        showLicenseDialog(aboutDialog, null);
+                        new LicenseDialog(aboutDialog).showLicenseDialog();
                     }
                 });
             }
         };
-    }
-
-    /**
-     * Shows the bundled license text in its own dialog, then records its placement if a re-initialization closed it, so
-     * the rebuilt about dialog can show it again the same way.
-     *
-     * @param aboutDialog
-     *            - The about dialog that owns the license dialog
-     * @param placement
-     *            - The placement to reproduce, or null to center the license dialog on the about dialog
-     */
-    private void showLicenseDialog(JDialog aboutDialog, FramePlacement placement) {
-        licenseReopenPlacement = new LicenseDialog(aboutDialog, getNativeInputHook()).showLicenseDialog(placement);
     }
 
     /**

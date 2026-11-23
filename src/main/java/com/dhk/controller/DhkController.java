@@ -17,7 +17,6 @@ package com.dhk.controller;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 import com.dhk.controller.button.ApplySlotButtonController;
@@ -34,6 +33,7 @@ import com.dhk.localization.Localizer;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
 import com.dhk.theme.ThemeUpdater;
+import com.dhk.utility.WindowUtil;
 import com.dhk.view.DhkView;
 import com.dhk.view.DisplayInfoOverlayView;
 import com.dhk.view.MinimizeToTray;
@@ -50,14 +50,12 @@ public class DhkController implements IController {
     private SettingsManager settingsMgr;
     private NativeInputHook inputHook;
     private boolean inputHookRecoveryAttempted;
-    private HeldKeyTracker heldKeyTracker;
+    private HotKeyDispatcher hotKeyDispatcher;
     private HotKeysController hotKeysController;
     private MenuController menuController;
     private List<IController> controllers;
-    private int frameState;
     private DisplayConfigUpdater displayConfigUpdater;
     private DisplayEventNotifier displayNotifications;
-    private ShellChangeHandler shellChangeHandler;
     private MinimizeToTray minimizeToTray;
     private DisplayInfoOverlayView displayInfoOverlayView;
     private boolean displayInfoAutoShowPending;
@@ -80,19 +78,13 @@ public class DhkController implements IController {
         this.settingsMgr = settingsMgr;
 
         model.initModel(settingsMgr);
-        view.initView(null, 0);
+        view.initView(0);
 
-        if (settingsMgr.getIniMinimizeToTray()) {
-            frameState = JFrame.ICONIFIED;
-        } else {
-            frameState = JFrame.NORMAL;
-        }
-
-        // Adopt the JVM-lifetime hooks and permanent held-key tracker, waiting out any install time still remaining
+        // Adopt the JVM-lifetime hooks and permanent hot key dispatcher, waiting out any install time still remaining
         hookInstaller.awaitInstall();
 
         inputHook = hookInstaller.getInputHook();
-        heldKeyTracker = hookInstaller.getHeldKeyTracker();
+        hotKeyDispatcher = hookInstaller.getHotKeyDispatcher();
 
         // Create the minimize-to-tray object once so app refreshes reuse the live tray instead of rebuilding it
         minimizeToTray = new MinimizeToTray(model, view, "/tray_icon.svg", this::showAdditionalSettingsDialog,
@@ -107,20 +99,21 @@ public class DhkController implements IController {
         controllers = new ArrayList<IController>();
 
         /*
-         * Recover the hook only once, since it normally stays alive across re-inits with the tracker attached. Retrying
-         * on every refresh would reinstall a system-wide hook on every display change for as long as it kept failing
+         * Recover the hook only once, since it normally lives across re-inits with its listeners attached. Retrying on
+         * every refresh would reinstall a system-wide hook on every display change for as long as it kept failing
          */
         if (inputHook == null && !inputHookRecoveryAttempted) {
             inputHookRecoveryAttempted = true;
             inputHook = NativeHookInstaller.createInputHook();
 
             if (inputHook != null) {
-                inputHook.addKeyListener(heldKeyTracker);
+                inputHook.addKeyListener(hotKeyDispatcher);
+                WindowUtil.trackLeftMouseButton(inputHook);
             }
         }
 
         // Create the hot keys controller early so other controllers can notify it
-        hotKeysController = new HotKeysController(model, view, this, settingsMgr, heldKeyTracker);
+        hotKeysController = new HotKeysController(model, view, this, settingsMgr, hotKeyDispatcher);
         controllers.add(hotKeysController);
 
         controllers.add(new ApplySlotButtonController(model, view, this, settingsMgr));
@@ -129,8 +122,7 @@ public class DhkController implements IController {
         controllers.add(new ClearSlotButtonController(model, view, this, settingsMgr));
         controllers.add(new DisplayModeController(model, view, settingsMgr));
         controllers.add(new DpiScaleController(model, view, settingsMgr));
-        controllers.add(new FrameDragController(view, inputHook));
-        menuController = new MenuController(model, view, this, settingsMgr, hotKeysController, inputHook);
+        menuController = new MenuController(model, view, this, settingsMgr, hotKeysController);
         controllers.add(menuController);
         controllers.add(new NumberOfSlotsController(model, view, settingsMgr));
         controllers.add(new OrientationController(model, view, this, settingsMgr));
@@ -145,22 +137,15 @@ public class DhkController implements IController {
 
         // Start event-driven display notifications
         displayConfigUpdater = new DisplayConfigUpdater(model, view, this, settingsMgr);
-        shellChangeHandler = new ShellChangeHandler();
+        ShellChangeHandler shellChangeHandler = new ShellChangeHandler();
         displayNotifications = new DisplayEventNotifier();
         displayNotifications.registerDisplayChangeListener(displayConfigUpdater);
         displayNotifications.registerShellRestartListener(shellChangeHandler);
         displayNotifications.registerWorkingAreaChangeListener(shellChangeHandler);
         displayNotifications.start();
 
-        // Attach the new dispatch listener; the persistent held-key tracker remains attached across re-inits
-        if (inputHook != null) {
-            inputHook.addKeyListener(hotKeysController);
-        }
-
-        // A frame held back for the tray is handed off by the window controller, so leave its state alone
-        if (!view.isStartMinimizedToTray()) {
-            view.getFrame().setExtendedState(frameState);
-        }
+        // The dispatcher stays on the hook across re-inits and hands every key event to the new controller from now on
+        hotKeyDispatcher.setHotKeysController(hotKeysController);
     }
 
     @Override
@@ -172,19 +157,6 @@ public class DhkController implements IController {
 
     @Override
     public void cleanUp() {
-        /*
-         * Detach only the current dispatch listener so the old hot keys controller can be garbage collected. The hook
-         * and its held-key tracker stay alive so keys held across app refreshes are never missed, and the process exit
-         * reclaims the native hook
-         */
-        if (inputHook != null) {
-            try {
-                inputHook.removeKeyListener(hotKeysController);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
         // Ensure EDT tasks that may access controllers have been processed before we clean up references
         if (!SwingUtilities.isEventDispatchThread()) {
             try {
@@ -230,29 +202,13 @@ public class DhkController implements IController {
                 displayConfigUpdater = null;
             }
         }
-
-        // Stop any pending deferred re-fit so the Timer cannot fire against a disposed view
-        if (shellChangeHandler != null) {
-            try {
-                shellChangeHandler.cleanUp();
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                shellChangeHandler = null;
-            }
-        }
     }
 
     /**
-     * Cleans up after previously created controllers and re-initializes all sub-controllers.
-     *
-     * @param previousFrameState
-     *            - The state the frame was in before re-initialization
+     * Re-initializes all sub-controllers and attaches their listeners, after the caller has cleaned up the previous
+     * ones. The frame survives the re-initialization, so it keeps its own state.
      */
-    public void reInitController(int previousFrameState) {
-        // Get the previous frame state so the frame remains in the same state upon re-initialization
-        frameState = previousFrameState;
-
+    public void reInitController() {
         initController();
         initListeners();
     }
@@ -278,7 +234,7 @@ public class DhkController implements IController {
     }
 
     /**
-     * Shows the application in the given language by rebuilding it, which reopens the "Additional Settings" dialog the
+     * Shows the application in the given language by rebuilding it, which rebuilds the "Additional Settings" dialog the
      * language was chosen in.
      *
      * @param language
@@ -295,8 +251,8 @@ public class DhkController implements IController {
     }
 
     /**
-     * Shows an "About Display Hot Keys" dialog through the current menu controller, which hands it the shared input
-     * hook, so the tray can open it even though every app refresh replaces that controller.
+     * Shows an "About Display Hot Keys" dialog through the current menu controller, which builds it per show, so the
+     * tray can open it even though every app refresh replaces that controller.
      *
      * @param onCloseAction
      *            - The action to run when the dialog closes

@@ -18,9 +18,10 @@ import com.dhk.controller.DhkController;
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
+import com.dhk.theme.ThemeUpdater;
+import com.dhk.utility.WindowUtil;
 import com.dhk.view.DhkView;
-import com.formdev.flatlaf.FlatDarculaLaf;
-import com.formdev.flatlaf.FlatIntelliJLaf;
+import com.dhk.view.OverlayDialog;
 import com.formdev.flatlaf.FlatLaf;
 
 /**
@@ -35,6 +36,12 @@ public class AppRefresher {
     private DhkController controller;
     private SettingsManager settingsMgr;
     private DisplayConfig displayConfig;
+
+    /**
+     * Delay between applying display settings and re-initializing the application for them, which lets Windows finish
+     * settling the new display configuration before the re-initialization reads it.
+     */
+    public static final int REFRESH_DELAY_MS = 400;
 
     /**
      * Constructor for the {@link AppRefresher} class.
@@ -58,9 +65,9 @@ public class AppRefresher {
     }
 
     /**
-     * Re-initializes the settings manager, model, view, and controllers for the application, and then sets up the "look
-     * and feel" for the GUI. The app is only re-initialized if there is an active display to prevent a JVM error from
-     * occurring.
+     * Re-initializes the settings manager, model, view, and controllers for the application, rebuilding the frame and
+     * any open dialog inside their existing windows in the theme the settings file holds. The app is only
+     * re-initialized if there is an active display to prevent a JVM error from occurring.
      */
     public void reInitApp() {
         displayConfig.updateConnectedDisplays();
@@ -69,23 +76,27 @@ public class AppRefresher {
             return;
         }
 
-        int previousFrameState = view.getFrame().getExtendedState();
+        try {
+            controller.cleanUp();
+            settingsMgr.initSettingsManager();
+            model.initModel(settingsMgr);
 
-        controller.cleanUp();
-        settingsMgr.initSettingsManager();
-        model.initModel(settingsMgr);
-        view.reInitView();
-        controller.reInitController(previousFrameState);
+            // A theme changed in the settings file is applied before the view is rebuilt, so new content starts in it
+            if (model.isDarkMode() != FlatLaf.isLafDark()) {
+                new ThemeUpdater().useDarkMode(model.isDarkMode());
+            }
 
-        if (model.isDarkMode()) {
-            FlatDarculaLaf.setup();
-        } else {
-            FlatIntelliJLaf.setup();
+            view.reInitView();
+            controller.reInitController();
+
+            // The open dialog is rebuilt after the controllers, so its content wires to the ones that replaced them
+            OverlayDialog.rebuildShownDialog();
+        } finally {
+            // Each window is re-fitted once to keep its placement, even after a failed step so none is left unlaid-out
+            WindowUtil.refitRebuiltWindows();
         }
 
-        FlatLaf.updateUI();
-
-        // Place the tray icon and any display info panels last, against the settled displays and the new theme
+        // Place the tray icon and any display info panels last, against the settled displays
         controller.displayConfigurationSettled();
     }
 

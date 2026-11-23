@@ -16,7 +16,7 @@ $icon = Join-Path $distDir 'dhk.ico'
 $resourceDir = Join-Path $distDir 'jpackage-resources'
 $launcherProperties = Join-Path $resourceDir 'DisplayHotKeys.properties'
 $dllNames = @('SetDisplay.dll', 'GetDisplay.dll', 'DisplayEventNotifier.dll', 'SystemTrayIcon.dll',
-    'NativeInputHook.dll', 'DisplayInfoOverlay.dll')
+    'NativeInputHook.dll', 'DisplayInfoOverlay.dll', 'WindowPlacement.dll')
 $startLauncherName = 'DisplayHotKeysLauncher.exe'
 $startLauncher = Join-Path $distDir $startLauncherName
 $uninstallScript = Join-Path $distDir 'uninstall.bat'

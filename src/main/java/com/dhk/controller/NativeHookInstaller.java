@@ -17,6 +17,7 @@ package com.dhk.controller;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.dhk.io.NativeInputHook;
+import com.dhk.utility.WindowUtil;
 
 /**
  * Installs the JVM-lifetime native keyboard and mouse hooks on a background thread. Installing a hook can take many
@@ -28,7 +29,7 @@ import com.dhk.io.NativeInputHook;
 public class NativeHookInstaller {
 
     private NativeInputHook inputHook;
-    private HeldKeyTracker heldKeyTracker;
+    private HotKeyDispatcher hotKeyDispatcher;
     private Thread installThread;
 
     /**
@@ -81,27 +82,28 @@ public class NativeHookInstaller {
     }
 
     /**
-     * Gets the permanent held-key tracker created alongside the keyboard hook. Only valid to call after awaitInstall
+     * Gets the permanent hot key dispatcher created alongside the keyboard hook. Only valid to call after awaitInstall
      * returns.
      *
-     * @return The held-key tracker
+     * @return The hot key dispatcher
      */
-    public HeldKeyTracker getHeldKeyTracker() {
-        return heldKeyTracker;
+    public HotKeyDispatcher getHotKeyDispatcher() {
+        return hotKeyDispatcher;
     }
 
     /**
-     * Installs the input hook with its permanent held-key tracker attached. A hook that fails to install is left null
-     * so the owning controller's recovery path can retry it.
+     * Installs the input hook with its permanent hot key dispatcher and left mouse button tracking attached. A hook
+     * that fails to install is left null so the owning controller's recovery path can retry it.
      */
     private void installHooks() {
-        // Always create the tracker so the hot keys controller receives one even when the hook fails to install
-        heldKeyTracker = new HeldKeyTracker();
+        // Always create the dispatcher so the hot keys controller receives one even when the hook fails to install
+        hotKeyDispatcher = new HotKeyDispatcher();
 
         inputHook = createInputHook();
 
         if (inputHook != null) {
-            inputHook.addKeyListener(heldKeyTracker);
+            inputHook.addKeyListener(hotKeyDispatcher);
+            WindowUtil.trackLeftMouseButton(inputHook);
         }
     }
 

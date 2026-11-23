@@ -15,7 +15,6 @@
 package com.dhk.controller.button;
 
 import com.dhk.controller.IController;
-import com.dhk.io.NativeInputHook;
 import com.dhk.view.AboutDialog;
 import com.dhk.view.DhkView;
 
@@ -28,7 +27,6 @@ import com.dhk.view.DhkView;
 public class AboutButtonController extends AbstractButtonController implements IController {
 
     private DhkView view;
-    private NativeInputHook nativeInputHook;
     private AboutDialog aboutDialog;
 
     /**
@@ -36,12 +34,9 @@ public class AboutButtonController extends AbstractButtonController implements I
      *
      * @param view
      *            - The view for the application
-     * @param nativeInputHook
-     *            - The shared native input hook the dialog uses to re-fit after a cross-display drag (may be null)
      */
-    public AboutButtonController(DhkView view, NativeInputHook nativeInputHook) {
+    public AboutButtonController(DhkView view) {
         this.view = view;
-        this.nativeInputHook = nativeInputHook;
     }
 
     @Override
@@ -60,14 +55,13 @@ public class AboutButtonController extends AbstractButtonController implements I
     }
 
     /**
-     * Shows an "About Display Hot Keys" dialog with application information, built per show so it binds to the current
-     * frame, since every re-initialization replaces it.
+     * Shows an "About Display Hot Keys" dialog with application information, built fresh on every show.
      *
      * @param onCloseAction
      *            - The action to run when the dialog closes (not required)
      */
     public void showAboutDialog(Runnable onCloseAction) {
-        aboutDialog = new AboutDialog(view, nativeInputHook);
+        aboutDialog = new AboutDialog(view);
         aboutDialog.showAboutDialog(onCloseAction);
     }
 

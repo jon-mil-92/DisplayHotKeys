@@ -32,7 +32,6 @@ import javax.swing.JSeparator;
 import javax.swing.JSlider;
 import javax.swing.SwingConstants;
 
-import com.dhk.io.NativeInputHook;
 import com.dhk.io.SettingsManager;
 import com.dhk.localization.Language;
 import com.dhk.localization.Localizer;
@@ -127,11 +126,9 @@ public class AdditionalSettingsDialog extends OverlayDialog {
      *            - The model for the application
      * @param view
      *            - The view for the application
-     * @param nativeInputHook
-     *            - The shared native input hook used to re-fit the dialog after a cross-display drag (may be null)
      */
-    public AdditionalSettingsDialog(DhkModel model, DhkView view, NativeInputHook nativeInputHook) {
-        super(view, nativeInputHook, Localizer.getText("settings.title"));
+    public AdditionalSettingsDialog(DhkModel model, DhkView view) {
+        super(view, Localizer.getText("settings.title"));
         this.model = model;
         this.controlsEnabled = true;
 
@@ -145,7 +142,7 @@ public class AdditionalSettingsDialog extends OverlayDialog {
      * @param onCloseAction
      *            - The action to run when the dialog closes (not required)
      * @param reopenAction
-     *            - The action that shows the dialog again after a re-initialization destroys it with the main frame
+     *            - The action that shows the dialog again, which a re-initialization runs to rebuild it in its window
      */
     public void showAdditionalSettingsDialog(Runnable onCloseAction, Runnable reopenAction) {
         showDialog(onCloseAction, reopenAction);

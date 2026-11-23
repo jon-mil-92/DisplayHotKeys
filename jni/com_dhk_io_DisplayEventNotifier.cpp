@@ -30,6 +30,7 @@ using namespace std;
 
 static void runMessageLoopThread();
 LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData);
+static chrono::steady_clock::time_point nextCheckTime();
 static bool processPotentialDisplayChange();
 static vector<string> normalizeSignatures(const vector<string> &rawSignatures);
 static void invokeJavaCallback(jmethodID methodId);
@@ -376,17 +377,25 @@ static void runMessageLoopThread() {
             DispatchMessage(&message);
         }
 
-        // Poll at a modest interval to reduce CPU usage
-        auto now = chrono::steady_clock::now();
-        auto elapsedSinceLastPoll = chrono::duration_cast<chrono::milliseconds>(now - lastPollTime).count();
+        // A stop request ends the loop at once instead of waiting out another check
+        if (!isRunning.load()) {
+            break;
+        }
 
-        if (elapsedSinceLastPoll >= POLL_INTERVAL_MS) {
+        // Poll at a modest interval, and check a pending change the moment it can have settled
+        auto now = chrono::steady_clock::now();
+
+        if (now >= nextCheckTime()) {
             processPotentialDisplayChange();
             lastPollTime = now;
         }
 
-        // Sleep briefly to avoid busy-waiting; keep responsive to messages
-        this_thread::sleep_for(chrono::milliseconds(50));
+        /*
+         * Sleep until the next check, waking at once for any message, so a stop request is answered immediately and an
+         * unchanged display configuration costs no wake-ups between polls
+         */
+        auto waitMs = chrono::ceil<chrono::milliseconds>(nextCheckTime() - chrono::steady_clock::now()).count();
+        MsgWaitForMultipleObjectsEx(0, nullptr, (DWORD) max<long long>(waitMs, 0), QS_ALLINPUT, MWMO_INPUTAVAILABLE);
     }
 
     // Cleanup resources deterministically
@@ -451,6 +460,9 @@ LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType,
         // Only a working area change matters, which the shell reports when the task bar moves, resizes, or auto-hides
         if (eventType == SPI_SETWORKAREA) {
             invokeJavaCallback(onWorkingAreaChangeMethodId);
+
+            // The task bar also resizes right after a DPI scale change, so the change is caught here before any poll
+            processPotentialDisplayChange();
         }
 
         return 0;
@@ -462,6 +474,25 @@ LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType,
     default:
         return DefWindowProcW(windowHandle, message, eventType, eventData);
     }
+}
+
+/**
+ * Returns when the display configuration is next checked, which is the next poll, or sooner when a pending change can
+ * have settled first. A pending change also waits out the debounce, so a check never repeats before it can notify.
+ *
+ * @return The time of the next check
+ */
+static chrono::steady_clock::time_point nextCheckTime() {
+    auto nextPollTime = lastPollTime + chrono::milliseconds(POLL_INTERVAL_MS);
+
+    if (!notificationPending) {
+        return nextPollTime;
+    }
+
+    auto settleTime = max(lastStateChangeTime + chrono::milliseconds(STABILIZATION_MS),
+                          lastNotifyTime + chrono::milliseconds(DEBOUNCE_MS));
+
+    return min(nextPollTime, settleTime);
 }
 
 /**

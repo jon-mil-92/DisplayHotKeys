@@ -80,7 +80,7 @@ public class NumberOfSlotsController implements IController {
 
         view.showActiveSlots(displayIndex);
 
-        WindowUtil.refreshWindow(view.getFrame());
+        WindowUtil.refitWindow(view.getFrame());
     }
 
 }

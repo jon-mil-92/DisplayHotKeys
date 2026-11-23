@@ -90,6 +90,7 @@ Type: filesandordirs; Name: {app}\DisplayEventNotifier.dll;
 Type: filesandordirs; Name: {app}\SystemTrayIcon.dll;
 Type: filesandordirs; Name: {app}\NativeInputHook.dll;
 Type: filesandordirs; Name: {app}\DisplayInfoOverlay.dll;
+Type: filesandordirs; Name: {app}\WindowPlacement.dll;
 
 [Code]
 procedure ForceCloseRunningApp;

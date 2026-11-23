@@ -25,7 +25,6 @@ import com.dhk.io.SetDisplay;
 import com.dhk.io.SettingsManager;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
-import com.dhk.utility.WindowUtil;
 import com.dhk.view.DhkView;
 
 /**
@@ -131,7 +130,7 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
 
             /*
              * Re-initialize the app to prevent window corruption, but defer briefly so the display reconfiguration
-             * settles first; otherwise the rebuilt frame is placed against stale display bounds. Rapid successive
+             * settles first; otherwise the rebuilt frame is re-fitted against stale display bounds. Rapid successive
              * applies coalesce into one refresh
              */
             if (reInitTimer != null && reInitTimer.isRunning()) {
@@ -140,7 +139,7 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
                 return;
             }
 
-            reInitTimer = new Timer(WindowUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp());
+            reInitTimer = new Timer(AppRefresher.REFRESH_DELAY_MS, e -> appRefresher.reInitApp());
             reInitTimer.setRepeats(false);
             reInitTimer.start();
         }

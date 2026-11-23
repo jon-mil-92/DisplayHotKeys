@@ -76,7 +76,7 @@ public class MinimizeToTray {
      * Minimizes the application to the system tray.
      */
     public void execute() {
-        // Hide the taskbar icon, resolving the frame lazily since every re-initialization replaces it
+        // Hide the taskbar icon
         view.getFrame().setVisible(false);
 
         if (systemTrayIcon == null) {
@@ -189,7 +189,7 @@ public class MinimizeToTray {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                WindowUtil.refreshWindow(view.getFrame());
+                WindowUtil.refitWindow(view.getFrame());
             }
         });
 
@@ -227,7 +227,7 @@ public class MinimizeToTray {
     private void aboutAction() {
         hideSystemTray();
 
-        // The current controller builds the dialog per show, so it binds to the current frame and the shared input hook
+        // The current controller builds the dialog per show, so it binds to the current frame
         aboutDialogShower.accept(this::showSystemTray);
     }
 
