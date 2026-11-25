@@ -39,30 +39,35 @@ public class ShellChangeHandler implements ShellRestartListener, WorkingAreaChan
 
     @Override
     public void shellRestarted() {
-        refitAllWindows();
+        refitAllWindows(false);
     }
 
     @Override
     public void workingAreaChanged() {
-        refitAllWindows();
+        refitAllWindows(true);
     }
 
     /**
      * Re-fits every currently showing window. The main frame and the dialogs fitted like it re-fit through the
      * working-area-aware re-fit, so they keep their placement on the changed working area and their scroll bars settle.
      * Other windows are re-laid-out and fixed-size ones re-packed.
+     *
+     * @param workingAreaChange
+     *            - Whether only a working area changed, which leaves a fitted window on an unchanged display as it is
      */
-    private void refitAllWindows() {
+    private void refitAllWindows(boolean workingAreaChange) {
         for (Window window : Window.getWindows()) {
             if (!window.isShowing()) {
                 continue;
             }
 
-            // The main frame and the dialogs fitted like it keep their place and their working-area cap
-            if (WindowUtil.isFittedToWorkingArea(window)) {
-                WindowUtil.refitWindow(window);
-            } else {
+            if (!WindowUtil.isFitted(window)) {
                 refitWindow(window);
+            } else if (workingAreaChange) {
+                WindowUtil.refitWindowForWorkingArea(window);
+            } else {
+                // A shell restart can leave stray scroll bars, so every fitted window is laid out again
+                WindowUtil.refitWindow(window);
             }
         }
     }

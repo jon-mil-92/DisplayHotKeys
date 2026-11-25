@@ -66,11 +66,11 @@ public class WindowUtil {
      *
      * @param dialog
      *            - The packed dialog to fit and center
-     * @param fittedAction
+     * @param afterFitAction
      *            - The action to run after each fit that places the dialog (may be null)
      */
-    public static void fitDialog(JDialog dialog, Runnable fittedAction) {
-        FittedWindow.fitNewWindow(dialog, fittedAction);
+    public static void fitDialog(JDialog dialog, Runnable afterFitAction) {
+        FittedWindow.fitNewWindow(dialog, afterFitAction);
     }
 
     /**
@@ -90,6 +90,21 @@ public class WindowUtil {
     }
 
     /**
+     * Re-fits a fitted frame or dialog after a working area changed. One that is still fitted to its unchanged display
+     * is left as it is, so the several working area changes one display change reports cost no layout.
+     *
+     * @param window
+     *            - The fitted frame or dialog to re-fit
+     */
+    public static void refitWindowForWorkingArea(Window window) {
+        FittedWindow fittedWindow = FittedWindow.of(window);
+
+        if (fittedWindow != null) {
+            fittedWindow.requestWorkingAreaRefit();
+        }
+    }
+
+    /**
      * Re-fits every frame and dialog a re-initialization rebuilt in place. Each keeps its placement even when its size
      * changed, and returns to its recorded placement when its display changed.
      */
@@ -104,8 +119,8 @@ public class WindowUtil {
     }
 
     /**
-     * Follows the left mouse button through the native input hook for the rest of the application, so a fit a window
-     * owes waits while a drag holds the button and runs once the button is released.
+     * Follows the left mouse button through the native input hook for the rest of the application, so a pending fit
+     * waits while a drag holds the button and runs once the button is released.
      *
      * @param nativeInputHook
      *            - The shared native input hook that reports the real left-button press and release
@@ -160,15 +175,15 @@ public class WindowUtil {
     }
 
     /**
-     * Determines whether a window has been fitted to a working area by this class, which the main frame and every
-     * dialog placed through it are.
+     * Determines whether a window is kept fitted by this class, which the main frame and every dialog placed through it
+     * are.
      *
      * @param window
      *            - The window to check
      *
-     * @return True if the window was fitted by this class, otherwise false
+     * @return True if the window is kept fitted by this class, otherwise false
      */
-    public static boolean isFittedToWorkingArea(Window window) {
+    public static boolean isFitted(Window window) {
         return FittedWindow.of(window) != null;
     }
 

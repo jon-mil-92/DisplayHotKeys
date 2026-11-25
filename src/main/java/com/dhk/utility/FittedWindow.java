@@ -27,7 +27,6 @@ import java.awt.event.ComponentEvent;
 import java.beans.PropertyChangeEvent;
 
 import javax.swing.JDialog;
-import javax.swing.JRootPane;
 import javax.swing.JScrollPane;
 import javax.swing.RootPaneContainer;
 import javax.swing.SwingUtilities;
@@ -46,10 +45,11 @@ import com.dhk.io.WindowPlacement.WindowBounds;
 final class FittedWindow {
 
     private final Window window;
-    private final Runnable fittedAction;
+    private final Runnable afterFitAction;
     private RecordedPlacement recordedPlacement;
+    private DisplayArea fittedDisplay;
     private Runnable pendingFit;
-    private boolean returnOwed;
+    private boolean returnPending;
     private boolean placementCheckQueued;
     private boolean surfaceReplaced;
     private double measuredScale;
@@ -61,8 +61,8 @@ final class FittedWindow {
     private static volatile boolean nativeReclaimInProgress;
 
     /**
-     * Whether the left mouse button is held anywhere in the system, as of the button events the EDT has handled. A fit
-     * a window owes waits while it is held, so a drag is never interrupted.
+     * Whether the left mouse button is held anywhere in the system, as of the button events the EDT has handled. A
+     * pending fit waits while it is held, so a drag is never interrupted.
      */
     private static boolean leftMouseButtonDown;
 
@@ -81,12 +81,12 @@ final class FittedWindow {
      *
      * @param window
      *            - The frame or dialog to keep fitted
-     * @param fittedAction
+     * @param afterFitAction
      *            - The action to run after each fit that places the window (may be null)
      */
-    private FittedWindow(Window window, Runnable fittedAction) {
+    private FittedWindow(Window window, Runnable afterFitAction) {
         this.window = window;
-        this.fittedAction = fittedAction;
+        this.afterFitAction = afterFitAction;
     }
 
     /**
@@ -95,11 +95,11 @@ final class FittedWindow {
      *
      * @param window
      *            - The packed frame or dialog to keep fitted
-     * @param fittedAction
+     * @param afterFitAction
      *            - The action to run after each fit that places the window (may be null)
      */
-    static void fitNewWindow(Window window, Runnable fittedAction) {
-        FittedWindow fittedWindow = new FittedWindow(window, fittedAction);
+    static void fitNewWindow(Window window, Runnable afterFitAction) {
+        FittedWindow fittedWindow = new FittedWindow(window, afterFitAction);
         fittedWindow.track();
         fittedWindow.requestFit(fittedWindow::fitInitially);
 
@@ -128,9 +128,7 @@ final class FittedWindow {
      * it off screen. After any change to its recorded display it returns to the placement it recorded before.
      */
     void requestRefit() {
-        if (window.isDisplayable()) {
-            requestFit(() -> refit(false));
-        }
+        requestFit(() -> refit(false));
     }
 
     /**
@@ -138,20 +136,27 @@ final class FittedWindow {
      * its size changed. After any change to its recorded display it returns to the placement it recorded before.
      */
     void requestRebuiltRefit() {
-        if (window.isDisplayable()) {
-            requestFit(() -> refit(true));
-        }
+        requestFit(() -> refit(true));
     }
 
     /**
-     * Notes that the left mouse button was pressed, which holds back every fit a window owes until it is released.
+     * Re-fits the window after a working area changed, which never changes its content. A window still fitted to its
+     * unchanged display is left as it is, while any other keeps or returns to its placement.
+     */
+    void requestWorkingAreaRefit() {
+        ensureFitPending();
+        requestFit(pendingFit);
+    }
+
+    /**
+     * Notes that the left mouse button was pressed, which holds back every pending fit until it is released.
      */
     static void leftMouseButtonPressed() {
         leftMouseButtonDown = true;
     }
 
     /**
-     * Notes that the left mouse button was released and checks every frame and dialog that owes a fit, which a drag
+     * Notes that the left mouse button was released and checks every frame and dialog with a pending fit, which a drag
      * held back.
      */
     static void leftMouseButtonReleased() {
@@ -171,7 +176,7 @@ final class FittedWindow {
      * new configuration AWT gives it.
      */
     private void track() {
-        rootPane().putClientProperty(FITTED_WINDOW_PROPERTY, this);
+        ((RootPaneContainer) window).getRootPane().putClientProperty(FITTED_WINDOW_PROPERTY, this);
 
         window.addComponentListener(new ComponentAdapter() {
             @Override
@@ -190,8 +195,8 @@ final class FittedWindow {
     }
 
     /**
-     * Owes the window a re-fit for a new configuration AWT gave it, such as after a display change or a move onto
-     * another display. Every configuration one change reports shares the one owed re-fit.
+     * Makes a re-fit pending for a new configuration AWT gave the window, such as after a display change or a move onto
+     * another display. Every configuration one change reports shares the one pending re-fit.
      *
      * @param configurationChangeEvent
      *            - The event that reports the window's new configuration
@@ -205,27 +210,36 @@ final class FittedWindow {
             surfaceReplaced = true;
         }
 
-        // The display can change back before the owed re-fit runs, so a change to it is noted as it is reported
-        noteDisplayChange();
-
-        // A fit requested since replaces the owed re-fit, so a pending one is kept
-        if (pendingFit == null) {
-            pendingFit = () -> refit(false);
-        }
-
+        // The display can change back before the pending re-fit runs, so a change to it is noted as it is reported
+        noteRecordedDisplayChange();
+        ensureFitPending();
         queuePlacementCheck();
     }
 
     /**
-     * Runs a fit for the window, which stays pending while AWT disagrees with Windows on its display and runs again
-     * once AWT may have caught up. A newer fit replaces a pending one.
+     * Runs a fit for a window that is still displayable. The fit stays pending while AWT disagrees with Windows on its
+     * display and runs again once AWT may have caught up. A newer fit replaces a pending one.
      *
      * @param fit
      *            - The fit to run, which re-reads everything it needs each time it runs
      */
     private void requestFit(Runnable fit) {
+        if (!window.isDisplayable()) {
+            return;
+        }
+
         pendingFit = fit;
         fit.run();
+    }
+
+    /**
+     * Makes sure the window has a pending fit, adding a re-fit for its display when it has none. A fit already pending
+     * is kept, since it re-reads the display as well and may carry a content change that must be laid out.
+     */
+    private void ensureFitPending() {
+        if (pendingFit == null) {
+            pendingFit = this::refitForDisplayChange;
+        }
     }
 
     /**
@@ -247,25 +261,24 @@ final class FittedWindow {
                 return;
             }
 
-            recordPlacement();
-            Runnable owedFit = pendingFit;
+            recordUserPlacement();
 
             // A fit during a drag would pull the window away from the cursor, so the button's release runs it instead
-            if (owedFit != null && !leftMouseButtonDown) {
-                owedFit.run();
+            if (pendingFit != null && !leftMouseButtonDown) {
+                pendingFit.run();
             }
         });
     }
 
     /**
-     * Records the window's current placement, unless the window owes a fit, which records where the window ends up, or
-     * the display it recorded its placement on was rescaled or resized since. Windows may then have moved the window
-     * anywhere, so the recorded placement is kept.
+     * Records the window's current placement as the user left it, unless a fit is pending, which records where the
+     * window ends up, or the display it recorded its placement on was rescaled or resized since. Windows may then have
+     * moved the window anywhere, so the recorded placement is kept.
      */
-    private void recordPlacement() {
-        // A display can change and change back before the window's fit runs, which only the owed fit reveals
-        if (pendingFit == null && !isDisplayChanging()) {
-            storePlacement(WindowPlacement.windowBounds(window), WindowPlacement.displayOf(window));
+    private void recordUserPlacement() {
+        // A display can change and change back before the window's fit runs, which only the pending fit reveals
+        if (pendingFit == null && !isRecordedDisplayChanging()) {
+            recordPlacement(WindowPlacement.windowBounds(window), WindowPlacement.displayOf(window));
         }
     }
 
@@ -275,40 +288,37 @@ final class FittedWindow {
      *
      * @return True if the window's recorded display was rescaled or resized since the window recorded its placement
      */
-    private boolean isDisplayChanging() {
-        DisplayArea recordedDisplay = currentDisplayOf(recordedPlacement);
+    private boolean isRecordedDisplayChanging() {
+        DisplayArea recordedDisplay = currentRecordedDisplay();
 
         return recordedDisplay != null && (recordedDisplay.dpi() != recordedPlacement.display().dpi()
                 || !recordedDisplay.bounds().equals(recordedPlacement.display().bounds()));
     }
 
     /**
-     * Notes that the window owes a return to its recorded placement once the display it was recorded on changed in any
-     * way, its working area included. The return stays owed until a fit completes, since a display that changes back
-     * before then has still moved the window.
+     * Notes that a return to the window's recorded placement is pending once the display it was recorded on changed in
+     * any way, its working area included. The return stays pending until a fit completes, since a display that changes
+     * back before then has still moved the window.
      *
      * @return The recorded display as it is now, or null if there is no recorded placement or its display is gone
      */
-    private DisplayArea noteDisplayChange() {
-        DisplayArea recordedDisplay = currentDisplayOf(recordedPlacement);
+    private DisplayArea noteRecordedDisplayChange() {
+        DisplayArea recordedDisplay = currentRecordedDisplay();
 
         if (recordedDisplay != null && !recordedDisplay.equals(recordedPlacement.display())) {
-            returnOwed = true;
+            returnPending = true;
         }
 
         return recordedDisplay;
     }
 
     /**
-     * Returns the current area of the display a placement was recorded on.
+     * Returns the current area of the display the window recorded its placement on.
      *
-     * @param placement
-     *            - The recorded placement (may be null)
-     *
-     * @return The display's current area, or null if there is no placement or its display is no longer attached
+     * @return The display's current area, or null if there is no recorded placement or its display is gone
      */
-    private static DisplayArea currentDisplayOf(RecordedPlacement placement) {
-        return (placement != null) ? WindowPlacement.displayArea(placement.display().name()) : null;
+    private DisplayArea currentRecordedDisplay() {
+        return (recordedPlacement != null) ? WindowPlacement.displayArea(recordedPlacement.display().name()) : null;
     }
 
     /**
@@ -320,7 +330,7 @@ final class FittedWindow {
      * @param display
      *            - The display the window is mostly on (may be null)
      */
-    private void storePlacement(WindowBounds windowBounds, DisplayArea display) {
+    private void recordPlacement(WindowBounds windowBounds, DisplayArea display) {
         RecordedPlacement measuredPlacement = measurePlacement(windowBounds, display);
 
         if (measuredPlacement != null) {
@@ -345,7 +355,7 @@ final class FittedWindow {
         }
 
         // A window still where its record puts it keeps the record, so only the user's moves and resizes change it
-        if (isAtPlacement(display)) {
+        if (isAtRecordedPlacement(display)) {
             return new RecordedPlacement(display, recordedPlacement.leftFraction(), recordedPlacement.topFraction());
         }
 
@@ -367,7 +377,7 @@ final class FittedWindow {
      *
      * @return True if placing the window by its recorded placement would leave it where it is
      */
-    private boolean isAtPlacement(DisplayArea display) {
+    private boolean isAtRecordedPlacement(DisplayArea display) {
         if (recordedPlacement == null || !recordedPlacement.display().name().equals(display.name())
                 || !configurationMatches(window.getGraphicsConfiguration(), display)) {
             return false;
@@ -400,16 +410,36 @@ final class FittedWindow {
     }
 
     /**
-     * Re-fits the window to its content, returning it to its recorded placement while it owes a return. Otherwise it
+     * Re-fits the window for a new configuration or working area, unless a re-fit would leave it as it is. That is the
+     * case while its last fit is in effect on an unchanged display and the window lies within the working area.
+     */
+    private void refitForDisplayChange() {
+        noteRecordedDisplayChange();
+        WindowBounds windowBounds = WindowPlacement.windowBounds(window);
+
+        // A re-fit would leave the window where it is, so it completes as one would, recording where the user left it
+        if (!returnPending && fittedDisplay != null && isFitInEffect(windowBounds, fittedDisplay)
+                && logicalWorkingAreaOf(fittedDisplay).contains(window.getBounds())) {
+            pendingFit = null;
+            reclaimReplacedSurfaces();
+            recordPlacement(windowBounds, fittedDisplay);
+            return;
+        }
+
+        refit(false);
+    }
+
+    /**
+     * Re-fits the window to its content, returning it to its recorded placement while a return is pending. Otherwise it
      * keeps its top-left, or its share of the working area when it keeps its proportions.
      *
      * @param keepProportions
      *            - Whether the window keeps its share of the working area rather than its top-left
      */
     private void refit(boolean keepProportions) {
-        DisplayArea recordedDisplay = noteDisplayChange();
+        DisplayArea recordedDisplay = noteRecordedDisplayChange();
 
-        if (returnOwed && recordedDisplay != null) {
+        if (returnPending && recordedDisplay != null) {
             fit(recordedDisplay, atPlacement(recordedPlacement));
             return;
         }
@@ -485,6 +515,7 @@ final class FittedWindow {
 
         if (!placeable || startBounds.minimizedOrMaximized()) {
             pendingFit = null;
+            fittedDisplay = null;
             reclaimReplacedSurfaces();
             window.validate();
             return;
@@ -507,19 +538,20 @@ final class FittedWindow {
         }
 
         pendingFit = null;
-        returnOwed = false;
+        returnPending = false;
+        fittedDisplay = display;
         reclaimReplacedSurfaces();
-        storePlacement(placedBounds, display);
+        recordPlacement(placedBounds, display);
 
-        if (fittedAction != null) {
-            fittedAction.run();
+        if (afterFitAction != null) {
+            afterFitAction.run();
         }
     }
 
     /**
-     * Determines whether a fit took effect as computed. AWT can take a display change in the middle of a fit and place
-     * the window at a stale scale, so the display must be unchanged and the window must be on it at the bounds AWT
-     * scaled for it.
+     * Determines whether a fit is in effect as computed. AWT can take a display change in the middle of a fit and place
+     * the window at a stale scale, so the display must be unchanged, and the window must be on it at bounds that AWT
+     * reads back as the bounds it holds.
      *
      * @param placedBounds
      *            - The window's bounds after it was placed (may be null)
@@ -531,10 +563,11 @@ final class FittedWindow {
     private boolean isFitInEffect(WindowBounds placedBounds, DisplayArea display) {
         String windowDisplayName = WindowPlacement.displayNameOf(window);
 
+        // AWT cannot reach every physical pixel at a fractional scale, so the bounds are compared in AWT's pixels
         return placedBounds != null && display.equals(WindowPlacement.displayArea(display.name()))
                 && display.name().equals(windowDisplayName)
                 && isAgreedWithWindows(placedBounds, windowDisplayName, display)
-                && placedBounds.bounds().equals(physicalBoundsOf(window.getBounds(), display));
+                && logicalBoundsOf(placedBounds.bounds(), display).equals(window.getBounds());
     }
 
     /**
@@ -677,27 +710,6 @@ final class FittedWindow {
     }
 
     /**
-     * Returns the physical bounds AWT gives a window with the given logical bounds on a display. AWT keeps the display
-     * at its physical origin, and scales the window's offset from it and its size.
-     *
-     * @param logicalBounds
-     *            - The window's bounds in the logical pixels of AWT
-     * @param display
-     *            - The display the window is on
-     *
-     * @return The window's bounds in physical pixels
-     */
-    private static Rectangle physicalBoundsOf(Rectangle logicalBounds, DisplayArea display) {
-        float displayScale = (float) display.dpi() / UNSCALED_DPI;
-        Point displayOrigin = display.bounds().getLocation();
-
-        return new Rectangle(displayOrigin.x + toPhysicalPixels(logicalBounds.x - displayOrigin.x, displayScale),
-                displayOrigin.y + toPhysicalPixels(logicalBounds.y - displayOrigin.y, displayScale),
-                toPhysicalPixels(logicalBounds.width, displayScale),
-                toPhysicalPixels(logicalBounds.height, displayScale));
-    }
-
-    /**
      * Converts a length in physical pixels to the logical pixels of AWT at a scale, rounding half down as AWT does.
      *
      * @param physicalPixels
@@ -709,20 +721,6 @@ final class FittedWindow {
      */
     private static int toLogicalPixels(int physicalPixels, float scale) {
         return (int) Math.ceil(physicalPixels / scale - 0.5);
-    }
-
-    /**
-     * Converts a length in the logical pixels of AWT to physical pixels at a scale, rounding half down as AWT does.
-     *
-     * @param logicalPixels
-     *            - The length in logical pixels
-     * @param scale
-     *            - The display's scale, in the single precision AWT keeps it in
-     *
-     * @return The length in physical pixels
-     */
-    private static int toPhysicalPixels(int logicalPixels, float scale) {
-        return (int) Math.ceil(logicalPixels * scale - 0.5);
     }
 
     /**
@@ -857,15 +855,6 @@ final class FittedWindow {
      */
     private JScrollPane contentScrollPane() {
         return ((RootPaneContainer) window).getContentPane() instanceof JScrollPane scrollPane ? scrollPane : null;
-    }
-
-    /**
-     * Returns the window's root pane, which holds this fitted window.
-     *
-     * @return The window's root pane
-     */
-    private JRootPane rootPane() {
-        return ((RootPaneContainer) window).getRootPane();
     }
 
     /**

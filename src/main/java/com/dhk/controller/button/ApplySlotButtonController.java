@@ -16,8 +16,6 @@ package com.dhk.controller.button;
 
 import java.util.Arrays;
 
-import javax.swing.Timer;
-
 import com.dhk.controller.DhkController;
 import com.dhk.controller.IController;
 import com.dhk.io.DisplayConfig;
@@ -42,7 +40,6 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
     private DisplayConfig displayConfig;
     private SetDisplay setDisplay;
     private AppRefresher appRefresher;
-    private Timer reInitTimer;
 
     /**
      * Constructor for the {@link ApplySlotButtonController} class.
@@ -90,11 +87,6 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
 
     @Override
     public void cleanUp() {
-        // A refresh is tearing this controller down, so a still-pending refresh it scheduled would be a duplicate
-        if (reInitTimer != null) {
-            reInitTimer.stop();
-            reInitTimer = null;
-        }
     }
 
     /**
@@ -128,20 +120,8 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
                     model.getSlot(displayIndex, slotIndex).getScalingMode());
             setDisplay.preserveArrangement(arrangementSnapshot);
 
-            /*
-             * Re-initialize the app to prevent window corruption, but defer briefly so the display reconfiguration
-             * settles first; otherwise the rebuilt frame is re-fitted against stale display bounds. Rapid successive
-             * applies coalesce into one refresh
-             */
-            if (reInitTimer != null && reInitTimer.isRunning()) {
-                reInitTimer.restart();
-
-                return;
-            }
-
-            reInitTimer = new Timer(AppRefresher.REFRESH_DELAY_MS, e -> appRefresher.reInitApp());
-            reInitTimer.setRepeats(false);
-            reInitTimer.start();
+            // The apply returns once it is in effect, and each window waits for AWT to catch up before it is re-fitted
+            appRefresher.reInitApp();
         }
     }
 

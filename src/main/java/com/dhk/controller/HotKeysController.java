@@ -63,7 +63,6 @@ public class HotKeysController implements IController {
     private RecordingTarget recordingTarget;
     private Timer idleTimer;
     private Timer releaseMessageTimer;
-    private Timer reInitTimer;
     private AppRefresher appRefresher;
     private int currentKeyCount;
     private int maxNumOfSlots;
@@ -183,12 +182,6 @@ public class HotKeysController implements IController {
             releaseMessageTimer = null;
         }
 
-        // A refresh is tearing this controller down, so a still-pending refresh it scheduled would be a duplicate
-        if (reInitTimer != null) {
-            reInitTimer.stop();
-            reInitTimer = null;
-        }
-
         // A recording cut short by a refresh is discarded, since the refreshed model reloads the saved hot keys
         recordingTarget = null;
         anyHotKeyChanging = false;
@@ -272,9 +265,9 @@ public class HotKeysController implements IController {
             }
         }
 
-        // Re-initialize the app once, after every targeted display has been updated
+        // Re-initialize the app once every targeted display is updated, since each apply returns once it is in effect
         if (displaySettingsApplied) {
-            scheduleReInit();
+            appRefresher.reInitApp();
         }
     }
 
@@ -751,23 +744,6 @@ public class HotKeysController implements IController {
         }
 
         return false;
-    }
-
-    /**
-     * Schedules a single, deferred re-initialization of the app after display settings are applied. The refresh is
-     * delayed so the asynchronous display reconfiguration settles first, and rapid successive applies coalesce into one
-     * refresh.
-     */
-    private void scheduleReInit() {
-        // Restarting extends the settle delay past the latest apply
-        if (reInitTimer != null && reInitTimer.isRunning()) {
-            reInitTimer.restart();
-            return;
-        }
-
-        reInitTimer = new Timer(AppRefresher.REFRESH_DELAY_MS, e -> appRefresher.reInitApp());
-        reInitTimer.setRepeats(false);
-        reInitTimer.start();
     }
 
     /**

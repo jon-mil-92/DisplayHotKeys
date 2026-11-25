@@ -253,7 +253,7 @@ public class DhkView implements IView {
      */
     private void closeTransientDialogs() {
         for (Window window : Window.getWindows()) {
-            if (window instanceof JDialog && window.isShowing() && !WindowUtil.isFittedToWorkingArea(window)) {
+            if (window instanceof JDialog && window.isShowing() && !WindowUtil.isFitted(window)) {
                 window.dispose();
             }
         }

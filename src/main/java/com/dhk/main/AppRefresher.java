@@ -38,12 +38,6 @@ public class AppRefresher {
     private DisplayConfig displayConfig;
 
     /**
-     * Delay between applying display settings and re-initializing the application for them, which lets Windows finish
-     * settling the new display configuration before the re-initialization reads it.
-     */
-    public static final int REFRESH_DELAY_MS = 400;
-
-    /**
      * Constructor for the {@link AppRefresher} class.
      *
      * @param model
