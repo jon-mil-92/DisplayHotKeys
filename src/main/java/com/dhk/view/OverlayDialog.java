@@ -285,11 +285,11 @@ public abstract class OverlayDialog implements IView {
     }
 
     /**
-     * Creates a semi-transparent darkening panel to overlay the parent frame.
+     * Creates a semi-transparent darkening panel to overlay a window.
      *
-     * @return A semi-transparent darkening panel to overlay the parent frame
+     * @return A semi-transparent darkening panel to overlay a window
      */
-    private Component createDarkeningGlassPane() {
+    protected Component createDarkeningGlassPane() {
         JPanel darkeningPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics graphics) {

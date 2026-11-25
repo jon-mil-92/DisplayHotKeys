@@ -410,10 +410,10 @@ public class AboutDialog extends OverlayDialog {
     }
 
     /**
-     * Creates an action listener that shows the bundled license text in its own dialog.
+     * Creates an action listener that shows the bundled license text in its own dialog over the darkened about dialog.
      *
      * @param aboutDialog
-     *            - The about dialog that owns the license dialog
+     *            - The about dialog that owns the license dialog and is darkened while the license is open
      *
      * @return An action listener that shows the license dialog
      */
@@ -429,7 +429,13 @@ public class AboutDialog extends OverlayDialog {
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
                     public void run() {
+                        // The modal license blocks until closed, so the darkening lasts exactly while it is open
+                        Component darkeningGlassPane = createDarkeningGlassPane();
+                        aboutDialog.setGlassPane(darkeningGlassPane);
+
+                        darkeningGlassPane.setVisible(true);
                         new LicenseDialog(aboutDialog).showLicenseDialog();
+                        darkeningGlassPane.setVisible(false);
                     }
                 });
             }
