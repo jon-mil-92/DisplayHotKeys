@@ -41,9 +41,10 @@ struct DisplayInfoOverlayDefinition {
     std::vector<std::wstring> values;
 
     /**
-     * A point on each panel's display in physical desktop coordinates, which selects the display the panel sits on.
+     * Bounds of each panel's display in physical desktop coordinates. A panel is shown only on the display that still
+     * has exactly these bounds, so it never lands on another display after the displays move.
      */
-    std::vector<POINT> anchorPoints;
+    std::vector<RECT> displayBounds;
 
     /**
      * Where the panels sit on each display, in the order top left, top right, center, bottom left, and bottom right.

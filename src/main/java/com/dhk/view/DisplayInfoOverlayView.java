@@ -113,7 +113,7 @@ public class DisplayInfoOverlayView {
         ActiveDisplaySettings[] activeDisplaySettings = displayConfig.getActiveDisplaySettings(displayIds);
         List<String> headers = new ArrayList<String>();
         List<String> values = new ArrayList<String>();
-        List<Integer> anchorPoints = new ArrayList<Integer>();
+        List<Integer> displayBounds = new ArrayList<Integer>();
 
         for (int displayIndex = 0; displayIndex < displayIds.length; displayIndex++) {
             ActiveDisplaySettings settings = activeDisplaySettings[displayIndex];
@@ -126,8 +126,9 @@ public class DisplayInfoOverlayView {
             headers.add(Localizer.format("overlay.display", displayNumber(model, displayIndex)));
             values.addAll(List.of(settingValues(displayConfig, displayIds[displayIndex], settings)));
 
-            anchorPoints.add(settings.getDesktopX());
-            anchorPoints.add(settings.getDesktopY());
+            // A panel shows only while its display keeps these bounds, so it never lands on a display that moved
+            displayBounds.addAll(List.of(settings.getDesktopX(), settings.getDesktopY(),
+                    settings.getDisplayMode().getWidth(), settings.getDisplayMode().getHeight()));
         }
 
         // The chosen scale sizes the fonts and the spacing inside the panels, which sets the size of the overlay
@@ -161,7 +162,7 @@ public class DisplayInfoOverlayView {
         int overlayOpacity = Math.round(model.getInfoOverlayOpacity() * DisplayInfoOverlay.MAX_OVERLAY_OPACITY / 100f);
 
         displayInfoOverlay.show(headers.toArray(new String[0]), Localizer.getTexts(SETTING_LABEL_KEYS),
-                values.toArray(new String[0]), anchorPoints.stream().mapToInt(Integer::intValue).toArray(),
+                values.toArray(new String[0]), displayBounds.stream().mapToInt(Integer::intValue).toArray(),
                 model.getInfoOverlayPosition(), overlayColors, overlayMetrics, font.getFamily(), overlayOpacity,
                 model.getInfoOverlayDuration() * 1000);
     }

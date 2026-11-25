@@ -191,9 +191,9 @@ static constexpr int OVERLAY_METRIC_COLUMN_GAP = com_dhk_io_DisplayInfoOverlay_O
 static constexpr int OVERLAY_METRIC_COUNT = com_dhk_io_DisplayInfoOverlay_OVERLAY_METRIC_COUNT;
 
 /**
- * Number of ints per panel in the anchor points the caller supplies.
+ * Number of ints per panel in the display bounds the caller supplies, which are the desktop x, y, width, and height.
  */
-static constexpr int ANCHOR_FIELD_COUNT = com_dhk_io_DisplayInfoOverlay_ANCHOR_FIELD_COUNT;
+static constexpr int DISPLAY_BOUNDS_FIELD_COUNT = com_dhk_io_DisplayInfoOverlay_DISPLAY_BOUNDS_FIELD_COUNT;
 
 /**
  * Number of positions the caller can place the panels at on each display.
@@ -241,8 +241,8 @@ static constexpr int CORNER_RADIUS = 8;
  *            - The label of each setting line, shared by every panel, which needs at least one label
  * @param values
  *            - The value of each setting line, panel by panel, with one value per label for each header
- * @param anchorPoints
- *            - The desktop x and y coordinates of a point on each panel's display, in physical pixels
+ * @param displayBounds
+ *            - The desktop bounds of each panel's display in physical pixels, which a panel is shown only within
  * @param position
  *            - Where the panels sit on each display, below OVERLAY_POSITION_COUNT
  * @param overlayColors
@@ -259,12 +259,12 @@ static constexpr int CORNER_RADIUS = 8;
  * @return Whether the panels were accepted
  */
 extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeShow(
-    JNIEnv *env, jobject obj, jobjectArray headers, jobjectArray labels, jobjectArray values, jintArray anchorPoints,
+    JNIEnv *env, jobject obj, jobjectArray headers, jobjectArray labels, jobjectArray values, jintArray displayBounds,
     jint position, jintArray overlayColors, jfloatArray overlayMetrics, jstring fontFamily, jint opacity,
     jint durationMs) {
     (void) obj;
 
-    if (!headers || !labels || !values || !anchorPoints || !overlayColors || !overlayMetrics || durationMs <= 0 ||
+    if (!headers || !labels || !values || !displayBounds || !overlayColors || !overlayMetrics || durationMs <= 0 ||
         env->GetArrayLength(labels) == 0 || env->GetArrayLength(overlayColors) < OVERLAY_COLOR_COUNT ||
         env->GetArrayLength(overlayMetrics) < OVERLAY_METRIC_COUNT || position < 0 ||
         position >= OVERLAY_POSITION_COUNT) {
@@ -273,21 +273,21 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeS
 
     jsize panelCount = env->GetArrayLength(headers);
 
-    // Every panel needs a value per label and an anchor point, so short arrays are rejected rather than misread
+    // Every panel needs a value per label and its display's bounds, so short arrays are rejected rather than misread
     if (env->GetArrayLength(values) < panelCount * env->GetArrayLength(labels) ||
-        env->GetArrayLength(anchorPoints) < panelCount * ANCHOR_FIELD_COUNT) {
+        env->GetArrayLength(displayBounds) < panelCount * DISPLAY_BOUNDS_FIELD_COUNT) {
         return JNI_FALSE;
     }
 
     jint colors[OVERLAY_COLOR_COUNT];
     jfloat metrics[OVERLAY_METRIC_COUNT];
-    vector<jint> anchors(panelCount * ANCHOR_FIELD_COUNT);
+    vector<jint> bounds(panelCount * DISPLAY_BOUNDS_FIELD_COUNT);
 
     env->GetIntArrayRegion(overlayColors, 0, OVERLAY_COLOR_COUNT, colors);
     env->GetFloatArrayRegion(overlayMetrics, 0, OVERLAY_METRIC_COUNT, metrics);
 
-    if (!anchors.empty()) {
-        env->GetIntArrayRegion(anchorPoints, 0, (jsize) anchors.size(), anchors.data());
+    if (!bounds.empty()) {
+        env->GetIntArrayRegion(displayBounds, 0, (jsize) bounds.size(), bounds.data());
     }
 
     shared_ptr<DisplayInfoOverlayDefinition> definition = make_shared<DisplayInfoOverlayDefinition>();
@@ -296,8 +296,10 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_dhk_io_DisplayInfoOverlay_nativeS
     definition->values = readWideStrings(env, values);
 
     for (jsize panelIndex = 0; panelIndex < panelCount; panelIndex++) {
-        definition->anchorPoints.push_back(
-            {anchors[panelIndex * ANCHOR_FIELD_COUNT], anchors[panelIndex * ANCHOR_FIELD_COUNT + 1]});
+        const jint *panelBounds = &bounds[panelIndex * DISPLAY_BOUNDS_FIELD_COUNT];
+
+        definition->displayBounds.push_back(
+            {panelBounds[0], panelBounds[1], panelBounds[0] + panelBounds[2], panelBounds[1] + panelBounds[3]});
     }
 
     definition->position = position;
@@ -614,10 +616,11 @@ static void showPanels() {
         monitorInfo.cbSize = sizeof(monitorInfo);
         UINT dpiY = 0;
 
-        panel.monitor = MonitorFromPoint(definition->anchorPoints[panelIndex], MONITOR_DEFAULTTONEAREST);
+        const RECT &displayBounds = definition->displayBounds[panelIndex];
+        panel.monitor = MonitorFromRect(&displayBounds, MONITOR_DEFAULTTONULL);
 
-        // A display that vanished since the settings were read has nowhere to show its panel
-        if (!GetMonitorInfoW(panel.monitor, &monitorInfo)) {
+        // A display that vanished or moved since its bounds were read is skipped rather than given another's panel
+        if (!GetMonitorInfoW(panel.monitor, &monitorInfo) || !EqualRect(&monitorInfo.rcMonitor, &displayBounds)) {
             if (panel.window) {
                 DestroyWindow(panel.window);
             }
@@ -1017,7 +1020,8 @@ static void hidePanels() {
 }
 
 /**
- * Handles the messages of a panel window, which keeps the size each show gives it when it moves to another display.
+ * Handles the messages of a panel window, which keeps the size each show gives it when it moves to another display and
+ * hides every panel once the displays change.
  *
  * @param windowHandle
  *            - The panel window
@@ -1034,6 +1038,10 @@ static LRESULT CALLBACK handlePanelEvents(HWND windowHandle, UINT message, WPARA
     switch (message) {
     case WM_DPICHANGED:
         // Each show sizes the panel for its display, so the size suggested when it moves between displays is ignored
+        return 0;
+    case WM_DISPLAYCHANGE:
+        // The panels keep their desktop position, which can lie on another display once the displays move
+        hidePanels();
         return 0;
     default:
         return DefWindowProcW(windowHandle, message, eventType, eventData);

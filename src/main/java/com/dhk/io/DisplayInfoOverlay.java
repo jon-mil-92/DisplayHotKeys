@@ -89,10 +89,10 @@ public class DisplayInfoOverlay {
     public static final int OVERLAY_METRIC_COUNT = 7;
 
     /**
-     * Number of ints per panel in the anchor points handed to {@link #show}, which are the desktop x and y of a point
-     * on the panel's display.
+     * Number of ints per panel in the display bounds handed to {@link #show}, which are the desktop x, y, width, and
+     * height of the panel's display.
      */
-    public static final int ANCHOR_FIELD_COUNT = 2;
+    public static final int DISPLAY_BOUNDS_FIELD_COUNT = 4;
 
     /**
      * Position handed to {@link #show} that places the panels in the top-right corner of each display, which is the
@@ -135,8 +135,8 @@ public class DisplayInfoOverlay {
      *            - The label of each setting line, shared by every panel, which needs at least one label
      * @param values
      *            - The value of each setting line, panel by panel, with one value per label for each header
-     * @param anchorPoints
-     *            - The desktop x and y coordinates of a point on each panel's display, in physical pixels
+     * @param displayBounds
+     *            - The desktop bounds of each panel's display in physical pixels, which a panel is shown only within
      * @param position
      *            - Where the panels sit on each display, below {@link #OVERLAY_POSITION_COUNT}
      * @param overlayColors
@@ -152,7 +152,7 @@ public class DisplayInfoOverlay {
      *
      * @return Whether the panels were accepted
      */
-    private native boolean nativeShow(String[] headers, String[] labels, String[] values, int[] anchorPoints,
+    private native boolean nativeShow(String[] headers, String[] labels, String[] values, int[] displayBounds,
             int position, int[] overlayColors, float[] overlayMetrics, String fontFamily, int opacity, int durationMs);
 
     /**
@@ -170,8 +170,8 @@ public class DisplayInfoOverlay {
      *            - The label of each setting line, shared by every panel, which needs at least one label
      * @param values
      *            - The value of each setting line, panel by panel, with one value per label for each header
-     * @param anchorPoints
-     *            - The desktop x and y coordinates of a point on each panel's display, in physical pixels
+     * @param displayBounds
+     *            - The desktop bounds of each panel's display in physical pixels, which a panel is shown only within
      * @param position
      *            - Where the panels sit on each display, below {@link #OVERLAY_POSITION_COUNT}
      * @param overlayColors
@@ -187,13 +187,13 @@ public class DisplayInfoOverlay {
      *
      * @return Whether the panels were accepted
      */
-    public boolean show(String[] headers, String[] labels, String[] values, int[] anchorPoints, int position,
+    public boolean show(String[] headers, String[] labels, String[] values, int[] displayBounds, int position,
             int[] overlayColors, float[] overlayMetrics, String fontFamily, int opacity, int durationMs) {
         if (!libraryLoaded) {
             return false;
         }
 
-        return nativeShow(headers, labels, values, anchorPoints, position, overlayColors, overlayMetrics, fontFamily,
+        return nativeShow(headers, labels, values, displayBounds, position, overlayColors, overlayMetrics, fontFamily,
                 opacity, durationMs);
     }
 
