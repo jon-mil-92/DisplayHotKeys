@@ -20,8 +20,8 @@
 
 /**
  * The text, placement, colors, font, and timing of a set of display info panels, captured up front so showing them
- * never has to call back for any of it. Every metric is in unscaled pixels and is scaled for the display each panel
- * sits on.
+ * never has to call back for any of it. Every metric is in unscaled, possibly fractional pixels, and is rounded only
+ * once it is scaled for the display each panel sits on.
  */
 struct DisplayInfoOverlayDefinition {
     /**
@@ -41,9 +41,15 @@ struct DisplayInfoOverlayDefinition {
     std::vector<std::wstring> values;
 
     /**
-     * A point on each panel's display in physical desktop coordinates, which selects the display the panel sits on.
+     * Bounds of each panel's display in physical desktop coordinates. A panel is shown only on the display that still
+     * has exactly these bounds, so it never lands on another display after the displays move.
      */
-    std::vector<POINT> anchorPoints;
+    std::vector<RECT> displayBounds;
+
+    /**
+     * Where the panels sit on each display, in the order top left, top right, center, bottom left, and bottom right.
+     */
+    int position;
 
     /**
      * Color filling each panel.
@@ -68,37 +74,37 @@ struct DisplayInfoOverlayDefinition {
     /**
      * Height of the setting lines' font em square.
      */
-    int fontSize;
+    float fontSize;
 
     /**
      * Height of the header line's font em square.
      */
-    int headerFontSize;
+    float headerFontSize;
 
     /**
      * Space between a panel's edges and its text.
      */
-    int padding;
+    float padding;
 
     /**
      * Space on each side of the separator beneath the header line.
      */
-    int headerGap;
+    float headerGap;
 
     /**
      * Space between consecutive setting lines.
      */
-    int lineGap;
+    float lineGap;
 
     /**
      * Space between the label column and the value column.
      */
-    int columnGap;
+    float columnGap;
 
     /**
      * Space between a panel and the edges of its display's work area, and between panels stacked on one display.
      */
-    int margin;
+    float margin;
 
     /**
      * Opacity of the panels, from 0 (invisible) to 255 (opaque).
@@ -112,8 +118,8 @@ struct DisplayInfoOverlayDefinition {
 };
 
 /**
- * A shown display info panel and the positions it was laid out with, in physical pixels, so painting it never has to
- * measure or scale anything again.
+ * A shown display info panel, its display, and the size and positions it was laid out with, in physical pixels, so
+ * placing and painting it never has to measure anything again.
  */
 struct DisplayInfoPanel {
     /**
@@ -122,9 +128,24 @@ struct DisplayInfoPanel {
     HWND window;
 
     /**
+     * Display the panel sits on, or null when that display vanished before the panel could be shown.
+     */
+    HMONITOR monitor;
+
+    /**
+     * Work area of the panel's display on the desktop, which the panel is placed within.
+     */
+    RECT workArea;
+
+    /**
      * DPI of the display the panel sits on, which every metric is scaled by.
      */
     UINT dpi;
+
+    /**
+     * Size of the panel's window.
+     */
+    SIZE size;
 
     /**
      * Top-left corner of the header line, whose left edge every label shares.
@@ -150,11 +171,6 @@ struct DisplayInfoPanel {
      * Left edge of the value column, which sits past the widest label by the column gap.
      */
     LONG valueColumnLeft;
-
-    /**
-     * Whether the panel draws its own border, which it does where the system cannot color the window border.
-     */
-    bool drawFrame;
 };
 
 /**

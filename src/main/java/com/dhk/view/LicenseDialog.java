@@ -17,7 +17,6 @@ package com.dhk.view;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Insets;
-import java.awt.Point;
 import java.awt.Window;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,9 +28,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
-import com.dhk.io.NativeInputHook;
 import com.dhk.localization.Localizer;
-import com.dhk.utility.WindowDragRefitter;
 import com.dhk.utility.WindowUtil;
 
 /**
@@ -43,7 +40,6 @@ import com.dhk.utility.WindowUtil;
 public class LicenseDialog {
 
     private Window owner;
-    private NativeInputHook nativeInputHook;
     private int viewportHeight;
 
     /**
@@ -71,24 +67,16 @@ public class LicenseDialog {
      *
      * @param owner
      *            - The window that owns the license dialog and whose height it opens at
-     * @param nativeInputHook
-     *            - The shared native input hook used to re-fit the dialog after a cross-display drag (may be null)
      */
-    public LicenseDialog(Window owner, NativeInputHook nativeInputHook) {
+    public LicenseDialog(Window owner) {
         this.owner = owner;
-        this.nativeInputHook = nativeInputHook;
     }
 
     /**
-     * Shows the bundled additional terms followed by the license in a modal dialog owned by the owner window, and waits
-     * for it to close.
-     *
-     * @param location
-     *            - The top-left location to show the dialog at, or null to center it on its owner
-     *
-     * @return The location the dialog was at when it closed
+     * Shows the bundled additional terms followed by the license in a modal dialog centered on the owner window, and
+     * waits for it to close.
      */
-    public Point showLicenseDialog(Point location) {
+    public void showLicenseDialog() {
         JDialog licenseDialog = new JDialog(owner, Localizer.getText("license.title"),
                 JDialog.ModalityType.APPLICATION_MODAL);
         licenseDialog.setResizable(false);
@@ -134,31 +122,12 @@ public class LicenseDialog {
         licenseTextArea.invalidate();
         licenseDialog.pack();
 
-        // The text scrolls on its own, so the shared fit only caps the dialog and reserves no outer scroll bars
-        WindowUtil.fitDialogToWorkingArea(licenseDialog, location);
-        updateHorizontalScrolling(licenseDialog, licenseScrollPane);
-
-        // A drag onto another display refreshes the dialog there once the drag ends, matching the main frame
-        Runnable refreshAction = () -> refreshForCurrentDisplay(licenseDialog, licenseScrollPane);
-        new WindowDragRefitter(licenseDialog, nativeInputHook, refreshAction).install();
-
+        /*
+         * The text scrolls on its own, so the shared fit only caps the dialog and reserves no outer scroll bars. Every
+         * fit that places the dialog, on opening and on any later display, re-checks whether its text scrolls sideways
+         */
+        WindowUtil.fitDialog(licenseDialog, () -> updateHorizontalScrolling(licenseDialog, licenseScrollPane));
         licenseDialog.setVisible(true);
-
-        return licenseDialog.getLocation();
-    }
-
-    /**
-     * Refreshes the dialog for the display it now occupies through the shared window refresh, then re-checks whether
-     * its text has to scroll sideways there.
-     *
-     * @param licenseDialog
-     *            - The showing license dialog to refresh
-     * @param licenseScrollPane
-     *            - The scroll pane holding the license text
-     */
-    private void refreshForCurrentDisplay(JDialog licenseDialog, JScrollPane licenseScrollPane) {
-        WindowUtil.refreshWindow(licenseDialog);
-        updateHorizontalScrolling(licenseDialog, licenseScrollPane);
     }
 
     /**

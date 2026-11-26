@@ -14,21 +14,22 @@
  */
 package com.dhk.view;
 
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.Ellipse2D;
-import java.awt.geom.RoundRectangle2D;
 
 import javax.swing.JToggleButton;
 import javax.swing.UIManager;
 
+import com.formdev.flatlaf.ui.FlatButtonUI;
+import com.formdev.flatlaf.ui.FlatUIUtils;
+
 /**
  * Shows an on/off switch drawn in the current theme's colors, since the look and feel offers no switch of its own.
- * While the switch is on, its track fills with the theme's accent color and its thumb sits at the right end.
+ * While the switch is on, its track fills with the theme's slider color and its thumb sits at the right end.
  *
  * @author Jonathan R. Miller
  */
@@ -61,7 +62,7 @@ public class ToggleSwitch extends JToggleButton {
     private static final int THUMB_INSET = 4;
 
     /**
-     * Stroke width of the outline drawn around the track while the switch is off.
+     * Width of the outline drawn around the track while the switch is off.
      */
     private static final float OUTLINE_WIDTH = 1f;
 
@@ -74,11 +75,9 @@ public class ToggleSwitch extends JToggleButton {
     public ToggleSwitch(boolean selected) {
         super(null, null, selected);
 
-        // The switch paints all of itself, so the look and feel's button background, border, and focus ring stay off
+        // The switch paints all of itself, so its parent shows around the track and the button border stays off
         setOpaque(false);
-        setContentAreaFilled(false);
         setBorderPainted(false);
-        setFocusPainted(false);
     }
 
     @Override
@@ -108,56 +107,53 @@ public class ToggleSwitch extends JToggleButton {
             float trackX = (getWidth() - TRACK_WIDTH) / 2f;
             float trackY = (getHeight() - TRACK_HEIGHT) / 2f;
             float thumbDiameter = TRACK_HEIGHT - 2 * THUMB_INSET;
+            float thumbX = isSelected() ? trackX + TRACK_WIDTH - THUMB_INSET - thumbDiameter : trackX + THUMB_INSET;
             float thumbY = trackY + THUMB_INSET;
 
             // The theme colors are read on every paint, so a theme change needs no extra wiring
-            Color foreground = isEnabled()
-                    ? themeColor("Label.foreground", Color.BLACK)
-                    : themeColor("Label.disabledForeground", Color.GRAY);
+            Color indicator = indicatorColor();
 
             if (isSelected()) {
-                Color accent = themeColor("Component.accentColor", themeColor("Component.focusColor", foreground));
-                float thumbX = trackX + TRACK_WIDTH - THUMB_INSET - thumbDiameter;
+                switchGraphics.setColor(indicator);
+                switchGraphics.fill(
+                        FlatUIUtils.createComponentRectangle(trackX, trackY, TRACK_WIDTH, TRACK_HEIGHT, TRACK_HEIGHT));
+            } else {
+                // While disabled, the outline takes the color of a disabled slider track
+                String outlineColorKey = isEnabled() ? "Label.foreground" : "Slider.disabledTrackColor";
 
-                switchGraphics.setColor(isEnabled() ? accent : foreground);
-                switchGraphics.fill(new RoundRectangle2D.Float(trackX, trackY, TRACK_WIDTH, TRACK_HEIGHT, TRACK_HEIGHT,
-                        TRACK_HEIGHT));
-
-                switchGraphics.setColor(themeColor("Panel.background", Color.WHITE));
-                switchGraphics.fill(new Ellipse2D.Float(thumbX, thumbY, thumbDiameter, thumbDiameter));
-
-                return;
+                switchGraphics.setColor(UIManager.getColor(outlineColorKey));
+                FlatUIUtils.paintOutline(switchGraphics, trackX, trackY, TRACK_WIDTH, TRACK_HEIGHT, OUTLINE_WIDTH,
+                        TRACK_HEIGHT);
             }
 
-            // Inset the outline by half its width so the stroke stays inside the track's bounds
-            float outlineInset = OUTLINE_WIDTH / 2f;
-            float outlineWidth = TRACK_WIDTH - OUTLINE_WIDTH;
-            float outlineHeight = TRACK_HEIGHT - OUTLINE_WIDTH;
+            // Ring the thumb while the switch has keyboard focus, the same way each slider rings its own thumb
+            if (FlatUIUtils.isPermanentFocusOwner(this)) {
+                int focusWidth = UIManager.getInt("Slider.focusWidth");
+                float focusDiameter = thumbDiameter + 2 * focusWidth;
 
-            switchGraphics.setColor(foreground);
-            switchGraphics.setStroke(new BasicStroke(OUTLINE_WIDTH));
-            switchGraphics.draw(new RoundRectangle2D.Float(trackX + outlineInset, trackY + outlineInset, outlineWidth,
-                    outlineHeight, outlineHeight, outlineHeight));
-            switchGraphics.fill(new Ellipse2D.Float(trackX + THUMB_INSET, thumbY, thumbDiameter, thumbDiameter));
+                switchGraphics.setColor(UIManager.getColor("Slider.focusedColor"));
+                switchGraphics.fill(
+                        new Ellipse2D.Float(thumbX - focusWidth, thumbY - focusWidth, focusDiameter, focusDiameter));
+            }
+
+            switchGraphics.setColor(isSelected() ? UIManager.getColor("Panel.background") : indicator);
+            switchGraphics.fill(new Ellipse2D.Float(thumbX, thumbY, thumbDiameter, thumbDiameter));
         } finally {
             switchGraphics.dispose();
         }
     }
 
     /**
-     * Returns a color of the current theme, or the fallback color when the theme lacks it.
+     * Returns the color of the part that shows the switch's state, which is the track while on and the thumb while off.
+     * It follows the slider thumb's disabled, pressed, and hover colors, so the switches match the sliders beside them.
      *
-     * @param colorKey
-     *            - The key of the theme color
-     * @param fallbackColor
-     *            - The color to use when the theme lacks the key
-     *
-     * @return The theme color
+     * @return The indicator color
      */
-    private Color themeColor(String colorKey, Color fallbackColor) {
-        Color color = UIManager.getColor(colorKey);
+    private Color indicatorColor() {
+        Color enabledColor = UIManager.getColor(isSelected() ? "Slider.thumbColor" : "Label.foreground");
 
-        return color != null ? color : fallbackColor;
+        return FlatButtonUI.buttonStateColor(this, enabledColor, UIManager.getColor("Slider.disabledThumbColor"), null,
+                UIManager.getColor("Slider.hoverThumbColor"), UIManager.getColor("Slider.pressedThumbColor"));
     }
 
 }

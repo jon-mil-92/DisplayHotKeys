@@ -15,6 +15,8 @@
 package com.dhk.view;
 
 import java.awt.Component;
+import java.awt.Dimension;
+import java.util.List;
 
 import javax.swing.ComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
@@ -32,6 +34,7 @@ import javax.swing.SwingConstants;
 public class CenteredComboBox<E> extends JComboBox<E> {
 
     private String itemTextSuffix = "";
+    private List<CenteredComboBox<?>> columnComboBoxes = List.of();
 
     /**
      * Serialization version of the {@link CenteredComboBox} class.
@@ -77,6 +80,41 @@ public class CenteredComboBox<E> extends JComboBox<E> {
     public void setItemTextSuffix(String itemTextSuffix) {
         this.itemTextSuffix = itemTextSuffix;
         repaint();
+    }
+
+    /**
+     * Joins the given column of combo boxes, so this combo box takes the width of the column's widest combo box.
+     *
+     * @param columnComboBoxes
+     *            - The combo boxes of the column, which this combo box adds itself to
+     */
+    public void joinColumn(List<CenteredComboBox<?>> columnComboBoxes) {
+        this.columnComboBoxes = columnComboBoxes;
+        columnComboBoxes.add(this);
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension preferredSize = getItemsPreferredSize();
+
+        /*
+         * Hidden combo boxes count too, so showing one never resizes the column. Each width comes from the look and
+         * feel's cached size, so the scan is cheap and still follows any change to a combo box's items
+         */
+        for (CenteredComboBox<?> columnComboBox : columnComboBoxes) {
+            preferredSize.width = Math.max(preferredSize.width, columnComboBox.getItemsPreferredSize().width);
+        }
+
+        return preferredSize;
+    }
+
+    /**
+     * Gets the preferred size that fits this combo box's own items, which ignores the rest of its column.
+     *
+     * @return The preferred size that fits this combo box's own items
+     */
+    private Dimension getItemsPreferredSize() {
+        return super.getPreferredSize();
     }
 
     /**

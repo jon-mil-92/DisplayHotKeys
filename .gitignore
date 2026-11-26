@@ -18,3 +18,4 @@ DisplayEventNotifier.dll
 SystemTrayIcon.dll
 NativeInputHook.dll
 DisplayInfoOverlay.dll
+WindowPlacement.dll

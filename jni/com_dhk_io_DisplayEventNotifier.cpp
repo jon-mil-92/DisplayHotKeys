@@ -30,6 +30,7 @@ using namespace std;
 
 static void runMessageLoopThread();
 LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType, LPARAM eventData);
+static chrono::steady_clock::time_point nextCheckTime();
 static bool processPotentialDisplayChange();
 static vector<string> normalizeSignatures(const vector<string> &rawSignatures);
 static void invokeJavaCallback(jmethodID methodId);
@@ -55,6 +56,11 @@ static jmethodID onNativeNotifyMethodId = nullptr;
 static jmethodID onShellRestartMethodId = nullptr;
 
 /**
+ * Cached method ID for the onWorkingAreaChange() callback; null when the method is unavailable.
+ */
+static jmethodID onWorkingAreaChangeMethodId = nullptr;
+
+/**
  * Thread that runs the Windows message loop and polling logic.
  */
 static thread messageLoopThread;
@@ -65,7 +71,7 @@ static thread messageLoopThread;
 static atomic_bool isRunning(false);
 
 /**
- * Hidden message window used to receive broadcasts such as WM_DEVICECHANGE and WM_DISPLAYCHANGE.
+ * Hidden message window used to receive broadcasts such as WM_DEVICECHANGE, WM_DISPLAYCHANGE, and WM_SETTINGCHANGE.
  */
 static HWND messageWindow = NULL;
 
@@ -162,9 +168,9 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 }
 
 /**
- * Starts native display event notifications. Stores a global reference to the registered notifier instance,
- * resolves the onNativeNotify callback and the optional onShellRestart callback, and launches the message loop thread.
- * Performs basic JNI error checks and does not start the thread if setup fails.
+ * Starts native display event notifications. Stores a global reference to the registered notifier instance, resolves
+ * the onNativeNotify callback and the optional onShellRestart and onWorkingAreaChange callbacks, and launches the
+ * message loop thread. Performs basic JNI error checks and does not start the thread if setup fails.
  *
  * @param env
  *            - The JNI environment pointer
@@ -204,10 +210,18 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeSta
         env->ExceptionClear();
     }
 
+    // The working area callback is optional in the same way, so a null id simply skips it
+    jmethodID workingAreaChangeMethodId = env->GetMethodID(notifierClass, "onWorkingAreaChange", "()V");
+
+    if (!workingAreaChangeMethodId) {
+        env->ExceptionClear();
+    }
+
     // All JNI setup succeeded; commit to globals and start thread
     displayEventNotifierGlobalRef = globalRef;
     onNativeNotifyMethodId = nativeNotifyMethodId;
     onShellRestartMethodId = shellRestartMethodId;
+    onWorkingAreaChangeMethodId = workingAreaChangeMethodId;
 
     isRunning.store(true);
     messageLoopThread = thread(runMessageLoopThread);
@@ -245,6 +259,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_dhk_io_DisplayEventNotifier_nativeSto
 
     onNativeNotifyMethodId = nullptr;
     onShellRestartMethodId = nullptr;
+    onWorkingAreaChangeMethodId = nullptr;
 }
 
 /**
@@ -278,13 +293,14 @@ extern "C" JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *vm, void *reserved) {
 
     onNativeNotifyMethodId = nullptr;
     onShellRestartMethodId = nullptr;
+    onWorkingAreaChangeMethodId = nullptr;
     jvm = nullptr;
 }
 
 /**
  * Message loop runner executed on a dedicated thread. Creates a hidden top-level window to receive WM_DISPLAYCHANGE,
- * WM_DEVICECHANGE, and the shell's TaskbarCreated broadcasts, registers for monitor device interface notifications, and
- * periodically polls the visible display configuration via getVisibleDisplaySignatures().
+ * WM_DEVICECHANGE, WM_SETTINGCHANGE, and the shell's TaskbarCreated broadcasts, registers for monitor device interface
+ * notifications, and periodically polls the visible display configuration via getVisibleDisplaySignatures().
  */
 static void runMessageLoopThread() {
     WNDCLASSW windowClass = {};
@@ -328,6 +344,9 @@ static void runMessageLoopThread() {
         ChangeWindowMessageFilterEx(messageWindow, taskbarCreatedMessage, MSGFLT_ALLOW, NULL);
     }
 
+    // The shell broadcasts the working area change of a moved or resized task bar, which UIPI would drop the same way
+    ChangeWindowMessageFilterEx(messageWindow, WM_SETTINGCHANGE, MSGFLT_ALLOW, NULL);
+
     // Initialize timers so first notify is not blocked by debounce or poll
     lastNotifyTime = chrono::steady_clock::now() - chrono::milliseconds(DEBOUNCE_MS);
     lastPollTime = chrono::steady_clock::now() - chrono::milliseconds(POLL_INTERVAL_MS);
@@ -358,17 +377,25 @@ static void runMessageLoopThread() {
             DispatchMessage(&message);
         }
 
-        // Poll at a modest interval to reduce CPU usage
-        auto now = chrono::steady_clock::now();
-        auto elapsedSinceLastPoll = chrono::duration_cast<chrono::milliseconds>(now - lastPollTime).count();
+        // A stop request ends the loop at once instead of waiting out another check
+        if (!isRunning.load()) {
+            break;
+        }
 
-        if (elapsedSinceLastPoll >= POLL_INTERVAL_MS) {
+        // Poll at a modest interval, and check a pending change the moment it can have settled
+        auto now = chrono::steady_clock::now();
+
+        if (now >= nextCheckTime()) {
             processPotentialDisplayChange();
             lastPollTime = now;
         }
 
-        // Sleep briefly to avoid busy-waiting; keep responsive to messages
-        this_thread::sleep_for(chrono::milliseconds(50));
+        /*
+         * Sleep until the next check, waking at once for any message, so a stop request is answered immediately and an
+         * unchanged display configuration costs no wake-ups between polls
+         */
+        auto waitMs = chrono::ceil<chrono::milliseconds>(nextCheckTime() - chrono::steady_clock::now()).count();
+        MsgWaitForMultipleObjectsEx(0, nullptr, (DWORD) max<long long>(waitMs, 0), QS_ALLINPUT, MWMO_INPUTAVAILABLE);
     }
 
     // Cleanup resources deterministically
@@ -391,7 +418,7 @@ static void runMessageLoopThread() {
 /**
  * Window procedure for the hidden message window. Handles display arrival/removal and display change broadcasts,
  * forwarding meaningful changes through the common display-change processing logic, and forwards the shell's
- * TaskbarCreated broadcast as a separate shell-restart callback.
+ * TaskbarCreated broadcast and working area changes as their own callbacks.
  *
  * @param windowHandle
  *            - The handle to the hidden message window
@@ -429,6 +456,17 @@ LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType,
         processPotentialDisplayChange();
         return 0;
 
+    case WM_SETTINGCHANGE:
+        // Only a working area change matters, which the shell reports when the task bar moves, resizes, or auto-hides
+        if (eventType == SPI_SETWORKAREA) {
+            invokeJavaCallback(onWorkingAreaChangeMethodId);
+
+            // The task bar also resizes right after a DPI scale change, so the change is caught here before any poll
+            processPotentialDisplayChange();
+        }
+
+        return 0;
+
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
@@ -436,6 +474,25 @@ LRESULT CALLBACK handleEvents(HWND windowHandle, UINT message, WPARAM eventType,
     default:
         return DefWindowProcW(windowHandle, message, eventType, eventData);
     }
+}
+
+/**
+ * Returns when the display configuration is next checked, which is the next poll, or sooner when a pending change can
+ * have settled first. A pending change also waits out the debounce, so a check never repeats before it can notify.
+ *
+ * @return The time of the next check
+ */
+static chrono::steady_clock::time_point nextCheckTime() {
+    auto nextPollTime = lastPollTime + chrono::milliseconds(POLL_INTERVAL_MS);
+
+    if (!notificationPending) {
+        return nextPollTime;
+    }
+
+    auto settleTime = max(lastStateChangeTime + chrono::milliseconds(STABILIZATION_MS),
+                          lastNotifyTime + chrono::milliseconds(DEBOUNCE_MS));
+
+    return min(nextPollTime, settleTime);
 }
 
 /**

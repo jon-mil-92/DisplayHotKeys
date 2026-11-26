@@ -77,7 +77,7 @@ public class ThemeButtonController extends AbstractButtonController implements I
         themeUpdater.useDarkMode(model.isDarkMode());
         buttonThemesUpdater.updateButtonThemes();
         settingsMgr.saveIniDarkMode(model.isDarkMode());
-        WindowUtil.refreshWindow(view.getFrame());
+        WindowUtil.refitWindow(view.getFrame());
     }
 
 }

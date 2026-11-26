@@ -70,7 +70,8 @@ public class WindowController implements IController, WindowListener {
 
     @Override
     public void cleanUp() {
-        // The tray deliberately survives re-initialization; it only shuts down on restore or application exit
+        // The frame survives the re-initialization, so the listener comes off it rather than stacking up
+        view.getFrame().removeWindowListener(this);
     }
 
     @Override
@@ -87,7 +88,7 @@ public class WindowController implements IController, WindowListener {
     @Override
     public void windowDeiconified(WindowEvent e) {
         // Re-fit after the frame is shown so staleness accrued while iconified does not surface as scroll bars
-        SwingUtilities.invokeLater(() -> WindowUtil.refreshWindow(view.getFrame()));
+        SwingUtilities.invokeLater(() -> WindowUtil.refitWindow(view.getFrame()));
     }
 
     @Override

@@ -363,6 +363,15 @@ static void preserveArrangement(const vector<DisplayRect> &savedRects) {
     UINT32 pathCount = (UINT32) paths.size();
     UINT32 modeCount = (UINT32) modes.size();
 
+    // Keep every display's persisted scaling, since the active paths report the scaling Windows is effectively doing
+    vector<DISPLAYCONFIG_PATH_INFO> persistedScalingPaths = paths;
+
+    if (applyPersistedScaling(persistedScalingPaths, getDisplayConfig()) &&
+        SetDisplayConfig(pathCount, persistedScalingPaths.data(), modeCount, modes.data(), SDC_SUPPLIED_APPLY_FLAGS) ==
+            ERROR_SUCCESS) {
+        return;
+    }
+
     // Prefer the exact reflowed layout; only let Windows adjust the remainder when a driver rejects the strict apply
     if (SetDisplayConfig(pathCount, paths.data(), modeCount, modes.data(), SDC_SUPPLIED_APPLY_FLAGS) == ERROR_SUCCESS) {
         return;

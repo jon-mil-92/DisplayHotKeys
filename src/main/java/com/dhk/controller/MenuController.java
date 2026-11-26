@@ -20,7 +20,6 @@ import java.util.List;
 import com.dhk.controller.button.AboutButtonController;
 import com.dhk.controller.button.AdditionalSettingsButtonController;
 import com.dhk.controller.button.ThemeButtonController;
-import com.dhk.io.NativeInputHook;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
 import com.dhk.view.DhkView;
@@ -38,7 +37,6 @@ public class MenuController implements IController {
     private DhkController controller;
     private SettingsManager settingsMgr;
     private HotKeysController hotKeysController;
-    private NativeInputHook nativeInputHook;
     private AdditionalSettingsButtonController additionalSettingsButtonController;
     private AboutButtonController aboutButtonController;
     private List<IController> menuButtonControllers;
@@ -56,24 +54,21 @@ public class MenuController implements IController {
      *            - The settings manager for the application
      * @param hotKeysController
      *            - The controller for hot key management
-     * @param nativeInputHook
-     *            - The shared native input hook the dialogs use to re-fit after a cross-display drag (may be null)
      */
     public MenuController(DhkModel model, DhkView view, DhkController controller, SettingsManager settingsMgr,
-            HotKeysController hotKeysController, NativeInputHook nativeInputHook) {
+            HotKeysController hotKeysController) {
         this.model = model;
         this.view = view;
         this.controller = controller;
         this.settingsMgr = settingsMgr;
         this.hotKeysController = hotKeysController;
-        this.nativeInputHook = nativeInputHook;
     }
 
     @Override
     public void initController() {
         additionalSettingsButtonController = new AdditionalSettingsButtonController(model, view, controller,
-                settingsMgr, hotKeysController, nativeInputHook);
-        aboutButtonController = new AboutButtonController(view, nativeInputHook);
+                settingsMgr, hotKeysController);
+        aboutButtonController = new AboutButtonController(view);
 
         menuButtonControllers = new ArrayList<IController>();
         menuButtonControllers.add(additionalSettingsButtonController);

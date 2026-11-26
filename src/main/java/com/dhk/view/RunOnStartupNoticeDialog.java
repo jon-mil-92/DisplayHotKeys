@@ -17,6 +17,7 @@ package com.dhk.view;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -29,14 +30,14 @@ import javax.swing.SwingConstants;
 import com.dhk.localization.Localizer;
 
 /**
- * Shows a modal, icon-free dialog centered on the application frame, reporting why the run on startup setting could not
- * be changed, or why it was corrected on launch to match what really starts the application.
+ * Shows a modal, icon-free dialog centered on the window that shows it, reporting why the run on startup setting could
+ * not be changed, or why it was corrected on launch to match what really starts the application.
  *
  * @author Jonathan R. Miller
  */
 public class RunOnStartupNoticeDialog {
 
-    private JFrame parentFrame;
+    private Window parentWindow;
 
     /**
      * Product name shown as the dialog's title, which is never translated.
@@ -46,11 +47,11 @@ public class RunOnStartupNoticeDialog {
     /**
      * Constructor for the {@link RunOnStartupNoticeDialog} class.
      *
-     * @param parentFrame
-     *            - The application frame the dialog is centered on
+     * @param parentWindow
+     *            - The application frame or dialog the notice is centered on
      */
-    public RunOnStartupNoticeDialog(JFrame parentFrame) {
-        this.parentFrame = parentFrame;
+    public RunOnStartupNoticeDialog(Window parentWindow) {
+        this.parentWindow = parentWindow;
     }
 
     /**
@@ -77,7 +78,7 @@ public class RunOnStartupNoticeDialog {
     }
 
     /**
-     * Shows the modal dialog, centered on the parent frame, with centered message lines above a centered OK button.
+     * Shows the modal dialog, centered on the parent window, with centered message lines above a centered OK button.
      *
      * @param messageText
      *            - The message shown above the reason
@@ -89,10 +90,11 @@ public class RunOnStartupNoticeDialog {
          * A frame hidden for the tray or minimized has no on-screen bounds to center on, which can happen to the notice
          * shown on launch, so the dialog then stands alone at the center of the screen
          */
-        boolean frameShowing = parentFrame.isShowing() && (parentFrame.getExtendedState() & JFrame.ICONIFIED) == 0;
-        JFrame owner = frameShowing ? parentFrame : null;
+        boolean minimized = parentWindow instanceof JFrame
+                && (((JFrame) parentWindow).getExtendedState() & JFrame.ICONIFIED) != 0;
+        Window owner = (parentWindow.isShowing() && !minimized) ? parentWindow : null;
 
-        final JDialog dialog = new JDialog(owner, DIALOG_TITLE, true);
+        final JDialog dialog = new JDialog(owner, DIALOG_TITLE, JDialog.ModalityType.APPLICATION_MODAL);
         dialog.setResizable(false);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setLayout(new GridBagLayout());

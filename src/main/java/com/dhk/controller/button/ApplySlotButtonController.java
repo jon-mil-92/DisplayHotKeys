@@ -15,8 +15,7 @@
 package com.dhk.controller.button;
 
 import java.util.Arrays;
-
-import javax.swing.Timer;
+import java.util.List;
 
 import com.dhk.controller.DhkController;
 import com.dhk.controller.IController;
@@ -25,8 +24,7 @@ import com.dhk.io.SetDisplay;
 import com.dhk.io.SettingsManager;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
-import com.dhk.model.FramePlacement;
-import com.dhk.utility.WindowUtil;
+import com.dhk.model.Slot;
 import com.dhk.view.DhkView;
 
 /**
@@ -44,7 +42,6 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
     private DisplayConfig displayConfig;
     private SetDisplay setDisplay;
     private AppRefresher appRefresher;
-    private Timer reInitTimer;
 
     /**
      * Constructor for the {@link ApplySlotButtonController} class.
@@ -92,11 +89,6 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
 
     @Override
     public void cleanUp() {
-        // A refresh is tearing this controller down, so a still-pending refresh it scheduled would be a duplicate
-        if (reInitTimer != null) {
-            reInitTimer.stop();
-            reInitTimer = null;
-        }
     }
 
     /**
@@ -114,39 +106,18 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
 
         // If the connected displays have not changed
         if (Arrays.equals(model.getDisplayIds(), displayConfig.getDisplayIds())) {
-            // Capture the frame placement before the display reconfiguration relocates the window
-            FramePlacement placement = WindowUtil.capturePlacement(view.getFrame());
-
             // Dismiss a showing tray menu and display info panels, since both were placed against the old geometry
             controller.displayConfigurationChanged();
 
             // Capture the display arrangement before the display reconfiguration rearranges the display
             String[] arrangementSnapshot = displayConfig.captureArrangement();
 
-            setDisplay.applyDisplayOrientation(displayId, model.getSlot(displayIndex, slotIndex).getOrientationMode());
-            setDisplay.applyDisplaySettings(displayId,
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getWidth(),
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getHeight(),
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshNumerator(),
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshDenominator(),
-                    model.getSlot(displayIndex, slotIndex).getDpiScalePercentage(),
-                    model.getSlot(displayIndex, slotIndex).getScalingMode());
+            Slot appliedSlot = model.getSlot(displayIndex, slotIndex);
+            setDisplay.applyDisplaySettings(List.of(appliedSlot.toDisplaySettingsRequest(displayId)));
             setDisplay.preserveArrangement(arrangementSnapshot);
 
-            /*
-             * Re-initialize the app to prevent window corruption, but defer briefly so the display reconfiguration
-             * settles first; otherwise the rebuilt frame is placed against stale display bounds. Rapid successive
-             * applies coalesce into one refresh that reproduces the placement captured before the first apply
-             */
-            if (reInitTimer != null && reInitTimer.isRunning()) {
-                reInitTimer.restart();
-
-                return;
-            }
-
-            reInitTimer = new Timer(WindowUtil.REFRESH_DELAY_MS, e -> appRefresher.reInitApp(placement));
-            reInitTimer.setRepeats(false);
-            reInitTimer.start();
+            // The apply returns once it is in effect, and each window waits for AWT to catch up before it is re-fitted
+            appRefresher.reInitApp();
         }
     }
 

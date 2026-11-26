@@ -14,13 +14,56 @@
  */
 package com.dhk.io;
 
+import java.util.List;
+
 /**
  * Utilizes the SetDisplay JNI library to immediately apply the given display mode, DPI scale percentage, scaling mode,
- * and orientation mode for the given display.
+ * and orientation mode to one or more displays.
  *
  * @author Jonathan R. Miller
  */
 public class SetDisplay {
+
+    /**
+     * Index of the horizontal resolution in each display's settings record passed to {@link #setDisplays}.
+     */
+    private static final int DISPLAY_SETTING_WIDTH = 0;
+
+    /**
+     * Index of the vertical resolution in each display's settings record passed to {@link #setDisplays}.
+     */
+    private static final int DISPLAY_SETTING_HEIGHT = 1;
+
+    /**
+     * Index of the refresh rate's numerator in each display's settings record passed to {@link #setDisplays}.
+     */
+    private static final int DISPLAY_SETTING_REFRESH_NUMERATOR = 2;
+
+    /**
+     * Index of the refresh rate's denominator in each display's settings record passed to {@link #setDisplays}.
+     */
+    private static final int DISPLAY_SETTING_REFRESH_DENOMINATOR = 3;
+
+    /**
+     * Index of the DPI scale percentage in each display's settings record passed to {@link #setDisplays}.
+     */
+    private static final int DISPLAY_SETTING_DPI_SCALE_PERCENTAGE = 4;
+
+    /**
+     * Index of the scaling mode in each display's settings record passed to {@link #setDisplays}.
+     */
+    private static final int DISPLAY_SETTING_SCALING_MODE = 5;
+
+    /**
+     * Index of the orientation mode in each display's settings record passed to {@link #setDisplays}.
+     */
+    private static final int DISPLAY_SETTING_ORIENTATION = 6;
+
+    /**
+     * Number of values in each display's settings record passed to {@link #setDisplays}, which the native library reads
+     * through the same generated constant.
+     */
+    private static final int DISPLAY_SETTING_COUNT = 7;
 
     /**
      * Default constructor for the {@link SetDisplay} class.
@@ -37,36 +80,14 @@ public class SetDisplay {
     }
 
     /**
-     * Defines a JNI function to immediately apply the given settings for the given display.
+     * Defines a JNI function to immediately apply the given settings to one or more displays.
      *
-     * @param displayId
-     *            - The ID of the display to apply the display settings for
-     * @param resWidth
-     *            - The new horizontal resolution for the given display
-     * @param resHeight
-     *            - The new vertical resolution for the given display
-     * @param refreshNumerator
-     *            - The numerator of the new exact refresh rate (Hz = numerator / denominator)
-     * @param refreshDenominator
-     *            - The denominator of the new exact refresh rate (Hz = numerator / denominator)
-     * @param dpiScalePercentage
-     *            - The new DPI scale percentage for the given display
-     * @param scalingMode
-     *            - The new scaling mode for the given display
+     * @param displayIds
+     *            - The IDs of the displays to apply the display settings for
+     * @param displaySettings
+     *            - The settings of each display, {@link #DISPLAY_SETTING_COUNT} values per display in displayIds order
      */
-    private native void setDisplay(String displayId, int resWidth, int resHeight, int refreshNumerator,
-            int refreshDenominator, int dpiScalePercentage, int scalingMode);
-
-    /**
-     * Defines a JNI function to immediately apply the given orientation mode for the given display.
-     *
-     * @param displayId
-     *            - The ID of the display to apply the orientation mode for
-     * @param orientationMode
-     *            - The new orientation mode for the given display. 0 for Landscape, 1 for Portrait, 2 for Inverted
-     *            Landscape, and 3 for Inverted Portrait
-     */
-    private native void setOrientation(String displayId, int orientationMode);
+    private native void setDisplays(String[] displayIds, int[] displaySettings);
 
     /**
      * Defines a JNI function to reflow the multi-display arrangement after a batch of display changes.
@@ -77,40 +98,31 @@ public class SetDisplay {
     private native void preserveDisplayArrangement(String[] arrangementSnapshot);
 
     /**
-     * Immediately applies the given settings for the given display.
+     * Immediately applies the given settings to each display, rotating each display before applying its display mode,
+     * scaling mode, and DPI scale percentage.
      *
-     * @param displayId
-     *            - The ID of the display to apply the display settings for
-     * @param resWidth
-     *            - The new horizontal resolution for the given display
-     * @param resHeight
-     *            - The new vertical resolution for the given display
-     * @param refreshNumerator
-     *            - The numerator of the new exact refresh rate (Hz = numerator / denominator)
-     * @param refreshDenominator
-     *            - The denominator of the new exact refresh rate (Hz = numerator / denominator)
-     * @param dpiScalePercentage
-     *            - The new DPI scale percentage for the given display
-     * @param scalingMode
-     *            - The new scaling mode for the given display
+     * @param displaySettingsRequests
+     *            - The settings to apply, one request per display
      */
-    public void applyDisplaySettings(String displayId, int resWidth, int resHeight, int refreshNumerator,
-            int refreshDenominator, int dpiScalePercentage, int scalingMode) {
-        setDisplay(displayId, resWidth, resHeight, refreshNumerator, refreshDenominator, dpiScalePercentage,
-                scalingMode);
-    }
+    public void applyDisplaySettings(List<DisplaySettingsRequest> displaySettingsRequests) {
+        String[] displayIds = new String[displaySettingsRequests.size()];
+        int[] displaySettings = new int[displaySettingsRequests.size() * DISPLAY_SETTING_COUNT];
 
-    /**
-     * Immediately applies the given orientation mode for the given display.
-     *
-     * @param displayId
-     *            - The ID of the display to apply the orientation mode for
-     * @param orientationMode
-     *            - The new orientation mode for the given display. 0 for Landscape, 1 for Portrait, 2 for Inverted
-     *            Landscape, and 3 for Inverted Portrait
-     */
-    public void applyDisplayOrientation(String displayId, int orientationMode) {
-        setOrientation(displayId, orientationMode);
+        for (int requestIndex = 0; requestIndex < displaySettingsRequests.size(); requestIndex++) {
+            DisplaySettingsRequest request = displaySettingsRequests.get(requestIndex);
+            int recordStart = requestIndex * DISPLAY_SETTING_COUNT;
+
+            displayIds[requestIndex] = request.displayId();
+            displaySettings[recordStart + DISPLAY_SETTING_WIDTH] = request.width();
+            displaySettings[recordStart + DISPLAY_SETTING_HEIGHT] = request.height();
+            displaySettings[recordStart + DISPLAY_SETTING_REFRESH_NUMERATOR] = request.refreshNumerator();
+            displaySettings[recordStart + DISPLAY_SETTING_REFRESH_DENOMINATOR] = request.refreshDenominator();
+            displaySettings[recordStart + DISPLAY_SETTING_DPI_SCALE_PERCENTAGE] = request.dpiScalePercentage();
+            displaySettings[recordStart + DISPLAY_SETTING_SCALING_MODE] = request.scalingMode();
+            displaySettings[recordStart + DISPLAY_SETTING_ORIENTATION] = request.orientationMode();
+        }
+
+        setDisplays(displayIds, displaySettings);
     }
 
     /**

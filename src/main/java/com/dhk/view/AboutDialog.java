@@ -19,11 +19,8 @@ import java.awt.Desktop;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -37,7 +34,6 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
 import com.dhk.controller.button.DonateButtonController;
-import com.dhk.io.NativeInputHook;
 import com.dhk.localization.Localizer;
 import com.dhk.utility.VersionRetriever;
 
@@ -70,7 +66,6 @@ public class AboutDialog extends OverlayDialog {
     private JButton licenseButton;
     private JButton donateButton;
     private JButton releasesButton;
-    private Point licenseReopenLocation;
     private String latestVersion;
 
     /**
@@ -116,11 +111,9 @@ public class AboutDialog extends OverlayDialog {
      *
      * @param view
      *            - The view for the application
-     * @param nativeInputHook
-     *            - The shared native input hook used to re-fit the dialog after a cross-display drag (may be null)
      */
-    public AboutDialog(DhkView view, NativeInputHook nativeInputHook) {
-        super(view, nativeInputHook, Localizer.getText("about.title"));
+    public AboutDialog(DhkView view) {
+        super(view, Localizer.getText("about.title"));
     }
 
     /**
@@ -130,7 +123,7 @@ public class AboutDialog extends OverlayDialog {
      *            - The action to run when the dialog closes (not required)
      */
     public void showAboutDialog(Runnable onCloseAction) {
-        // A re-initialization reopens the dialog without coming through here, so only the user's open looks it up
+        // A re-initialization rebuilds the dialog without coming through here, so only the user's open looks it up
         fetchLatestVersion();
         showDialog(onCloseAction);
     }
@@ -314,16 +307,6 @@ public class AboutDialog extends OverlayDialog {
         licenseButton.addActionListener(createLicenseActionListener(aboutDialog));
         releasesButton.addActionListener(createReleasesActionListener());
 
-        // A License dialog a re-initialization closed opens again where it was, once this dialog is open to own it
-        if (licenseReopenLocation != null) {
-            aboutDialog.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowOpened(WindowEvent e) {
-                    SwingUtilities.invokeLater(() -> showLicenseDialog(aboutDialog, licenseReopenLocation));
-                }
-            });
-        }
-
         // The donation provider lives entirely in this controller, so switching providers never touches the dialog
         DonateButtonController donateButtonController = new DonateButtonController(this, donateButton);
         donateButtonController.initController();
@@ -427,10 +410,10 @@ public class AboutDialog extends OverlayDialog {
     }
 
     /**
-     * Creates an action listener that shows the bundled license text in its own dialog.
+     * Creates an action listener that shows the bundled license text in its own dialog over the darkened about dialog.
      *
      * @param aboutDialog
-     *            - The about dialog that owns the license dialog
+     *            - The about dialog that owns the license dialog and is darkened while the license is open
      *
      * @return An action listener that shows the license dialog
      */
@@ -446,27 +429,17 @@ public class AboutDialog extends OverlayDialog {
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
                     public void run() {
-                        showLicenseDialog(aboutDialog, null);
+                        // The modal license blocks until closed, so the darkening lasts exactly while it is open
+                        Component darkeningGlassPane = createDarkeningGlassPane();
+                        aboutDialog.setGlassPane(darkeningGlassPane);
+
+                        darkeningGlassPane.setVisible(true);
+                        new LicenseDialog(aboutDialog).showLicenseDialog();
+                        darkeningGlassPane.setVisible(false);
                     }
                 });
             }
         };
-    }
-
-    /**
-     * Shows the bundled license text in its own dialog, then records where it was if a re-initialization closed it, so
-     * the rebuilt about dialog can show it again there.
-     *
-     * @param aboutDialog
-     *            - The about dialog that owns the license dialog
-     * @param location
-     *            - The top-left location to show the license dialog at, or null to center it on the about dialog
-     */
-    private void showLicenseDialog(JDialog aboutDialog, Point location) {
-        Point closedLocation = new LicenseDialog(aboutDialog, getNativeInputHook()).showLicenseDialog(location);
-
-        // The user can only close the license dialog, so a destroyed about dialog means a re-initialization closed both
-        licenseReopenLocation = aboutDialog.isDisplayable() ? null : closedLocation;
     }
 
     /**

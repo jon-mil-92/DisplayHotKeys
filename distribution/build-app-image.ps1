@@ -3,7 +3,7 @@
 $ErrorActionPreference = 'Stop'
 $distDir = $PSScriptRoot
 $projectDir = Split-Path $distDir -Parent
-$version = '4.5.0'
+$version = '5.0.0'
 $jarName = "DisplayHotKeys-$version.jar"
 $copyright = "Copyright $([char]0x00A9) 2024-2026 Jonathan R. Miller"
 $inputDir = Join-Path $distDir 'input'
@@ -16,7 +16,7 @@ $icon = Join-Path $distDir 'dhk.ico'
 $resourceDir = Join-Path $distDir 'jpackage-resources'
 $launcherProperties = Join-Path $resourceDir 'DisplayHotKeys.properties'
 $dllNames = @('SetDisplay.dll', 'GetDisplay.dll', 'DisplayEventNotifier.dll', 'SystemTrayIcon.dll',
-    'NativeInputHook.dll', 'DisplayInfoOverlay.dll')
+    'NativeInputHook.dll', 'DisplayInfoOverlay.dll', 'WindowPlacement.dll')
 $startLauncherName = 'DisplayHotKeysLauncher.exe'
 $startLauncher = Join-Path $distDir $startLauncherName
 $uninstallScript = Join-Path $distDir 'uninstall.bat'
@@ -254,13 +254,9 @@ try {
         '--java-options', '-Xms48m',
         '--java-options', '-Xmx384m',
         '--java-options', '-XX:+UseZGC',
-        '--java-options', '-XX:+UnlockExperimentalVMOptions',
         '--java-options', '-XX:+ZGenerational',
         '--java-options', '-XX:SoftMaxHeapSize=256m',
-        '--java-options', '-XX:ZUncommitDelay=30',
-        '--java-options', '-XX:MaxMetaspaceSize=64m',
-        '--java-options', '-XX:ReservedCodeCacheSize=64m',
-        '--java-options', '-XX:ThreadStackSize=256'
+        '--java-options', '-XX:ZUncommitDelay=30'
     )
 
     Write-Host 'Running jpackage...'

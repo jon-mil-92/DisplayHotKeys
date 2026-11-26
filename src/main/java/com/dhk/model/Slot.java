@@ -14,6 +14,8 @@
  */
 package com.dhk.model;
 
+import com.dhk.io.DisplaySettingsRequest;
+
 /**
  * Defines the model for a Slot. The display mode, DPI scale percentage, scaling mode, orientation mode, and hot key for
  * a slot are initialized here.
@@ -167,6 +169,21 @@ public class Slot {
      */
     public void setClearingSlot(boolean clearingSlot) {
         this.clearingSlot = clearingSlot;
+    }
+
+    /**
+     * Creates the request that applies this slot's display mode, DPI scale percentage, scaling mode, and orientation
+     * mode to the given display.
+     *
+     * @param displayId
+     *            - The ID of the display to apply the slot's settings to
+     *
+     * @return The request that applies this slot's settings to the given display
+     */
+    public DisplaySettingsRequest toDisplaySettingsRequest(String displayId) {
+        return new DisplaySettingsRequest(displayId, displayMode.getWidth(), displayMode.getHeight(),
+                displayMode.getRefreshNumerator(), displayMode.getRefreshDenominator(), dpiScalePercentage, scalingMode,
+                orientationMode);
     }
 
 }

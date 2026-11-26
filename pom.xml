@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>DisplayHotKeys</groupId>
     <artifactId>DisplayHotKeys</artifactId>
-    <version>4.5.0</version>
+    <version>5.0.0</version>
     <name>DisplayHotKeys</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -48,6 +48,9 @@
                         <manifest>
                             <mainClass>com.dhk.main.DhkDriver</mainClass>
                         </manifest>
+                        <manifestEntries>
+                            <Multi-Release>true</Multi-Release>
+                        </manifestEntries>
                     </archive>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
@@ -69,12 +72,12 @@
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf</artifactId>
-            <version>3.7.2</version>
+            <version>3.8</version>
         </dependency>
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf-extras</artifactId>
-            <version>3.7.2</version>
+            <version>3.8</version>
         </dependency>
         <dependency>
             <groupId>org.ini4j</groupId>

@@ -39,6 +39,10 @@ public class DhkModel {
     private boolean runOnStartup;
     private HotKey displayInfoHotKey;
     private boolean autoShowInfoOverlay;
+    private int infoOverlayPosition;
+    private int infoOverlayScale;
+    private int infoOverlayOpacity;
+    private int infoOverlayDuration;
 
     /**
      * Default constructor for the {@link DhkModel} class.
@@ -59,6 +63,10 @@ public class DhkModel {
         runOnStartup = settingsMgr.getIniRunOnStartup();
         displayInfoHotKey = settingsMgr.getIniDisplayInfoHotKey();
         autoShowInfoOverlay = settingsMgr.getIniAutoShowInfoOverlay();
+        infoOverlayPosition = settingsMgr.getIniInfoOverlayPosition();
+        infoOverlayScale = settingsMgr.getIniInfoOverlayScale();
+        infoOverlayOpacity = settingsMgr.getIniInfoOverlayOpacity();
+        infoOverlayDuration = settingsMgr.getIniInfoOverlayDuration();
         displayConfig = settingsMgr.getDisplayConfig();
         maxNumOfSlots = settingsMgr.getMaxNumOfSlots();
         displayIds = settingsMgr.getDisplayIds();
@@ -281,6 +289,82 @@ public class DhkModel {
      */
     public void setAutoShowInfoOverlay(boolean autoShowInfoOverlay) {
         this.autoShowInfoOverlay = autoShowInfoOverlay;
+    }
+
+    /**
+     * Gets where the info overlay sits on each display, as one of the overlay's positions.
+     *
+     * @return The position of the info overlay
+     */
+    public int getInfoOverlayPosition() {
+        return infoOverlayPosition;
+    }
+
+    /**
+     * Sets where the info overlay sits on each display.
+     *
+     * @param infoOverlayPosition
+     *            - The position of the info overlay to set
+     */
+    public void setInfoOverlayPosition(int infoOverlayPosition) {
+        this.infoOverlayPosition = infoOverlayPosition;
+    }
+
+    /**
+     * Gets the percentage the info overlay's fonts and spacing are scaled by.
+     *
+     * @return The scale of the info overlay, as a percentage
+     */
+    public int getInfoOverlayScale() {
+        return infoOverlayScale;
+    }
+
+    /**
+     * Sets the percentage the info overlay's fonts and spacing are scaled by.
+     *
+     * @param infoOverlayScale
+     *            - The scale of the info overlay to set, as a percentage
+     */
+    public void setInfoOverlayScale(int infoOverlayScale) {
+        this.infoOverlayScale = infoOverlayScale;
+    }
+
+    /**
+     * Gets the opacity percentage of the info overlay's panels.
+     *
+     * @return The opacity of the info overlay, as a percentage
+     */
+    public int getInfoOverlayOpacity() {
+        return infoOverlayOpacity;
+    }
+
+    /**
+     * Sets the opacity percentage of the info overlay's panels.
+     *
+     * @param infoOverlayOpacity
+     *            - The opacity of the info overlay to set, as a percentage
+     */
+    public void setInfoOverlayOpacity(int infoOverlayOpacity) {
+        this.infoOverlayOpacity = infoOverlayOpacity;
+    }
+
+    /**
+     * Gets the number of seconds the info overlay stays visible.
+     *
+     * @return The duration of the info overlay, in seconds
+     */
+    public int getInfoOverlayDuration() {
+        return infoOverlayDuration;
+    }
+
+    /**
+     * Sets the number of seconds the info overlay stays visible.
+     *
+     * @param infoOverlayDuration
+     *            - The duration of the info overlay to set, in seconds
+     */
+    public void setInfoOverlayDuration(int infoOverlayDuration) {
+        this.infoOverlayDuration = infoOverlayDuration;
     }
 
 }

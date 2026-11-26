@@ -14,14 +14,16 @@
  */
 package com.dhk.main;
 
+import javax.swing.RepaintManager;
+
 import com.dhk.controller.DhkController;
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.SettingsManager;
 import com.dhk.model.DhkModel;
-import com.dhk.model.FramePlacement;
+import com.dhk.theme.ThemeUpdater;
+import com.dhk.utility.WindowUtil;
 import com.dhk.view.DhkView;
-import com.formdev.flatlaf.FlatDarculaLaf;
-import com.formdev.flatlaf.FlatIntelliJLaf;
+import com.dhk.view.OverlayDialog;
 import com.formdev.flatlaf.FlatLaf;
 
 /**
@@ -59,48 +61,41 @@ public class AppRefresher {
     }
 
     /**
-     * Re-initializes the settings manager, model, view, and controllers for the application, and then sets up the "look
-     * and feel" for the GUI. The view captures its own frame placement during re-initialization.
+     * Re-initializes the settings manager, model, view, and controllers for the application, rebuilding the frame and
+     * any open dialog inside their existing windows in the theme the settings file holds. The app is only
+     * re-initialized if there is an active display to prevent a JVM error from occurring.
      */
     public void reInitApp() {
-        reInitApp(null);
-    }
-
-    /**
-     * Re-initializes the settings manager, model, view, and controllers for the application, and then sets up the "look
-     * and feel" for the GUI. The app is only re-initialized if there is an active display to prevent a JVM error from
-     * occurring.
-     *
-     * @param capturedPlacement
-     *            - A frame placement captured before a display reconfiguration, used to reproduce the frame's position;
-     *            or null to have the view capture the placement live during re-initialization. Callers that change the
-     *            display geometry (resolution or DPI scale) must capture before applying, because the OS relocates the
-     *            existing frame as part of the change, making a live capture during re-initialization unreliable
-     */
-    public void reInitApp(FramePlacement capturedPlacement) {
         displayConfig.updateConnectedDisplays();
 
         if (displayConfig.getNumOfConnectedDisplays() == 0) {
             return;
         }
 
-        int previousFrameState = view.getFrame().getExtendedState();
+        try {
+            controller.cleanUp();
+            settingsMgr.initSettingsManager();
+            model.initModel(settingsMgr);
 
-        controller.cleanUp();
-        settingsMgr.initSettingsManager();
-        model.initModel(settingsMgr);
-        view.reInitView(capturedPlacement);
-        controller.reInitController(previousFrameState);
+            // A theme changed in the settings file is applied before the view is rebuilt, so new content starts in it
+            if (model.isDarkMode() != FlatLaf.isLafDark()) {
+                new ThemeUpdater().useDarkMode(model.isDarkMode());
+            }
 
-        if (model.isDarkMode()) {
-            FlatDarculaLaf.setup();
-        } else {
-            FlatIntelliJLaf.setup();
+            view.reInitView();
+            controller.reInitController();
+
+            // The open dialog is rebuilt after the controllers, so its content wires to the ones that replaced them
+            OverlayDialog.rebuildShownDialog();
+        } finally {
+            // Each window is re-fitted once to keep its placement, even after a failed step so none is left unlaid-out
+            WindowUtil.refitRebuiltWindows();
         }
 
-        FlatLaf.updateUI();
+        // Paint the rebuilt content at once, since a display change event already queued could hold the paint back
+        RepaintManager.currentManager(view.getFrame()).paintDirtyRegions();
 
-        // Place the tray icon and any display info panels last, against the settled displays and the new theme
+        // Place the tray icon and any display info panels last, against the settled displays
         controller.displayConfigurationSettled();
     }
 

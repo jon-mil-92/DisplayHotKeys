@@ -1,5 +1,5 @@
-# Builds the JNI display libraries, the notification area icon library, the display info overlay library, and the app
-# launcher.
+# Builds the JNI display libraries, the notification area icon library, the display info overlay library, the window
+# placement library, and the app launcher.
 # Update JAVA_HOME and MINGW to the local JDK and MinGW-w64 install locations.
 CXX ?= g++
 CXXSTD ?= --std=c++20
@@ -38,6 +38,7 @@ clean:
 	rm -f jni/com_dhk_io_SystemTrayIcon.h
 	rm -f jni/com_dhk_io_NativeInputHook.h
 	rm -f jni/com_dhk_io_DisplayInfoOverlay.h
+	rm -f jni/com_dhk_io_WindowPlacement.h
 	rm -f *.res.o
 	rm -f *.dll
 	rm -f distribution/GetDisplay.dll
@@ -46,6 +47,7 @@ clean:
 	rm -f distribution/SystemTrayIcon.dll
 	rm -f distribution/NativeInputHook.dll
 	rm -f distribution/DisplayInfoOverlay.dll
+	rm -f distribution/WindowPlacement.dll
 	rm -f distribution/DisplayHotKeysLauncher.exe
 
 # Generate the JNI headers. javac -h runs with no classpath, so each library's types compile together standalone,
@@ -56,13 +58,15 @@ header:
 	$(JAVAC) -h jni $(IO_DIR)/GetDisplay.java
 	rm -f $(IO_DIR)/GetDisplay.class
 
-	$(JAVAC) -h jni $(IO_DIR)/SetDisplay.java
+	$(JAVAC) -h jni $(IO_DIR)/DisplaySettingsRequest.java $(IO_DIR)/SetDisplay.java
+	rm -f $(IO_DIR)/DisplaySettingsRequest.class
 	rm -f $(IO_DIR)/SetDisplay.class
 
 	$(JAVAC) -h jni $(IO_DIR)/DisplayChangeListener.java $(IO_DIR)/ShellRestartListener.java \
-		$(IO_DIR)/DisplayEventNotifier.java
+		$(IO_DIR)/WorkingAreaChangeListener.java $(IO_DIR)/DisplayEventNotifier.java
 	rm -f $(IO_DIR)/DisplayChangeListener.class
 	rm -f $(IO_DIR)/ShellRestartListener.class
+	rm -f $(IO_DIR)/WorkingAreaChangeListener.class
 	rm -f $(IO_DIR)/DisplayEventNotifier.class
 
 	$(JAVAC) -h jni $(IO_DIR)/TrayIconListener.java $(IO_DIR)/TrayIconRenderer.java $(IO_DIR)/SystemTrayIcon.java
@@ -79,6 +83,9 @@ header:
 
 	$(JAVAC) -h jni $(IO_DIR)/DisplayInfoOverlay.java
 	rm -f $(IO_DIR)/DisplayInfoOverlay.class
+
+	$(JAVAC) -h jni $(IO_DIR)/WindowPlacement.java
+	rm -f $(IO_DIR)/WindowPlacement*.class
 
 # Build the JNI libraries. Each version-info resource is compiled first so its DLL carries the Details-tab metadata
 dll:
@@ -104,15 +111,20 @@ dll:
 
 	$(WINDRES) $(RCFLAGS) jni/DisplayInfoOverlay.rc DisplayInfoOverlay.res.o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) jni/com_dhk_io_DisplayInfoOverlay.cpp DisplayInfoOverlay.res.o \
-		-lgdi32 -lshcore -ldwmapi -o DisplayInfoOverlay.dll
+		-lgdi32 -lshcore -o DisplayInfoOverlay.dll
+
+	# The window placement library reaches native windows through the JDK's AWT native interface, linked from the JDK
+	$(WINDRES) $(RCFLAGS) jni/WindowPlacement.rc WindowPlacement.res.o
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) jni/com_dhk_io_WindowPlacement.cpp WindowPlacement.res.o \
+		-L"$(JAVA_HOME)\lib" -ljawt -lshcore -o WindowPlacement.dll
 
 	# The resources are linked in by now, so drop the intermediates instead of leaving them in the project root
 	rm -f GetDisplay.res.o SetDisplay.res.o DisplayEventNotifier.res.o SystemTrayIcon.res.o NativeInputHook.res.o \
-		DisplayInfoOverlay.res.o
+		DisplayInfoOverlay.res.o WindowPlacement.res.o
 
 	mkdir -p distribution
 	cp -f GetDisplay.dll SetDisplay.dll DisplayEventNotifier.dll SystemTrayIcon.dll NativeInputHook.dll \
-		DisplayInfoOverlay.dll distribution/
+		DisplayInfoOverlay.dll WindowPlacement.dll distribution/
 
 # Build the unelevated launcher that starts the elevated app through its scheduled task. The resource script embeds
 # the asInvoker manifest, so the launcher itself never triggers elevation
