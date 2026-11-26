@@ -30,6 +30,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import com.dhk.io.DisplayConfig;
+import com.dhk.io.DisplaySettingsRequest;
 import com.dhk.io.KeyText;
 import com.dhk.io.NativeKeyEvent;
 import com.dhk.io.SetDisplay;
@@ -255,9 +256,7 @@ public class HotKeysController implements IController {
 
             String[] arrangementSnapshot = displayConfig.captureArrangement();
 
-            for (Entry<Integer, Integer> displayToSlot : displayToSlotMap.entrySet()) {
-                displaySettingsApplied |= setDisplaySettings(displayToSlot.getKey(), displayToSlot.getValue());
-            }
+            displaySettingsApplied = setDisplaySettings(displayToSlotMap);
 
             // Reflow once, after every targeted display has been resized, so their arrangement is preserved
             if (displaySettingsApplied) {
@@ -715,35 +714,35 @@ public class HotKeysController implements IController {
     }
 
     /**
-     * Sets the display settings if the display is connected. Does not refresh the app; the caller is responsible for
-     * triggering a single app refresh after all targeted displays have been updated.
+     * Applies the settings of each targeted display's slot together, if the connected displays are unchanged. Does not
+     * refresh the app, so the caller triggers a single refresh once the arrangement is preserved.
      *
-     * @param displayIndex
-     *            - The index of the display to set the display settings for
-     * @param slotIndex
-     *            - The index of the slot to set the display settings for
-     * @return Whether the display settings were applied (the display is still connected and unchanged)
+     * @param displayToSlotMap
+     *            - The index of the slot to apply for each targeted display index
+     *
+     * @return Whether the display settings were applied (the connected displays are unchanged)
      */
-    private boolean setDisplaySettings(int displayIndex, int slotIndex) {
+    private boolean setDisplaySettings(Map<Integer, Integer> displayToSlotMap) {
         displayConfig.updateConnectedDisplays();
 
-        String displayId = model.getDisplayIds()[displayIndex];
-
-        // If the connected displays have not changed
-        if (Arrays.equals(model.getDisplayIds(), displayConfig.getDisplayIds())) {
-            setDisplay.applyDisplayOrientation(displayId, model.getSlot(displayIndex, slotIndex).getOrientationMode());
-            setDisplay.applyDisplaySettings(displayId,
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getWidth(),
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getHeight(),
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshNumerator(),
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshDenominator(),
-                    model.getSlot(displayIndex, slotIndex).getDpiScalePercentage(),
-                    model.getSlot(displayIndex, slotIndex).getScalingMode());
-
-            return true;
+        // If the connected displays have changed
+        if (!Arrays.equals(model.getDisplayIds(), displayConfig.getDisplayIds())) {
+            return false;
         }
 
-        return false;
+        List<DisplaySettingsRequest> displaySettingsRequests = new ArrayList<>();
+
+        for (Entry<Integer, Integer> displayToSlot : displayToSlotMap.entrySet()) {
+            int displayIndex = displayToSlot.getKey();
+            String displayId = model.getDisplayIds()[displayIndex];
+
+            displaySettingsRequests
+                    .add(model.getSlot(displayIndex, displayToSlot.getValue()).toDisplaySettingsRequest(displayId));
+        }
+
+        setDisplay.applyDisplaySettings(displaySettingsRequests);
+
+        return true;
     }
 
     /**

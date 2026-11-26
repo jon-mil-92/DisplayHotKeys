@@ -233,6 +233,51 @@ struct TrayMenuDefinition {
 };
 
 /**
+ * The settings to apply to one display, resolved to the display's path in the persisted configuration.
+ */
+struct DisplaySettingsRequest {
+    /**
+     * The stable display ID of the display to modify.
+     */
+    std::string stableId;
+
+    /**
+     * The index of the display's path in the persisted configuration (QDC_DATABASE_CURRENT).
+     */
+    UINT32 displayIndex;
+
+    /**
+     * The horizontal resolution to apply.
+     */
+    UINT32 width;
+
+    /**
+     * The vertical resolution to apply.
+     */
+    UINT32 height;
+
+    /**
+     * The exact refresh rate to apply, as the rational stored for the mode.
+     */
+    DISPLAYCONFIG_RATIONAL refreshRate;
+
+    /**
+     * The DPI scale percentage to apply (e.g. 100, 125, 150).
+     */
+    int32_t dpiScalePercentage;
+
+    /**
+     * The scaling mode to apply (0 = aspect ratio, 1 = stretched, 2 = centered).
+     */
+    UINT32 scalingMode;
+
+    /**
+     * The orientation to apply (0 = landscape, 1 = portrait, 2 = inverted landscape, 3 = inverted portrait).
+     */
+    UINT32 orientation;
+};
+
+/**
  * Queries the full persisted display configuration (QDC_DATABASE_CURRENT), including inactive displays.
  *
  * @return The display paths and modes for the current configuration
@@ -245,13 +290,6 @@ DisplayConfig getDisplayConfig();
  * @return Stable display IDs for devices attached to the desktop
  */
 std::vector<std::string> getEnumDisplayDevicesDisplayIds();
-
-/**
- * Gets stable display IDs for the persisted configuration via QueryDisplayConfig.
- *
- * @return Stable display IDs for the current persisted display configuration
- */
-std::vector<std::string> getQueryDisplayConfigDisplayIds();
 
 /**
  * Gets stable IDs for currently visible displays (active path, non-zero source resolution, on-screen position),
@@ -301,14 +339,17 @@ std::vector<std::string> getVisibleDisplaySignatures();
 int getEnumDisplayDevicesDisplayIdIndex(const std::string &displayId);
 
 /**
- * Gets the index of the given stable ID in the QueryDisplayConfig ID list.
+ * Finds the path that drives the display with the given stable ID in a queried display configuration, so the index is
+ * valid for that configuration's own path array.
  *
- * @param displayId
- *            - The stable display ID to locate
+ * @param displayConfig
+ *            - The display configuration to search
+ * @param stableId
+ *            - The stable display ID to match
  *
- * @return The index, or 0 if not found
+ * @return The index of the first matching path, or -1 if no path drives the display
  */
-int getQueryDisplayConfigDisplayIdIndex(const std::string &displayId);
+int findPathForDisplay(const DisplayConfig &displayConfig, const std::string &stableId);
 
 /**
  * Builds a compact, stable display ID from a display's device path and its friendly name. Strips the constant
@@ -386,6 +427,19 @@ DISPLAYCONFIG_SCALING persistedScaling(const DisplayConfig &databaseConfig,
                                        const DISPLAYCONFIG_PATH_TARGET_INFO &targetInfo);
 
 /**
+ * Sets every active path's scaling to the scaling persisted for its display. Applying active paths as queried would
+ * persist the scaling Windows is effectively doing in place of the scaling that was set.
+ *
+ * @param paths
+ *            - The active path array to update
+ * @param databaseConfig
+ *            - The persisted display configuration to read each display's scaling from
+ *
+ * @return Whether any path's scaling changed
+ */
+bool applyPersistedScaling(std::vector<DISPLAYCONFIG_PATH_INFO> &paths, const DisplayConfig &databaseConfig);
+
+/**
  * Shared CCD (Connecting and Configuring Displays) helpers that query the active configuration and submit a supplied
  * source-mode config to SetDisplayConfig, decoupling desktop resolution from refresh rate via GPU scaling the way
  * Windows Advanced Display Settings does. GetDisplay uses them to validate modes and SetDisplay to apply them.
@@ -416,6 +470,29 @@ bool queryActiveCcdConfig(std::vector<DISPLAYCONFIG_PATH_INFO> &paths, std::vect
 int findActivePathForDisplay(const std::vector<DISPLAYCONFIG_PATH_INFO> &paths, const std::string &stableId);
 
 /**
+ * Sets the source resolution and target refresh rate on the chosen path of the given arrays, clearing the target mode
+ * so Windows recomputes the target timing for the new mode. The resolution is given as the display shows it in the
+ * path's rotation.
+ *
+ * @param paths
+ *            - The path array to update
+ * @param modes
+ *            - The mode array to update
+ * @param pathIndex
+ *            - Index of the path to reconfigure
+ * @param width
+ *            - Horizontal resolution to set, as the display shows it in the path's rotation
+ * @param height
+ *            - Vertical resolution to set, as the display shows it in the path's rotation
+ * @param refreshRate
+ *            - Target refresh rate (rational) to set
+ *
+ * @return Whether the path has a valid source mode to set
+ */
+bool setCcdSourceMode(std::vector<DISPLAYCONFIG_PATH_INFO> &paths, std::vector<DISPLAYCONFIG_MODE_INFO> &modes,
+                      int pathIndex, UINT32 width, UINT32 height, DISPLAYCONFIG_RATIONAL refreshRate);
+
+/**
  * Sets the source resolution and target refresh rate on the chosen path of copies of the base arrays, then submits them
  * to SetDisplayConfig with the given flags. Taking the arrays by value keeps the caller's base config reusable.
  *
@@ -426,9 +503,9 @@ int findActivePathForDisplay(const std::vector<DISPLAYCONFIG_PATH_INFO> &paths, 
  * @param pathIndex
  *            - Index of the path to reconfigure
  * @param width
- *            - Source resolution width to set
+ *            - Horizontal resolution to set, as the display shows it in the path's rotation
  * @param height
- *            - Source resolution height to set
+ *            - Vertical resolution to set, as the display shows it in the path's rotation
  * @param refreshRate
  *            - Target refresh rate (rational) to set
  * @param flags

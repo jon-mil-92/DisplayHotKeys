@@ -58,7 +58,8 @@ header:
 	$(JAVAC) -h jni $(IO_DIR)/GetDisplay.java
 	rm -f $(IO_DIR)/GetDisplay.class
 
-	$(JAVAC) -h jni $(IO_DIR)/SetDisplay.java
+	$(JAVAC) -h jni $(IO_DIR)/DisplaySettingsRequest.java $(IO_DIR)/SetDisplay.java
+	rm -f $(IO_DIR)/DisplaySettingsRequest.class
 	rm -f $(IO_DIR)/SetDisplay.class
 
 	$(JAVAC) -h jni $(IO_DIR)/DisplayChangeListener.java $(IO_DIR)/ShellRestartListener.java \

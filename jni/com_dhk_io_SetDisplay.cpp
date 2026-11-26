@@ -19,7 +19,12 @@
 
 using namespace std;
 
+static vector<DisplaySettingsRequest> readDisplaySettingsRequests(JNIEnv *env, jobjectArray displayIds,
+                                                                  jintArray displaySettings);
 static int resolveDisplayIndex(const string &stableId);
+static bool applyMergedDisplaySettings(const vector<DisplaySettingsRequest> &requests);
+void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation);
+static DISPLAYCONFIG_ROTATION toRotationValue(UINT32 orientation);
 bool setDisplayMode(const string &stableId, UINT32 displayIndex, UINT32 width, UINT32 height, UINT32 refreshNumerator,
                     UINT32 refreshDenominator);
 static bool applyLargestSelectableMode(const WCHAR *gdiDeviceName, UINT32 excludeWidth, UINT32 excludeHeight);
@@ -30,7 +35,6 @@ void setDisplayScalingMode(UINT32 displayIndex, UINT32 scalingMode);
 static DISPLAYCONFIG_SCALING toScalingValue(UINT32 scalingMode);
 static LONG applyDisplayConfig(const DisplayConfig &config);
 void setDpiScalePercentage(UINT32 displayIndex, int32_t dpiScalePercentage);
-void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation);
 
 /**
  * Flags for applying a supplied CCD configuration and persisting it to the Windows display database.
@@ -38,89 +42,92 @@ void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation);
 static const UINT32 SDC_SUPPLIED_APPLY_FLAGS = SDC_APPLY | SDC_USE_SUPPLIED_DISPLAY_CONFIG | SDC_SAVE_TO_DATABASE;
 
 /**
- * Applies display settings (resolution, refresh rate, DPI scale percentage, and scaling mode) to a display.
- *
- * @param env
- *            - The JNI environment pointer
- * @param obj
- *            - The calling object instance
- * @param displayId
- *            - The stable display ID of the display to modify
- * @param resWidth
- *            - The horizontal resolution to apply
- * @param resHeight
- *            - The vertical resolution to apply
- * @param refreshNumerator
- *            - The numerator of the exact refresh rate to apply (Hz = numerator / denominator)
- * @param refreshDenominator
- *            - The denominator of the exact refresh rate to apply (Hz = numerator / denominator)
- * @param dpiScalePercentage
- *            - The DPI scale percentage to apply (e.g. 100, 125, 150)
- * @param scalingMode
- *            - The scaling mode to apply (0 = aspect ratio, 1 = stretched, 2 = centered)
+ * Index of the horizontal resolution in each display's settings record.
  */
-JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay(JNIEnv *env, jobject obj, jstring displayId, jint resWidth,
-                                                             jint resHeight, jint refreshNumerator,
-                                                             jint refreshDenominator, jint dpiScalePercentage,
-                                                             jint scalingMode) {
-    jboolean isCopy;
-    const char *displayIdChars = env->GetStringUTFChars(displayId, &isCopy);
-    string stableId = displayIdChars;
-
-    int displayIndex = resolveDisplayIndex(stableId);
-
-    if (displayIndex < 0) {
-        env->ReleaseStringUTFChars(displayId, displayIdChars);
-
-        // The display disappeared or is invalid
-        return;
-    }
-
-    // Apply the resolution, then settle so the scaling re-apply does not revert it with a stale source mode
-    if (setDisplayMode(stableId, displayIndex, resWidth, resHeight, refreshNumerator, refreshDenominator)) {
-        waitForCcdSourceModeResolution(displayIndex, resWidth, resHeight);
-    }
-
-    /*
-     * The scaling mode is applied before the DPI scale percentage, because the scaling re-apply submits a full display
-     * configuration and the DPI scale must be set last against the settled resolution
-     */
-    setDisplayScalingMode(displayIndex, scalingMode);
-    setDpiScalePercentage(displayIndex, dpiScalePercentage);
-
-    env->ReleaseStringUTFChars(displayId, displayIdChars);
-}
+static constexpr int DISPLAY_SETTING_WIDTH = com_dhk_io_SetDisplay_DISPLAY_SETTING_WIDTH;
 
 /**
- * Applies a new orientation to the given display.
+ * Index of the vertical resolution in each display's settings record.
+ */
+static constexpr int DISPLAY_SETTING_HEIGHT = com_dhk_io_SetDisplay_DISPLAY_SETTING_HEIGHT;
+
+/**
+ * Index of the refresh rate's numerator in each display's settings record.
+ */
+static constexpr int DISPLAY_SETTING_REFRESH_NUMERATOR = com_dhk_io_SetDisplay_DISPLAY_SETTING_REFRESH_NUMERATOR;
+
+/**
+ * Index of the refresh rate's denominator in each display's settings record.
+ */
+static constexpr int DISPLAY_SETTING_REFRESH_DENOMINATOR = com_dhk_io_SetDisplay_DISPLAY_SETTING_REFRESH_DENOMINATOR;
+
+/**
+ * Index of the DPI scale percentage in each display's settings record.
+ */
+static constexpr int DISPLAY_SETTING_DPI_SCALE_PERCENTAGE = com_dhk_io_SetDisplay_DISPLAY_SETTING_DPI_SCALE_PERCENTAGE;
+
+/**
+ * Index of the scaling mode in each display's settings record.
+ */
+static constexpr int DISPLAY_SETTING_SCALING_MODE = com_dhk_io_SetDisplay_DISPLAY_SETTING_SCALING_MODE;
+
+/**
+ * Index of the orientation in each display's settings record.
+ */
+static constexpr int DISPLAY_SETTING_ORIENTATION = com_dhk_io_SetDisplay_DISPLAY_SETTING_ORIENTATION;
+
+/**
+ * Number of values in each display's settings record.
+ */
+static constexpr int DISPLAY_SETTING_COUNT = com_dhk_io_SetDisplay_DISPLAY_SETTING_COUNT;
+
+/**
+ * Applies display settings (orientation, resolution, refresh rate, scaling mode, and DPI scale percentage) to one or
+ * more displays. Their modes are applied in one reconfiguration when Windows accepts it, and one display at a time
+ * otherwise.
  *
  * @param env
  *            - The JNI environment pointer
  * @param obj
  *            - The calling object instance
- * @param displayId
- *            - The stable display ID of the display to modify
- * @param orientation
- *            - The orientation (0 = landscape, 1 = portrait, 2 = inverted landscape, 3 = inverted portrait)
+ * @param displayIds
+ *            - The stable display IDs of the displays to modify
+ * @param displaySettings
+ *            - The settings of each display, DISPLAY_SETTING_COUNT values per display in displayIds order
  */
-JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setOrientation(JNIEnv *env, jobject obj, jstring displayId,
-                                                                 jint orientation) {
-    jboolean isCopy;
-    const char *displayIdChars = env->GetStringUTFChars(displayId, &isCopy);
-    string stableId = displayIdChars;
+JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplays(JNIEnv *env, jobject obj, jobjectArray displayIds,
+                                                              jintArray displaySettings) {
+    (void) obj;
+    vector<DisplaySettingsRequest> requests = readDisplaySettingsRequests(env, displayIds, displaySettings);
 
-    int displayIndex = resolveDisplayIndex(stableId);
+    bool settingsMerged = applyMergedDisplaySettings(requests);
 
-    if (displayIndex < 0) {
-        env->ReleaseStringUTFChars(displayId, displayIdChars);
-
-        // The display disappeared or is invalid
-        return;
+    // Without a merged apply, every display is rotated first, so each mode is applied to its new orientation
+    if (!settingsMerged) {
+        for (const DisplaySettingsRequest &request : requests) {
+            setDisplayOrientation(request.displayIndex, request.orientation);
+        }
     }
 
-    setDisplayOrientation(displayIndex, orientation);
+    for (const DisplaySettingsRequest &request : requests) {
+        // Without a merged apply, each display's mode is applied on its own
+        bool modeApplied =
+            settingsMerged || setDisplayMode(request.stableId, request.displayIndex, request.width, request.height,
+                                             request.refreshRate.Numerator, request.refreshRate.Denominator);
 
-    env->ReleaseStringUTFChars(displayId, displayIdChars);
+        // Settle, so the scaling re-apply does not revert the resolution with a stale source mode
+        if (modeApplied) {
+            waitForCcdSourceModeResolution(request.displayIndex, request.width, request.height);
+        }
+
+        /*
+         * The scaling mode is applied before the DPI scale percentage, because the scaling re-apply submits a full
+         * display configuration and the DPI scale must be set last against the settled resolution
+         */
+        setDisplayScalingMode(request.displayIndex, request.scalingMode);
+
+        setDpiScalePercentage(request.displayIndex, request.dpiScalePercentage);
+    }
 }
 
 /**
@@ -141,27 +148,200 @@ JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_preserveDisplayArrangement(JNI
 }
 
 /**
- * Resolves a stable display ID to a valid QueryDisplayConfig index.
+ * Reads the requested settings of each display from the display IDs and their flat settings records, skipping a display
+ * that is no longer in the persisted configuration.
+ *
+ * @param env
+ *            - The JNI environment pointer
+ * @param displayIds
+ *            - The stable display IDs of the displays to modify
+ * @param displaySettings
+ *            - The settings of each display, DISPLAY_SETTING_COUNT values per display in displayIds order
+ *
+ * @return The requested settings of each display that can be modified, in displayIds order
+ */
+static vector<DisplaySettingsRequest> readDisplaySettingsRequests(JNIEnv *env, jobjectArray displayIds,
+                                                                  jintArray displaySettings) {
+    vector<DisplaySettingsRequest> requests;
+
+    if (displayIds == nullptr || displaySettings == nullptr) {
+        return requests;
+    }
+
+    jsize displayCount = env->GetArrayLength(displayIds);
+
+    if (env->GetArrayLength(displaySettings) != displayCount * DISPLAY_SETTING_COUNT) {
+        return requests;
+    }
+
+    vector<jint> settings((size_t) displayCount * DISPLAY_SETTING_COUNT);
+    env->GetIntArrayRegion(displaySettings, 0, (jsize) settings.size(), settings.data());
+
+    for (jsize requestIndex = 0; requestIndex < displayCount; requestIndex++) {
+        jstring displayId = (jstring) env->GetObjectArrayElement(displayIds, requestIndex);
+
+        if (displayId == nullptr) {
+            continue;
+        }
+
+        const char *displayIdChars = env->GetStringUTFChars(displayId, nullptr);
+
+        if (displayIdChars == nullptr) {
+            env->DeleteLocalRef(displayId);
+            continue;
+        }
+
+        string stableId = displayIdChars;
+        env->ReleaseStringUTFChars(displayId, displayIdChars);
+        env->DeleteLocalRef(displayId);
+
+        int displayIndex = resolveDisplayIndex(stableId);
+
+        // A display that disappeared since the caller checked is skipped, never resolved to another display
+        if (displayIndex < 0) {
+            continue;
+        }
+
+        const jint *record = settings.data() + (size_t) requestIndex * DISPLAY_SETTING_COUNT;
+
+        DisplaySettingsRequest request = {};
+        request.stableId = stableId;
+        request.displayIndex = (UINT32) displayIndex;
+        request.width = (UINT32) record[DISPLAY_SETTING_WIDTH];
+        request.height = (UINT32) record[DISPLAY_SETTING_HEIGHT];
+        request.refreshRate.Numerator = (UINT32) record[DISPLAY_SETTING_REFRESH_NUMERATOR];
+        request.refreshRate.Denominator = (UINT32) record[DISPLAY_SETTING_REFRESH_DENOMINATOR];
+        request.dpiScalePercentage = (int32_t) record[DISPLAY_SETTING_DPI_SCALE_PERCENTAGE];
+        request.scalingMode = (UINT32) record[DISPLAY_SETTING_SCALING_MODE];
+        request.orientation = (UINT32) record[DISPLAY_SETTING_ORIENTATION];
+
+        requests.push_back(request);
+    }
+
+    return requests;
+}
+
+/**
+ * Resolves a stable display ID to the index of its path in the persisted configuration (QDC_DATABASE_CURRENT), which
+ * the orientation, settle wait, scaling, and DPI steps index into.
  *
  * @param stableId
  *            - The stable display ID to resolve
  *
- * @return A valid display index, or -1 if the display is not present or the index is invalid
+ * @return The path index, or -1 if the display is not in the persisted configuration
  */
 static int resolveDisplayIndex(const string &stableId) {
-    int index = getQueryDisplayConfigDisplayIdIndex(stableId);
+    return findPathForDisplay(getDisplayConfig(), stableId);
+}
 
-    if (index < 0) {
-        return -1;
+/**
+ * Applies every display's orientation, mode, and scaling in one strict reconfiguration, sparing the separate rotation,
+ * a reconfiguration per display, and the scaling re-apply. Every other display keeps its persisted scaling, and
+ * displays that cannot be merged are left to the per-display apply.
+ *
+ * @param requests
+ *            - The requested settings of each display
+ *
+ * @return Whether every display's orientation and mode were applied
+ */
+static bool applyMergedDisplaySettings(const vector<DisplaySettingsRequest> &requests) {
+    vector<DISPLAYCONFIG_PATH_INFO> paths;
+    vector<DISPLAYCONFIG_MODE_INFO> modes;
+
+    if (requests.empty() || !queryActiveCcdConfig(paths, modes)) {
+        return false;
     }
 
-    DisplayConfig config = getDisplayConfig();
+    // Every display keeps its persisted scaling, since the active paths report the scaling Windows is effectively doing
+    applyPersistedScaling(paths, getDisplayConfig());
 
-    if ((UINT32) index >= config.numPathInfoArrayElements) {
-        return -1;
+    vector<UINT32> requestedSourceModeIndices;
+
+    for (const DisplaySettingsRequest &request : requests) {
+        int pathIndex = findActivePathForDisplay(paths, request.stableId);
+
+        if (pathIndex < 0) {
+            return false;
+        }
+
+        UINT32 sourceModeIndex = paths[pathIndex].sourceInfo.modeInfoIdx;
+
+        // Displays sharing a source would all take the last resolution, so they are applied one display at a time
+        for (UINT32 requestedSourceModeIndex : requestedSourceModeIndices) {
+            if (requestedSourceModeIndex == sourceModeIndex) {
+                return false;
+            }
+        }
+
+        requestedSourceModeIndices.push_back(sourceModeIndex);
+
+        // Rotate the path before its resolution is set, since the source mode takes the resolution in its rotation
+        paths[pathIndex].targetInfo.rotation = toRotationValue(request.orientation);
+
+        if (!setCcdSourceMode(paths, modes, pathIndex, request.width, request.height, request.refreshRate)) {
+            return false;
+        }
+
+        paths[pathIndex].targetInfo.scaling = toScalingValue(request.scalingMode);
     }
 
-    return index;
+    // Only a strict apply merges, so Windows never adjusts more of the configuration than the per-display apply allows
+    return SetDisplayConfig((UINT32) paths.size(), paths.data(), (UINT32) modes.size(), modes.data(),
+                            SDC_SUPPLIED_APPLY_FLAGS) == ERROR_SUCCESS;
+}
+
+/**
+ * Sets the orientation for the given display.
+ *
+ * @param displayIndex
+ *            - The QueryDisplayConfig index of the display to modify
+ * @param orientation
+ *            - The orientation (0 = landscape, 1 = portrait, 2 = inverted landscape, 3 = inverted portrait)
+ */
+void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation) {
+    DISPLAYCONFIG_ROTATION rotation = toRotationValue(orientation);
+    DisplayConfig displayConfig = getDisplayConfig();
+
+    if (displayIndex >= displayConfig.numPathInfoArrayElements) {
+        return;
+    }
+
+    // Skip the reconfiguration when the display is already in the requested orientation
+    if (displayConfig.pathInfoArray[displayIndex].targetInfo.rotation == rotation) {
+        return;
+    }
+
+    displayConfig.pathInfoArray[displayIndex].targetInfo.rotation = rotation;
+
+    applyDisplayConfig(displayConfig);
+}
+
+/**
+ * Maps an app orientation to its DISPLAYCONFIG_ROTATION value.
+ *
+ * @param orientation
+ *            - The orientation to map (0 = landscape, 1 = portrait, 2 = inverted landscape, 3 = inverted portrait)
+ *
+ * @return The DISPLAYCONFIG_ROTATION value, defaulting to landscape for unknown orientations
+ */
+static DISPLAYCONFIG_ROTATION toRotationValue(UINT32 orientation) {
+    switch (orientation) {
+    case 0:
+        // Landscape mode
+        return DISPLAYCONFIG_ROTATION_IDENTITY;
+    case 1:
+        // Portrait mode
+        return DISPLAYCONFIG_ROTATION_ROTATE90;
+    case 2:
+        // Inverted landscape mode
+        return DISPLAYCONFIG_ROTATION_ROTATE180;
+    case 3:
+        // Inverted portrait mode
+        return DISPLAYCONFIG_ROTATION_ROTATE270;
+    default:
+        // Landscape mode
+        return DISPLAYCONFIG_ROTATION_IDENTITY;
+    }
 }
 
 /**
@@ -596,54 +776,4 @@ void setDpiScalePercentage(UINT32 displayIndex, int32_t dpiScalePercentage) {
         // Not yet applied; let the reconfiguration settle and try again
         Sleep(RETRY_DELAY_MS);
     }
-}
-
-/**
- * Sets the orientation for the given display.
- *
- * @param displayIndex
- *            - The QueryDisplayConfig index of the display to modify
- * @param orientation
- *            - The orientation (0 = landscape, 1 = portrait, 2 = inverted landscape, 3 = inverted portrait)
- */
-void setDisplayOrientation(UINT32 displayIndex, UINT32 orientation) {
-    DISPLAYCONFIG_ROTATION rotation;
-
-    switch (orientation) {
-    case 0:
-        // Landscape mode
-        rotation = DISPLAYCONFIG_ROTATION_IDENTITY;
-        break;
-    case 1:
-        // Portrait mode
-        rotation = DISPLAYCONFIG_ROTATION_ROTATE90;
-        break;
-    case 2:
-        // Inverted landscape mode
-        rotation = DISPLAYCONFIG_ROTATION_ROTATE180;
-        break;
-    case 3:
-        // Inverted portrait mode
-        rotation = DISPLAYCONFIG_ROTATION_ROTATE270;
-        break;
-    default:
-        // Landscape mode
-        rotation = DISPLAYCONFIG_ROTATION_IDENTITY;
-        break;
-    }
-
-    DisplayConfig displayConfig = getDisplayConfig();
-
-    if (displayIndex >= displayConfig.numPathInfoArrayElements) {
-        return;
-    }
-
-    // Skip the reconfiguration when the display is already in the requested orientation
-    if (displayConfig.pathInfoArray[displayIndex].targetInfo.rotation == rotation) {
-        return;
-    }
-
-    displayConfig.pathInfoArray[displayIndex].targetInfo.rotation = rotation;
-
-    applyDisplayConfig(displayConfig);
 }

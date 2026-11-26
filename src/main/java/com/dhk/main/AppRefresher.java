@@ -14,6 +14,8 @@
  */
 package com.dhk.main;
 
+import javax.swing.RepaintManager;
+
 import com.dhk.controller.DhkController;
 import com.dhk.io.DisplayConfig;
 import com.dhk.io.SettingsManager;
@@ -89,6 +91,9 @@ public class AppRefresher {
             // Each window is re-fitted once to keep its placement, even after a failed step so none is left unlaid-out
             WindowUtil.refitRebuiltWindows();
         }
+
+        // Paint the rebuilt content at once, since a display change event already queued could hold the paint back
+        RepaintManager.currentManager(view.getFrame()).paintDirtyRegions();
 
         // Place the tray icon and any display info panels last, against the settled displays
         controller.displayConfigurationSettled();

@@ -7,21 +7,29 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#undef com_dhk_io_SetDisplay_DISPLAY_SETTING_WIDTH
+#define com_dhk_io_SetDisplay_DISPLAY_SETTING_WIDTH 0L
+#undef com_dhk_io_SetDisplay_DISPLAY_SETTING_HEIGHT
+#define com_dhk_io_SetDisplay_DISPLAY_SETTING_HEIGHT 1L
+#undef com_dhk_io_SetDisplay_DISPLAY_SETTING_REFRESH_NUMERATOR
+#define com_dhk_io_SetDisplay_DISPLAY_SETTING_REFRESH_NUMERATOR 2L
+#undef com_dhk_io_SetDisplay_DISPLAY_SETTING_REFRESH_DENOMINATOR
+#define com_dhk_io_SetDisplay_DISPLAY_SETTING_REFRESH_DENOMINATOR 3L
+#undef com_dhk_io_SetDisplay_DISPLAY_SETTING_DPI_SCALE_PERCENTAGE
+#define com_dhk_io_SetDisplay_DISPLAY_SETTING_DPI_SCALE_PERCENTAGE 4L
+#undef com_dhk_io_SetDisplay_DISPLAY_SETTING_SCALING_MODE
+#define com_dhk_io_SetDisplay_DISPLAY_SETTING_SCALING_MODE 5L
+#undef com_dhk_io_SetDisplay_DISPLAY_SETTING_ORIENTATION
+#define com_dhk_io_SetDisplay_DISPLAY_SETTING_ORIENTATION 6L
+#undef com_dhk_io_SetDisplay_DISPLAY_SETTING_COUNT
+#define com_dhk_io_SetDisplay_DISPLAY_SETTING_COUNT 7L
 /*
  * Class:     com_dhk_io_SetDisplay
- * Method:    setDisplay
- * Signature: (Ljava/lang/String;IIIIII)V
+ * Method:    setDisplays
+ * Signature: ([Ljava/lang/String;[I)V
  */
-JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplay
-  (JNIEnv *, jobject, jstring, jint, jint, jint, jint, jint, jint);
-
-/*
- * Class:     com_dhk_io_SetDisplay
- * Method:    setOrientation
- * Signature: (Ljava/lang/String;I)V
- */
-JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setOrientation
-  (JNIEnv *, jobject, jstring, jint);
+JNIEXPORT void JNICALL Java_com_dhk_io_SetDisplay_setDisplays
+  (JNIEnv *, jobject, jobjectArray, jintArray);
 
 /*
  * Class:     com_dhk_io_SetDisplay

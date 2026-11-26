@@ -55,10 +55,22 @@ final class FittedWindow {
     private double measuredScale;
 
     /**
-     * Whether a native surface reclaim collection is running, so windows finishing their fits together never stack
-     * another one. A window whose collection was skipped is reclaimed after its next fit.
+     * Whether a native surface reclaim is queued on the EDT, so every window completing its fit before it runs shares
+     * its collection. Only read and written on the EDT.
      */
-    private static volatile boolean nativeReclaimInProgress;
+    private static boolean nativeReclaimQueued;
+
+    /**
+     * Whether a native surface reclaim was requested since the background collector last took a request. Guarded by
+     * {@link #NATIVE_RECLAIM_LOCK}.
+     */
+    private static boolean nativeReclaimRequested;
+
+    /**
+     * Whether the background collector is running, in which case it takes a new request once its current collection
+     * ends rather than another collector starting. Guarded by {@link #NATIVE_RECLAIM_LOCK}.
+     */
+    private static boolean nativeReclaimRunning;
 
     /**
      * Whether the left mouse button is held anywhere in the system, as of the button events the EDT has handled. A
@@ -75,6 +87,12 @@ final class FittedWindow {
      * DPI of a display at a 100% scale. A display's DPI divided by it is the scale AWT sizes windows by there.
      */
     private static final int UNSCALED_DPI = 96;
+
+    /**
+     * Lock guarding the reclaim request and the collector's running state, which the EDT and the background collector
+     * share.
+     */
+    private static final Object NATIVE_RECLAIM_LOCK = new Object();
 
     /**
      * Constructor for the {@link FittedWindow} class.
@@ -858,28 +876,69 @@ final class FittedWindow {
     }
 
     /**
-     * Schedules one background collection once the window's fit completes after AWT replaced its drawing surface, to
+     * Requests a background collection once the window's fit completes after AWT replaced its drawing surface, to
      * reclaim the native back-buffer surfaces AWT orphans with every configuration it gave the window meanwhile.
      */
     private void reclaimReplacedSurfaces() {
-        if (!surfaceReplaced || nativeReclaimInProgress) {
+        if (!surfaceReplaced) {
             return;
         }
 
         surfaceReplaced = false;
-        nativeReclaimInProgress = true;
+
+        // Queued behind the fits already waiting, so the windows of one display change share a single collection
+        if (!nativeReclaimQueued) {
+            nativeReclaimQueued = true;
+            SwingUtilities.invokeLater(FittedWindow::startNativeReclaim);
+        }
+    }
+
+    /**
+     * Starts the background collector that reclaims orphaned native surfaces. A collector already running takes the
+     * request instead and collects once more after its current collection, covering surfaces orphaned meanwhile.
+     */
+    private static void startNativeReclaim() {
+        nativeReclaimQueued = false;
+
+        synchronized (NATIVE_RECLAIM_LOCK) {
+            nativeReclaimRequested = true;
+
+            if (nativeReclaimRunning) {
+                return;
+            }
+
+            nativeReclaimRunning = true;
+        }
 
         // Collect off the EDT so a display change never stalls the EDT on the GC
-        Thread reclaimThread = new Thread(() -> {
-            try {
-                System.gc();
-            } finally {
-                nativeReclaimInProgress = false;
-            }
-        }, "DisplayHotKeys-NativeSurfaceReclaim");
-
+        Thread reclaimThread = new Thread(FittedWindow::collectNativeSurfaces, "DisplayHotKeys-NativeSurfaceReclaim");
         reclaimThread.setDaemon(true);
         reclaimThread.start();
+    }
+
+    /**
+     * Collects once for each pending reclaim request until none is left. Every request made during a collection shares
+     * the one collection that follows it.
+     */
+    private static void collectNativeSurfaces() {
+        while (takeNativeReclaimRequest()) {
+            System.gc();
+        }
+    }
+
+    /**
+     * Takes the pending reclaim request. When there is none, the collector is marked stopped in the same step, so the
+     * next request starts a new collector rather than being left to one that is ending.
+     *
+     * @return True if a reclaim request was pending
+     */
+    private static boolean takeNativeReclaimRequest() {
+        synchronized (NATIVE_RECLAIM_LOCK) {
+            nativeReclaimRunning = nativeReclaimRequested;
+            nativeReclaimRequested = false;
+
+            return nativeReclaimRunning;
+        }
     }
 
     /**

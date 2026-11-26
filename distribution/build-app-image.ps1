@@ -254,13 +254,9 @@ try {
         '--java-options', '-Xms48m',
         '--java-options', '-Xmx384m',
         '--java-options', '-XX:+UseZGC',
-        '--java-options', '-XX:+UnlockExperimentalVMOptions',
         '--java-options', '-XX:+ZGenerational',
         '--java-options', '-XX:SoftMaxHeapSize=256m',
-        '--java-options', '-XX:ZUncommitDelay=30',
-        '--java-options', '-XX:MaxMetaspaceSize=64m',
-        '--java-options', '-XX:ReservedCodeCacheSize=64m',
-        '--java-options', '-XX:ThreadStackSize=256'
+        '--java-options', '-XX:ZUncommitDelay=30'
     )
 
     Write-Host 'Running jpackage...'

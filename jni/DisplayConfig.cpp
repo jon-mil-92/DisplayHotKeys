@@ -98,28 +98,6 @@ vector<string> getEnumDisplayDevicesDisplayIds() {
 }
 
 /**
- * Gets stable IDs for the persisted configuration, in QueryDisplayConfig path order.
- *
- * @return Stable display IDs for the current persisted display configuration
- */
-vector<string> getQueryDisplayConfigDisplayIds() {
-    DisplayConfig config = getDisplayConfig();
-    vector<string> displayIds;
-
-    for (UINT32 i = 0; i < config.numPathInfoArrayElements; i++) {
-        string displayId = stableIdForTarget(config.pathInfoArray[i].targetInfo);
-
-        if (displayId.empty()) {
-            continue;
-        }
-
-        displayIds.push_back(std::move(displayId));
-    }
-
-    return displayIds;
-}
-
-/**
  * Sentinel returned when a source's GDI device number cannot be resolved, so such displays sort after every
  * resolvable one and numbering never regresses.
  */
@@ -563,23 +541,24 @@ int getEnumDisplayDevicesDisplayIdIndex(const string &displayId) {
 }
 
 /**
- * Gets the index of the given stable ID in the QueryDisplayConfig ID list.
+ * Finds the path that drives the display with the given stable ID in a queried display configuration, so the index is
+ * valid for that configuration's own path array.
  *
- * @param displayId
- *            - The stable display ID to locate
+ * @param displayConfig
+ *            - The display configuration to search
+ * @param stableId
+ *            - The stable display ID to match
  *
- * @return The index, or 0 if not found
+ * @return The index of the first matching path, or -1 if no path drives the display
  */
-int getQueryDisplayConfigDisplayIdIndex(const string &displayId) {
-    vector<string> displayIds = getQueryDisplayConfigDisplayIds();
-
-    for (int i = 0; i < (int) displayIds.size(); i++) {
-        if (displayIds[i] == displayId) {
-            return i;
+int findPathForDisplay(const DisplayConfig &displayConfig, const string &stableId) {
+    for (UINT32 i = 0; i < displayConfig.numPathInfoArrayElements; i++) {
+        if (stableIdForTarget(displayConfig.pathInfoArray[i].targetInfo) == stableId) {
+            return (int) i;
         }
     }
 
-    return 0;
+    return -1;
 }
 
 /**
@@ -783,6 +762,32 @@ DISPLAYCONFIG_SCALING persistedScaling(const DisplayConfig &databaseConfig,
 }
 
 /**
+ * Sets every active path's scaling to the scaling persisted for its display. Applying active paths as queried would
+ * persist the scaling Windows is effectively doing in place of the scaling that was set.
+ *
+ * @param paths
+ *            - The active path array to update
+ * @param databaseConfig
+ *            - The persisted display configuration to read each display's scaling from
+ *
+ * @return Whether any path's scaling changed
+ */
+bool applyPersistedScaling(vector<DISPLAYCONFIG_PATH_INFO> &paths, const DisplayConfig &databaseConfig) {
+    bool changed = false;
+
+    for (DISPLAYCONFIG_PATH_INFO &path : paths) {
+        DISPLAYCONFIG_SCALING scaling = persistedScaling(databaseConfig, path.targetInfo);
+
+        if (path.targetInfo.scaling != scaling) {
+            path.targetInfo.scaling = scaling;
+            changed = true;
+        }
+    }
+
+    return changed;
+}
+
+/**
  * Queries the active display configuration (QDC_ONLY_ACTIVE_PATHS) into the given vectors.
  *
  * @param paths
@@ -841,6 +846,50 @@ int findActivePathForDisplay(const vector<DISPLAYCONFIG_PATH_INFO> &paths, const
 }
 
 /**
+ * Sets the source resolution and target refresh rate on the chosen path of the given arrays, clearing the target mode
+ * so Windows recomputes the target timing for the new mode. The resolution is given as the display shows it in the
+ * path's rotation.
+ *
+ * @param paths
+ *            - The path array to update
+ * @param modes
+ *            - The mode array to update
+ * @param pathIndex
+ *            - Index of the path to reconfigure
+ * @param width
+ *            - Horizontal resolution to set, as the display shows it in the path's rotation
+ * @param height
+ *            - Vertical resolution to set, as the display shows it in the path's rotation
+ * @param refreshRate
+ *            - Target refresh rate (rational) to set
+ *
+ * @return Whether the path has a valid source mode to set
+ */
+bool setCcdSourceMode(vector<DISPLAYCONFIG_PATH_INFO> &paths, vector<DISPLAYCONFIG_MODE_INFO> &modes, int pathIndex,
+                      UINT32 width, UINT32 height, DISPLAYCONFIG_RATIONAL refreshRate) {
+    DISPLAYCONFIG_PATH_INFO &path = paths[pathIndex];
+    UINT32 sourceModeIdx = path.sourceInfo.modeInfoIdx;
+
+    if (sourceModeIdx == DISPLAYCONFIG_PATH_MODE_IDX_INVALID || sourceModeIdx >= modes.size() ||
+        modes[sourceModeIdx].infoType != DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE) {
+        return false;
+    }
+
+    // The source mode holds the unrotated size, so a display turned to portrait takes the resolution's sides swapped
+    DISPLAYCONFIG_ROTATION rotation = path.targetInfo.rotation;
+    bool rotated = rotation == DISPLAYCONFIG_ROTATION_ROTATE90 || rotation == DISPLAYCONFIG_ROTATION_ROTATE270;
+    modes[sourceModeIdx].sourceMode.width = rotated ? height : width;
+    modes[sourceModeIdx].sourceMode.height = rotated ? width : height;
+
+    // Request the refresh rate and clear the target mode index so Windows recomputes the target timing
+    path.targetInfo.refreshRate = refreshRate;
+    path.targetInfo.scanLineOrdering = DISPLAYCONFIG_SCANLINE_ORDERING_PROGRESSIVE;
+    path.targetInfo.modeInfoIdx = DISPLAYCONFIG_PATH_MODE_IDX_INVALID;
+
+    return true;
+}
+
+/**
  * Sets the source resolution and refresh rate on the chosen path of copies of the base arrays, then submits them to
  * SetDisplayConfig with the given flags. Taking the arrays by value keeps the caller's base config reusable.
  *
@@ -851,9 +900,9 @@ int findActivePathForDisplay(const vector<DISPLAYCONFIG_PATH_INFO> &paths, const
  * @param pathIndex
  *            - Index of the path to reconfigure
  * @param width
- *            - Source resolution width to set
+ *            - Horizontal resolution to set, as the display shows it in the path's rotation
  * @param height
- *            - Source resolution height to set
+ *            - Vertical resolution to set, as the display shows it in the path's rotation
  * @param refreshRate
  *            - Target refresh rate (rational) to set
  * @param flags
@@ -863,22 +912,9 @@ int findActivePathForDisplay(const vector<DISPLAYCONFIG_PATH_INFO> &paths, const
  */
 LONG submitCcdSourceMode(vector<DISPLAYCONFIG_PATH_INFO> paths, vector<DISPLAYCONFIG_MODE_INFO> modes, int pathIndex,
                          UINT32 width, UINT32 height, DISPLAYCONFIG_RATIONAL refreshRate, UINT32 flags) {
-    DISPLAYCONFIG_PATH_INFO &path = paths[pathIndex];
-    UINT32 sourceModeIdx = path.sourceInfo.modeInfoIdx;
-
-    if (sourceModeIdx == DISPLAYCONFIG_PATH_MODE_IDX_INVALID || sourceModeIdx >= modes.size() ||
-        modes[sourceModeIdx].infoType != DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE) {
+    if (!setCcdSourceMode(paths, modes, pathIndex, width, height, refreshRate)) {
         return ERROR_INVALID_PARAMETER;
     }
-
-    // Set the desktop (source) resolution
-    modes[sourceModeIdx].sourceMode.width = width;
-    modes[sourceModeIdx].sourceMode.height = height;
-
-    // Request the refresh rate and clear the target mode index so Windows recomputes the target timing
-    path.targetInfo.refreshRate = refreshRate;
-    path.targetInfo.scanLineOrdering = DISPLAYCONFIG_SCANLINE_ORDERING_PROGRESSIVE;
-    path.targetInfo.modeInfoIdx = DISPLAYCONFIG_PATH_MODE_IDX_INVALID;
 
     return SetDisplayConfig((UINT32) paths.size(), paths.data(), (UINT32) modes.size(), modes.data(), flags);
 }

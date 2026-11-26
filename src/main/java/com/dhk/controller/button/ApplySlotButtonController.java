@@ -15,6 +15,7 @@
 package com.dhk.controller.button;
 
 import java.util.Arrays;
+import java.util.List;
 
 import com.dhk.controller.DhkController;
 import com.dhk.controller.IController;
@@ -23,6 +24,7 @@ import com.dhk.io.SetDisplay;
 import com.dhk.io.SettingsManager;
 import com.dhk.main.AppRefresher;
 import com.dhk.model.DhkModel;
+import com.dhk.model.Slot;
 import com.dhk.view.DhkView;
 
 /**
@@ -110,14 +112,8 @@ public class ApplySlotButtonController extends AbstractButtonController implemen
             // Capture the display arrangement before the display reconfiguration rearranges the display
             String[] arrangementSnapshot = displayConfig.captureArrangement();
 
-            setDisplay.applyDisplayOrientation(displayId, model.getSlot(displayIndex, slotIndex).getOrientationMode());
-            setDisplay.applyDisplaySettings(displayId,
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getWidth(),
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getHeight(),
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshNumerator(),
-                    model.getSlot(displayIndex, slotIndex).getDisplayMode().getRefreshDenominator(),
-                    model.getSlot(displayIndex, slotIndex).getDpiScalePercentage(),
-                    model.getSlot(displayIndex, slotIndex).getScalingMode());
+            Slot appliedSlot = model.getSlot(displayIndex, slotIndex);
+            setDisplay.applyDisplaySettings(List.of(appliedSlot.toDisplaySettingsRequest(displayId)));
             setDisplay.preserveArrangement(arrangementSnapshot);
 
             // The apply returns once it is in effect, and each window waits for AWT to catch up before it is re-fitted

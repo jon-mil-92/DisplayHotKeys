@@ -14,6 +14,10 @@
  */
 package com.dhk.model.button;
 
+import java.net.URL;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import javax.swing.JButton;
 
 import com.dhk.utility.LightweightTooltip;
@@ -36,6 +40,11 @@ public abstract class AbstractButton extends JButton {
     private static final long serialVersionUID = -8040714399831618945L;
 
     /**
+     * Resource URL of each icon path, resolved once because every view rebuild creates its buttons again.
+     */
+    private static final Map<String, URL> ICON_URLS = new ConcurrentHashMap<>();
+
+    /**
      * Default constructor for the {@link AbstractButton} class.
      */
     public AbstractButton() {
@@ -53,7 +62,7 @@ public abstract class AbstractButton extends JButton {
      * @return The SVG icon for the resource at the given path with the given image scale percentage
      */
     protected FlatSVGIcon getSvgIcon(String path, float scale) {
-        return new FlatSVGIcon(getClass().getResource(path)).derive(scale);
+        return new FlatSVGIcon(ICON_URLS.computeIfAbsent(path, getClass()::getResource)).derive(scale);
     }
 
     /**
