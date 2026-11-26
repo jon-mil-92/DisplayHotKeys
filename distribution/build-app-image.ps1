@@ -3,7 +3,7 @@
 $ErrorActionPreference = 'Stop'
 $distDir = $PSScriptRoot
 $projectDir = Split-Path $distDir -Parent
-$version = '4.6.0'
+$version = '5.0.0'
 $jarName = "DisplayHotKeys-$version.jar"
 $copyright = "Copyright $([char]0x00A9) 2024-2026 Jonathan R. Miller"
 $inputDir = Join-Path $distDir 'input'
